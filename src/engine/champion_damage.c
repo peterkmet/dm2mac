@@ -388,10 +388,10 @@ void champ_cure_poison(int champ, int amount)
     int16_t left = (int16_t)amount;
     /* the original reads the first event slots as many as the timeline holds, so it can miss a poison event in a
        later slot; the advanced mode reads all slots */
-    for (int i = 0; i < (g_game_mode == GAME_MODE_ADVANCED ? g_timeline.capacity : g_timeline.count); i++) {
+    bool all = g_game_mode == GAME_MODE_ADVANCED;
+    for (int i = timeline_find_event(0, EVENT_POISON, (uint8_t)champ, all); i != -1;
+         i = timeline_find_event(i + 1, EVENT_POISON, (uint8_t)champ, all)) {
         TimelineEvent *e = &g_timeline.events[i];
-        if (e->type != EVENT_POISON || e->priority != (uint8_t)champ)
-            continue;
         int16_t v = (int16_t)le16(e->data);
         if (left < v) {
             v = (int16_t)(v - left);

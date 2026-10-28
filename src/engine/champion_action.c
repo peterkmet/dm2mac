@@ -23,12 +23,9 @@
 
 /* The charges that CHARGES_USE_ALL takes. */
 #define ALL_CHARGES            0x000f
-/* The g_action.flags bit that the action area clears after an action. */
-#define FLAGS_KEEP_OPEN        0x0400
-/* The alerts of a fear and of a melee hit: loud, set mood bit 5 (MOOD_BORED); may anger, loud, set mood bit 2
-   (MOOD_ANGRY). */
-#define FRIGHTEN_ALERT_FLAGS   (ALERT_LOUD | 0x0005)
-#define MELEE_ALERT_FLAGS      (ALERT_ANGER | ALERT_LOUD | 0x0002)
+/* The alerts of a fear and of a melee hit. */
+#define FRIGHTEN_ALERT_FLAGS   (ALERT_LOUD | ALERT_MOOD_BORED)
+#define MELEE_ALERT_FLAGS      (ALERT_ANGER | ALERT_LOUD | ALERT_MOOD_ANGRY)
 /* The redraw of a level gain: the titles, the load, and the bars. */
 #define REDRAW_LEVEL           (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
 #define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
@@ -472,8 +469,8 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
 /* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
 static void show_failure(int result, int counter)
 {
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
+    int16_t count = (int16_t)game_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
+    g_action.redraw_delay = (int16_t)max_int(ACTION_REDRAW_NEXT, (int16_t)(RESULT_DELAY_BASE - count));
     g_action.result = (int16_t)result;
 }
 
@@ -487,8 +484,8 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
-    if (rel > 1) {
-        int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
+    if (rel >= CELL_BACK_RIGHT) {
+        int other = dir_turn(c->cell, rel == CELL_BACK_RIGHT ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
             show_failure(RESULT_NOTHING, VAR_BLOCKED_ACTIONS);
@@ -643,7 +640,8 @@ static bool run_melee(ActionRun *a)
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), false, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
+            (SoundCue){CAT_DOOR,
+                       dungeon_door_type(g_party.cur_map, dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
                        SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, a->fx, a->fy, SOUND_STEP_END);
         return true;
@@ -995,7 +993,7 @@ bool champ_execute_selected_action(int index)
     if (!g_action.flags)
         action_area_close();
     else
-        g_action.flags &= (uint16_t)~FLAGS_KEEP_OPEN;
+        g_action.flags &= (uint16_t)~MAP_PANEL_DRAWN; /* the minion map panel redraws */
     g_hooks.update_action_area(false);
     return done;
 }

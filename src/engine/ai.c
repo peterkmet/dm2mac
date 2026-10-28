@@ -55,9 +55,6 @@
 #define MOOD_AT_MASK_WORD       0
 #define MOOD_AT_CHOICES         2
 
-/* The flags of an action in the AI action table. */
-#define AI_ACTION_FLAG_TIMED 0x03 /* the action sets the time of the last action */
-
 /* The flags of an AI class (g_ai_class_flags). */
 #define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
 #define AI_CLASS_ONE_FEAR       0x0002
@@ -561,7 +558,7 @@ void ai_set_map(int16_t map)
 bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
 {
     int map = g_party.cur_map;
-    g_party.cur_map = -1;
+    g_party.cur_map = CUR_MAP_NONE; /* ai_set_map reads the party position again */
     ai_set_map(map);
     g_ai_square.x = -1;
     bool restored = false;
@@ -1277,7 +1274,7 @@ static int update_mood(uint32_t entries)
         if (!mask)
             break;
         if ((mask & MOOD_GLOBAL_TEST) == MOOD_GLOBAL_TEST) {
-            if (dun_get_global_var(mask & MOOD_GLOBAL_MASK))
+            if (game_global_var(mask & MOOD_GLOBAL_MASK))
                 break;
             continue;
         }
@@ -2454,26 +2451,26 @@ static bool act_move_stairs(void)
     ai_state.dest_y = (int16_t)dest_y();
     if (a->action == ACTION_LINK_UP || a->action == ACTION_LINK_DOWN) {
         int delta = a->action == ACTION_LINK_UP ? -1 : 1;
-        uint16_t sensor;
-        int d = dun_find_adjacent_level_link((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta,
-                                             &sensor);
-        if (sensor != THING_NONE) {
-            int exit = sensor_effect(sensor);
-            dir = sensor_flag(sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, (int16_t)d); /* inverted: a fixed exit */
+        LevelLink link =
+            dun_find_adjacent_level_link((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
+        if (link.sensor != THING_NONE) {
+            int exit = sensor_effect(link.sensor);
+            /* inverted: a fixed exit */
+            dir = sensor_flag(link.sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, link.dir);
         } else {
             int saved = g_party.cur_map;
             Position to = dungeon_location_on_map(
                 (Position){(int16_t)saved, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
             dun_set_current_map(to.map);
-            int d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta, &sensor);
+            int16_t d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta).dir;
             dun_set_current_map(saved);
-            dir = (int16_t)d2 == -1 ? rand_2bits() : d2;
+            dir = d2 == -1 ? rand_2bits() : d2;
         }
     }
     bool closes = g_ai.info->traits & CREATURE_TRAIT_CLOSES_PITS;
     if (closes)
         dun_set_pit_teleporter_state((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, PIT_STATE_CLOSED);
-    move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], -1, 0);
+    move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], MOVE_NO_SQUARE, 0);
     ai_set_map(location_map(a->destination));
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN)
         dir = dun_get_stairs_exit_direction((Location){ai_state.dest_x, ai_state.dest_y});
@@ -2610,7 +2607,7 @@ static bool act_pick_up_items(void)
             continue;
         if (!ai_thing_matches_filter(t, g_ai.active->sub))
             continue;
-        move_thing(t, ai_state.dest_x, ai_state.dest_y, -1, 0);
+        move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, 0);
         dungeon_append_thing(t, group_possessions(g_ai.group_thing));
         n++;
         if (!(g_ai.active->sub & SUB_REPEAT))
@@ -2656,7 +2653,7 @@ static bool act_drop_items(void)
         n++;
         dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
         t = thing_with_cell(t, g_ai.active->cell);
-        move_thing(t, -1, 0, ai_state.dest_x, ai_state.dest_y);
+        move_thing(t, MOVE_NO_SQUARE, 0, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;
@@ -2717,7 +2714,7 @@ static bool act_give_items(void)
         t = thing_with_cell(t, cell);
         if (item_is_moneybox(t))
             moneybox_set_placed(t, true);
-        move_thing(t, -1, -1, ai_state.dest_x, ai_state.dest_y);
+        move_thing(t, MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;
@@ -2735,7 +2732,7 @@ static bool act_take_items(void)
         if (t == THING_ENDOFLIST)
             break;
         n++;
-        move_thing(t, ai_state.dest_x, ai_state.dest_y, -1, -1);
+        move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS);
         dungeon_append_thing(t & THING_ID_MASK, group_possessions(g_ai.group_thing));
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;
@@ -2902,7 +2899,7 @@ static int execute_action(void)
     ai_state.dest_y = (int16_t)dest_y();
     int r = run_act(a->action);
     if (!(int16_t)r) {
-        if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_TIMED)
+        if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_ATTACK)
             a->last_action_time = (uint8_t)g_game.game_time;
     } else {
         g_ai.cache.path_left = 0;

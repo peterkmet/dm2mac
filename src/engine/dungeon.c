@@ -50,15 +50,13 @@
 #define FLOOR_ORNAMENT_SHIFT 8
 
 /* Sensor types that the pass after the load of DUNGEON.DAT prepares. */
-#define SENSOR_ANIMATED_ORNAMENT 0x2c
-#define SENSOR_STARTS_ON         0x3f
-#define SENSOR_DOOR_FLAG         0x46
+#define SENSOR_STARTS_ON      0x3f
 /* A wall set value: its pits lead to a marker, not to the square below. */
-#define WALLSET_PIT_TO_MARKER    0x6a
+#define WALLSET_PIT_TO_MARKER 0x6a
 /* The text of the level digits on the party start square. */
-#define LEVEL_TEXT_SIZE          200
-#define LEVEL_TEXT_FILLED        64
-#define LEVEL_TEXT_FILL          '1' /* the level digit of the levels that the start text does not name */
+#define LEVEL_TEXT_SIZE       200
+#define LEVEL_TEXT_FILLED     64
+#define LEVEL_TEXT_FILL       '1' /* the level digit of the levels that the start text does not name */
 
 /* The record size in bytes of each thing type. */
 static const uint8_t thing_size[THING_TYPE_COUNT] = {4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4};
@@ -456,7 +454,7 @@ static void prepare_group(uint16_t group, int16_t map, int16_t x, int16_t y)
     }
 }
 
-/* A SENSOR_DOOR_FLAG sensor on map copies its state into a flag of the door at its target. */
+/* A SENSOR_DOOR_SWITCH sensor on map copies its state into a flag of the door at its target. */
 static void link_door_flag(uint16_t sensor, int16_t map)
 {
     dun_set_current_map(map);
@@ -491,7 +489,7 @@ static bool link_thing(uint16_t t, int16_t map, int16_t x, int16_t y)
             mark_level_link(map, x + g_dir_dx[cell], y + g_dir_dy[cell]);
             break;
         case SENSOR_TELEPORTER_LINK:
-        case SENSOR_ANIMATED_ORNAMENT:
+        case SENSOR_ANIMATION:
             if (sensor_flag(t, SENSOR_STATE))
                 sensor_set_flag(t, SENSOR_BUSY, true);
             break;
@@ -499,7 +497,7 @@ static bool link_thing(uint16_t t, int16_t map, int16_t x, int16_t y)
             sensor_set_flag(t, SENSOR_BUSY, false);
             sensor_set_flag(t, SENSOR_STATE, true);
             break;
-        case SENSOR_DOOR_FLAG:
+        case SENSOR_DOOR_SWITCH:
             link_door_flag(t, map);
             break;
         }
@@ -612,6 +610,11 @@ uint8_t dungeon_map_door_type(int16_t map, int16_t slot)
     if (!(dungeon_map_flags(map) & (slot ? MAP_HAS_DOOR_TYPE_1 : MAP_HAS_DOOR_TYPE_0)))
         return DOOR_TYPE_NONE;
     return dungeon_map_graphics(map) >> (slot ? MAP_DOOR_TYPE_1_SHIFT : MAP_DOOR_TYPE_SHIFT) & MAP_NIBBLE_MASK;
+}
+
+uint8_t dungeon_door_type(int16_t map, uint16_t door)
+{
+    return dungeon_map_door_type(map, (int16_t)door_map_type(door));
 }
 
 /* The map ornament counts word: wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15. */
@@ -834,9 +837,8 @@ Position dungeon_find_level_transfer(Position from, int level_delta, unsigned fl
                  !(square & SQUARE_FLAG_0))) {
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
             return none;
-        uint16_t sensor;
         if (!(flags & TRANSFER_STAIRS) ||
-            dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta, &sensor) < 0) {
+            dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta).dir < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
                 return none;
             fall_into = true;

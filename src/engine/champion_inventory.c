@@ -303,7 +303,7 @@ void inv_click_slot(int16_t slot)
     g_hooks.draw_all_champion_states(false);
     if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
         slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
-        g_action.redraw_delay = 1;
+        g_action.redraw_delay = ACTION_REDRAW_NEXT;
         g_hooks.update_action_area(false);
     }
 }

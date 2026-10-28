@@ -223,9 +223,9 @@ void area_draw_spell_icon(int champ, bool flash)
     offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), g_ui_colors[UI_BLACK]);
     if (!c->health)
         return;
-    bool mirror = rel == 1 || rel == 2;
-    int rune = rel <= 1 ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
-    int hand = rel <= 1 ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
+    bool mirror = rel == CELL_FRONT_RIGHT || rel == CELL_BACK_RIGHT;
+    int rune = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
+    int hand = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
     if (champ == g_game.leader)
         rune++;
     if (flash)
@@ -668,7 +668,7 @@ static void show_hand_panel(void)
 static bool show_open_panel(bool full, bool party_changed, bool tick)
 {
     if (g_action.redraw_delay || full || party_changed || (g_action.mode == ACTION_MODE_MINION_MAP && tick)) {
-        if (g_action.redraw_delay > 1) {
+        if (g_action.redraw_delay > ACTION_REDRAW_NEXT) {
             g_action.redraw_delay--;
             return false;
         }
@@ -801,7 +801,7 @@ static void redraw_changes(bool tick)
     if (g_action.champion >= 0)
         party_changed = party_icons_changed();
     if (g_action.dirty) {
-        if (g_action.redraw_delay > 1) {
+        if (g_action.redraw_delay > ACTION_REDRAW_NEXT) {
             g_action.redraw_delay--;
             return;
         }

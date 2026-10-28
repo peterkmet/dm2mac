@@ -131,8 +131,8 @@ address,name,signature,subsystem
 0x00014e42,creature_anim_start_command,"int creature_anim_start_command(uint8_t creature_type, int16_t command, uint16_t *seq_start, uint16_t *anim_state, void **step, uint16_t phase)",creatures
 0x00014f1b,creature_anim_next_random_step,"int creature_anim_next_random_step(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void **step)",creatures
 0x0001501a,creature_anim_next_step,"int creature_anim_next_step(uint8_t creature_type, uint16_t seq_start, uint16_t *anim_state, void **step)",creatures
-0x000150ae,dun_get_global_var,int16_t dun_get_global_var(uint16_t var),dungeon data
-0x0001512e,dun_modify_global_var,"int16_t dun_modify_global_var(uint16_t var, int16_t value, uint16_t op)",dungeon data
+0x000150ae,game_global_var,int16_t game_global_var(uint16_t var),dungeon data
+0x0001512e,game_modify_global_var,"int16_t game_modify_global_var(uint16_t var, int16_t value, uint16_t op)",dungeon data
 0x000151e6,item_get_image_kind,int16_t item_get_image_kind(uint16_t thing),items
 0x00015286,creature_get_cell_mask,"uint8_t creature_get_cell_mask(uint16_t group_position, uint16_t dir)",creatures
 0x000152c4,inv_item_fits_slot,"uint16_t inv_item_fits_slot(uint16_t thing, int16_t slot, int strict)",inventory
@@ -328,11 +328,11 @@ address,name,signature,subsystem
 0x0001fc2c,dun_get_sensor_wall_ornament,uint8_t dun_get_sensor_wall_ornament(const void *sensor),dungeon data
 0x0001fc82,dun_get_sensor_floor_ornament,uint8_t dun_get_sensor_floor_ornament(const void *sensor),dungeon data
 0x0001fcec,dun_get_wall_ornament_attr_0a,uint16_t dun_get_wall_ornament_attr_0a(uint8_t ornament),dungeon data
-0x0001fd15,dun_is_alcove_shown,"int dun_is_alcove_shown(uint16_t list, uint16_t thing)",dungeon data
+0x0001fd15,sensor_is_alcove_shown,"int sensor_is_alcove_shown(uint16_t list, uint16_t thing)",dungeon data
 0x0001fd74,dun_get_wall_thing_ornament_attr_13,"uint16_t dun_get_wall_thing_ornament_attr_13(uint16_t list, uint16_t thing)",dungeon data
 0x0001fdbb,dun_get_thing_ornament_attr_0b,uint16_t dun_get_thing_ornament_attr_0b(uint16_t thing),dungeon data
 0x0001fdf0,dun_get_thing_ornament_attr_0c,uint16_t dun_get_thing_ornament_attr_0c(uint16_t thing),dungeon data
-0x0001fe1c,dun_get_door_type,uint8_t dun_get_door_type(const void *door),dungeon data
+0x0001fe1c,dungeon_door_type,uint8_t dungeon_door_type(const void *door),dungeon data
 0x0001fe50,dun_get_door_attr_0d,uint16_t dun_get_door_attr_0d(uint8_t door_type),dungeon data
 0x0001fe74,dun_get_door_attr_10,uint16_t dun_get_door_attr_10(uint8_t door_type),dungeon data
 0x0001fe82,dun_get_door_attr_0e,uint16_t dun_get_door_attr_0e(uint8_t door_type),dungeon data
@@ -1015,7 +1015,7 @@ address,name,signature,subsystem
 0x00057d4c,transfer_object,"void transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
 0x00057e6c,transfer_objects,"void transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
 0x00058304,wall_square_event,void wall_square_event(uint8_t *event),timeline
-0x00058c6f,move_square_contents_through,"void move_square_contents_through(uint16_t x, uint16_t y)",dungeon data
+0x00058c6f,pass_square_contents,"void pass_square_contents(uint16_t x, uint16_t y)",dungeon data
 0x00058edb,timeline_event_teleporter_square,void timeline_event_teleporter_square(uint8_t *event),timeline
 0x00058f5c,timeline_event_pit_square,void timeline_event_pit_square(uint8_t *event),timeline
 0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures

@@ -140,9 +140,7 @@
 #define ARMOR_BASE                2
 
 /* Alert flags of the alerts of this module. */
-#define ALERT_SET_ANGRY 0x0002 /* alert flags: set mood bit 2, MOOD_ANGRY */
-#define ALERT_MOOD_BIT  0x0040
-#define ALERT_PUSHED    0x4002
+#define ALERT_PUSHED (ALERT_ANGER | ALERT_MOOD_ANGRY)
 
 /* Alert chances in percent. */
 #define ALERT_HIT_CHANCE    60
@@ -563,6 +561,9 @@ bool creature_is_flying(uint16_t group)
 
 int creature_cell_mask(uint16_t possessions, int16_t side)
 {
+    /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
+    if ((uint16_t)side >= DIR_COUNT)
+        return CELLS_ALL;
     if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
         return CELLS_ALL;
     return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
@@ -1127,7 +1128,7 @@ bool creature_attack_group_at(Location at, int16_t *damage_out)
     damage = (int16_t)(damage + rand_2bits() + 1);
     if (rand_bit())
         damage = (int16_t)(damage - rand_below((uint16_t)((damage >> ATTACK_DAMAGE_SHIFT) + 1)));
-    creature_alert(group, at, ALERT_SET_ANGRY, ALERT_HIT_CHANCE, damage);
+    creature_alert(group, at, ALERT_MOOD_ANGRY, ALERT_HIT_CHANCE, damage);
     if (damage_out)
         *damage_out = damage;
     return true;
@@ -1172,7 +1173,7 @@ static bool alert_wakes(uint16_t group, const ActiveGroup *a)
     uint8_t f = ai_action_flag((int8_t)a->action);
     if (!(f & AI_ACTION_FLAG_INTERRUPT))
         return true;
-    return class_flags(group) & AI_CLASS_WAKES && f & AI_ACTION_FLAG_WAKES;
+    return class_flags(group) & AI_CLASS_WAKES && f & AI_ACTION_FLAG_RANGED;
 }
 
 void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance, int damage)
@@ -1214,7 +1215,7 @@ void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance,
     bool wake = false;
     if (!is_static && loud && !chance)
         wake = true;
-    else if (changed && ((!clear && mask & ALERT_MOOD_BIT) || loud))
+    else if (changed && ((!clear && mask & MOOD_QUICK) || loud))
         wake = alert_wakes(group, a);
     if (a->action == ACTION_VANISH)
         return;

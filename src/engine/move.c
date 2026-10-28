@@ -56,17 +56,6 @@
 #define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
 #define TEXT_LINK_LAST  0x07
 
-/* The GDAT value of a wall ornament that leads up. */
-#define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
-
-/* The GDAT value of a wall ornament that is an alcove. */
-#define ORNAMENT_KEY_ALCOVE 0x0a /* ornament value 1: an alcove */
-
-/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
-#define GLOBAL_BIT_SHIFT 3
-/* The bit of a flag variable in its byte. */
-#define GLOBAL_BIT_MASK  0x07
-
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
 
@@ -177,7 +166,7 @@ static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
     0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
 };
 
-Party g_party = {.cur_map = -1, .new_map = -1, .push_pending_group = THING_NONE};
+Party g_party = {.cur_map = CUR_MAP_NONE, .new_map = -1, .push_pending_group = THING_NONE};
 uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 /* Each living champion pays stamina by load for a step or a levitated fall: factor * load / max load + 1. */
@@ -215,7 +204,7 @@ void dun_set_current_map(int16_t map)
 /* Makes map current and reads the party position as seen from it again, also when map is current already. */
 static void reload_current_map(int16_t map)
 {
-    g_party.cur_map = -1;
+    g_party.cur_map = CUR_MAP_NONE;
     dun_set_current_map(map);
 }
 
@@ -926,9 +915,7 @@ static void transit_stairs(Transit *t, uint8_t square)
     int dir = dun_get_stairs_exit_direction((Location){t->x, t->y});
     t->x += g_dir_dx[dir];
     t->y += g_dir_dy[dir];
-    int back = dir_opposite(dir);
-    int cell = dir_turn(back, (((thing_cell(t->thing) - back) + 1) & 2) / 2);
-    t->thing = thing_with_cell(t->thing, cell);
+    t->thing = thing_with_cell(t->thing, dir_side_cell((int16_t)thing_cell(t->thing), (int16_t)dir_opposite(dir)));
 }
 
 /* The end of the way, also in g_party.dest_*; an object that fell and champions that fell hurt make their sounds. */
@@ -949,7 +936,7 @@ static MoveDest transit_finish(const Transit *t)
     int px = g_game.party_x;
     int py = g_game.party_y;
     int pmap = g_game.party_map;
-    g_party.cur_map = -1; /* dun_set_party_position reads the party position again */
+    g_party.cur_map = CUR_MAP_NONE; /* dun_set_party_position reads the party position again */
     dun_set_party_position((Position){t->map, t->x, t->y});
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
@@ -1277,7 +1264,7 @@ static bool reach_destination(ThingMove *m)
     if (m->thing != THING_NONE) {
         if (item_attr(m->thing, ATTR_LIGHT_SOURCE) &&
             (m->start_map == g_game.party_map || way.dest.map == g_game.party_map))
-            g_party.redraw |= REDRAW_VIEW;
+            g_party.redraw |= PARTY_REDRAW_VIEW;
         m->thing = thing_with_cell(m->thing, way.dest.cell);
     }
     m->path.dst_x = way.dest.x;
@@ -1332,7 +1319,7 @@ MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int
     };
     m.map = m.start_map;
     if (thing == THING_NONE) {
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
         if (src_x >= 0)
             projectile_check_missiles_hit_party((Location){(int16_t)src_x, (int16_t)src_y},
                                                 (Location){(int16_t)dst_x, (int16_t)dst_y});
@@ -1515,7 +1502,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
 
 /* Level links, pits, and teleporters. */
 
-int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sensor)
+LevelLink dun_find_adjacent_level_link(Location at, int level_delta)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
         int16_t sx = (int16_t)(at.x + g_dir_dx[d]);
@@ -1529,53 +1516,25 @@ int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sen
                 if (sensor_type(t) == SENSOR_LEVEL_LINK &&
                     level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
                                        (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
-                    *out_sensor = t;
-                    return d;
+                    return (LevelLink){(int16_t)d, t};
                 }
             } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
                 int kind = textrec_subtype(t);
                 if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
                     continue;
                 int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
-                                                       GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
-                if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
-                    *out_sensor = THING_NONE;
-                    return d;
+                                                       GDAT_TYPE_VALUE, ORNAMENT_KEY_UP);
+                if ((level_delta == LEVEL_UP && up) || (level_delta == LEVEL_DOWN && !up)) {
+                    return (LevelLink){(int16_t)d, THING_NONE};
                 }
             }
         }
     }
-    *out_sensor = THING_NONE;
-    return -1;
+    return (LevelLink){-1, THING_NONE};
 }
 
-bool dun_set_pit_teleporter_state(Location at, int mode)
-{
-    uint8_t *square = dungeon_square_byte(g_party.cur_map, at.x, at.y);
-    uint8_t on_flag;
-    if (square_type(*square) == SQUARE_PIT) {
-        on_flag = SQUARE_PIT_OPEN;
-    } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, at.x, at.y)))
-            return false;
-        on_flag = SQUARE_TELEPORTER_ON;
-    } else {
-        return false;
-    }
-    bool open = (*square & on_flag) != 0;
-    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
-    if (mode == PIT_STATE_TOGGLE)
-        mode = open ? PIT_STATE_CLOSED : PIT_STATE_OPEN;
-    if (mode == PIT_STATE_OPEN) {
-        *square |= on_flag;
-        move_square_contents_through(at);
-        return !open;
-    }
-    *square &= (uint8_t)~on_flag;
-    return open;
-}
-
-void move_square_contents_through(Location at)
+/* The things on at fall or teleport through its open pit or teleporter. */
+static void pass_square_contents(Location at)
 {
     int16_t x = at.x;
     int16_t y = at.y;
@@ -1597,23 +1556,37 @@ void move_square_contents_through(Location at)
             continue;
         count--;
         MoveDest dest = move_thing_dest(thing, x, y, x, y).dest;
-        if (type == THING_PROJECTILE) {
-            TimelineEvent *ev = &g_timeline.events[thing_word(thing, PROJECTILE_EVENT)];
-            projectile_event_set_position(ev, dest.x, dest.y, dest.dir);
-            put_le16(ev->data + PROJECTILE_EVENT_THING, thing_with_cell(thing, dest.cell));
-            timeline_set_event_map(ev, dest.map);
-        } else if (type == THING_EXPLOSION) {
-            for (int i = 0; i < g_timeline.used_end; i++) {
-                TimelineEvent *ev = &g_timeline.events[i];
-                if (ev->type != EVENT_EXPLOSION || le16(ev->data + EXPLOSION_EVENT_THING) != thing)
-                    continue;
-                ev->data[EXPLOSION_EVENT_X] = (uint8_t)dest.x;
-                ev->data[EXPLOSION_EVENT_Y] = (uint8_t)dest.y;
-                put_le16(ev->data + EXPLOSION_EVENT_THING, thing_with_cell(thing, dest.cell));
-                timeline_set_event_map(ev, dest.map);
-            }
-        }
+        if (type == THING_PROJECTILE)
+            projectile_move_event(thing, dest);
+        else if (type == THING_EXPLOSION)
+            explosion_move_events(thing, dest);
     }
+}
+
+bool dun_set_pit_teleporter_state(Location at, int mode)
+{
+    uint8_t *square = dungeon_square_byte(g_party.cur_map, at.x, at.y);
+    uint8_t on_flag;
+    if (square_type(*square) == SQUARE_PIT) {
+        on_flag = SQUARE_PIT_OPEN;
+    } else if (square_type(*square) == SQUARE_TELEPORTER) {
+        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, at.x, at.y)))
+            return false;
+        on_flag = SQUARE_TELEPORTER_ON;
+    } else {
+        return false;
+    }
+    bool open = (*square & on_flag) != 0;
+    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
+    if (mode == PIT_STATE_TOGGLE)
+        mode = open ? PIT_STATE_CLOSED : PIT_STATE_OPEN;
+    if (mode == PIT_STATE_OPEN) {
+        *square |= on_flag;
+        pass_square_contents(at);
+        return !open;
+    }
+    *square &= (uint8_t)~on_flag;
+    return open;
 }
 
 /* Pushing creature groups. */
@@ -1680,75 +1653,6 @@ bool move_party_warp_to_marker(void)
         return true;
     }
     return false;
-}
-
-/* Dungeon reads: alcoves, script variables, and doors. */
-
-bool dun_is_alcove_shown(uint16_t first, uint16_t thing)
-{
-    int ornament = item_gdat_index(thing);
-    if (ornament == GDAT_NO_INDEX ||
-        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
-        return false;
-    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
-}
-
-int dun_get_global_var(int var)
-{
-    if (var < GLOBAL_BYTE_FIRST)
-        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
-    if (var < GLOBAL_WORD_FIRST)
-        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
-    if (var < GLOBAL_VAR_END)
-        return g_game.global_words[var - GLOBAL_WORD_FIRST];
-    return 0;
-}
-
-int dun_modify_global_var(int var, int value, int op)
-{
-    int old = dun_get_global_var(var);
-    int v = old;
-    switch (op) {
-    case GLOBAL_VAR_SET:
-        v = 1;
-        break;
-    case GLOBAL_VAR_CLEAR:
-        v = 0;
-        break;
-    case GLOBAL_VAR_TOGGLE:
-        v = !old;
-        break;
-    case GLOBAL_VAR_ADD:
-        v = old + value;
-        break;
-    case GLOBAL_VAR_SUBTRACT:
-        v = old - value;
-        break;
-    case GLOBAL_VAR_ASSIGN:
-        v = value;
-        break;
-    }
-    if (var < GLOBAL_BYTE_FIRST) {
-        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
-        if ((int16_t)v)
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
-        else
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
-        return (int16_t)v != 0;
-    }
-    v = (int16_t)v;
-    if (var < GLOBAL_WORD_FIRST) {
-        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
-        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
-    } else if (var < GLOBAL_VAR_END) {
-        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
-    }
-    return v;
-}
-
-int dun_get_door_type(uint16_t door)
-{
-    return dungeon_map_door_type(g_party.cur_map, door_map_type(door));
 }
 
 /* Party state that the interface sets. */

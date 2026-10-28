@@ -27,7 +27,6 @@
 #define DOOR_KEY_PASS_COST        0x11 /* the search cost of a door square */
 /* The GDAT values of a wall ornament. */
 #define ORNAMENT_KEY_TARGET       0x0e /* the filter value of a wall actuator ornament */
-#define ORNAMENT_KEY_LEVEL_LINK   0x11 /* a level link text: 0 leads down, else up */
 #define ORNAMENT_KEY_SHOOT_TARGET 0xf0 /* a target that ranged creatures shoot at */
 /* The GDAT values of a wall set. */
 #define WALLSET_KEY_WALL_COST     0x72 /* the search cost of a wall square */
@@ -82,9 +81,6 @@
 #define ITEM_SKILL_CHESTS           0x0010
 #define ITEM_SKILL_GROUPS           0x0020
 #define ITEM_SKILL_OTHER_SQUARE     0x002a
-/* The flags of an action in the AI action table. */
-#define AI_ACTION_FLAG_MOVES        0x02
-#define AI_ACTION_FLAG_BUSY         0x03
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
 #define SHOT_STEAL                  0x0b
 /* The flags of the search target kinds (g_ai_kind_flags). */
@@ -371,7 +367,8 @@ static int16_t axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
 /* A GDAT value of the door type on (x, y). */
 static int read_door_value(int16_t x, int16_t y, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(first_thing(x, y)), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, first_thing(x, y)),
+                            GDAT_TYPE_VALUE, key);
 }
 
 /* The search cost of the door on (x, y). */
@@ -1257,8 +1254,10 @@ static int16_t level_change(Move *m)
         m->facing = group_dir(g_ai.group_thing);
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
         if (square & SQUARE_LEVEL_LINK) {
-            int16_t side =
-                dun_find_adjacent_level_link((Location){x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &link);
+            LevelLink found =
+                dun_find_adjacent_level_link((Location){x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN);
+            int16_t side = found.dir;
+            link = found.sensor;
             m->facing = side;
             if (side >= 0) {
                 m->action = dir == DIR_LEVEL_UP ? ACTION_LINK_UP : ACTION_LINK_DOWN;
@@ -1545,7 +1544,7 @@ static void execute_move(Move *m)
         }
     } else if (current != m->facing && m->action != ACTION_TURN_BACK) {
         m->action = dir_turn(current, TURN_RIGHT) == m->facing ? ACTION_STEP_LEFT : ACTION_STEP_RIGHT;
-    } else if (ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_MOVES && m->kind != MOVE_KIND_STEP_BACK &&
+    } else if (ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_RANGED && m->kind != MOVE_KIND_STEP_BACK &&
                !m->map_changed) {
         m->action = ACTION_NONE;
     }
@@ -1576,16 +1575,7 @@ AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir)
 
 /* ---- Items ---- */
 
-/* The cells of the possessions of a static creature seen from side. */
-static int possession_cell_mask(uint16_t possessions, int side)
-{
-    /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
-    if ((uint16_t)side >= DIR_COUNT)
-        return CELLS_ALL;
-    return creature_cell_mask(possessions, (int16_t)side);
-}
-
-AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side)
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t side)
 {
     AiInsideItem none = {-1, false};
     AiInsideItem found;
@@ -1604,7 +1594,7 @@ AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int si
         found = (AiInsideItem){-1, true};
         list = thing_word(thing, GROUP_POSSESSIONS);
         if (is_static)
-            mask = possession_cell_mask(info->possessions, side);
+            mask = creature_cell_mask(info->possessions, side);
     }
     for (uint16_t t = list; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!(mask >> thing_cell(t) & 1))
@@ -1625,7 +1615,7 @@ static void scan_wall_ornaments(int16_t side)
     uint16_t first = cached_first_thing();
     uint16_t t = first;
     for (; t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (!dun_is_alcove_shown(first, t))
+        if (!sensor_is_alcove_shown(first, t))
             continue;
         if (thing_cell(t) == g_ai_square_scan.cells[0])
             g_ai_square_scan.facing_ornament = 1;
@@ -1691,7 +1681,7 @@ static bool floor_item_in_reach(ItemTest *it)
 static int16_t give_cell(int16_t d)
 {
     uint16_t g = ai_cached_first_group();
-    int bits = (uint8_t)possession_cell_mask(creature_group_info(g)->possessions, d);
+    int bits = (uint8_t)creature_cell_mask(creature_group_info(g)->possessions, d);
     if (!bits)
         return -1;
     int16_t bit = (int16_t)random_set_bit((uint32_t)bits);
@@ -2401,7 +2391,7 @@ static bool test_entered(Search *s, int i)
             return false;
         return line_target(s, c, ai_location(x, y), -1, true);
     case TARGET_STEAL:
-        if (!on_party_map || ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_BUSY)
+        if (!on_party_map || ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_ATTACK)
             return false;
         return candidate_attack(s, c, ATTACK_MODE_PARTY, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing));
     case TARGET_MARKER:
@@ -3034,7 +3024,7 @@ void ai_refresh_party_maps(void)
     AiCandidate target;
     uint8_t path[AI_PATH_MAX * 2];
     memset(&target, 0, sizeof target);
-    if (g_party.redraw & REDRAW_SQUARES) {
+    if (g_party.redraw & PARTY_REDRAW_SQUARES) {
         g_party_distance.map = (int16_t)g_game.party_map;
         g_party_distance.width = (int16_t)dungeon_map_width(g_game.party_map);
         memset(g_party_distance.cells, 0, (size_t)g_party_distance.width * MAP_SIDE_MAX);
@@ -3048,7 +3038,7 @@ void ai_refresh_party_maps(void)
         target.kind = TARGET_PARTY_DISTANCE;
         ai_search_area(ai_location(g_game.party_x, g_game.party_y), MOVE_KIND_COST, 1, &target, path);
     }
-    if (g_party.redraw & REDRAW_VIEW) {
+    if (g_party.redraw & PARTY_REDRAW_VIEW) {
         bool changed = g_game.party_map != g_last_party_map;
         int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map),
                                       GDAT_TYPE_VALUE, WALLSET_KEY_LIGHT);

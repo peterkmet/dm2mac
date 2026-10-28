@@ -45,7 +45,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 - A square event (type 4) holds x, y, cell, and effect: 0 set, 1 clear, 2 toggle, 3 hold. The priority is 1 for set, 3 for clear, 2 for toggle.
 - Floor sensors react when a thing (or the party) enters or leaves the square. Wall sensors react to clicks and to square events. A sensor with a target queues a square event at the target after its delay.
-- The script variables (`dun_get_global_var`): [skull-map.md](../reference/skull-map.md#global-variables-script-variables).
+- The script variables (`game_global_var`): [skull-map.md](../reference/skull-map.md#global-variables-script-variables).
 - Door events: type 1 opens or closes a door one step per event, type 2 breaks it.
 
 ## Deviations from the original
@@ -63,7 +63,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - Kept quirks of the original:
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
   - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
-  - `dun_get_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
+  - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or else at the coordinates of the pit square
   - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
   - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)

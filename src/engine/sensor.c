@@ -5,6 +5,7 @@
 #include <string.h>
 #include "action.h"
 #include "ai.h"
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -36,6 +37,7 @@ enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 #define ORNAMENT_KEY_ALTAR       0x0c /* ornament value: an altar that brings back a champion from its bones */
 #define ORNAMENT_KEY_FRAMES      0x0d /* ornament value (or text): the frame count of its animation */
 #define ORNAMENT_KEY_SOUND_DELAY 0x88 /* ornament value: the delay of its sound in its animation cycle */
+#define ORNAMENT_KEY_ALCOVE      0x0a /* ornament value 1: an alcove */
 /* The frame count in the ORNAMENT_KEY_FRAMES value. */
 #define ORNAMENT_FRAMES_MASK     0x7fff
 
@@ -73,8 +75,6 @@ enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 #define TEXT_GENERATOR_ON_ENTRY 0x15
 #define TEXT_GENERATOR_FAST     0x16
 #define TEXT_SOUND              0x17
-/* The ornament value of a ladder that goes up: the linked twin is on the level above. */
-#define ORNAMENT_KEY_UP         0x11
 
 /* Object transfer sensors: the charge change of a moved object (sensor flags bits 3-4). */
 #define TRANSFER_CHARGES_FILL   0
@@ -139,6 +139,10 @@ typedef struct {
     bool has_leader;
 } WallClick;
 
+/* A square event passes its effect to dun_set_pit_teleporter_state as the mode. */
+_Static_assert(EFFECT_SET == PIT_STATE_OPEN && EFFECT_CLEAR == PIT_STATE_CLOSED && EFFECT_TOGGLE == PIT_STATE_TOGGLE,
+               "the square effects are the pit and teleporter modes");
+
 /* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
    with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
    the data after those tables in SKULL.EXE; these are the values it reads. */
@@ -174,7 +178,7 @@ static uint32_t current_map_time(uint32_t time)
 
 uint16_t sensor_door_value(uint16_t door, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
 }
 
 static int holder_item(int ornament)
@@ -627,14 +631,14 @@ static void forward_effect(const TimelineEvent *e, uint16_t sensor, int delay)
 static void set_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
     int op = e->data[EVENT_EFFECT] + (sensor_flag(sensor, SENSOR_INVERTED) ? GLOBAL_VAR_ADD : GLOBAL_VAR_SET);
-    dun_modify_global_var(sensor_data(sensor), 1, op);
+    game_modify_global_var(sensor_data(sensor), 1, op);
     sensor_trigger_target(sensor, passed_effect(sensor, e->data[EVENT_EFFECT]), 0);
 }
 
 /* Triggers the target when the script variable of the sensor data matches the event effect (inverted: the reverse). */
 static void test_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
-    bool set = dun_get_global_var(sensor_data(sensor)) != 0;
+    bool set = game_global_var(sensor_data(sensor)) != 0;
     bool inverted = sensor_flag(sensor, SENSOR_INVERTED);
     int effect = e->data[EVENT_EFFECT];
     if ((set != inverted && (effect == EFFECT_SET || effect == EFFECT_TOGGLE)) ||
@@ -694,7 +698,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
             if (!sensor_flag(sensor, SENSOR_BUSY)) {
                 sensor_set_flag(sensor, SENSOR_BUSY, true);
                 if (g_party.cur_map == g_game.party_map)
-                    g_party.redraw |= REDRAW_VIEW;
+                    g_party.redraw |= PARTY_REDRAW_VIEW;
                 unsigned frame = (cycle - g_game.game_time % cycle) % cycle & SENSOR_DATA_FRAME_MASK;
                 sensor_set_data(sensor, (sensor_data(sensor) & SENSOR_DATA_SOUND) | frame);
                 start_ambient_sound(sensor, e->data[EVENT_X], e->data[EVENT_Y], cycle, wall);
@@ -703,7 +707,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
             unsigned r = (sensor_frame(sensor) + g_game.game_time) % cycle;
             if (!(uint16_t)r) {
                 if (g_party.cur_map == g_game.party_map)
-                    g_party.redraw |= REDRAW_VIEW;
+                    g_party.redraw |= PARTY_REDRAW_VIEW;
                 sensor_set_flag(sensor, SENSOR_BUSY, false);
             } else {
                 /* fix: the original leaves 2 of the data bytes uninitialized */
@@ -1299,23 +1303,6 @@ static void floor_square_event(TimelineEvent *e)
     }
 }
 
-/* A square event opens, closes, or toggles a pit or a teleporter (on_bit); an opened one moves the square contents. */
-static void pit_or_teleporter_event(TimelineEvent *e, uint8_t on_bit)
-{
-    int16_t x = e->data[EVENT_X];
-    int16_t y = e->data[EVENT_Y];
-    uint8_t *square = current_square(x, y);
-    int effect = e->data[EVENT_EFFECT];
-    if (effect == EFFECT_TOGGLE)
-        effect = (*square & on_bit) != 0;
-    if (effect == EFFECT_SET) {
-        *square |= on_bit;
-        move_square_contents_through((Location){x, y});
-    } else {
-        *square &= (uint8_t)~on_bit;
-    }
-}
-
 /* A square event opens, closes, or toggles a door that is not broken: it starts or turns the door animation. */
 static void doorway_event(TimelineEvent *e)
 {
@@ -1379,7 +1366,7 @@ static void fake_wall_event(TimelineEvent *e)
         *square |= SQUARE_FAKE_WALL_OPEN;
     }
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 void sensor_event_square(TimelineEvent *e)
@@ -1392,16 +1379,13 @@ void sensor_event_square(TimelineEvent *e)
         floor_square_event(e);
         break;
     case SQUARE_PIT:
-        pit_or_teleporter_event(e, SQUARE_PIT_OPEN);
+    case SQUARE_TELEPORTER:
+        /* the effect opens, closes, or toggles the pit or the teleporter that is not fixed */
+        dun_set_pit_teleporter_state((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->data[EVENT_EFFECT]);
         floor_square_event(e);
         break;
     case SQUARE_DOOR:
         doorway_event(e);
-        break;
-    case SQUARE_TELEPORTER:
-        if (!teleporter_is_fixed(first_thing(e->data[EVENT_X], e->data[EVENT_Y])))
-            pit_or_teleporter_event(e, SQUARE_TELEPORTER_ON);
-        floor_square_event(e);
         break;
     case SQUARE_FAKE_WALL:
         fake_wall_event(e);
@@ -1414,7 +1398,7 @@ void sensor_event_door_destruction(TimelineEvent *e)
     uint8_t *square = current_square(e->data[EVENT_X], e->data[EVENT_Y]);
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 /* The closing door at (x, y) hits the party and the creature under it; *state follows a creature that stops it.
@@ -1471,7 +1455,7 @@ void sensor_event_door_animation(TimelineEvent *e)
     if (state == DOOR_STATE_BROKEN)
         return;
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, DOOR_MOVING))
         return;
@@ -1497,7 +1481,7 @@ void sensor_event_door_animation(TimelineEvent *e)
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED)
             again = true;
         sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR, dun_get_door_type(door),
+            (SoundCue){CAT_DOOR, dungeon_door_type(g_party.cur_map, door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
                        SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, x, y, SOUND_STEP_END);
@@ -1585,7 +1569,7 @@ void sensor_process_event(TimelineEvent *e)
         thing = le16(e->data + SENSOR_EVENT_SQUARE_THING);
         if (!sensor_flag(thing, SENSOR_STATE)) {
             if (g_party.cur_map == g_game.party_map)
-                g_party.redraw |= REDRAW_VIEW;
+                g_party.redraw |= PARTY_REDRAW_VIEW;
             sensor_set_flag(thing, SENSOR_BUSY, false);
         }
         break;
@@ -1651,9 +1635,18 @@ static int ornament_value(uint16_t thing, int key)
                : gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
 }
 
+bool sensor_is_alcove_shown(uint16_t first, uint16_t thing)
+{
+    int ornament = item_gdat_index(thing);
+    if (ornament == GDAT_NO_INDEX ||
+        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
+        return false;
+    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
+}
+
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
 {
-    return dun_is_alcove_shown(first, thing) ? ornament_value(thing, key) : 0;
+    return sensor_is_alcove_shown(first, thing) ? ornament_value(thing, key) : 0;
 }
 
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */
@@ -1781,7 +1774,7 @@ static void wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
         wall_click_put(c);
     }
     c->hand = THING_NONE;
-    g_party.redraw |= REDRAW_VIEW;
+    g_party.redraw |= PARTY_REDRAW_VIEW;
     c->done = true;
 }
 
@@ -1920,7 +1913,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
         wall_click_put(c);
         c->hand = THING_NONE;
     }
-    g_party.redraw |= REDRAW_VIEW;
+    g_party.redraw |= PARTY_REDRAW_VIEW;
     c->done = true;
 }
 
@@ -1957,7 +1950,7 @@ bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
         c.cell = thing_cell(t);
         if (c.cell != side)
             continue;
-        if (dun_is_alcove_shown(first, t)) {
+        if (sensor_is_alcove_shown(first, t)) {
             wall_click_alcove(&c);
             break;
         }

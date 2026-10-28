@@ -248,6 +248,7 @@ typedef struct {
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_MOOD_ANGRY 0x0002 /* alert flags: mood bit 2, MOOD_ANGRY */
 #define ALERT_MOOD_BORED 0x0005 /* alert flags: mood bit 5, MOOD_BORED */
 #define ALERT_MOOD_QUICK 0x0006 /* alert flags: mood bit 6, MOOD_QUICK */
 #define ALERT_LOUD       0x2000 /* the alert wakes the creature */
@@ -328,7 +329,7 @@ bool creature_is_native_to_map(uint16_t group, int16_t map);
 /* True for a creature that flies over pits and does not press floor sensors. */
 bool creature_is_flying(uint16_t group);
 /* The cells (bits 0 to 3) in which a static creature shows its possessions to side (0 to 3), from its possessions
-   word. */
+   word; all cells for another side. */
 int creature_cell_mask(uint16_t possessions, int16_t side);
 
 /* Active groups. */

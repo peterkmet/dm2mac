@@ -18,6 +18,11 @@
 #include "sound_request.h"
 #include "weather.h"
 
+/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
+#define GLOBAL_BIT_SHIFT 3
+/* The bit of a flag variable in its byte. */
+#define GLOBAL_BIT_MASK  0x07
+
 /* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
 #define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
 #define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
@@ -43,7 +48,7 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
     world_update_day_night(false);
     sensor_process_map_entry(true);
     creature_activate_groups_on_map();
-    g_party.redraw |= REDRAW_SQUARES;
+    g_party.redraw |= PARTY_REDRAW_SQUARES;
     ai_refresh_party_maps();
     g_hooks.flush_input();
 }
@@ -219,6 +224,59 @@ void game_global_byte_add(int index)
     uint8_t *value = g_game.global_bytes + index - GLOBAL_BYTE_FIRST;
     if (*value < GLOBAL_BYTE_MAX)
         ++*value;
+}
+
+int game_global_var(int var)
+{
+    if (var < GLOBAL_BYTE_FIRST)
+        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
+    if (var < GLOBAL_WORD_FIRST)
+        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
+    if (var < GLOBAL_VAR_END)
+        return g_game.global_words[var - GLOBAL_WORD_FIRST];
+    return 0;
+}
+
+int game_modify_global_var(int var, int value, int op)
+{
+    int old = game_global_var(var);
+    int v = old;
+    switch (op) {
+    case GLOBAL_VAR_SET:
+        v = 1;
+        break;
+    case GLOBAL_VAR_CLEAR:
+        v = 0;
+        break;
+    case GLOBAL_VAR_TOGGLE:
+        v = !old;
+        break;
+    case GLOBAL_VAR_ADD:
+        v = old + value;
+        break;
+    case GLOBAL_VAR_SUBTRACT:
+        v = old - value;
+        break;
+    case GLOBAL_VAR_ASSIGN:
+        v = value;
+        break;
+    }
+    if (var < GLOBAL_BYTE_FIRST) {
+        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
+        if ((int16_t)v)
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
+        else
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
+        return (int16_t)v != 0;
+    }
+    v = (int16_t)v;
+    if (var < GLOBAL_WORD_FIRST) {
+        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
+        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
+    } else if (var < GLOBAL_VAR_END) {
+        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
+    }
+    return v;
 }
 
 void game_start_play(void)

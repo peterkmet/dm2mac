@@ -121,6 +121,20 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 #define CHEAT_MAP      0x20 /* the automap shows every square of the map */
 #define CHEAT_ALL      0x3f
 
+/* The operations of a set-global sensor on a script variable. */
+#define GLOBAL_VAR_SET      0
+#define GLOBAL_VAR_CLEAR    1
+#define GLOBAL_VAR_TOGGLE   2
+#define GLOBAL_VAR_ADD      3
+#define GLOBAL_VAR_SUBTRACT 4
+#define GLOBAL_VAR_ASSIGN   6
+/* The script variables: the flags, then the bytes, then the words; the first byte, the first word, the end. */
+#define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
+#define GLOBAL_WORD_FIRST   (GLOBAL_BYTE_FIRST + GLOBAL_BYTE_COUNT)
+#define GLOBAL_VAR_END      (GLOBAL_WORD_FIRST + GLOBAL_WORD_COUNT)
+/* The largest value of a byte variable. */
+#define GLOBAL_BYTE_MAX     255
+
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving);
 /* Runs the due timeline events. */
@@ -135,6 +149,11 @@ void game_run_party_clocks(void);
 void game_advance_time(void);
 /* Adds 1 to the global byte variable index (GLOBAL_BYTE_FIRST and up), up to GLOBAL_BYTE_MAX. */
 void game_global_byte_add(int index);
+/* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */
+int game_global_var(int var);
+/* Changes the global variable var by op (GLOBAL_VAR_*) with value and returns the new value; the bytes stay in their
+   range. */
+int game_modify_global_var(int var, int value, int op);
 
 /* The main loop */
 /* The party is awake and pushes nothing; the main loop runs game steps at the normal speed. */

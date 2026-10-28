@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
+#include "move.h"
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
@@ -108,13 +109,15 @@ typedef struct {
 int projectile_dir(uint16_t projectile);
 /* Launches a projectile and queues its first move event. */
 void projectile_create(const ProjectileLaunch *launch);
-/* Sets the square and the flight direction of a projectile move event; the energy step stays. */
-void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir);
+/* Moves the queued move event of projectile to dest: its square, flight direction, map, and cell. */
+void projectile_move_event(uint16_t projectile, MoveDest dest);
 
 /* ---- Explosions ---- */
 
 /* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle). */
 void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t cell);
+/* Moves the events of explosion to dest: their square, map, and cell. */
+void explosion_move_events(uint16_t explosion, MoveDest dest);
 
 /* ---- Projectile hits ---- */
 

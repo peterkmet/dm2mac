@@ -228,7 +228,7 @@ void projectile_create(const ProjectileLaunch *launch)
     projectile_set_hit_chance(t, launch->hit_chance);
     dungeon_link_thing_to_square(t, g_party.cur_map, launch->x, launch->y);
     if (payload == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
-        g_party.redraw |= REDRAW_VIEW;
+        g_party.redraw |= PARTY_REDRAW_VIEW;
     TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map)};
     e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
@@ -238,10 +238,20 @@ void projectile_create(const ProjectileLaunch *launch)
     thing_set_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
 
-void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir)
+/* Moves a projectile move event to the square, flight direction, and map of dest; the energy step stays. */
+static void set_event_dest(TimelineEvent *e, MoveDest dest)
 {
     uint16_t w = le16(e->data + PROJECTILE_EVENT_POSITION);
-    put_le16(e->data + PROJECTILE_EVENT_POSITION, (uint16_t)((w & ~POSITION_SQUARE_DIR) | event_square_dir(x, y, dir)));
+    put_le16(e->data + PROJECTILE_EVENT_POSITION,
+             (uint16_t)((w & ~POSITION_SQUARE_DIR) | event_square_dir(dest.x, dest.y, dest.dir)));
+    timeline_set_event_map(e, dest.map);
+}
+
+void projectile_move_event(uint16_t projectile, MoveDest dest)
+{
+    TimelineEvent *e = &g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)];
+    set_event_dest(e, dest);
+    put_le16(e->data + PROJECTILE_EVENT_THING, thing_with_cell(projectile, dest.cell));
 }
 
 /* ---- Explosions ---- */
@@ -349,7 +359,7 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     case EXPLOSION_STORM_BLAST:
         blast_square(type, power, x, y, cell);
         if (g_party.cur_map == g_game.party_map)
-            g_party.redraw |= REDRAW_VIEW;
+            g_party.redraw |= PARTY_REDRAW_VIEW;
         break;
     case SPELL_DOOR_TOGGLE:
     case SPELL_DOOR_SET: {
@@ -366,6 +376,19 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     }
     /* kept quirk: after a door spell the original reads the power from the high byte of the door record word */
     trigger_explosion_sensors(type, x, y, explosion_power(power_thing));
+}
+
+void explosion_move_events(uint16_t explosion, MoveDest dest)
+{
+    for (int i = 0; i < g_timeline.used_end; i++) {
+        TimelineEvent *e = &g_timeline.events[i];
+        if (e->type != EVENT_EXPLOSION || le16(e->data + EXPLOSION_EVENT_THING) != explosion)
+            continue;
+        e->data[EXPLOSION_EVENT_X] = (uint8_t)dest.x;
+        e->data[EXPLOSION_EVENT_Y] = (uint8_t)dest.y;
+        put_le16(e->data + EXPLOSION_EVENT_THING, thing_with_cell(explosion, dest.cell));
+        timeline_set_event_map(e, dest.map);
+    }
 }
 
 /* ---- Projectile hits ---- */
@@ -834,10 +857,9 @@ void projectile_process_event(TimelineEvent *event)
     if (leaves) {
         MoveDest dest = move_thing_dest(thing_with_cell(projectile, new_cell), from_x, from_y, x, y).dest;
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
-            g_party.redraw |= REDRAW_VIEW;
-        projectile_event_set_position(&e, dest.x, dest.y, dest.dir);
+            g_party.redraw |= PARTY_REDRAW_VIEW;
+        set_event_dest(&e, dest);
         projectile = thing_with_cell(projectile, dest.cell);
-        timeline_set_event_map(&e, dest.map);
         alert_creatures_ahead(dest);
     } else {
         if (square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR &&
@@ -955,7 +977,7 @@ void explosion_process_event(TimelineEvent *e)
     type = explosion_type(t);
     if (g_party.cur_map == g_game.party_map &&
         (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_STORM_LIGHTNING))
-        g_party.redraw |= REDRAW_VIEW;
+        g_party.redraw |= PARTY_REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
     thing_set_word(t, THING_NEXT, THING_NONE);
 }
@@ -1208,7 +1230,7 @@ void projectile_launch_from_champion(int champ, uint16_t payload, int energy, in
 {
     const Champion *c = champion(champ);
     int dir = c->dir;
-    int cell = dir_turn(dir, (((c->cell - dir) + 1) & 2) >> 1);
+    int cell = dir_side_cell(c->cell, (int16_t)dir);
     projectile_create(&(ProjectileLaunch){.payload = payload,
                                           .x = g_game.party_x,
                                           .y = g_game.party_y,

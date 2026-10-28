@@ -65,7 +65,7 @@ void action_area_close(void)
 {
     if (!g_action.champion)
         return;
-    if (!g_action.result || g_action.redraw_delay < 2)
+    if (!g_action.result || g_action.redraw_delay <= ACTION_REDRAW_NEXT)
         g_action.redraw_delay = 0;
     g_action.champion = 0;
     g_action.mode = ACTION_MODE_HANDS;
@@ -106,7 +106,7 @@ void action_tick_hands(void)
 static void open_panel(int champ, int hand)
 {
     g_action.flash = (int16_t)(champ + 1);
-    g_action.redraw_delay = 1;
+    g_action.redraw_delay = ACTION_REDRAW_NEXT;
     g_action.flags = 0;
     g_action.flash_hand = (int16_t)hand;
     g_action.champion = g_action.flash;
@@ -135,7 +135,7 @@ void action_request_redraw(void)
     if (!g_action.champion)
         g_action.dirty = 1;
     else
-        g_action.redraw_delay = 1;
+        g_action.redraw_delay = ACTION_REDRAW_NEXT;
 }
 
 void action_set_map_item(int index)

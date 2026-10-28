@@ -17,10 +17,10 @@
 #define CMD_MOVE_BACK    0x05
 #define CMD_MOVE_LEFT    0x06
 
-/* g_view_redraw_flags: the view squares and the creature maps change. */
-#define REDRAW_VIEW     0x01
-#define REDRAW_SQUARES  0x02
-#define REDRAW_ALL_VIEW 0x03
+/* The bits of g_party.redraw: the view and the squares around the party change. */
+#define PARTY_REDRAW_VIEW    0x01
+#define PARTY_REDRAW_SQUARES 0x02
+#define PARTY_REDRAW_ALL     0x03
 
 /* The push arrows (g_party.push_arrow) by the part of the viewport under the mouse. */
 #define PUSH_ARROW_UP         0
@@ -31,6 +31,9 @@
 #define PUSH_ARROW_LEFT       5
 #define PUSH_ARROW_COUNT      6
 #define PUSH_ARROW_NONE       PUSH_ARROW_COUNT
+
+/* g_party.cur_map before a map is current; dun_set_current_map then reads the party position again. */
+#define CUR_MAP_NONE (-1)
 
 /* Special source and destination x of move_thing. */
 #define MOVE_NO_SQUARE          (-1) /* move_thing: as src_x the thing is new, as dst_x it leaves the squares */
@@ -50,7 +53,7 @@ typedef enum { MOVE_DONE, MOVE_LEFT_DUNGEON, MOVE_WAIT } MoveResult;
 /* Movement state of the party and of the dungeon reads (the original globals). The int fields stay int:
    tests/dm2test/scenario.py mirrors the layout (alt_view_active has 32 bits in the original). */
 typedef struct {
-    int16_t cur_map;                        /* the map that the square reads of the original use, -1 none */
+    int16_t cur_map;                        /* the map that the square reads of the original use, CUR_MAP_NONE none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */
     int16_t ref_dir;                        /* the party direction as the current map sees it */
     int16_t move_steps;                     /* game steps until a slow party move ends */
@@ -62,7 +65,7 @@ typedef struct {
     int16_t fell;                                          /* the party falls without damage (a levitation action) */
     int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* the last end of a move, as in the original */
     int teleporter_flag;                                   /* the last teleporter is TELEPORTER_AUDIBLE */
-    uint32_t redraw;                                       /* REDRAW_* */
+    uint32_t redraw;                                       /* PARTY_REDRAW_* */
     uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
     int push_mode;                                         /* the movement arrows show the push arrows */
     int16_t push_arrow;
@@ -171,12 +174,17 @@ uint16_t dun_get_discarded_thing(int type, int subtype);
 #define PIT_STATE_OPEN   0
 #define PIT_STATE_CLOSED 1
 #define PIT_STATE_TOGGLE 2
-/* The direction of a level link (sensor or stairs marker) beside at toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sensor);
-/* Opens or closes the pit or teleporter on at; true when the state changed. */
+/* A level link beside a square: the direction to it (-1 none) and its level link sensor (THING_NONE for a stairs
+   marker or none). */
+typedef struct {
+    int16_t dir;
+    uint16_t sensor;
+} LevelLink;
+/* The level link (sensor or stairs marker) beside at toward level_delta. */
+LevelLink dun_find_adjacent_level_link(Location at, int level_delta);
+/* Opens, closes, or toggles (PIT_STATE_*; another mode closes) the pit or the teleporter that is not fixed on at; an
+   opened one moves the square contents through it. True when the state changed. */
 bool dun_set_pit_teleporter_state(Location at, int mode);
-/* The things on at fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(Location at);
 
 /* Pushing creature groups. */
 /* True when the champions push the group; the push costs stamina. */
@@ -185,18 +193,6 @@ bool move_party_can_push_group(uint16_t group);
 /* The warp of the party. */
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
 bool move_party_warp_to_marker(void);
-
-/* Dungeon reads: alcoves, script variables, and doors. */
-/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
-bool dun_is_alcove_shown(uint16_t first, uint16_t thing);
-/* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */
-int dun_get_global_var(int var);
-/* Changes the global variable var by op (GLOBAL_VAR_*) with value and returns the new value; the bytes stay in their
-   range. */
-int dun_modify_global_var(int var, int value, int op);
-/* The door type (0 or 1 of the party map) of a door thing, 0xff for none as in the original (the callers pass it to
-   GDAT as the entry index). */
-int dun_get_door_type(uint16_t door);
 
 /* Party state that the interface sets. */
 /* The movement arrows show the push arrows (on) or the move arrows: the party and the interface flag. */

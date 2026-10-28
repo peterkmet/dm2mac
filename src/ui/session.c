@@ -428,7 +428,7 @@ static bool load_slot(const char *path)
 static void arrive_on_party_map(void)
 {
     move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
-    g_party.redraw = REDRAW_ALL_VIEW;
+    g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 bool session_load(void)

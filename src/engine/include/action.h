@@ -28,6 +28,8 @@ enum ActionMode {
 /* The pictures and the font of the spell panel. */
 #define UI_INDEX_SPELL         0x05 /* the spell panel pictures: GDAT (1, 5, 1, entry) */
 #define SPELL_RUNE_GLYPH_FIRST 0x60 /* the font character of the first rune */
+/* g_action.redraw_delay: the open panel redraws on the next update; a larger delay counts down to it. */
+#define ACTION_REDRAW_NEXT     1
 /* Results of an action (g_action.result < 0). */
 #define RESULT_NOTHING         (-1)
 #define RESULT_NO_AMMO         (-2)

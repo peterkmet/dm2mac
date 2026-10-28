@@ -84,6 +84,17 @@
 #define dir_opposite(d)         dir_turn(d, TURN_BACK)
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
+/* The relative cells of a square (dir_relative of a cell), as the party or a creature that looks to facing sees
+   them. */
+#define CELL_FRONT_LEFT         0
+#define CELL_FRONT_RIGHT        1
+#define CELL_BACK_RIGHT         2
+#define CELL_BACK_LEFT          3
+/* The cell on side dir of a square that is in the same column (seen from dir) as cell. */
+static inline int16_t dir_side_cell(int16_t cell, int16_t dir)
+{
+    return (int16_t)dir_turn(dir, (((cell - dir) + 1) & 2) >> 1);
+}
 
 /* The whole of a chance or a ratio in percent. */
 #define PERCENT         100
@@ -358,10 +369,6 @@ static inline uint16_t textrec_offset(uint16_t text)
 /* Sensor types of the dungeon links. */
 #define SENSOR_LEVEL_LINK        0x1c /* sensor type: a link to the square of another level */
 #define SENSOR_TELEPORTER_LINK   0x27
-/* Sensor types that react to projectiles and explosions. */
-#define SENSOR_PROJECTILE_HIT    0x22 /* the wall sensor of a cell triggers when an object hits it */
-#define SENSOR_PROJECTILE_PORTAL 0x23 /* the object goes through the wall to the target square */
-#define SENSOR_EXPLOSION         0x26 /* the floor sensor triggers on an explosion */
 /* SENSOR_FLAGS bits. */
 #define SENSOR_BUSY              0x0001 /* the sensor ignores triggers until its animation or its wait ends */
 #define SENSOR_STATE             0x0004 /* on; some sensor types use it as an option */
@@ -726,6 +733,9 @@ uint16_t dungeon_map_graphics(int16_t map);
 int dungeon_map_wallset(int16_t map);
 /* The door type of door slot 0 or 1 of map, DOOR_TYPE_NONE when the map has none. */
 uint8_t dungeon_map_door_type(int16_t map, int16_t slot);
+/* The door type of door on map: the door type of its slot, DOOR_TYPE_NONE as in the original (the callers pass it to
+   GDAT as the entry index). */
+uint8_t dungeon_door_type(int16_t map, uint16_t door);
 /* The number of random wall ornaments of map. */
 int dungeon_map_random_wall_count(int16_t map);
 /* The number of creature types of map. */

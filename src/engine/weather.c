@@ -221,7 +221,7 @@ void weather_init(bool keep_state)
         if (!g_game.storm_multiplier)
             g_game.storm_multiplier = 1;
     } else {
-        dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
+        game_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
         g_game.next_hour_time = g_game.game_time + HOUR_TICKS;
         g_game.heavy_rain = 0;
         g_game.weather_visible = 0;
@@ -316,7 +316,7 @@ static bool lightning_strike(void)
         return false;
     bool weak = (int16_t)g_game.storm_intensity < STORM_WEAK;
     if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
-        (weak || g_game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
+        (weak || g_game.game_time < STRIKE_PARTY_TIME || game_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
     int distance = (int16_t)(abs_int((int16_t)(g_game.party_x - x)) + abs_int((int16_t)(g_game.party_y - y)));
     uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
@@ -330,7 +330,7 @@ static bool lightning_strike(void)
     explosion_create(EXPLOSION_STORM_LIGHTNING, g_game.storm_intensity, x, y, EXPLOSION_AT_CENTER);
     if ((g_ui.inventory || g_party_sleeping) && !weak && distance <= STRIKE_SEEN &&
         dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) == g_game.party_dir)
-        dun_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
+        game_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return true;
 }
 
@@ -345,7 +345,7 @@ static Location lightning_target(uint16_t packed)
 static SkyObject *show_lightning(SkyObject *o)
 {
     if ((int16_t)g_game.storm_intensity < STORM_WEAK)
-        dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
+        game_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
     uint16_t strikes = 0;
     if (rand_below(g_game.storm_intensity + 1) >= STORM_LIGHTNING_HITS) {
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
@@ -499,17 +499,11 @@ static uint16_t ornament_light(int category, int ornament, bool *animated_only)
     return v & LIGHT_AMOUNT_MASK;
 }
 
-/* An ornament word of a view square side animates: its frame (the high byte) is not 0. */
-static bool ornament_animated(uint16_t word)
-{
-    return word >> BYTE_BIT_COUNT != 0;
-}
-
 /* The light of a wall ornament: a window follows the hour; other light shines always or only while it animates. */
 static void add_wall_light(SquareLight *sum, const ViewSquare *s)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FRONT]);
-    bool animated = ornament_animated(s->side[SIDE_FRONT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FRONT]);
     bool animated_only;
     if (ornament == ORNAMENT_NONE)
         return;
@@ -542,7 +536,7 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, int16_t y)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FLOOR_ORNAMENT]);
-    bool animated = ornament_animated(s->side[SIDE_FLOOR_ORNAMENT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FLOOR_ORNAMENT]);
     bool floor = s->aspect == ASPECT_FLOOR || s->aspect == ASPECT_PIT || s->aspect == ASPECT_TELEPORTER;
     if (floor && ornament != ORNAMENT_NONE) {
         bool animated_only;
