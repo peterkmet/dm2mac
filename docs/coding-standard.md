@@ -31,13 +31,16 @@ that this port cannot use keeps its number with "No rule in dm2".
    `REDRAW_*`), and they call a member of `g_hooks` (`engine/hooks.h`) for an event that must run the user
    interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/ui_hooks.c` sets every
    member. [layer]
-5. `ui/` changes game state only through engine functions. Exceptions: redraw flags and hooks. Exception: the
-   action area (`ui/action_area.c`: `area_update`, `show_open_panel`, `show_hand_panel`, `haste_jitter`) keeps
-   the order of the original, which mixes rules and drawing. It writes `g_action.mode` and `g_action.result`,
-   closes the open hand, and opens a chest or a minion map when the panel redraws. `haste_jitter` takes
-   `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its
-   allowlist lines give `rule 1.5`. `ui/` and `control/` do not write through a pointer that an engine query
-   returns, except into the fields that this rule allows (review only). [engine-write]
+5. `ui/` and `control/` change game state only through engine functions. Exceptions: redraw flags and hooks.
+   Exception: the action area (`ui/action_area.c`) keeps the order of the original, which mixes rules and drawing.
+   Six functions write eight fields of `g_action`: `show_hand_icons` (`hand_items`), `show_party_hands` (`mode`,
+   `flash`), `party_icons_changed` (`dirty`), `show_hand_panel` (`mode`, `champion`), `show_open_panel`
+   (`redraw_delay`, `flags`, `mode`) and `redraw_changes` (`redraw_delay`, `dirty`, `mode`, `result`). The action
+   area also closes the open hand and opens a chest or a minion map when the panel redraws; `haste_jitter` takes
+   `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its allowlist
+   lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. `ui/` and `control/` do
+   not write through a pointer that an engine query returns, except into the fields that this rule allows (review
+   only). [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it
    calls `control/`, never the reverse. [platform]
 7. A module is one public header `<module>.h`, the files `<module>.c` and `<module>_<part>.c`, and an optional
@@ -342,7 +345,7 @@ their allowlist key:
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
 | `platform` | an operating system header or `_WIN32` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
-| `engine-write` | a write of `ui/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals |
+| `engine-write` | a write of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
 | `module` | a `.c` file without its header, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |

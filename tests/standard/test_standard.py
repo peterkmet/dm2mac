@@ -662,13 +662,23 @@ def engine_globals():
 
 
 def test_ui_does_not_write_engine_variables():
+    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function)."""
     alt = "|".join(sorted(engine_globals(), key=len, reverse=True)) or "(?!)"
     target = rf"\b(?:{alt})\b(?:\s*\[[^\]]*\]|\s*(?:\.|->)\s*\w+)*"
     write = re.compile(rf"(?:\+\+|--)\s*{target}|{target}\s*(?:\+\+|--|(?:[-+*/|&^]|<<|>>)?=(?!=))")
     ok = allowed()
-    report("engine-write", [f"engine-write {rel(path)}  | {n}: {line.strip()}" for path in sorted((SRC / "ui").glob("*.c"))
-                            if ("engine-write", rel(path)) not in ok
-                            for n, line in code_lines(path) if write.search(line) and not REDRAW_FLAG_WRITE.search(line)])
+    found = []
+    for path in sorted([*(SRC / "ui").glob("*.c"), *(SRC / "control").glob("*.c")]):
+        if ("engine-write", rel(path)) in ok:
+            continue
+        owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
+        for n, line in code_lines(path):
+            if not write.search(line) or REDRAW_FLAG_WRITE.search(line):
+                continue
+            key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
+            if ("engine-write", key) not in ok:
+                found.append(f"engine-write {key}  | {n}: {line.strip()}")
+    report("engine-write", found)
 
 
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)

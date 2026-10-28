@@ -73,7 +73,19 @@ decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
-engine-write ui/action_area.c rule 1.5: the action area keeps the order of the original: it sets the mode, the result and the redraw state of g_action while it draws
+engine-write control/control.c:forget_game_end bridge: task 10
+engine-write control/control.c:handle_load bridge: task 10
+engine-write control/control.c:handle_request bridge: task 10
+engine-write control/state_json.c:list_hand_actions bridge: task 10
+engine-write control/state_json.c:restore_action_menu bridge: task 10
+engine-write control/state_json.c:state_json_state bridge: task 10
+engine-write control/turn.c:choose_action bridge: task 10
+engine-write ui/action_area.c:party_icons_changed rule 1.5: g_action.dirty
+engine-write ui/action_area.c:redraw_changes rule 1.5: g_action.redraw_delay, g_action.dirty, g_action.mode, g_action.result
+engine-write ui/action_area.c:show_hand_icons rule 1.5: g_action.hand_items
+engine-write ui/action_area.c:show_hand_panel rule 1.5: g_action.mode, g_action.champion
+engine-write ui/action_area.c:show_open_panel rule 1.5: g_action.redraw_delay, g_action.flags, g_action.mode
+engine-write ui/action_area.c:show_party_hands rule 1.5: g_action.mode, g_action.flash
 hex control/control.c:key_names rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c:g_ai_action_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_after_command_table rule 3.12: a table of SKULL.EXE
