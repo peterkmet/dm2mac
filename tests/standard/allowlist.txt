@@ -65,27 +65,25 @@ decimal ui/input.c:step_dirs bridge: task 45
 decimal ui/minion_map.c:creature_side_dir bridge: task 46
 decimal ui/minion_map.c:mirror_one_side bridge: task 46
 decimal ui/minion_map.c:mirror_two_sides bridge: task 46
-decimal ui/view.c bridge: task 52
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:depth_center rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:depth_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:depth_scale rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_ornament_row bridge: task 52
+decimal ui/view.c:door_ornament_row rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:door_side_frame rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:door_top_frame rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:door_top_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:door_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:explosion_cell_order bridge: task 52
+decimal ui/view.c:explosion_cell_order rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:eye_cell rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:far_order rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_ornament_entry bridge: task 52
-decimal ui/view.c:floor_ornament_scaled_entry bridge: task 52
+decimal ui/view.c:floor_ornament_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:floor_ornament_scaled_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:floor_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:floor_pit_entry_up rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:floor_pit_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:frames rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:jitter rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:jitter_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:linked_squares rule 3.12: a table of SKULL.EXE
@@ -104,7 +102,6 @@ decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:wall_faces bridge: task 52
 dead-api engine/include/champion.h:champ_set_name bridge: task 48
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
