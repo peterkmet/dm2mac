@@ -194,7 +194,6 @@ module platform/main.c rule 1.7: the entry point has no header
 order control/state_json.c:sections bridge: task 54
 order data/hmp.c:sections bridge: task 18
 order data/mve_video.c:sections bridge: task 18
-order engine/aspect.c:sections bridge: task 22
 order engine/game.c:sections bridge: task 26
 order engine/merchant.c:sections bridge: task 30
 order engine/sensor.c:sections bridge: task 37
@@ -238,15 +237,6 @@ type engine/ai.c:melee_attack_party bridge: task 20
 type engine/ai.c:set_destination bridge: task 20
 type engine/ai_move.c:line_slope bridge: task 21
 type engine/ai_move.c:search_cell bridge: task 21
-type engine/aspect.c:apply_floor_things bridge: task 22
-type engine/aspect.c:apply_wall_things bridge: task 22
-type engine/aspect.c:floor_sensor_ornament bridge: task 22
-type engine/aspect.c:random_ornament bridge: task 22
-type engine/aspect.c:set_door_aspect bridge: task 22
-type engine/aspect.c:set_map_floor_ornament bridge: task 22
-type engine/aspect.c:set_random_wall_ornaments bridge: task 22
-type engine/aspect.c:wall_sensor_ornament bridge: task 22
-type engine/aspect.c:wall_square_aspect bridge: task 22
 type engine/champion_inventory.c:set_slot_thing bridge: task 28
 type engine/champion_inventory.c:slot_thing bridge: task 28
 type engine/creature.c:alert_anger bridge: task 24
