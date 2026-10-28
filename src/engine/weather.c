@@ -58,11 +58,6 @@
 #define VAR_STORMS       0x40
 #define VAR_STRIKES_SEEN 0x41
 
-/* The explosion types that give light: a fireball, a lightning bolt, a storm lightning. */
-#define EXPLOSION_TYPE_FIREBALL        (SPELL_FIREBALL - SPELL_THING_FIRST)
-#define EXPLOSION_TYPE_LIGHTNING       (SPELL_LIGHTNING - SPELL_THING_FIRST)
-#define EXPLOSION_TYPE_STORM_LIGHTNING (EXPLOSION_STORM_LIGHTNING - SPELL_THING_FIRST)
-
 /* The shift of the hand lights: the first counts fully, each next one half as much. */
 #define HAND_LIGHT_SHIFT 6
 
@@ -522,8 +517,7 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
     for (uint16_t t = first_thing; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_EXPLOSION) {
             int kind = explosion_type(t);
-            if (kind == EXPLOSION_TYPE_LIGHTNING || kind == EXPLOSION_TYPE_FIREBALL ||
-                kind == EXPLOSION_TYPE_STORM_LIGHTNING)
+            if (kind == BLAST_LIGHTNING || kind == BLAST_FIREBALL || kind == BLAST_STORM_LIGHTNING)
                 sum->missiles = (int16_t)(sum->missiles + (explosion_power(t) >> 1));
         } else if (thing_type(t) == THING_PROJECTILE && thing_word(t, PROJECTILE_PAYLOAD) == SPELL_FIREBALL) {
             sum->missiles = (int16_t)(sum->missiles + (projectile_energy(t) >> 1) - light_falloff[MISSILE_FALLOFF]);

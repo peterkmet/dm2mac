@@ -26,15 +26,6 @@
 #define PROJECTILE_HIT_CHAMPION     (-2)
 #define PROJECTILE_HIT_CREATURE     (-1)
 
-/* Explosion types (EXPLOSION_DATA bits 0-6): the explosion payload - SPELL_THING_FIRST. */
-#define BLAST_FIREBALL           (SPELL_FIREBALL - SPELL_THING_FIRST)
-#define BLAST_LIGHTNING          (SPELL_LIGHTNING - SPELL_THING_FIRST)
-#define BLAST_HARM_NON_MATERIAL  (SPELL_HARM_NON_MATERIAL - SPELL_THING_FIRST)
-#define BLAST_POISON_CLOUD       (SPELL_POISON_CLOUD - SPELL_THING_FIRST)
-#define BLAST_MISSILE_WALL       (SPELL_MISSILE_WALL - SPELL_THING_FIRST)
-#define BLAST_DEATH_CLOUD        (EXPLOSION_DEATH_CLOUD - SPELL_THING_FIRST)
-#define BLAST_STORM_LIGHTNING    (EXPLOSION_STORM_LIGHTNING - SPELL_THING_FIRST)
-#define BLAST_SMOKE              (EXPLOSION_SMOKE - SPELL_THING_FIRST)
 /* The explosion types with an attack. */
 #define BLAST_TYPE_COUNT         8
 /* What an explosion type attacks: bit 0 random power, 1 doors, 2 the party, 3 creatures. */
