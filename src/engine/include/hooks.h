@@ -16,13 +16,13 @@ typedef struct {
     void (*print_newline)(void);                        /* the next message starts on a new row */
     bool (*play_sound)(const Sound *s, uint8_t volume, int8_t lateral,
                        int8_t forward); /* starts a sound in a free voice */
-    bool (*zone_offset)(int from, int to, int percent, int16_t *dx,
-                        int16_t *dy);               /* the offset percent of the way between two layout zones */
-    int16_t *(*zone_rect)(int zone, int16_t *rect); /* the screen rectangle of a layout zone */
-    void (*update_action_area)(int tick);           /* redraws what changed in the action area */
-    void (*reset_action_area)(void);                /* clears the drawn state of the action area */
-    void (*reset_action_champion)(int champ);       /* clears the drawn state of the action area for a champion */
-    void (*render_hand_icon)(void);                 /* draws the leader hand object into the cursor */
+    bool (*zone_offset)(int16_t from, int16_t to, int16_t percent, int16_t *dx,
+                        int16_t *dy);                   /* the offset percent of the way between two layout zones */
+    int16_t *(*zone_rect)(int16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
+    void (*update_action_area)(int tick);               /* redraws what changed in the action area */
+    void (*reset_action_area)(void);                    /* clears the drawn state of the action area */
+    void (*reset_action_champion)(int champ);           /* clears the drawn state of the action area for a champion */
+    void (*render_hand_icon)(void);                     /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry,
                                  int zone);        /* an interface picture in a screen zone */
     void (*enter_map_view)(int16_t map);           /* the view loads the graphics of the map that the party enters */

@@ -277,7 +277,7 @@ i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
 class AnchoredZone(ctypes.Structure):
-    _fields_ = [("zone", ctypes.c_int), ("anchor", ctypes.c_int)]
+    _fields_ = [("zone", ctypes.c_uint16), ("anchor", ctypes.c_int16)]
 
 
 class GridPoint(ctypes.Structure):
