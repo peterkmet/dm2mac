@@ -1237,7 +1237,7 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
                 if ((uint16_t)power > 1) {
                     if ((uint16_t)power != VANISH_POWER)
                         return;
-                    creature_set_next_action(g, (Location){sx, sy}, CREATURE_ACTION_VANISH, true);
+                    creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
                 }
             } else if (kind == SENSOR_ALERT) {
                 creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);

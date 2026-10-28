@@ -18,9 +18,8 @@ decimal engine/ai_move.c bridge: task 21
 decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor bridge: task 23
-decimal engine/creature.c:cell_grid bridge: task 24
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
-decimal engine/creature.c:hit_radius_sq bridge: task 24
+decimal engine/creature.c:hit_radius_sq rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
@@ -99,6 +98,8 @@ decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:wall_faces bridge: task 52
+duplicate AI_ACTION_FLAG_PATH bridge: task 58
+duplicate CREATURE_ATTACKS_FIRST bridge: task 58
 dead-api engine/include/champion.h:champ_set_name bridge: task 48
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
@@ -236,11 +237,6 @@ type engine/ai_move.c:line_slope bridge: task 21
 type engine/ai_move.c:search_cell bridge: task 21
 type engine/champion_inventory.c:set_slot_thing bridge: task 28
 type engine/champion_inventory.c:slot_thing bridge: task 28
-type engine/creature.c:alert_anger bridge: task 24
-type engine/creature.c:alert_turn bridge: task 24
-type engine/creature.c:drop_cell bridge: task 24
-type engine/creature.c:is_near_party_front bridge: task 24
-type engine/creature.c:schedule_update bridge: task 24
 type engine/dungeon.c:edge_wall bridge: task 25
 type engine/dungeon.c:first_thing_index bridge: task 25
 type engine/dungeon.c:is_closed_teleporter bridge: task 25

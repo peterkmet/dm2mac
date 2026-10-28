@@ -177,6 +177,10 @@ void ai_prepare(void);
 uint8_t *ai_store_path(int path_size);
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int action);
+/* Flags of ai_action_flag. */
+#define AI_ACTION_FLAG_WAKES     0x02 /* a mood alert of a waking class stops the action */
+#define AI_ACTION_FLAG_PATH      0x04 /* the action follows the cached path */
+#define AI_ACTION_FLAG_INTERRUPT 0x10 /* a new action waits for the end of the animation step */
 
 /* Plan commands that the merchant commands use */
 
@@ -355,7 +359,8 @@ void ai_refresh_party_maps(void);
 #define ACTION_TAKE_FROM_WALL    0x1a
 #define ACTION_CHECK_AHEAD       0x1d
 #define ACTION_PLACE_WAIT        0x1e
-#define ACTION_STAND             0x23
+#define ACTION_STAND             0x23 /* 0x23 to 0x25: the three stands of the wander mood */
+#define ACTION_STAND_LAST        0x25
 #define ACTION_MELEE_2           0x26
 #define ACTION_SHOOT             0x27
 #define ACTION_SHOOT_2           0x28

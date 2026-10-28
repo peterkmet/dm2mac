@@ -50,6 +50,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_ATTACKS_ALL    0x0008 /* a melee attack hits several champions */
 #define CREATURE_ATTACKS_RANDOM 0x0010 /* ... random champions */
 #define CREATURE_NOT_DOOR_HIT   0x0020 /* a closing door does not hit the creature */
+#define CREATURE_ATTACKS_FIRST  0x0100 /* flags: the creature attacks before it moves */
 #define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
 #define CREATURE_SEES_IN_DARK   0x0800 /* flags: the light does not limit its sight */
 #define CREATURE_FAST_VANISH    0x1000 /* flags: the creature vanishes quickly in a party action effect */
@@ -97,7 +98,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 
 /* The nibbles of CreatureInfo.speed and the armor in door_flags. */
 #define INFO_NIBBLE_MASK 0x0f
-#define ARMOR_IMMUNE     INFO_NIBBLE_MASK /* the armor of a creature that takes no damage */
+#define ARMOR_IMMUNE     0x0f /* the armor of a creature that takes no damage: the highest */
 
 /* The shifts of the nibbles of CreatureInfo.speed. */
 #define SPEED_FEAR_SHIFT       4
@@ -183,7 +184,7 @@ typedef struct {
     uint16_t group;           /* record index of the group, ACTIVE_FREE for a free entry */
     int16_t event;            /* the timeline event of its next update, -1 none */
     uint8_t last_action_time; /* low byte of the game time of its last attack or move */
-    uint8_t unused_5;
+    uint8_t padding;
     uint8_t regeneration_time;            /* low byte of game time / 4 of the last health change */
     uint8_t anim_bits;                    /* ANIM_BIT_*: random shift and mirror of the picture */
     uint16_t anim_sequence;               /* first step of the animation sequence */
@@ -210,16 +211,15 @@ typedef struct {
 #define ACTIVE_GROUP_SIZE 34
 _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 bytes");
 
-/* Markers of a free active group, of a group without an active group, and of an active group without an action. */
-#define ACTIVE_FREE        0xffff
-#define GROUP_NOT_ACTIVE   0x00ff
-#define ACTIVE_ACTION_NONE 0x00ff /* an active group without a chosen action */
+/* The marker of a free active group. */
+#define ACTIVE_FREE 0xffff
+
+/* Markers of a group without an active group and of an active group without an action. */
+#define GROUP_NOT_ACTIVE   0xff
+#define ACTIVE_ACTION_NONE 0xff /* an active group without a chosen action */
 
 /* An active group without a scheduled update. */
 #define EVENT_NO_SLOT (-1)
-
-/* The action that makes a creature vanish. */
-#define CREATURE_ACTION_VANISH 0x13
 
 /* The results of creature_anim_next_step: the step is the last, more steps follow, or the sequence ended. */
 typedef enum { ANIM_LAST_STEP, ANIM_MORE_STEPS, ANIM_SEQUENCE_END } AnimStepResult;
@@ -361,10 +361,11 @@ bool creature_damage_current_group(int damage);
 /* The creature in the AI context hits the group on at; false when no group is there. *damage_out: 0 for a miss. */
 bool creature_attack_group_at(Location at, int16_t *damage_out);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
-void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int damage);
+void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance, int damage);
 /* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
-int creature_roll_armor_factor(uint16_t group, int amount);
-/* A damage kind that sets or clears a mood bit of the group. */
+int creature_roll_armor_factor(uint16_t group, uint16_t amount);
+/* A damage kind that sets or clears a mood bit of the group. kind keeps ALERT_CLEAR in its mask word, as the AI
+   candidate mask holds it (ai_move.c). */
 void creature_apply_damage_kind(uint16_t group, Location at, int kind);
 /* Creates a group of count + 1 creatures on at of the current map; THING_NONE when the dungeon is full. */
 uint16_t creature_create_group(int creature_type, int count, int16_t dir, Location at);

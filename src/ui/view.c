@@ -2,6 +2,7 @@
 #include "view.h"
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -1665,7 +1666,7 @@ static void show_creature(int pos, int depth, uint16_t group)
     uint8_t still[CREATURE_FRAME_SIZE];
     memcpy(still, frame, sizeof still);
     ActiveGroup *active = creature_active(group);
-    if (active && active->action == CREATURE_ACTION_VANISH)
+    if (active && active->action == ACTION_VANISH)
         creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
     int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH
