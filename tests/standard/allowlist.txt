@@ -62,9 +62,6 @@ decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:push_dirs bridge: task 45
 decimal ui/input.c:side_turn bridge: task 45
 decimal ui/input.c:step_dirs bridge: task 45
-decimal ui/minion_map.c:creature_side_dir bridge: task 46
-decimal ui/minion_map.c:mirror_one_side bridge: task 46
-decimal ui/minion_map.c:mirror_two_sides bridge: task 46
 decimal ui/view.c bridge: task 52
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
@@ -202,7 +199,6 @@ order engine/sensor.c:sections bridge: task 37
 order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
 order ui/fm.c:sections bridge: task 44
-order ui/minion_map.c:sections bridge: task 46
 order ui/view.c:sections bridge: task 52
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-prefix engine/sensor.c:sound_square_in_front bridge: task 37

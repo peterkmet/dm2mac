@@ -23,17 +23,16 @@
 
 /* The label of the first option button; the other buttons take the next letters. */
 #define OPTION_LABEL_FIRST 'r'
+#define OPTION_LABEL_SIZE  2 /* the label letter and the end */
 
-/* Sizes of the panel: the transparent color of the icons, a button label, the GDAT indices, and the 5 x 5 cells of
-   a square in the view. */
-#define ICON_KEY          10
-#define OPTION_LABEL_SIZE 2   /* the label letter and the end */
-#define GDAT_INDEX_COUNT  256 /* GDAT indices are bytes */
-#define VIEW_CELL_ROW     5
+/* GDAT indices are bytes. */
+#define GDAT_INDEX_COUNT 256
 
-/* Icon strips: GDAT image (category, index, 1, 0xf9), MAP_ICON_W pixels per icon; the value (category, index, 0x0b,
-   0xf9) set: the thing shows only with MAP_OPTION_DETAILS. */
-#define STRIP_DETAIL_KEY 0xf9
+/* Icon strips: GDAT image (category, index, GDAT_TYPE_IMAGE, GFX_STRIP), MAP_ICON_W pixels per icon, color ICON_KEY
+   transparent; the value (category, index, GDAT_TYPE_VALUE, STRIP_DETAIL_KEY) set: the thing shows only with
+   MAP_OPTION_DETAILS. */
+#define ICON_KEY         10
+#define STRIP_DETAIL_KEY GFX_STRIP
 
 /* Offsets added to a door icon of the square strip, and the icons of a missile and an alcove item. */
 #define ICON_DOOR_NO_BUTTON 2
@@ -43,26 +42,16 @@
 
 /* Square bits that the map reads. */
 #define FAKE_WALL_SEEN    SQUARE_FLAG_0
-#define FLOOR_SHOWS_LEVEL 0x08 /* a floor square shows the level digit instead */
+#define FLOOR_SHOWS_LEVEL SQUARE_FLAG_3 /* a floor square shows the level digit instead */
 
 /* Map 63 of a map item location: no location. */
 #define MAP_LOCATION_NONE LOCATION_MAP_MASK
 
-/* Mirror of an icon by the relative direction: icons with 2 sides (front, side), icons with 1 side. */
-static const uint8_t mirror_two_sides[DIR_COUNT] = {0, 0, 3, 3};
-static const uint8_t mirror_one_side[DIR_COUNT] = {0, 1, 3, 2};
-/* The icon shift of a missile with 3 sides, by its relative direction and its relative cell. */
-static const int8_t missile_side_shift[DIR_COUNT][DIR_COUNT] = {
-    {0, 0,  2,  2 },
-    {0, 2,  2,  0 },
-    {0, 0,  -2, -2},
-    {0, -2, -2, 0 }
-};
-/* The pixel shift of the grid by the column (row) of the minion in the 5 x 5 cells of its square. */
-static const int8_t cell_shift[VIEW_CELL_ROW] = {-2, -3, 0, -1, -2};
-/* The relative direction of a creature by the side it shows: front, right, back, left. */
-static const uint8_t creature_side_dir[DIR_COUNT] = {0, 3, 2, 1};
+/* The 5 x 5 cells of a square in the view: cells in a row. */
+#define VIEW_CELL_ROW 5
 
+/* An icon strip; count: the icons of a strip of square icons (map_icon_strip), 0 for a map item strip
+   (map_item_icons), whose callers rely on the image test of show_icon. */
 typedef struct {
     const Bitmap *image; /* NULL: no strip */
     const uint8_t *palette;
@@ -107,6 +96,21 @@ typedef struct {
     Position at;
     int icon_set;
 } GridSquare;
+
+/* Mirror of an icon by the relative direction: icons with 2 sides (front, side), icons with 1 side. */
+static const uint8_t mirror_two_sides[DIR_COUNT] = {0, 0, MIRROR_HV, MIRROR_HV};
+static const uint8_t mirror_one_side[DIR_COUNT] = {0, MIRROR_H, MIRROR_HV, MIRROR_V};
+/* The icon shift of a missile with 3 sides, by its relative direction and its relative cell. */
+static const int8_t missile_side_shift[DIR_COUNT][DIR_COUNT] = {
+    {0, 0,  2,  2 },
+    {0, 2,  2,  0 },
+    {0, 0,  -2, -2},
+    {0, -2, -2, 0 }
+};
+/* The pixel shift of the grid by the column (row) of the minion in the 5 x 5 cells of its square. */
+static const int8_t cell_shift[VIEW_CELL_ROW] = {-2, -3, 0, -1, -2};
+/* The relative direction of a creature by the side it shows: front, right, back, left. */
+static const uint8_t creature_side_dir[DIR_COUNT] = {0, TURN_LEFT, TURN_BACK, TURN_RIGHT};
 
 /* The icon strip of a GDAT key; count 0 when it has none. */
 static Strip map_icon_strip(int category, int index)

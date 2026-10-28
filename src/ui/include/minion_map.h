@@ -10,9 +10,9 @@
 #include "ui.h"
 
 /* A square icon of the map: the square (sx, sy) of the current map and the screen position (x, y) of the icon;
-   party_item >= 0: the party stands there, with the party icons of the map item party_item (category 0x14), and the
-   side of its frame toward party_dir is white; flags: the MAP_ flags of the things that it draws (MAP_STATIC_CREATURES:
-   the static creatures, 0: none). */
+   party_item >= 0: the party stands there, with the party icons of the map item party_item (category CAT_CONTAINER),
+   and the side of its frame toward party_dir is white; flags: the MAP_ flags of the things that it draws
+   (MAP_STATIC_CREATURES: the static creatures, 0: none). */
 typedef struct {
     int16_t sx, sy;
     int16_t x, y;
