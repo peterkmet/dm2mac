@@ -337,11 +337,11 @@ static int nearest_step(const uint8_t *brightness, int last, int target)
     return k;
 }
 
-uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_t *count)
+uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, int16_t *count)
 {
-    if (!table || !(uint8_t)dim)
+    if (!table || !dim)
         return table;
-    int light = (uint8_t)(SCALE_FULL - (uint8_t)dim > 0 ? SCALE_FULL - (uint8_t)dim : 0);
+    int light = SCALE_FULL - dim > 0 ? SCALE_FULL - dim : 0; /* light = 64 - dim, never below 0 */
     bool identity = *count <= 0;
     if (identity)
         *count = REMAP_COLORS;

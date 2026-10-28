@@ -65,7 +65,7 @@ typedef struct {
    key colors that stay mapped to themselves. */
 typedef struct {
     int category, index, entry;
-    int dim;
+    uint8_t dim;
     int key1, key2;
 } DimmedRemap;
 
@@ -100,7 +100,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale);
 bool pal_load_color_ramps(const Gdat *gdat);
 /* Dims a color remap table: each color becomes the color of its ramp nearest to its brightness * (64 - dim) / 64,
    never key1 or key2 (they stay mapped to themselves). *count <= 0 starts from the identity table of 256 colors. */
-uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_t *count);
+uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, int16_t *count);
 /* Remaps table through the GDAT color table of remap, then dims it. */
 uint8_t *pal_get_dimmed_remap(const Gdat *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count);
 

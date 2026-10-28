@@ -248,7 +248,7 @@ def test_dim_remap_matches_original(lib, emu):
     emu.stub(IMAGE_CACHE_LOOKUP_OR_ADD, lambda *_: 0)
     emu.stub(IMAGE_CACHE_ALLOC, lambda *_: CACHE)
     emu.stub(IMAGE_CACHE_RELEASE, lambda *_: 0)
-    lib.pal_apply_dim_remap.argtypes = [u8_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.pal_apply_dim_remap.argtypes = [u8_p, ctypes.c_uint8, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
     rng = random.Random(4)
     for case in range(200):
         n = rng.choice([0, -1, 16, 256])
