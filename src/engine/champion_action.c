@@ -155,7 +155,7 @@ void champ_action_clear_result(void)
     g_champ_action_result = 0;
 }
 
-void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand)
+void champ_add_action_delay(int champ, uint16_t ticks, int hand)
 {
     Champion *c = champion(champ);
     uint16_t delay = (uint16_t)(ticks + (ticks >> DELAY_EXTRA_SHIFT));
@@ -495,7 +495,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
             return false;
         }
     }
-    if ((int16_t)mode == MELEE_MODE_REACH && !(creature_group_info(a->target)->flags & CREATURE_MELEE_REACHES))
+    if (mode == MELEE_MODE_REACH && !(creature_group_info(a->target)->flags & CREATURE_MELEE_REACHES))
         return false;
     uint16_t attack = (uint16_t)field_of(a->action, FIELD_ATTACK);
     uint16_t wounds = (uint16_t)field_of(a->action, FIELD_WOUNDS);
@@ -511,7 +511,7 @@ static void summon_minions(const ActionRun *a, int command)
 {
     static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
     CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
-                             .level = (uint16_t)((int16_t)a->power >> SUMMON_POWER_SHIFT),
+                             .level = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
                              .dir = dir_opposite(g_game.party_dir),
                              .x = g_game.party_x,
                              .y = g_game.party_y,
@@ -544,7 +544,7 @@ static bool send_minion(ActionRun *a, int command)
     } else if (command == COMMAND_MINION_GUARD) {
         type = MINION_GUARD;
     }
-    int level = (uint16_t)champ_get_skill_level(a->champ, a->skill, true);
+    int level = champ_get_skill_level(a->champ, a->skill, true);
     CreatureSummon summon = {.creature_type = type,
                              .level = level,
                              .dir = dir,
@@ -650,7 +650,7 @@ static bool is_furniture(uint16_t group)
 static bool run_melee(ActionRun *a)
 {
     if (square_type(a->front) == SQUARE_DOOR && (a->front & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
-        sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), 0, DOOR_BREAK_DELAY);
+        sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), false, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
             (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
@@ -823,7 +823,7 @@ static int throw_fatigue(uint16_t thing)
 }
 
 /* Champ throws the item in hand (-1: the leader hand object) to the left or the right side; true when it flies. */
-static bool throw_object(int champ, int16_t hand, bool right_side)
+static bool throw_object(int champ, int hand, bool right_side)
 {
     Champion *c = champion(champ);
     bool from_leader_hand = false;
@@ -856,7 +856,7 @@ static bool throw_object(int champ, int16_t hand, bool right_side)
         experience = (throw_power >> THROW_EXPERIENCE_SHIFT) + THROW_EXPERIENCE_BASE;
         power = throw_power;
     }
-    champ_add_experience(champ, SKILL_THROW, (uint16_t)experience);
+    champ_add_experience(champ, SKILL_THROW, experience);
     kinetic = (int16_t)(kinetic + power);
     int level = champ_get_skill_level(champ, SKILL_THROW, true);
     kinetic =
@@ -870,7 +870,7 @@ static bool throw_object(int champ, int16_t hand, bool right_side)
     projectile_create(&(ProjectileLaunch){.payload = thing,
                                           .x = g_game.party_x,
                                           .y = g_game.party_y,
-                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side),
+                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side ? TURN_RIGHT : 0),
                                           .dir = g_game.party_dir,
                                           .energy = (uint8_t)kinetic,
                                           .hit_chance = (uint8_t)attack,

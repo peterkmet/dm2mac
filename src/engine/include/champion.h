@@ -301,15 +301,15 @@ int champ_get_dexterity(int champ);
 /* A luck test against chance; the luck changes by 2. True when the champion is lucky. */
 bool champ_test_luck(Champion *c, int chance);
 /* Wounds and damages champ (the damage shows at the end of the step); returns the damage, 0 when none. */
-int champ_take_damage(int16_t champ, int damage, int wound_mask, int attack_type);
+int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
 /* Damages each champion by about damage; returns the mask of the champions that took damage. */
 int champ_damage_party(int damage, int wound_mask, int attack_type);
 /* Poisons champ: damage now, and a poison event that repeats with less. */
-void champ_poison(int16_t champ, int amount);
+void champ_poison(int champ, int amount);
 /* Takes amount away from the poison events of champ; exported for the tests. */
-void champ_cure_poison(int16_t champ, int amount);
+void champ_cure_poison(int champ, int amount);
 /* A click on the face of a champion in cell: the first click takes the face, the second swaps it with the champion
    of the second cell. */
 void champ_drag_click(int16_t cell);
@@ -330,7 +330,7 @@ extern int16_t g_champ_action_result;
 /* Clears g_champ_action_result before a new action. */
 void champ_action_clear_result(void);
 /* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
-void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand);
+void champ_add_action_delay(int champ, uint16_t ticks, int hand);
 /* Takes the charges of action from its item in the open hand of champ; true when the item has no charges left;
    exported for the tests. */
 bool champ_use_action_charge(int champ, ChampionAction action);

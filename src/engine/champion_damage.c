@@ -184,7 +184,7 @@ int champ_get_dexterity(int champ)
 {
     Champion *c = champion(champ);
     int16_t v = (int16_t)((rand_next() & DEXTERITY_ROLL) + champ_get_stat(c, STAT_DEXTERITY, STAT_CURRENT));
-    int32_t load = (int32_t)((int16_t)v >> 1) * (uint16_t)champ_get_load(champ);
+    int32_t load = (int32_t)(v >> 1) * (uint16_t)champ_get_load(champ);
     v = (int16_t)(v - load / (uint16_t)champ_get_max_load(c));
     if (v < DEXTERITY_MIN)
         v = DEXTERITY_MIN;
@@ -216,7 +216,7 @@ static int wound_defense(int champ, int location, bool sharp)
         uint16_t attr = item_attr(c->slots[hand], ATTR_ARMOUR_CLASS);
         if (!(attr & ATTR_DEFENDS))
             continue;
-        int strength = (uint16_t)champ_get_strength(champ, hand, SKILL_PARRY);
+        int strength = champ_get_strength(champ, hand, SKILL_PARRY);
         int v = (armor_defense(attr, sharp) + strength) * wound_defense_factor[location];
         hands = (int16_t)(hands + (v >> ((hand != location) + HAND_DEFENSE_SHIFT)));
     }
@@ -306,7 +306,7 @@ static int16_t reduce_damage(int champ, int16_t d, int wound_mask, int attack_ty
     return d;
 }
 
-int champ_take_damage(int16_t champ, int damage, int wound_mask, int attack_type)
+int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
 {
     int16_t d = (int16_t)damage;
     if (champ == -1 || champ + 1 == g_ui.candidate || g_session.completed || d < 1 || !champion(champ)->health)
@@ -363,7 +363,7 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
     return hit;
 }
 
-void champ_poison(int16_t champ, int amount)
+void champ_poison(int champ, int amount)
 {
     if (champ == -1 || champ + 1 == g_ui.candidate)
         return;
@@ -387,7 +387,7 @@ void champ_poison(int16_t champ, int amount)
     timeline_add_event(&e);
 }
 
-void champ_cure_poison(int16_t champ, int amount)
+void champ_cure_poison(int champ, int amount)
 {
     if (champ == -1)
         return;
@@ -670,7 +670,7 @@ void champ_burn_held_lights(void)
             if (!(item_attr(t, ATTR_FLAGS) & ITEM_FLAG_LIGHT) || !item_charges(t))
                 continue;
             if (!item_add_charges(t, -1))
-                item_set_do_not_discard(t, 0);
+                item_set_do_not_discard(t, false);
             burned = true;
         }
     }
