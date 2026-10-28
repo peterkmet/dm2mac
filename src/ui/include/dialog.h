@@ -5,6 +5,7 @@
 
 /* Dialogs: message, question and progress pictures with buttons, and the volume settings. */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "gdat.h"
 
@@ -43,8 +44,8 @@ typedef struct {
 } DialogState;
 extern DialogState g_dialog;
 
-/* Begins (1) or ends (0) the drawing of a dialog: in screen mode 1 the screen goes black first. */
-void dialog_screen_mode(int begin);
+/* Begins (true) or ends (false) the drawing of a dialog: in screen mode 1 the screen goes black first. */
+void dialog_screen_mode(bool begin);
 /* Shows the viewport with the dialog on the screen. */
 void dialog_present(void);
 /* Draws dialog id with an error message entry (0 none) in front of it; returns the dialog drawn. */
@@ -54,8 +55,8 @@ int dialog_draw(int id, int message);
 int dialog_run(int id);
 /* dialog_run, and in the advanced mode a right click chooses the button of text entry cancel. */
 int dialog_run_cancel(int id, int cancel);
-/* Draws the pressed button picture over the clicked button of zone. */
-void dialog_draw_button(int zone, int highlighted, GdatKey picture);
+/* Draws the pressed button picture over the clicked button (the rectangle of g_input_match). */
+void dialog_draw_button(bool highlighted, GdatKey picture);
 /* Draws the bar of a progress dialog at permille of its length. */
 void dialog_draw_progress_bar(int permille); /* exported for the tests */
 /* The dialog of the sound and music volumes. */

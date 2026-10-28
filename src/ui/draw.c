@@ -208,7 +208,7 @@ DrawCtx *draw_ctx_prepare(DrawCtx *ctx)
 }
 
 /* The source start of a mirrored blit: the part of the image beyond the drawn part. */
-static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, int mirrored)
+static int16_t mirrored_start(int16_t start, int16_t size, int16_t image_size, bool mirrored)
 {
     int16_t end = (int16_t)(size + start);
     return mirrored && image_size > end ? (int16_t)(image_size - end) : 0;

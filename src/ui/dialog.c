@@ -40,7 +40,7 @@ static const uint16_t button_text_zones[] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2, 
 
 DialogState g_dialog = {.screen_mode = 1};
 
-void dialog_screen_mode(int begin)
+void dialog_screen_mode(bool begin)
 {
     if (g_dialog.screen_mode && begin)
         ui_fill_zone_screen(ZONE_SCREEN, 0);
@@ -85,9 +85,9 @@ static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], cons
                 pos++;
         }
     }
-    if (!(int16_t)total)
+    if (!total)
         return;
-    int offset = DIALOG_MESSAGE_TOP + ((rect[RECT_H] - ((int16_t)total - 2 * DIALOG_LINE_GAP)) >> 1) - 1;
+    int offset = DIALOG_MESSAGE_TOP + ((rect[RECT_H] - (total - 2 * DIALOG_LINE_GAP)) >> 1) - 1;
     int y = rect[RECT_Y] + (offset > 0 ? offset : 0);
     for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i])
@@ -113,7 +113,7 @@ int dialog_draw(int id, int message)
     }
     g_dialog.id = id;
     if (present)
-        dialog_screen_mode(1);
+        dialog_screen_mode(true);
     char texts[DIALOG_TEXT_COUNT][TEXT_SIZE];
     int count = 0;
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++)
@@ -146,7 +146,7 @@ int dialog_draw(int id, int message)
     }
     if (present) {
         dialog_present();
-        dialog_screen_mode(0);
+        dialog_screen_mode(false);
     }
     game_set_screen_refresh(true);
     return id;
@@ -192,9 +192,8 @@ int dialog_run_cancel(int id, int cancel)
     return result;
 }
 
-void dialog_draw_button(int zone, int highlighted, GdatKey picture)
+void dialog_draw_button(bool highlighted, GdatKey picture)
 {
-    (void)zone;
     if (!highlighted)
         return;
     const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);

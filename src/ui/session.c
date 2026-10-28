@@ -209,7 +209,7 @@ void session_open_slot_dialog(int id, int buttons)
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
-    dialog_screen_mode(1);
+    dialog_screen_mode(true);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
@@ -246,7 +246,7 @@ static int choose_load_slot(void)
     session_open_slot_dialog(DIALOG_LOAD_SLOTS, SLOT_BUTTONS_LOAD);
     session_draw_slot_selection(SAVE_SLOT_NONE);
     dialog_present();
-    dialog_screen_mode(0);
+    dialog_screen_mode(false);
     int chosen = SAVE_SLOT_NONE;
     bool done = false;
     g_input_match.choice = DIALOG_NO_CHOICE;
