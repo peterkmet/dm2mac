@@ -1515,7 +1515,7 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
 
 /* Level links, pits, and teleporters. */
 
-int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sensor)
+LevelLink dun_find_adjacent_level_link(Location at, int level_delta)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
         int16_t sx = (int16_t)(at.x + g_dir_dx[d]);
@@ -1529,8 +1529,7 @@ int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sen
                 if (sensor_type(t) == SENSOR_LEVEL_LINK &&
                     level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
                                        (dungeon_map_level(g_party.cur_map) & MAP_LEVEL_MASK)) {
-                    *out_sensor = t;
-                    return d;
+                    return (LevelLink){(int16_t)d, t};
                 }
             } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
                 int kind = textrec_subtype(t);
@@ -1538,15 +1537,13 @@ int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sen
                     continue;
                 int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
                                                        GDAT_TYPE_VALUE, WALL_ORNAMENT_GOES_UP);
-                if ((level_delta == -1 && up) || (level_delta == 1 && !up)) {
-                    *out_sensor = THING_NONE;
-                    return d;
+                if ((level_delta == LEVEL_UP && up) || (level_delta == LEVEL_DOWN && !up)) {
+                    return (LevelLink){(int16_t)d, THING_NONE};
                 }
             }
         }
     }
-    *out_sensor = THING_NONE;
-    return -1;
+    return (LevelLink){-1, THING_NONE};
 }
 
 bool dun_set_pit_teleporter_state(Location at, int mode)

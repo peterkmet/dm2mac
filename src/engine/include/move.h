@@ -171,8 +171,14 @@ uint16_t dun_get_discarded_thing(int type, int subtype);
 #define PIT_STATE_OPEN   0
 #define PIT_STATE_CLOSED 1
 #define PIT_STATE_TOGGLE 2
-/* The direction of a level link (sensor or stairs marker) beside at toward level_delta, -1 none. */
-int dun_find_adjacent_level_link(Location at, int level_delta, uint16_t *out_sensor);
+/* A level link beside a square: the direction to it (-1 none) and its level link sensor (THING_NONE for a stairs
+   marker or none). */
+typedef struct {
+    int16_t dir;
+    uint16_t sensor;
+} LevelLink;
+/* The level link (sensor or stairs marker) beside at toward level_delta. */
+LevelLink dun_find_adjacent_level_link(Location at, int level_delta);
 /* Opens or closes the pit or teleporter on at; true when the state changed. */
 bool dun_set_pit_teleporter_state(Location at, int mode);
 /* The things on at fall or teleport through its open pit or teleporter. */

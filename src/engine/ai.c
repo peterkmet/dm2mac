@@ -2454,20 +2454,19 @@ static bool act_move_stairs(void)
     ai_state.dest_y = (int16_t)dest_y();
     if (a->action == ACTION_LINK_UP || a->action == ACTION_LINK_DOWN) {
         int delta = a->action == ACTION_LINK_UP ? -1 : 1;
-        uint16_t sensor;
-        int d = dun_find_adjacent_level_link((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta,
-                                             &sensor);
-        if (sensor != THING_NONE) {
-            int exit = sensor_effect(sensor);
-            dir = sensor_flag(sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, (int16_t)d); /* inverted: a fixed exit */
+        LevelLink link =
+            dun_find_adjacent_level_link((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
+        if (link.sensor != THING_NONE) {
+            int exit = sensor_effect(link.sensor);
+            dir = sensor_flag(link.sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, link.dir); /* inverted: a fixed exit */
         } else {
             int saved = g_party.cur_map;
             Position to = dungeon_location_on_map(
                 (Position){(int16_t)saved, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
             dun_set_current_map(to.map);
-            int d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta, &sensor);
+            int16_t d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta).dir;
             dun_set_current_map(saved);
-            dir = (int16_t)d2 == -1 ? rand_2bits() : d2;
+            dir = d2 == -1 ? rand_2bits() : d2;
         }
     }
     bool closes = g_ai.info->traits & CREATURE_TRAIT_CLOSES_PITS;

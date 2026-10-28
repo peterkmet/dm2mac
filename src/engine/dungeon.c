@@ -834,9 +834,7 @@ Position dungeon_find_level_transfer(Position from, int level_delta, unsigned fl
                  !(square & SQUARE_FLAG_0))) {
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
             return none;
-        uint16_t sensor;
-        if (!(flags & TRANSFER_STAIRS) ||
-            dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta, &sensor) < 0) {
+        if (!(flags & TRANSFER_STAIRS) || dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta).dir < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
                 return none;
             fall_into = true;
