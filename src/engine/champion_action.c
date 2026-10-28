@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The actions of the champions: the action menu, the actions, their delays and repeats, experience, throwing. */
+#include "champion.h"
 #include "action.h"
 #include "ai.h"
-#include "champion.h"
 #include "champion_internal.h"
 #include "creature.h"
 #include "dungeon.h"

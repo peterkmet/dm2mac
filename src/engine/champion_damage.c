@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Champion statistics in fights, damage, wounds, poison, death, and the effects of time. */
+#include "champion.h"
 #include <stdlib.h>
 #include <string.h>
 #include "action.h"
-#include "champion.h"
 #include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"

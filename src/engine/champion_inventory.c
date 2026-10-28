@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The leader hand, the champion slots, and the effects of the items that the champions hold. */
+#include "champion.h"
 #include <string.h>
 #include "action.h"
-#include "champion.h"
 #include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"
