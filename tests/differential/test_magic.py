@@ -606,7 +606,7 @@ def place_party(lib, emu, map_, x, y, d):
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
     GameRecord.in_dll(lib, "g_game").party_dir = d
     emu.write(G_PARTY_DIR, struct.pack("<H", d))
-    lib.dun_set_party_location(Position(map_, x, y))
+    lib.dun_set_party_position(Position(map_, x, y))
     emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
     emu.write(0x75BFE, bytes([lib.dungeon_map_graphics(map_) >> C.MAP_WALLSET_SHIFT & C.MAP_NIBBLE_MASK]))  # g_map_gfx_set of game_enter_map
 

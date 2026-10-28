@@ -38,7 +38,7 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_location((Position){map, x, y});
+    dun_set_party_position((Position){map, x, y});
     g_hooks.enter_map_view(map);
     world_update_day_night(false);
     sensor_process_map_entry(true);
@@ -189,7 +189,7 @@ void game_enter_new_map(void)
 {
     game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
-    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
 }
 

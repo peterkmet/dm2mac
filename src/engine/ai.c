@@ -2261,12 +2261,12 @@ static void act_turn(void)
     group_set_dir(g_ai.group_thing, f);
 }
 
-/* The creature arrives on its new square: the AI position follows the move. */
-static void act_arrive(bool closes_pits)
+/* The creature arrives on its new square dest: the AI position follows the move. */
+static void act_arrive(MoveDest dest, bool closes_pits)
 {
-    g_ai.event.data[EVENT_X] = (uint8_t)g_party.dest_x;
-    g_ai.event.data[EVENT_Y] = (uint8_t)g_party.dest_y;
-    g_ai.map = (uint8_t)g_party.dest_map;
+    g_ai.event.data[EVENT_X] = (uint8_t)dest.x;
+    g_ai.event.data[EVENT_Y] = (uint8_t)dest.y;
+    g_ai.map = (uint8_t)dest.map;
     ai_set_map(g_ai.map);
     if (closes_pits)
         dun_set_pit_teleporter_state((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, PIT_STATE_OPEN);
@@ -2406,8 +2406,10 @@ static bool act_move(void)
     bool closes = g_ai.info->traits & CREATURE_TRAIT_CLOSES_PITS;
     if (closes)
         dun_set_pit_teleporter_state((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, PIT_STATE_CLOSED);
-    if (!move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], dest_x(), dest_y()))
-        act_arrive(closes);
+    MoveOutcome moved =
+        move_thing_dest(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], dest_x(), dest_y());
+    if (moved.result == MOVE_DONE)
+        act_arrive(moved.dest, closes);
     else
         g_ai.removed = true;
     return false;
@@ -2429,12 +2431,17 @@ static int act_move_two_steps(void)
         a->phase = r ? FALL_PHASE_LAND : FALL_PHASE_DONE;
     } else if (a->phase == FALL_PHASE_LAND) {
         a->phase = FALL_PHASE_DONE;
-        if (move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], g_ai.event.data[EVENT_X],
-                       g_ai.event.data[EVENT_Y]))
+        MoveOutcome moved = move_thing_dest(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y],
+                                            g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]);
+        MoveDest dest = moved.dest;
+        if (moved.result != MOVE_DONE) {
             g_ai.removed = true;
-        g_ai.event.data[EVENT_X] = (uint8_t)g_party.dest_x;
-        g_ai.event.data[EVENT_Y] = (uint8_t)g_party.dest_y;
-        g_ai.map = (uint8_t)g_party.dest_map;
+            /* as in the original: a group that waits or leaves takes the square of the last move inside its move */
+            dest = (MoveDest){g_party.dest_x, g_party.dest_y, g_party.dest_map, g_party.dest_cell, g_party.dest_dir};
+        }
+        g_ai.event.data[EVENT_X] = (uint8_t)dest.x;
+        g_ai.event.data[EVENT_Y] = (uint8_t)dest.y;
+        g_ai.map = (uint8_t)dest.map;
         ai_set_map(g_ai.map);
     } else {
         r = STALE_REGISTER; /* the original returns a stale register (the low half of a pointer): nonzero, low byte 0 here */
@@ -2480,10 +2487,11 @@ static bool act_move_stairs(void)
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN)
         dir = dun_get_stairs_exit_direction((Location){ai_state.dest_x, ai_state.dest_y});
     group_set_dir(g_ai.group_thing, dir);
-    if (move_thing(g_ai.group_thing, -1, 0, ai_state.dest_x, ai_state.dest_y))
+    MoveOutcome moved = move_thing_dest(g_ai.group_thing, MOVE_NO_SQUARE, 0, ai_state.dest_x, ai_state.dest_y);
+    if (moved.result != MOVE_DONE)
         g_ai.removed = true;
     else
-        act_arrive(closes);
+        act_arrive(moved.dest, closes);
     return false;
 }
 
@@ -2832,7 +2840,7 @@ static bool act_explode_or_spawn(void)
                                  .map = g_ai.map,
                                  .link = -1,
                                  .search_dir = (int8_t)facing()};
-        if (creature_summon_group(summon) == THING_NONE)
+        if (creature_summon_group(summon).group == THING_NONE)
             return true;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;

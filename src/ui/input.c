@@ -2056,7 +2056,7 @@ static void click_take_object(int x, int y, int index)
     ViewObjectClick click = {x, y, z->cell, square_at, z->kind};
     uint16_t thing = view_hit_test_object(&click, z->thing, false);
     if (thing != THING_NONE) {
-        move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
+        move_thing(thing, sx, sy, MOVE_NO_SQUARE, z->kind == CLICK_POSSESSIONS ? MOVE_IN_POSSESSIONS : 0);
         clear_moneybox_placed(thing);
         champ_put_in_leader_hand(thing);
     }
@@ -2099,9 +2099,9 @@ static bool click_drop_object(int x, int y, int cell)
             for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
                 if (thing_cell(t) == dir_cell)
                     clear_moneybox_placed(t);
-        move_thing(thing_with_cell(thing, dir_cell), -1, -1, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS, x, y);
     } else {
-        move_thing(thing_with_cell(thing, dir_cell), -1, 0, x, y);
+        move_thing(thing_with_cell(thing, dir_cell), MOVE_NO_SQUARE, 0, x, y);
     }
     game_set_command_stop(true);
     return true;

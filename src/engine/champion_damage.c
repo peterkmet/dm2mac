@@ -415,7 +415,7 @@ static void drop_all_objects(int champ)
     for (int i = 0; i < SLOT_COUNT; i++) {
         uint16_t t = champ_remove_object_from_slot(champ, drop_order[i]);
         if (t != THING_NONE)
-            move_thing(thing_with_cell(t, cell), -1, 0, g_game.party_x, g_game.party_y);
+            move_thing(thing_with_cell(t, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     }
 }
 
@@ -480,7 +480,7 @@ static void kill_champion(int champ)
         item_set_type(bones, ITEM_BONES);
         item_set_kept(bones, true);
         misc_set_charges(bones, (uint16_t)champ); /* the champion of the bones */
-        move_thing(thing_with_cell(bones, cell), -1, 0, g_game.party_x, g_game.party_y);
+        move_thing(thing_with_cell(bones, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     }
     c->rune_count = 0;
     c->runes[0] = 0;

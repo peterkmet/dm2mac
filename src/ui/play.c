@@ -224,7 +224,7 @@ void play_start_session(void)
     ai_refresh_party_maps();
     creature_reset_active_groups();
     if (g_session.new_game)
-        move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+        move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_dialog.screen_mode = 0;
     step_before_input();
 }
