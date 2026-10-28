@@ -847,10 +847,9 @@ static struct {
     Command current; /* the command of the last event */
     Command queue[COMMAND_QUEUE];
     int queue_head, queue_tail;
-    int disabled;            /* commands queued by feedback scripts that wait */
-    int wait;                /* ticks without new commands */
-    int16_t rect[RECT_SIZE]; /* the rectangle of the last command lookup of input_poll */
-    const uint8_t *script;   /* the running click feedback script */
+    int disabled;          /* commands queued by feedback scripts that wait */
+    int wait;              /* ticks without new commands */
+    const uint8_t *script; /* the running click feedback script */
     int script_delay;
     uint32_t last_ticks;
     bool feedback_waiting; /* the script waits for the next queue run */
@@ -1463,8 +1462,6 @@ void input_flush(void)
     in.disabled = 0;
     in.queue_head = 0;
     in.queue_tail = 0;
-    in.rect[RECT_W] = 0;
-    in.rect[RECT_H] = 0;
     g_input_match.zone = ZONE_NONE;
     g_input_match.origin = -1;
     g_input_match.x = 0;
@@ -1805,6 +1802,44 @@ static void forward_to_screen(void)
         input_key_down(pending);
 }
 
+/* The command of the next waiting event, 0 when the events run out; in.current takes the command, its position and
+   the rect of its zone. */
+static uint16_t next_event_command(void)
+{
+    uint16_t command = 0;
+    while (!command && in.event_count) {
+        int type = in.events[in.event_head].type;
+        int16_t x = in.events[in.event_head].x;
+        int16_t y = in.events[in.event_head].y;
+        in.event_count--;
+        in.event_head = (in.event_head + 1) % EVENT_RING;
+        int16_t rect[RECT_SIZE] = {0};
+        if (type < INPUT_KEY) {
+            if (type & INPUT_LEFT_RELEASED)
+                command = CMD_CANCEL_CAPTURE;
+            else if (type & EVENT_CLICK_TYPES) {
+                if (type == INPUT_BUTTON_LEFT)
+                    area_end_damage_hold(x, y);
+                if (!right_click_cancels_dialog(type))
+                    command = input_click_command(in.mode, x, y, type, rect);
+            }
+        } else if (type == INPUT_KEY) {
+            command = input_key_command(in.mode, (uint16_t)x, rect);
+        } else if (type == EVENT_ENTER_AREA) {
+            command = CMD_DRAG_CANCEL;
+        } else if (type == EVENT_LEAVE_AREA) {
+            command = CMD_CANCEL_PUSH;
+        }
+        if (command) {
+            in.current.x = g_input_match.x;
+            in.current.y = g_input_match.y;
+            memcpy(in.current.rect, rect, sizeof rect);
+            in.current.command = command;
+        }
+    }
+    return command;
+}
+
 void input_poll(void)
 {
     int elapsed = (int)(g_main_loop.timer_ticks - in.last_ticks);
@@ -1821,38 +1856,7 @@ void input_poll(void)
                 enqueue_key(in.keys[i]);
             in.key_count = 0;
             in.events_locked = true;
-            uint16_t command = 0;
-            while (!command) {
-                if (!in.event_count)
-                    break;
-                int type = in.events[in.event_head].type;
-                int16_t x = in.events[in.event_head].x;
-                int16_t y = in.events[in.event_head].y;
-                in.event_count--;
-                in.event_head = (in.event_head + 1) % EVENT_RING;
-                if (type < INPUT_KEY) {
-                    if (type & INPUT_LEFT_RELEASED)
-                        command = CMD_CANCEL_CAPTURE;
-                    else if (type & EVENT_CLICK_TYPES) {
-                        if (type == INPUT_BUTTON_LEFT)
-                            area_end_damage_hold(x, y);
-                        if (!right_click_cancels_dialog(type))
-                            command = input_click_command(in.mode, x, y, type, in.rect);
-                    }
-                } else if (type == INPUT_KEY) {
-                    command = input_key_command(in.mode, (uint16_t)x, in.rect);
-                } else if (type == EVENT_ENTER_AREA) {
-                    command = CMD_DRAG_CANCEL;
-                } else if (type == EVENT_LEAVE_AREA) {
-                    command = CMD_CANCEL_PUSH;
-                }
-                if (command) {
-                    in.current.x = g_input_match.x;
-                    in.current.y = g_input_match.y;
-                    memcpy(in.current.rect, in.rect, sizeof in.rect);
-                    in.current.command = command;
-                }
-            }
+            uint16_t command = next_event_command();
             in.events_locked = false;
             flush_deferred_click();
             if (!command)
@@ -2012,15 +2016,14 @@ static void click_creature(uint16_t group, int16_t x, int16_t y, Location at)
     }
 }
 
-/* A click on the wall in front: a plain wall sounds; the mouse drag through a fake wall is not ported. */
-static void click_front_wall(bool passable, Location front)
+/* A click on the wall in front: the wall sounds; the mouse drag through a fake wall is not ported. */
+static void click_front_wall(Location front)
 {
     if (!g_game.champion_count)
         return;
-    if (!passable)
-        sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
-                                                SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
-                                     SOUND_FALLBACK, front.x, front.y, 0);
+    sndreq_request_with_fallback((SoundCue){CAT_WALLSET, dungeon_map_wallset(g_game.party_map), SOUND_ENTRY_CLICK,
+                                            SOUND_PRIORITY_CLICK, SOUND_VOLUME_LOUD},
+                                 SOUND_FALLBACK, front.x, front.y, 0);
     game_set_command_stop(true);
 }
 
@@ -2241,14 +2244,15 @@ static void click_in_viewport(int16_t x, int16_t y)
     uint16_t hand = g_game.leader_hand;
     if (click_zones_hit(&v, x, y, hand))
         return;
-    bool passable = square_type(front) == SQUARE_FAKE_WALL && front & SQUARE_FLAG_0 && !(front & SQUARE_FAKE_WALL_OPEN);
+    /* as in the original, which also tests the passable fake wall flags of the front square: a wall square never
+       has them, so a wall in front always blocks and always sounds */
     if (hand != THING_NONE) {
-        click_with_object(&v, x, y, square_type(front) == SQUARE_WALL && !passable);
+        click_with_object(&v, x, y, square_type(front) == SQUARE_WALL);
         return;
     }
     if (square_type(front) == SQUARE_WALL &&
         (point_in_zone(ZONE_FRONT_WALL_LOW, x, y) || point_in_zone(ZONE_FRONT_WALL_HIGH, x, y))) {
-        click_front_wall(passable, v.front);
+        click_front_wall(v.front);
         return;
     }
     uint16_t g = creature_group_at(g_party.cur_map, v.front.x, v.front.y);
@@ -2429,12 +2433,6 @@ static bool execute_champion_command(int command, bool idle)
     return true;
 }
 
-/* A command that the original runs later; the port runs none. */
-static void run_later_command(const Command *c)
-{
-    (void)c;
-}
-
 bool command_execute(Command *c)
 {
     int command = c->command;
@@ -2450,14 +2448,11 @@ bool command_execute(Command *c)
     game_set_command_stop(false);
     bool idle =
         !g_ui.eye && !g_ui.mouth && !g_party.push_mode && !g_input_drag_state; /* no eye, mouth, drag or push mode */
-    if (!execute_party_command(c, idle) && !execute_champion_command(command, idle)) {
-        if ((command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
-             command == CMD_QUIT) &&
-            idle)
-            execute_session_command(command);
-        else
-            run_later_command(c);
-    }
+    if (!execute_party_command(c, idle) && !execute_champion_command(command, idle) &&
+        (command == CMD_SAVE || command == CMD_VOLUME || (command >= CMD_NEW_GAME && command <= CMD_MENU_PICTURE) ||
+         command == CMD_QUIT) &&
+        idle)
+        execute_session_command(command);
     if (g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_LAST)
         game_set_command_stop(true);
     return true;
