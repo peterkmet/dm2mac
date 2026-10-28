@@ -228,7 +228,6 @@ bool plat_poll(PlatEvent *e)
             return true;
         case SDL_EVENT_KEY_DOWN:
             e->type = PLAT_KEY;
-            e->key = ev.key.key;
             e->scancode = ev.key.scancode;
             e->mod = ev.key.mod;
             e->repeat = ev.key.repeat;
