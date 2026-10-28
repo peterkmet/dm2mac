@@ -481,7 +481,7 @@ static void cast_create_item(void)
     uint16_t thing = item_create_by_index(
         gdat_entry_index(gdat_current(), CAT_EXPLOSION, SPELL_ITEM_INDEX, GDAT_TYPE_VALUE, SPELL_ITEM_KEY));
     if (g_game.leader_hand == THING_NONE) {
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
         return;
     }
     int cell = dir_turn(g_game.party_dir, rand_bit());
@@ -710,7 +710,7 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
     if (added)
         g_hooks.draw_champion_state(g_action.champion - 1);
@@ -722,6 +722,6 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     runes_of(c)[c->rune_count] = 0;
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
 }

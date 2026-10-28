@@ -40,44 +40,6 @@
 #define SOUND_ENTRY_DOOR_SHUT    0x8f
 #define SOUND_PRIORITY_DOOR      0x5f
 
-/* Sensor types of square events. A wall and a floor give some types other meanings. */
-#define SENSOR_GAME_END           0x12
-#define SENSOR_MAP_RELAY          0x16
-#define SENSOR_COUNTER            0x1d
-#define SENSOR_TIMER              0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
-#define SENSOR_RELAY              0x20
-#define SENSOR_MAP_ENTRY          0x21
-#define SENSOR_WALL_STATE         0x26
-#define SENSOR_ANIMATION          0x2c
-#define SENSOR_COUNTDOWN          0x2d
-#define SENSOR_GENERATOR          0x2e
-#define SENSOR_PARTY_TELEPORT     0x2e
-#define SENSOR_BUSY_RELAY         0x31
-#define SENSOR_ACTIVATION         0x32
-#define SENSOR_TIMER_8            0x33
-#define SENSOR_TIMER_16           0x34
-#define SENSOR_TIMER_32           0x35
-#define SENSOR_TIMER_64           0x36
-#define SENSOR_TIMER_128          0x37
-#define SENSOR_CREATURE_ANIMATION 0x3a
-#define SENSOR_TRANSFER           0x3b
-#define SENSOR_CREATE_ITEM        0x3c
-#define SENSOR_FORWARD            0x3d
-#define SENSOR_TRANSFER_CLASS     0x40
-#define SENSOR_FRAME_STEP         0x41
-#define SENSOR_TURN_CREATURES     0x42
-#define SENSOR_SET_GLOBAL         0x43
-#define SENSOR_TEST_GLOBAL        0x44
-#define SENSOR_RELAY_SCALED       0x45
-#define SENSOR_DOOR_SWITCH        0x46
-#define SENSOR_TRANSFER_BACK      0x47
-#define SENSOR_TRANSFER_ONE       0x48
-#define SENSOR_TRANSFER_BACK_ONE  0x49
-/* The effect bits of SENSOR_CREATE_ITEM: the new item is kept from reuse. */
-#define SENSOR_KEEP_ITEM          EFFECT_HOLD
-/* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
-#define TIMER_SLOW_FACTOR         8
-
 /* Square event priorities by effect. */
 #define SQUARE_PRIORITY_SET    1
 #define SQUARE_PRIORITY_TOGGLE 2
@@ -151,12 +113,14 @@ static int wall_or_floor_ornament(uint16_t sensor, int wall)
     return wall ? wall_ornament(sensor) : floor_ornament(sensor);
 }
 
-/* The sound of the ornament of a sensor at (x, y), with delay. */
-static void ornament_sound(uint16_t sensor, int wall, int x, int y, int delay)
+/* The sound of the ornament of a sensor at (x, y), after ticks game steps. */
+static void ornament_sound(uint16_t sensor, int wall, int x, int y, uint16_t ticks)
 {
-    sndreq_request_with_fallback((SoundCue){ornament_category(wall), wall_or_floor_ornament(sensor, wall),
+    sndreq_request_after(
+        sndreq_cue_with_fallback((SoundCue){ornament_category(wall), wall_or_floor_ornament(sensor, wall),
                                             SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-                                 SOUND_FALLBACK, x, y, delay);
+                                 SOUND_FALLBACK),
+        x, y, ticks);
 }
 
 /* A wall sound comes from the square in front of the wall side, unless the party stands in the wall square. */
@@ -299,11 +263,11 @@ static void fall_risk(uint16_t text, int x, int y, int on_square)
             c = g_game.leader;
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, champion(c)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
     } else {
         sndreq_request((SoundCue){CAT_FLOOR_ORNAMENT, textrec_value(text), SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK,
                                   SOUND_VOLUME_NORMAL},
-                       g_game.party_x, g_game.party_y, 1);
+                       g_game.party_x, g_game.party_y, SOUND_STEP_END);
     }
 }
 
@@ -680,11 +644,11 @@ static void run_activation(const TimelineEvent *e, uint16_t sensor, bool wall)
             int y = e->data[EVENT_Y];
             if (wall)
                 sound_square_in_front(&x, &y, e->data[EVENT_EFFECT] & DIR_MASK);
-            int delay = (int16_t)(gdat_entry_index(gdat_current(), ornament_category(wall),
-                                                   wall_or_floor_ornament(sensor, wall), GDAT_TYPE_VALUE,
-                                                   ORNAMENT_KEY_SOUND_DELAY) +
-                                  1);
-            ornament_sound(sensor, wall, x, y, delay);
+            uint16_t ticks = (uint16_t)(gdat_entry_index(gdat_current(), ornament_category(wall),
+                                                         wall_or_floor_ornament(sensor, wall), GDAT_TYPE_VALUE,
+                                                         ORNAMENT_KEY_SOUND_DELAY) +
+                                        1);
+            ornament_sound(sensor, wall, x, y, ticks);
         }
     }
     if (sensor_flag(sensor, SENSOR_STATE))
@@ -781,7 +745,7 @@ static void text_play_sound(uint16_t text, int x, int y)
     /* sound (CAT_DUNGEON, map + 1, entry): a sound of a map */
     sndreq_request(
         (SoundCue){CAT_DUNGEON, g_party.cur_map + 1, textrec_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD},
-        x, y, 1);
+        x, y, SOUND_STEP_END);
 }
 
 /* A counter sensor reaches zero (or leaves it): true when its count is zero or below. */
@@ -1017,7 +981,7 @@ static void generate_creature(uint16_t t)
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request(
             (SoundCue){CAT_CREATURE_APPEARS, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, tx, ty,
-            1);
+            SOUND_STEP_END);
 }
 
 /* A counter: clear counts up, set counts down. */
@@ -1422,7 +1386,7 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
                 if (hurt >> i & 1)
                     sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_ENTRY_PUSHED,
                                                             SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-                                                 SOUND_FALLBACK, x, y, 1);
+                                                 SOUND_FALLBACK, x, y, SOUND_STEP_END);
         }
     }
     uint16_t g = creature_group_at(g_party.cur_map, x, y);
@@ -1442,10 +1406,10 @@ static bool closing_door_hits(uint16_t door, int x, int y, uint8_t *square, int 
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | *state);
     sndreq_request_with_fallback(
         (SoundCue){CAT_CREATURE, item_gdat_index(g), SOUND_HURT, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL},
-        SOUND_FALLBACK, x, y, 1);
+        SOUND_FALLBACK, x, y, SOUND_STEP_END);
     sndreq_request_with_fallback(
         (SoundCue){CAT_MISC, SOUND_FALLBACK, SOUND_ENTRY_DROP, SOUND_PRIORITY_CREATURE, SOUND_VOLUME_NORMAL},
-        SOUND_FALLBACK, x, y, 1);
+        SOUND_FALLBACK, x, y, SOUND_STEP_END);
     return true;
 }
 
@@ -1487,7 +1451,7 @@ void sensor_event_door_animation(TimelineEvent *e)
             (SoundCue){CAT_DOOR, dun_get_door_type(door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
                        SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL},
-            SOUND_FALLBACK, x, y, 1);
+            SOUND_FALLBACK, x, y, SOUND_STEP_END);
     }
     if (again) {
         door_set_flag(door, DOOR_MOVING, true);
@@ -1527,7 +1491,7 @@ static int16_t ambient_wall_step(const int16_t table[CELL_COUNT][RECORD_INDEX_HI
 /* The repeating sound of an animated ornament plays while it runs on the party map. */
 static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
 {
-    if (!sensor_flag(thing, SENSOR_BUSY) || (int8_t)timeline_event_map(e) != g_game.party_map) {
+    if (!sensor_flag(thing, SENSOR_BUSY) || timeline_event_map(e) != g_game.party_map) {
         sensor_set_data(thing, sensor_frame(thing));
         return;
     }
@@ -1744,7 +1708,7 @@ static void wall_click_fountain(WallClick *c)
                 champion(i)->water = WATER_FULL;
         sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(g_game.leader)->portrait, SOUND_ENTRY_SWALLOW,
                                                 SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+                                     SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_NOW);
     } else if (item_attr(hand, ATTR_FLAGS) & ITEM_FLAG_REFILLS) {
         item_add_charges(hand, CHARGES_FULL_AMOUNT);
         c->take = true;
@@ -1777,7 +1741,7 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
     sensor_trigger_target(t, EFFECT_SET, *extra);
     sensor_trigger_target(t, EFFECT_CLEAR, (int16_t)(data + 1 + *extra));
     return CLICK_IGNORED;
@@ -1910,7 +1874,7 @@ static void wall_click_sensor(WallClick *c, uint16_t t)
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request_with_fallback(
             (SoundCue){CAT_WALL_ORNAMENT, ornament, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
     sensor_trigger_target(t, effect, extra);
 }
 
@@ -1999,7 +1963,7 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
         if (c.take)
             champ_take_from_leader_hand();
         if (c.give != THING_NONE)
-            champ_put_in_leader_hand(c.give, 1);
+            champ_put_in_leader_hand(c.give);
         g_input_command_stop = c.stop;
     } else {
         uint16_t *possessions = group_possessions(actor);

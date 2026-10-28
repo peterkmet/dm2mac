@@ -90,7 +90,7 @@ void champ_init_party_state(void)
         /* without a leader the hand applies no item effects: the loaded champions hold them already */
         uint16_t leader = g_game.leader;
         g_game.leader = LEADER_NONE;
-        champ_put_in_leader_hand(g_game.leader_hand, true);
+        champ_put_in_leader_hand(g_game.leader_hand);
         g_game.leader = leader;
     }
     for (int i = 0; i < g_game.champion_count; i++) {
@@ -228,7 +228,7 @@ static bool is_command_allowed(uint16_t thing, int command)
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE)
         return false;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!item_find_link_projectile(group, thing)) {
+    if (item_find_link_projectile(group, thing) == THING_NONE) {
         if (command == COMMAND_MINION_ATTACK || command == COMMAND_MINION_MAP_SET)
             return true;
         if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE)

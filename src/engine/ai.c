@@ -319,9 +319,6 @@
 /* The creature flag of the move action. */
 #define CREATURE_ATTACKS_FIRST 0x0100 /* flags: the creature attacks before it moves */
 
-/* The sound entry of a creature that transformed. */
-#define SOUND_ENTRY_TRANSFORMED 0x81
-
 /* The item filter bit of an action that repeats for all matching items. */
 #define SUB_REPEAT 0x40
 
@@ -727,7 +724,8 @@ static bool cond_sees_party(int16_t x, int16_t y, bool front_only, int16_t range
     int16_t d = (int16_t)manhattan(g_ai_party.x, g_ai_party.y, x, y);
     if (d <= 1)
         return true;
-    return d <= range && !g_ui.inventory && ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_square_is_obstacle) != 0;
+    return d <= range && !g_ui.inventory &&
+           ai_trace_line((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y}, ai_square_is_obstacle) != 0;
 }
 
 /* True when a champion holds an item of FILTER_WEAPON_HANDS in a hand. */
@@ -889,7 +887,7 @@ static bool test_condition(int condition, int arg, int plan)
         r = g_ai.map == location_map(home);
         break;
     case COND_MARKER:
-        ai_cache_square(x, y);
+        ai_cache_square((Location){x, y});
         if (g_ai_square.square & SQUARE_HAS_THINGS)
             r = !ai_find_marker_by_id(a, (int16_t)thing_word(g_ai.group_thing, GROUP_ITEM_CLASS));
         break;
@@ -1207,7 +1205,7 @@ static void run_target_scanner(int kind, int arg, int plan, uint32_t targets)
     }
     case SCANNER_MINION: {
         uint16_t p = item_find_link_projectile(g_ai.group_thing, THING_NONE);
-        if (p && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
+        if (p != THING_NONE && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
             scan_targets(TARGET_MINION, plan, targets, 0,
                          thing_word(thing_word(p, PROJECTILE_PAYLOAD), MINION_MAP_LOCATION));
         break;
@@ -1605,7 +1603,7 @@ static bool flee_or_dodge(bool second_round)
         if (class_flags & AI_CLASS_DODGES) {
             uint16_t mood = group_mood(g_ai.group_thing);
             bool look = (mood & MOOD_FEAR && rand_2bits()) || (mood & MOOD_QUICK && rand_bit()) || !rand_2bits();
-            if (look && ai_projectile_incoming(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y])) {
+            if (look && ai_projectile_incoming(ai_group_square())) {
                 a->plan = -1;
                 a->plan_step = 0;
                 a->action = ACTION_DODGE;
@@ -1644,7 +1642,7 @@ static bool try_flee(uint32_t class_flags)
     if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(ai_move_test(g_ai.search_flags), at, at, -1).passed)
         return false;
     bool flee =
-        (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at.x, at.y)) || !g_ai.alert ||
+        (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at)) || !g_ai.alert ||
         !ai_try_attack((AiTest){ATTACK_MODE_PARTY, false}, at, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing)).passed ||
         rand_below((uint16_t)((creature_armor(g_ai.info) >> 2) + 1)) <= 1;
     return flee && flee_or_dodge(second_round);
@@ -2645,7 +2643,7 @@ static void drop_sound(uint16_t t, int n)
     if (n == 1)
         sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
                                                 SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, 1);
+                                     SOUND_FALLBACK, ai_state.dest_x, ai_state.dest_y, SOUND_STEP_END);
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
@@ -2810,7 +2808,8 @@ static void act_transform(void)
     } else {
         explosion_create(EXPLOSION_DEATH_CLOUD, POWER_MAX, x, y, EXPLOSION_AT_CENTER);
     }
-    sndreq_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y, 1);
+    sndreq_request((SoundCue){CAT_DUNGEON, 0, sound, SOUND_PRIORITY_TRANSFORM, SOUND_VOLUME_LOUD}, x, y,
+                   SOUND_STEP_END);
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */

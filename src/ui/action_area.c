@@ -14,6 +14,7 @@
 #include "minion.h"
 #include "minion_map.h"
 #include "money.h"
+#include "num.h"
 #include "random.h"
 #include "text.h"
 #include "ui.h"
@@ -27,16 +28,14 @@
 #define RESULT_SCALE_Y     53
 #define RESULT_DIGITS      5
 
-/* GDAT ids of the action area: the aura pictures (category 1, index 7) and the ammunition value of a weapon. */
+/* The GDAT index of the aura pictures (category 1, index 7). */
 #define UI_INDEX_AURA 0x07
-#define AMMO_ATTR     0x05
 
-/* Flags: a weapon value that is not ammunition, and the minion map header in action.flags. */
-#define AMMO_NOT_AMMO       0x8000
-#define FLAGS_MINION_HEADER 0x0400
+/* Nothing drawn: no drawn cell or direction of a champion, no drawn wall set. */
+#define DRAWN_NONE 0xff
 
-/* The drawn cell of a champion that the party icons do not show. */
-#define NO_CELL 0xff
+/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
+#define DAMAGE_HOLD_EXTRA_TICKS 1
 
 /* The index of a coin in the pile offsets wraps at 32. */
 #define COIN_PILE_MASK 0x1f
@@ -50,10 +49,9 @@
 #define ICON_KEY_COLOR    UI_RED /* the background of a hand icon bitmap; the blit skips it */
 
 /* The sizes and frames of the action area pictures. */
-#define SPELL_RUNE_SETS 4  /* the rune sets 0 to 3; the panel of set 4 has no runes */
-#define AURA_FRAMES     4  /* the aura picture holds 4 x 4 frames: direction by game time */
-#define ICON_OFFSET     1  /* the icon of an item in a hand casts a shadow 1 pixel up and left */
-#define ICON_COLORS     16 /* the colors of a 4 bpp picture */
+#define SPELL_RUNE_SETS 4 /* the rune sets 0 to 3; the panel of set 4 has no runes */
+#define AURA_FRAMES     4 /* the aura picture holds 4 x 4 frames: direction by game time */
+#define ICON_OFFSET     1 /* the icon of an item in a hand casts a shadow 1 pixel up and left */
 #define ICON_BPP        8
 #define FACE_BPP        4
 #define JITTER_CENTER   2 /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
@@ -106,9 +104,6 @@ static struct {
     int16_t action_mode; /* the action mode of the last input zone refresh, ACTION_MODE_STALE for none */
 } drawn;
 
-/* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
-#define DAMAGE_HOLD_EXTRA_TICKS 1
-
 /* The ticks to wait for the redraw after the damage shows: one for the original delay, then the extra ones. */
 static int16_t damage_hold_ticks;
 
@@ -118,7 +113,7 @@ void area_reset(void)
 {
     damage_hold_ticks = 0;
     memset(&drawn, 0, sizeof drawn);
-    drawn.gfx_set = NO_CELL;
+    drawn.gfx_set = DRAWN_NONE;
     drawn.leader = -1;
     drawn.action_mode = ACTION_MODE_STALE;
     area.bitmap = NULL;
@@ -126,8 +121,8 @@ void area_reset(void)
 
 void area_reset_champion(int champ)
 {
-    drawn.cell[champ] = NO_CELL;
-    drawn.dir[champ] = NO_CELL;
+    drawn.cell[champ] = DRAWN_NONE;
+    drawn.dir[champ] = DRAWN_NONE;
     drawn.alive[champ] = false;
     memset(drawn.busy[champ], 0, sizeof drawn.busy[champ]);
 }
@@ -165,13 +160,13 @@ static Bitmap *make_hand_icon(int champ, int hand)
     if (empty)
         draw_ctx_init(&c, CAT_INTERFACE, UI_INDEX_STATUS, GFX_ACTION_EMPTY_HAND + (hand == SLOT_ACTION_HAND));
     else
-        draw_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, 0));
+        draw_ctx_init(&c, item_gdat_category(thing), item_gdat_index(thing), item_icon_index(thing, -1, false));
     draw_ctx_prepare(&c);
     gfx_fill_bitmap(icon, g_ui_colors[ICON_KEY_COLOR]);
     if (!c.image)
         return icon;
     if (!empty) {
-        uint8_t shadow[ICON_COLORS];
+        uint8_t shadow[IMAGE_COLORS];
         memset(shadow, g_ui_colors[UI_BLACK], sizeof shadow);
         shadow[UI_KEY] = g_ui_colors[ICON_KEY_COLOR];
         const int16_t r[RECT_SIZE] = {ICON_OFFSET, ICON_OFFSET, ICON_SIZE, ICON_SIZE};
@@ -196,7 +191,7 @@ static Bitmap *make_hand_icon(int champ, int hand)
     return icon;
 }
 
-void area_draw_hand_icon(int champ, int hand, int flash)
+void area_draw_hand_icon(int champ, int hand, bool flash)
 {
     begin_draw(false);
     const Champion *c = champion(champ);
@@ -222,7 +217,7 @@ void area_draw_hand_icon(int champ, int hand, int flash)
         offscreen_fill_rect_dithered(&area, r, UI_BLACK);
 }
 
-void area_draw_spell_icon(int champ, int flash)
+void area_draw_spell_icon(int champ, bool flash)
 {
     begin_draw(false);
     const Champion *c = champion(champ);
@@ -240,7 +235,7 @@ void area_draw_spell_icon(int champ, int flash)
         hand++;
     DrawCtx d;
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
-    d.flip = (int16_t)mirror;
+    d.flip = mirror ? MIRROR_H : 0;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
     if (g_party_sleeping || c->action_delay[ACTION_SPELL]) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
@@ -248,7 +243,7 @@ void area_draw_spell_icon(int champ, int flash)
         offscreen_fill_rect_dithered(&area, s, UI_BLACK);
     }
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, rune);
-    d.flip = (int16_t)mirror;
+    d.flip = mirror ? MIRROR_H : 0;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_RUNE_ICON_FIRST + rel, UI_CYAN);
     if (g_party_sleeping) {
         int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
@@ -264,7 +259,8 @@ void area_draw_entered_runes(bool clear)
         offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNES_BACK},
                                   ZONE_RUNES_BACK, GFX_OPAQUE);
     const Champion *c = champion(g_action.champion - 1);
-    size_t n = strnlen(c->runes, CHAMPION_SIZE - offsetof(Champion, runes));
+    /* as in the original: the end mark of four runes is in unknown_26[0] */
+    size_t n = strnlen(c->runes, CHAMPION_RUNES_SIZE + 1);
     for (size_t i = 0; i < n; i++) {
         char s[RUNE_TEXT_SIZE] = {c->runes[i], '\0'};
         offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i, g_ui_colors[UI_BLACK],
@@ -272,7 +268,7 @@ void area_draw_entered_runes(bool clear)
     }
 }
 
-void area_draw_name(int i, int highlight)
+void area_draw_name(int i, bool highlight)
 {
     begin_draw(false);
     const ChampionAction *a = &g_champ_actions[i];
@@ -351,7 +347,7 @@ static void show_party_icons(void)
         if (!zone_compute_rect(face, r, zone, &sx, &sy))
             continue;
         haste_jitter(r);
-        uint8_t palette[ICON_COLORS];
+        uint8_t palette[IMAGE_COLORS];
         ui_draw_champion_face_icon(face, i, palette);
         offscreen_blit(&area,
                        &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette}, r);
@@ -388,7 +384,7 @@ static void show_panel_face(void)
     if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy)) {
         haste_jitter(r);
         int champ = g_action.champion - 1;
-        uint8_t palette[ICON_COLORS];
+        uint8_t palette[IMAGE_COLORS];
         ui_draw_champion_face_icon(face, champ, palette);
         offscreen_blit(&area,
                        &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette}, r);
@@ -421,8 +417,37 @@ static void show_spell_panel(void)
 static void show_action_menu(void)
 {
     for (int i = 0; i < g_champ_action_count; i++)
-        area_draw_name(i, 0);
+        area_draw_name(i, false);
     show_panel_face();
+}
+
+/* Draws the coin of pile offset at over the pile rectangle r, clipped to the action area. */
+static void put_coin(const Bitmap *image, const uint8_t *colors, const int16_t *r, int at)
+{
+    int16_t coin[RECT_SIZE] = {(int16_t)(r[RECT_X] + coin_pile[at][0]), (int16_t)(r[RECT_Y] + coin_pile[at][1]),
+                               r[RECT_W], r[RECT_H]};
+    int16_t cx = 0;
+    int16_t cy = 0;
+    int16_t d = (int16_t)(area.rect[RECT_X] - coin[RECT_X]);
+    if (d > 0) {
+        cx = d;
+        coin[RECT_X] += d;
+        coin[RECT_W] -= d;
+    }
+    d = (int16_t)(area.rect[RECT_Y] - coin[RECT_Y]);
+    if (d > 0) {
+        cy = d;
+        coin[RECT_Y] += d;
+        coin[RECT_H] -= d;
+    }
+    d = (int16_t)((coin[RECT_W] + coin[RECT_X] - 1) - (area.rect[RECT_X] + area.rect[RECT_W] - 1));
+    if (d > 0)
+        coin[RECT_W] -= d;
+    d = (int16_t)((coin[RECT_H] + coin[RECT_Y] - 1) - (area.rect[RECT_Y] + area.rect[RECT_H] - 1));
+    if (d > 0)
+        coin[RECT_H] -= d;
+    offscreen_blit(&area, &(BlitSource){.bitmap = image, .x = cx, .y = cy, .transparent = UI_KEY, .colormap = colors},
+                   coin);
 }
 
 /* Draws an open money box with a pile of coins for each coin slot. */
@@ -445,37 +470,13 @@ static void show_money_box(uint16_t box)
         int16_t sx = 0;
         int16_t sy = 0;
         zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy);
-        int n = counts[type];
-        int at = slot * PILE_SLOT_STEP + (n > COIN_PILE_MAX ? n - COIN_PILE_MAX : 0);
-        n = n < COIN_PILE_MAX ? n : COIN_PILE_MAX;
-        do {
+        /* the pile shows the last COIN_PILE_MAX coins */
+        int at = slot * PILE_SLOT_STEP + max_int(counts[type] - COIN_PILE_MAX, 0);
+        int n = min_int(counts[type], COIN_PILE_MAX);
+        for (int k = 0; k < n; k++) {
             at = (at + 1) & COIN_PILE_MASK;
-            int16_t coin[RECT_SIZE] = {(int16_t)(r[RECT_X] + coin_pile[at][0]), (int16_t)(r[RECT_Y] + coin_pile[at][1]),
-                                       r[RECT_W], r[RECT_H]};
-            int16_t cx = 0;
-            int16_t cy = 0;
-            int16_t d;
-            /* clip the coin to the action area */
-            if ((d = (int16_t)(area.rect[RECT_X] - coin[RECT_X])) > 0) {
-                cx = d;
-                coin[RECT_X] += d;
-                coin[RECT_W] -= d;
-            }
-            if ((d = (int16_t)(area.rect[RECT_Y] - coin[RECT_Y])) > 0) {
-                cy = d;
-                coin[RECT_Y] += d;
-                coin[RECT_H] -= d;
-            }
-            d = (int16_t)((coin[RECT_W] + coin[RECT_X] - 1) - (area.rect[RECT_X] + area.rect[RECT_W] - 1));
-            if (d > 0)
-                coin[RECT_W] -= d;
-            d = (int16_t)((coin[RECT_H] + coin[RECT_Y] - 1) - (area.rect[RECT_Y] + area.rect[RECT_H] - 1));
-            if (d > 0)
-                coin[RECT_H] -= d;
-            offscreen_blit(&area,
-                           &(BlitSource){.bitmap = image, .x = cx, .y = cy, .transparent = UI_KEY, .colormap = colors},
-                           coin);
-        } while (--n > 0);
+            put_coin(image, colors, r, at);
+        }
     }
 }
 
@@ -509,7 +510,7 @@ static void show_chest(uint16_t container, bool full)
                               .colormap = draw_gdat_image_palette(CAT_CONTAINER, index, GFX_CONTAINER_PICTURE)},
                 r);
         }
-        int icon = item_icon_index(t, SLOT_CONTAINER_FIRST + i, 1);
+        int icon = item_icon_index(t, SLOT_CONTAINER_FIRST + i, true);
         offscreen_draw_gdat_image(&area, (GdatKey){item_gdat_category(t), item_gdat_index(t), icon}, zone, UI_KEY);
     }
 }
@@ -528,7 +529,7 @@ static void show_hand_icons(int champ, bool full, bool redraw, bool flash_this)
 {
     const Champion *c = champion(champ);
     for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
-        int flash = 0;
+        bool flash = false;
         bool update = false;
         if (flash_this && g_action.flash_hand == hand) {
             flash = g_action.flash > 0;
@@ -568,7 +569,7 @@ static void show_party_hands(bool full, bool changed)
         }
         bool flash_this = (g_action.flash < 0 ? -g_action.flash : g_action.flash) - 1 == i;
         show_hand_icons(i, full, redraw, flash_this);
-        int flash = 0;
+        bool flash = false;
         if (flash_this && g_action.flash_hand == ACTION_HAND_SPELL) {
             flash = g_action.flash > 0;
             redraw = true;
@@ -605,10 +606,10 @@ static bool party_icons_changed(void)
         uint8_t dir = (uint8_t)dir_relative(c->dir, g_game.party_dir);
         uint8_t cell = (uint8_t)dir_relative(c->cell, g_game.party_dir);
         if (!c->health || g_input_drag_state == cell + 1)
-            cell = NO_CELL;
+            cell = DRAWN_NONE;
         if (cell != drawn.cell[i] || dir != drawn.dir[i]) {
             changed = true;
-            if (cell != NO_CELL)
+            if (cell != DRAWN_NONE)
                 g_action.dirty = 1;
             drawn.cell[i] = cell;
             drawn.dir[i] = dir;
@@ -657,7 +658,7 @@ static void show_hand_panel(void)
         refresh_input_zones(); /* the menu draws with the input zones of its actions */
         show_action_menu();
     } else if (g_action.mode == ACTION_MODE_MINION_MAP) {
-        if (!(g_action.flags & FLAGS_MINION_HEADER))
+        if (!(g_action.flags & MAP_PANEL_DRAWN))
             drawn.action_mode = ACTION_MODE_STALE;
         mmap_draw(thing);
     } else {
@@ -667,7 +668,7 @@ static void show_hand_panel(void)
 }
 
 /* Draws the open hand or spell panel when it changed; returns false while the panel waits for its redraw delay. */
-static bool show_open_panel(bool full, bool party_changed, int tick)
+static bool show_open_panel(bool full, bool party_changed, bool tick)
 {
     if (g_action.redraw_delay || full || party_changed || (g_action.mode == ACTION_MODE_MINION_MAP && tick)) {
         if (g_action.redraw_delay > 1) {
@@ -679,7 +680,7 @@ static bool show_open_panel(bool full, bool party_changed, int tick)
         } else {
             begin_draw(true);
             show_panel_header();
-            g_action.flags &= ~FLAGS_MINION_HEADER;
+            g_action.flags &= ~MAP_PANEL_DRAWN;
         }
         if (g_action.hand == ACTION_HAND_SPELL) {
             g_action.mode = ACTION_MODE_SPELL;
@@ -698,7 +699,7 @@ static bool show_open_panel(bool full, bool party_changed, int tick)
 /* The face of the champion of the open panel redraws while it has an aura, and once after the aura ends. */
 static void show_panel_face_aura(void)
 {
-    static const uint8_t mode_shows_face[] = {0, 1, 1, 0, 0, 0, 0};
+    static const bool mode_shows_face[ACTION_MODE_RESULT + 1] = {[ACTION_MODE_MENU] = true, [ACTION_MODE_SPELL] = true};
     if (g_action.champion <= 0 || g_action.mode < 0 || !mode_shows_face[g_action.mode])
         return;
     const Champion *c = champion(g_action.champion - 1);
@@ -751,8 +752,8 @@ static void show_action_result(int16_t value)
             &area, (GdatKey){CAT_PANEL, 0, g_action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT},
             ZONE_AMMO_HAND, GFX_OPAQUE);
         for (int weapon_index = 0; weapon_index < GDAT_NO_INDEX; weapon_index++) {
-            uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, weapon_index, GDAT_TYPE_VALUE, AMMO_ATTR);
-            if (ammo && !(ammo & AMMO_NOT_AMMO) && ammo & g_action.result_ammo) {
+            uint16_t ammo = gdat_entry_index(gdat_current(), CAT_WEAPON, weapon_index, GDAT_TYPE_VALUE, ATTR_AMMO);
+            if (ammo && !(ammo & AMMO_LAUNCHER) && ammo & g_action.result_ammo) {
                 offscreen_draw_gdat_image(&area, (GdatKey){CAT_WEAPON, weapon_index, GFX_ITEM_ICON}, ZONE_AMMO_ITEM,
                                           GFX_OPAQUE);
                 return;
@@ -771,7 +772,7 @@ static void finish_update(void)
 }
 
 /* Draws what changed in the action area since the last update: the result of an action, the hands, the open panel. */
-static void redraw_changes(int tick)
+static void redraw_changes(bool tick)
 {
     bool full = false;
     bool party_changed = false;
@@ -810,7 +811,8 @@ static void redraw_changes(int tick)
         if (g_action.mode != ACTION_MODE_RESULT)
             damage_hold_ticks = 0;
         if (damage_hold_ticks > DAMAGE_HOLD_EXTRA_TICKS) {
-            damage_hold_ticks -= tick != 0;
+            if (tick)
+                damage_hold_ticks--;
             return;
         }
         damage_hold_ticks = 0;
@@ -826,7 +828,7 @@ static void redraw_changes(int tick)
     show_panel_face_aura();
 }
 
-void area_update(int tick)
+void area_update(bool tick)
 {
     if (g_ui.candidate)
         return;
@@ -842,6 +844,6 @@ bool area_end_damage_hold(int16_t x, int16_t y)
         x >= rect[RECT_X] + rect[RECT_W] || y >= rect[RECT_Y] + rect[RECT_H])
         return false;
     damage_hold_ticks = 0;
-    area_update(0);
+    area_update(false);
     return true;
 }

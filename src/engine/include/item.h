@@ -149,7 +149,7 @@ void item_set_do_not_discard(uint16_t thing, bool keep);
 uint16_t item_create_by_index(uint16_t item);
 
 /* Minion links. */
-/* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
+/* The projectile among the possessions of group that carries payload (THING_NONE: any); THING_NONE when none. */
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload);
 
 /* Items of the champion actions. */

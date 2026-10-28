@@ -209,7 +209,7 @@ void session_open_slot_dialog(int id, int buttons)
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
-    dialog_screen_mode(1);
+    dialog_screen_mode(true);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
@@ -246,7 +246,7 @@ static int choose_load_slot(void)
     session_open_slot_dialog(DIALOG_LOAD_SLOTS, SLOT_BUTTONS_LOAD);
     session_draw_slot_selection(SAVE_SLOT_NONE);
     dialog_present();
-    dialog_screen_mode(0);
+    dialog_screen_mode(false);
     int chosen = SAVE_SLOT_NONE;
     bool done = false;
     g_input_match.choice = DIALOG_NO_CHOICE;
@@ -496,7 +496,7 @@ void session_save(void)
     bool quit = false;
     game_set_restart(false);
     action_area_close();
-    area_update(0);
+    area_update(false);
     play_hide_view();
     timeline_rebuild_free_list();
     int slot = run_save_menu(&quit);
@@ -609,7 +609,7 @@ void session_end(bool party_dead)
         int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, END_SOUND_PRIORITY, SOUND_VOLUME_FULL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_NOW);
         play_wait_frames(END_SOUND_VBLANKS);
     }
     g_dialog.screen_mode = 1;

@@ -613,9 +613,10 @@ static void set_marker(int x, int y, int map)
 static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
 {
     *ms = (MinionSquares){.linked_map = -1};
-    if (flags & MAP_MINION) {
-        uint16_t w =
-            thing_word(item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing), PROJECTILE_LOCATION);
+    uint16_t link =
+        flags & MAP_MINION ? item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing) : THING_NONE;
+    if (link != THING_NONE) {
+        uint16_t w = thing_word(link, PROJECTILE_LOCATION);
         ms->x = location_x(w);
         ms->y = location_y(w);
         ms->map = location_map(w);
@@ -776,12 +777,12 @@ void mmap_draw(uint16_t thing)
     action_set_map_flags(MAP_STATIC_CREATURES | MAP_PARTY, true);
     int kind = container_type(thing);
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    uint16_t link = 0;
+    uint16_t link = THING_NONE;
     if (kind != MAP_KIND_NO_OPTIONS) {
         action_set_map_flags(MAP_HAS_OPTIONS, true);
         if (kind != MAP_KIND_PLAIN) {
             link = item_find_link_projectile(group, thing);
-            if (link)
+            if (link != THING_NONE)
                 action_set_map_flags(MAP_MINION, true);
             else if (g_action.flags & MAP_MINION)
                 action_set_map_flags(MAP_MINION | MAP_PANEL_DRAWN, false);
@@ -792,7 +793,7 @@ void mmap_draw(uint16_t thing)
         offscreen_draw_gdat_image(area, (GdatKey){CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE}, ZONE_PANEL,
                                   GFX_OPAQUE);
         for (int i = 0; i < g_champ_action_count; i++)
-            area_draw_name(i, 0);
+            area_draw_name(i, false);
         mmap_draw_option_buttons(0);
         action_set_map_flags(MAP_PANEL_DRAWN, true);
     }
@@ -801,7 +802,7 @@ void mmap_draw(uint16_t thing)
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
             action_set_map_flags(MAP_MARKER, true);
         if (kind == MAP_KIND_MINION) {
-            if (!link)
+            if (link == THING_NONE)
                 action_set_map_flags(MAP_MARKER, false);
             else
                 follow_minion(link, group, &view);

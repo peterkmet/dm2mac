@@ -25,13 +25,13 @@ static struct {
 } menu = {.filter = SETTINGS_FILTER_NONE, .saved = SETTINGS_FILTER_NONE};
 
 /* The folder of SETTINGS.TXT: the --saves folder, else the DATA folder of the game (as QUICK.DAT). */
-static char *find_folder(char *dir, size_t size)
+static char *find_folder(char *folder, size_t size)
 {
     if (g_session.save_dir[0])
-        snprintf(dir, size, "%s", g_session.save_dir);
+        snprintf(folder, size, "%s", g_session.save_dir);
     else
-        snprintf(dir, size, "%s/DATA", g_session.data_dir);
-    return dir;
+        snprintf(folder, size, "%s/DATA", g_session.data_dir);
+    return folder;
 }
 
 /* Draws the menu with the current filter. */
@@ -115,7 +115,7 @@ bool optmenu_process_key(uint16_t key)
     switch (key) {
     case SCAN_ESCAPE:
         return true;
-    case SCAN_RETURN:
+    case KEY_ENTER:
         if (menu.row == OPTMENU_ROW_CONTINUE)
             return true;
         change_filter(1);

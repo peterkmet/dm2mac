@@ -15,12 +15,14 @@
 #include "sensor.h"
 #include "timeline.h"
 
-/* Sizes of the request queues and the delays of a request. */
+/* Sizes of the request queues. */
 #define REQUESTS_MAX 20 /* requests of a game step */
 #define DEFERRED_MAX 6
 #define DELAYED_MAX  8
-#define DELAY_NOW    0
-#define DELAY_STEP   1 /* at the end of the game step */
+
+/* The delays of sndreq_request_after that do not go through the timeline. */
+#define TICKS_NOW      0
+#define TICKS_STEP_END 1
 
 /* The header of a GDAT sound item before its samples. */
 #define SAMPLE_HEADER 6 /* u16 rate, then 08 01 00 00 */
@@ -45,8 +47,9 @@ typedef struct {
 /* A sound that waits for its timeline event. */
 typedef struct {
     bool used;
-    uint8_t category, index, entry, map, x, y;
-    int16_t priority, volume;
+    uint8_t category, index, entry;
+    int16_t map, x, y;
+    int priority, volume;
 } Delayed;
 
 /* Lateral to forward ratios (<< 11) that start each pan step, from the side to the front (table of SKULL.EXE). */
@@ -169,6 +172,14 @@ SoundLevel sndreq_volume_pan(uint8_t volume, int lateral, int forward)
     return level;
 }
 
+SoundCue sndreq_cue_with_fallback(SoundCue cue, int fallback)
+{
+    Sound sound;
+    if (sndreq_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
+        cue.index = fallback;
+    return cue;
+}
+
 /* Requests */
 
 /* True when request a plays before request b: a higher priority, then a louder sound. */
@@ -211,60 +222,68 @@ static void start_requests(const Pending *list, int count)
     }
 }
 
-/* Keeps a sound for later: a timeline event plays it after delay ticks. */
-static void request_later(const SoundCue *cue, int x, int y, int delay)
+/* Keeps a sound for later: a timeline event plays it after ticks game steps. */
+static void request_later(const SoundCue *cue, int16_t x, int16_t y, uint16_t ticks)
 {
     int slot = 0;
     while (slot < DELAYED_MAX && queues.delayed[slot].used)
         slot++;
     if (slot == DELAYED_MAX)
         return;
-    queues.delayed[slot] = (Delayed){true,
-                                     (uint8_t)cue->category,
-                                     (uint8_t)cue->index,
-                                     (uint8_t)cue->entry,
-                                     (uint8_t)g_party.cur_map,
-                                     (uint8_t)x,
-                                     (uint8_t)y,
-                                     (int16_t)cue->priority,
-                                     (int16_t)cue->volume};
-    TimelineEvent e = {.time_map = timeline_time_map((g_game.game_time + delay - 1) & EVENT_TIME_MASK, g_party.cur_map),
+    queues.delayed[slot] = (Delayed){.used = true,
+                                     .category = (uint8_t)cue->category,
+                                     .index = (uint8_t)cue->index,
+                                     .entry = (uint8_t)cue->entry,
+                                     .map = g_party.cur_map,
+                                     .x = x,
+                                     .y = y,
+                                     .priority = cue->priority,
+                                     .volume = cue->volume};
+    TimelineEvent e = {.time_map = timeline_time_map((g_game.game_time + ticks - 1) & EVENT_TIME_MASK, g_party.cur_map),
                        .type = EVENT_DELAYED_SOUND,
                        .priority = (uint8_t)cue->priority};
-    e.data[0] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
+    e.data[DELAYED_EVENT_SLOT] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
     timeline_add_event(&e);
 }
 
-void sndreq_request(SoundCue cue, int16_t x, int16_t y, int delay)
+/* True when the party sees the current map: from its square or through a seamless passage. */
+static bool party_sees_current_map(void)
 {
-    delay = (int16_t)delay;
-    if (delay > 0 && g_party.cur_map != g_party.square_map && g_party.cur_map != g_party.alt_view_map)
-        return;
+    return g_party.cur_map == g_party.square_map || g_party.cur_map == g_party.alt_view_map;
+}
+
+/* Loads the sound of cue while the queue of the game step has room; a sleeping party hears half the volume. */
+static bool load_request(SoundCue *cue, Sound *sound)
+{
     if (queues.request_count == REQUESTS_MAX)
+        return false;
+    if (sndreq_load(gdat_current(), cue->category, cue->index, cue->entry, sound) != GDAT_OK)
+        return false;
+    if (g_party_sleeping)
+        cue->volume >>= 1;
+    return true;
+}
+
+void sndreq_request(SoundCue cue, int16_t x, int16_t y, enum SoundWhen when)
+{
+    if (when == SOUND_STEP_END && !party_sees_current_map())
         return;
     Sound sound;
-    if (sndreq_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
+    if (!load_request(&cue, &sound))
         return;
-    cue.volume = (int16_t)cue.volume;
-    if (g_party_sleeping)
-        cue.volume >>= 1;
-    if (delay > DELAY_STEP) {
-        request_later(&cue, x, y, delay);
-        return;
-    }
     int map_x = x;
     int map_y = y;
-    if (delay > 0) { /* a sound on the other map of a seamless passage */
+    if (when == SOUND_STEP_END) { /* a sound on the other map of a seamless passage */
         x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(g_game.party_map);
         y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(g_game.party_map);
     }
-    int dx = (int16_t)x - g_game.party_x;
-    int dy = (int16_t)y - g_game.party_y;
+    int dx = x - g_game.party_x;
+    int dy = y - g_game.party_y;
     SoundOffset offset;
     sndreq_party_offset(dx, dy, g_game.party_dir, 0, &offset);
     Pending *queue = queues.requests;
     int *count = &queues.request_count;
-    if (delay < 0) {
+    if (when == SOUND_DEFERRED) {
         if (queues.deferred_count == DEFERRED_MAX)
             return;
         queue = queues.deferred;
@@ -279,39 +298,47 @@ void sndreq_request(SoundCue cue, int16_t x, int16_t y, int delay)
         if (!sndreq_party_offset(dx, dy, g_game.party_dir, path, &offset))
             return;
     }
-    Pending *p = &queue[*count]; /* a sound of delay 0 uses the next free entry for itself */
+    Pending *p = &queue[*count]; /* a sound of SOUND_NOW uses the next free entry for itself */
     *p = (Pending){
         {(uint8_t)cue.category, (uint8_t)cue.index, (uint8_t)cue.entry, (uint8_t)cue.priority, (uint8_t)cue.volume,
          (int8_t)offset.lateral, (int8_t)offset.forward},
         sound
     };
-    if (delay == DELAY_NOW)
+    if (when == SOUND_NOW)
         start_requests(p, 1);
     else
         (*count)++;
 }
 
-void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, int delay)
+void sndreq_request_with_fallback(SoundCue cue, int fallback, int16_t x, int16_t y, enum SoundWhen when)
 {
+    sndreq_request(sndreq_cue_with_fallback(cue, fallback), x, y, when);
+}
+
+void sndreq_request_after(SoundCue cue, int16_t x, int16_t y, uint16_t ticks)
+{
+    if (ticks == TICKS_NOW || ticks == TICKS_STEP_END) {
+        sndreq_request(cue, x, y, ticks == TICKS_NOW ? SOUND_NOW : SOUND_STEP_END);
+        return;
+    }
+    if (!party_sees_current_map())
+        return;
     Sound sound;
-    if (sndreq_load(gdat_current(), cue.category, cue.index, cue.entry, &sound) != GDAT_OK)
-        cue.index = fallback;
-    sndreq_request(cue, x, y, delay);
+    if (load_request(&cue, &sound))
+        request_later(&cue, x, y, ticks);
 }
 
 void sndreq_request_delayed(int16_t slot)
 {
     Delayed *d = &queues.delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
-    int map = (int8_t)d->map;
-    if (map == g_party.square_map || map == g_party.alt_view_map)
-        sndreq_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, (int8_t)d->x, (int8_t)d->y,
-                       DELAY_STEP);
+    if (d->map == g_party.square_map || d->map == g_party.alt_view_map)
+        sndreq_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, d->x, d->y, SOUND_STEP_END);
     d->used = false;
 }
 
-void sndreq_flush_requests(int queue)
+void sndreq_flush_requests(bool deferred)
 {
-    if (queue) {
+    if (deferred) {
         if (queues.deferred_count > 0)
             start_requests(queues.deferred, queues.deferred_count);
         queues.deferred_count = 0;

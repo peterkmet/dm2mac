@@ -50,7 +50,8 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_ATTACKS_ALL    0x0008 /* a melee attack hits several champions */
 #define CREATURE_ATTACKS_RANDOM 0x0010 /* ... random champions */
 /* CREATURE_NON_MATERIAL: a closing door does not hit the creature, a melee hit reaches it only when the hit pierces, a
-   MELEE_MODE_REACH attack of the champions reaches only it, and a missile hits it only as harm non-material. */
+   MELEE_MODE_REACH attack of the champions reaches only it, a missile hits it only as harm non-material, and the sight
+   of creatures passes it. */
 #define CREATURE_NON_MATERIAL   0x0020
 #define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
 #define CREATURE_SEES_IN_DARK   0x0800 /* flags: the light does not limit its sight */
