@@ -8,11 +8,9 @@
 /* The high nibble of a 4 bpp byte. */
 #define HIGH_NIBBLE_MASK 0xf0
 
-/* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel; the dimming
-   divides brightness * light by 64. */
+/* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel. */
 #define FRACTION_SHIFT      7
 #define BYTE_FRACTION_SHIFT 8
-#define DIM_SHIFT           6
 
 /* The color ramps: GDAT (1, 0, GDAT_TYPE_REMAP, 2) holds the ramp count, the length of each ramp, the brightness steps
    and the colors of each ramp, then the ramp and step of each of the 256 palette colors. */
@@ -355,7 +353,7 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, in
         int last = ramps.length[r] - 1;
         const uint8_t *brightness = ramps.brightness[r];
         const uint8_t *colors = ramps.colors[r];
-        int target = brightness[rs[1]] * light >> DIM_SHIFT;
+        int target = brightness[rs[1]] * light >> SCALE_FULL_SHIFT;
         int k = nearest_step(brightness, last, target);
         int color = colors[k];
         /* the keys keep their meaning: take the nearest other step, alternating below and above; as in the original,
