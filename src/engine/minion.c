@@ -96,13 +96,13 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     g_hooks.zone_rect(ZONE_MAP_GRID, r);
     int16_t px = (int16_t)(x - (r[RECT_X] - g_minion_map.x_offset));
     int16_t py = (int16_t)(y - (r[RECT_Y] - g_minion_map.y_offset));
-    if (px % (MAP_ICON_W + GAP_X) < GAP_X || py % (MAP_ICON_H + GAP_Y) < GAP_Y)
+    if (px % MAP_CELL_SIZE < GAP_X || py % MAP_CELL_SIZE < GAP_Y)
         return;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
     if (!item_find_link_projectile(group, thing))
         return;
-    int col = px / (MAP_ICON_W + GAP_X);
-    int row = py / (MAP_ICON_H + GAP_Y);
+    int col = px / MAP_CELL_SIZE;
+    int row = py / MAP_CELL_SIZE;
     Location at = dun_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
                                     col - GRID_RADIUS);
     Position found = dungeon_location_on_map((Position){g_minion_map.map, at.x, at.y}, 0);

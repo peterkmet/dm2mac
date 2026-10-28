@@ -14,6 +14,8 @@
 #define MAP_ICON_H       7
 #define GAP_X            1
 #define GAP_Y            1
+/* Pixels per square of a map: a 7 x 7 icon and a 1 pixel gap. */
+#define MAP_CELL_SIZE    (MAP_ICON_W + GAP_X)
 #define GRID_RADIUS      3
 #define MAP_OPTION_COUNT 4
 #define MAP_CLIP_COUNT   4
@@ -64,9 +66,6 @@ typedef struct {
 
 /* The command of a click on the minion map grid. */
 #define CMD_MINION_MAP 0x55
-
-/* Pixels per square of a map: a 7 x 7 icon and a 1 pixel gap. */
-#define MAP_CELL_SIZE 8
 
 extern MinionMap g_minion_map;
 
