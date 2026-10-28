@@ -58,7 +58,7 @@ const char *gtext_format_number(int value, bool pad, int width)
         *--p = '0';
     for (; value; value /= DECIMAL_BASE)
         *--p = (char)('0' + value % DECIMAL_BASE);
-    return pad ? end - (uint16_t)width : p;
+    return pad ? end - width : p;
 }
 
 /* Appends src to the formatted text in dst. */
