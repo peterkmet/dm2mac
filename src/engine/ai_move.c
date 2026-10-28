@@ -55,8 +55,6 @@
 /* The payload of a missile that is an explosion: this plus the explosion type. */
 #define EXPLOSION_THING_BASE    0xff80
 
-/* The creature flag 0x20: a creature that hides the squares behind it. */
-#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NON_MATERIAL
 /* The AI class flags (g_ai_class_flags). */
 #define AI_CLASS_SEES_ALL_SIDES     0x0100
 #define AI_CLASS_SEES_BEHIND        0x0400
@@ -480,7 +478,7 @@ bool ai_square_blocks_line(Location at)
         if (flags & CREATURE_STATIC) {
             if (creature_door_size(creature_group_info(g)) < DOOR_STATE_HALF)
                 return true;
-        } else if (!(flags & CREATURE_NOT_SEEN_THROUGH)) {
+        } else if (!(flags & CREATURE_NON_MATERIAL)) {
             return true;
         }
     }
@@ -771,7 +769,7 @@ static bool can_step_off(Location at)
 static bool party_door_stops_attack(int16_t x, int16_t y)
 {
     if (g_ai_party.map != g_party.cur_map || !(class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS) ||
-        g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH || (x == own_x() && y == own_y() && g_party.cur_map == g_ai.map))
+        g_ai.info->flags & CREATURE_NON_MATERIAL || (x == own_x() && y == own_y() && g_party.cur_map == g_ai.map))
         return false;
     return square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR &&
            axis_distance(x, y, g_ai_party.x, g_ai_party.y) <= 1 && rand_2bits();
@@ -1376,7 +1374,7 @@ static bool is_dangerous(Move *m)
 static bool party_door_stops_move(Move *m)
 {
     return !m->same && g_ai_party.map == g_party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS &&
-           !(g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH) && square_type(g_ai_square.square) == SQUARE_DOOR &&
+           !(g_ai.info->flags & CREATURE_NON_MATERIAL) && square_type(g_ai_square.square) == SQUARE_DOOR &&
            axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1 &&
            (m->sx != own_x() || m->sy != own_y() || rand_2bits());
 }
