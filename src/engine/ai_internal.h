@@ -108,16 +108,16 @@ uint8_t *ai_find_path(void);
 /* Perception, items, and paths (ai_move.c) */
 
 /* True for squares that the sight of a creature does not cross: walls, closed doors that hide, closed fake walls. */
-bool ai_square_is_obstacle(int16_t x, int16_t y);
-/* Walks the squares of the line from (x2, y2) toward (x1, y1): the square distance of the ends (1 for adjacent
+bool ai_square_is_obstacle(Location at);
+/* Walks the squares of the line from target toward viewer: the square distance of the ends (1 for adjacent
    squares), 0 when blocked() stops it. */
-int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked)(int16_t x, int16_t y));
-/* Makes (x, y) of the current map the square that the AI reads; keeps the cache when it is the same square. */
-void ai_cache_square(int16_t x, int16_t y);
+int ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at));
+/* Makes the square at of the current map the square that the AI reads; keeps the cache when it is the same square. */
+void ai_cache_square(Location at);
 /* Turns the group toward dir (action turn left or right); not passed when it already faces dir. */
 AiCommand ai_turn_toward(int16_t dir);
-/* True when a dangerous projectile flies toward (x, y) within 3 squares in a direction that the creature sees. */
-bool ai_projectile_incoming(int16_t x, int16_t y);
+/* True when a dangerous projectile flies toward the square at within 3 squares in a direction that the creature sees. */
+bool ai_projectile_incoming(Location at);
 /* Removes and frees the items of filter from a thing list (cell CELL_ANY: any cell); the matching items inside a
    chest go too, and a matching chest gives its other contents to the list. */
 void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell);

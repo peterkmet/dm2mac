@@ -187,11 +187,11 @@ void ai_update_group(void);
 
 /* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide.
    It is exported for the tests. */
-bool ai_square_blocks_line(int16_t x, int16_t y);
+bool ai_square_blocks_line(Location at);
 /* A line toward the party: the party square blocks it (the line ends there); exported for the tests. */
-bool ai_blocks_line_to_target(int16_t x, int16_t y);
+bool ai_blocks_line_to_target(Location at);
 /* A line test that ignores the square of the group in the AI context; exported for the tests. */
-bool ai_blocks_line_except_self(int16_t x, int16_t y);
+bool ai_blocks_line_except_self(Location at);
 /* The first object of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_object(void);
 /* The first creature group of the square in the AI cache, read once; exported for the tests. */

@@ -393,20 +393,20 @@ static void set_action_destination(int16_t x, int16_t y)
     g_ai.active->destination = pack_location(x, y, g_party.cur_map);
 }
 
-bool ai_square_is_obstacle(int16_t x, int16_t y)
+bool ai_square_is_obstacle(Location at)
 {
-    uint8_t square = dun_get_square((Location){x, y});
+    uint8_t square = dun_get_square(at);
     int type = square_type(square);
     if (type == SQUARE_DOOR)
-        return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED && !read_door_value(x, y, DOOR_KEY_SEE_THROUGH);
+        return (square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED && !read_door_value(at.x, at.y, DOOR_KEY_SEE_THROUGH);
     return type == SQUARE_WALL || type == SQUARE_UNKNOWN ||
            (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN));
 }
 
-bool ai_square_blocks_line(int16_t x, int16_t y)
+bool ai_square_blocks_line(Location at)
 {
-    int16_t sx = x;
-    int16_t sy = y;
+    int16_t sx = at.x;
+    int16_t sy = at.y;
     uint8_t square = dun_get_square((Location){sx, sy});
     int type = square_type(square);
     if (type == SQUARE_WALL)
@@ -445,18 +445,18 @@ bool ai_square_blocks_line(int16_t x, int16_t y)
     return false;
 }
 
-bool ai_blocks_line_to_target(int16_t x, int16_t y)
+bool ai_blocks_line_to_target(Location at)
 {
-    if (at_party(x, y))
+    if (at_party(at.x, at.y))
         return true;
-    return ai_square_blocks_line(x, y);
+    return ai_square_blocks_line(at);
 }
 
-bool ai_blocks_line_except_self(int16_t x, int16_t y)
+bool ai_blocks_line_except_self(Location at)
 {
-    if (x == own_x() && y == own_y())
+    if (at_group(at.x, at.y))
         return false;
-    return ai_square_blocks_line(x, y);
+    return ai_square_blocks_line(at);
 }
 
 /* The slope of the line from (x1, y1) to (x, y) in 1/64, steep: by y; SLOPE_VERTICAL when the main delta is 0. */
@@ -468,8 +468,12 @@ static int16_t line_slope(bool steep, int x1, int y1, int x, int y)
     return (int16_t)(((steep ? x - x1 : y - y1) << SLOPE_SHIFT) / major);
 }
 
-int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked)(int16_t x, int16_t y))
+int ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at))
 {
+    int16_t x1 = viewer.x;
+    int16_t y1 = viewer.y;
+    int16_t x2 = target.x;
+    int16_t y2 = target.y;
     if (abs_int((int16_t)(x1 - x2)) + abs_int((int16_t)(y1 - y2)) <= 1)
         return 1;
     int16_t dx = abs_int((int16_t)(x2 - x1));
@@ -483,11 +487,11 @@ int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked
     int16_t y = y2;
     do {
         if (diagonal) {
-            if (blocked((int16_t)(x + step_x), y) && blocked(x, (int16_t)(y + step_y)))
+            if (blocked((Location){x + step_x, y}) && blocked((Location){x, y + step_y}))
                 return 0;
             y += step_y;
             x += step_x;
-            if (blocked(x, y))
+            if (blocked((Location){x, y}))
                 return 0;
         } else {
             int16_t err_x = abs_int((int16_t)(line_slope(steep, x1, y1, x + step_x, y) - slope));
@@ -496,12 +500,12 @@ int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked
                 x += step_x;
             else
                 y += step_y;
-            if (blocked(x, y)) {
+            if (blocked((Location){x, y})) {
                 if (err_x != err_y)
                     return 0;
                 y -= step_y; /* a tie: the other step */
                 x += step_x;
-                if (blocked(x, y))
+                if (blocked((Location){x, y}))
                     return 0;
             }
         }
@@ -509,14 +513,14 @@ int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked
     return axis_distance(x1, y1, x2, y2);
 }
 
-void ai_cache_square(int16_t x, int16_t y)
+void ai_cache_square(Location at)
 {
-    if (x == g_ai_square.x && y == g_ai_square.y && g_party.cur_map == g_ai_square.map)
+    if (at.x == g_ai_square.x && at.y == g_ai_square.y && g_party.cur_map == g_ai_square.map)
         return;
     g_ai_square.map = g_party.cur_map;
-    g_ai_square.x = x;
-    g_ai_square.y = y;
-    g_ai_square.square = dun_get_square((Location){x, y});
+    g_ai_square.x = at.x;
+    g_ai_square.y = at.y;
+    g_ai_square.square = dun_get_square(at);
     g_ai_square.first_thing = g_ai_square.square & SQUARE_HAS_THINGS ? THING_NONE : THING_ENDOFLIST;
     g_ai_square.first_object = g_ai_square.first_thing;
     g_ai_square.first_group = g_ai_square.first_thing;
@@ -607,7 +611,7 @@ static Location back_off_line(uint8_t *distance_map, Location from, int16_t back
         sx += g_dir_dx[back];
         sy += g_dir_dy[back];
         uint8_t reached = *search_cell(distance_map, sx, sy);
-        if (!reached || reached > limit || ai_blocks_line_to_target(sx, sy)) {
+        if (!reached || reached > limit || ai_blocks_line_to_target((Location){sx, sy})) {
             sx = px;
             sy = py;
             break;
@@ -658,7 +662,7 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location
                     }
                 }
             }
-            if (*search_cell(distance_map, tx, ty) || ai_blocks_line_to_target(tx, ty))
+            if (*search_cell(distance_map, tx, ty) || ai_blocks_line_to_target((Location){tx, ty}))
                 break;
         }
         if (found)
@@ -670,7 +674,7 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location
                        dir_opposite(back))
              .passed)
         return none;
-    ai_cache_square(at.x, at.y);
+    ai_cache_square(at);
     AiLineTarget target = {true, pack_location(tx, ty, g_party.cur_map)};
     return target;
 }
@@ -789,7 +793,7 @@ static bool has_attack_target(int mode, int16_t tx, int16_t ty)
     if (mode <= ATTACK_MODE_PARTY_RANGED)
         return at_party(tx, ty);
     if (mode == ATTACK_MODE_GROUP) {
-        ai_cache_square(tx, ty);
+        ai_cache_square((Location){tx, ty});
         return ai_cached_first_group() != THING_ENDOFLIST;
     }
     return true;
@@ -850,7 +854,7 @@ AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir)
     flags = attacks_in_range(flags, from, distance);
     if (!flags || !has_attack_target(mode, tx, ty))
         return fail_command(execute);
-    if (distance > 1 && !ai_trace_line(x, y, tx, ty, ai_square_blocks_line))
+    if (distance > 1 && !ai_trace_line((Location){x, y}, (Location){tx, ty}, ai_square_blocks_line))
         return fail_command(execute);
     int16_t steal_cell = -1;
     if (flags & ATTACK_STEAL) {
@@ -859,7 +863,7 @@ AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir)
             return fail_command(execute);
     }
     if (class_flags() & AI_CLASS_AVOIDS_CLOUDS) {
-        ai_cache_square(tx, ty);
+        ai_cache_square((Location){tx, ty});
         if (has_explosion(ai_cached_first_object(), EXPLOSION_LASTING_CLOUD) && !(flags &= ATTACK_MELEE_MASK))
             return fail_command(execute);
     }
@@ -927,7 +931,7 @@ static bool skills_reach_door(const DoorAction *a)
     if (!((flags & DOOR_SKILL_SHOOT_BUTTON && button) ||
           (a->mode == DOOR_MODE_OPEN && flags & DOOR_SKILL_SPELL && by_magic)))
         return false;
-    return ai_trace_line(a->from.x, a->from.y, a->to.x, a->to.y, ai_square_blocks_line) != 0;
+    return ai_trace_line(a->from, a->to, ai_square_blocks_line) != 0;
 }
 
 /* Starts the door action that the skills allow: the handle or button, a button shot, or an attack on the door. */
@@ -973,7 +977,7 @@ static AiCommand start_door_action(const DoorAction *a)
 /* Tests the door on the target square for the action: the door state, the door skills, and the spells on the way. */
 static DoorTest test_door(DoorAction *a)
 {
-    ai_cache_square(a->to.x, a->to.y);
+    ai_cache_square(a->to);
     if (square_type(g_ai_square.square) != SQUARE_DOOR)
         return DOOR_TEST_FAIL;
     int door_state = g_ai_square.square & SQUARE_DOOR_STATE;
@@ -1036,8 +1040,10 @@ AiCommand ai_try_door_action(AiTest test, Location from, Location to, int16_t di
     return start_door_action(&a);
 }
 
-bool ai_projectile_incoming(int16_t x, int16_t y)
+bool ai_projectile_incoming(Location at)
 {
+    int16_t x = at.x;
+    int16_t y = at.y;
     for (int16_t d = 0; d < DIR_COUNT; d++) {
         if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
             bool wanders = group_mood_flag(g_ai.group_thing, MOOD_WANDERS);
@@ -1057,7 +1063,7 @@ bool ai_projectile_incoming(int16_t x, int16_t y)
                 if (thing_type(t) == THING_PROJECTILE && projectile_dir(t) == dir_opposite(d) &&
                     projectile_get_attack(t, thing_word(t, PROJECTILE_PAYLOAD)))
                     return true;
-            if (!at_group(sx, sy) && ai_square_blocks_line(sx, sy))
+            if (!at_group(sx, sy) && ai_square_blocks_line((Location){sx, sy}))
                 break;
         }
     }
@@ -1084,7 +1090,7 @@ static void set_door_cost(int16_t x, int16_t y)
 /* The quick test of the cost search (MOVE_KIND_COST): may the search enter the square, at what cost. */
 static bool search_square_test(int command, int16_t x, int16_t y)
 {
-    ai_cache_square(x, y);
+    ai_cache_square((Location){x, y});
     uint8_t square = g_ai_square.square;
     switch (square_type(square)) {
     case SQUARE_FAKE_WALL:
@@ -1290,15 +1296,15 @@ static bool set_move_target(Move *m)
 static bool quick_test(Move *m)
 {
     if (m->kind == MOVE_KIND_OPEN) {
-        ai_cache_square(m->tx, m->ty);
+        ai_cache_square((Location){m->tx, m->ty});
         uint8_t square = g_ai_square.square;
         return square_type(square) != SQUARE_WALL &&
                !(square_type(square) == SQUARE_FAKE_WALL && !(square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)));
     }
     if (m->kind == MOVE_KIND_SIGHT) {
-        bool r = !ai_square_is_obstacle(m->tx, m->ty);
+        bool r = !ai_square_is_obstacle((Location){m->tx, m->ty});
         if (r)
-            ai_cache_square(m->tx, m->ty);
+            ai_cache_square((Location){m->tx, m->ty});
         return r;
     }
     return search_square_test(m->kind, m->tx, m->ty);
@@ -1324,7 +1330,7 @@ static bool is_dangerous(Move *m)
                 return true;
         }
     }
-    return m->kind == MOVE_KIND_SAFE_FLEE && !cloud && ai_projectile_incoming(m->tx, m->ty);
+    return m->kind == MOVE_KIND_SAFE_FLEE && !cloud && ai_projectile_incoming((Location){m->tx, m->ty});
 }
 
 /* True when a creature that avoids doors near the party must not enter the door square of the move. */
@@ -1406,7 +1412,7 @@ static bool test_move(Move *m, AiMoveTest test)
         m->result = quick_test(m);
         return false;
     }
-    ai_cache_square(m->tx, m->ty);
+    ai_cache_square((Location){m->tx, m->ty});
     if (g_ai.marker_mask && m->d != DIR_KEEP_FACING) {
         int16_t sides = (int16_t)ai_find_marker(MARKER_LEVEL_SIDES, (uint16_t)g_ai.marker_mask);
         if (sides != -1 && (1 << dir_opposite(m->d)) & sides)
@@ -1726,7 +1732,7 @@ AiCommand ai_try_take_item(AiTest test, Location from, Location to, int16_t dir,
         if (!it.same && it.d == -1)
             it.d = (int16_t)dun_get_direction_to(from.x, from.y, tx, ty);
     }
-    ai_cache_square(tx, ty);
+    ai_cache_square((Location){tx, ty});
     if (it.mode == ITEM_MODE_TAKE && !(g_ai_square.square & SQUARE_HAS_THINGS))
         return fail_command(execute);
     if (square_type(g_ai_square.square) == SQUARE_WALL) {
@@ -1844,7 +1850,7 @@ AiCommand ai_try_use_wall_actuator(AiTest test, Location from, Location to, int1
         return fail_command(execute);
     if (d == -1)
         d = (int16_t)dun_get_direction_to(x, y, tx, ty);
-    ai_cache_square(tx, ty);
+    ai_cache_square((Location){tx, ty});
     if (!(g_ai_square.square & SQUARE_HAS_THINGS))
         return fail_command(execute);
     uint16_t slot = THING_NONE;
@@ -2232,7 +2238,8 @@ static bool entered_party_view(const AiCandidate *c, int16_t x, int16_t y)
     if (c->item == VIEW_IN_FRONT) {
         if (dun_get_direction_to(g_ai_party.x, g_ai_party.y, x, y) != g_ai_party.dir)
             return false;
-        int16_t d = (int16_t)ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_square_is_obstacle);
+        int16_t d =
+            (int16_t)ai_trace_line((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y}, ai_square_is_obstacle);
         return d > 0 && d <= (int16_t)c->mask;
     }
     if (c->item == VIEW_AT_DISTANCE) {
@@ -2240,7 +2247,7 @@ static bool entered_party_view(const AiCandidate *c, int16_t x, int16_t y)
             return false;
         if (x != g_ai_party.x && y != g_ai_party.y)
             return true;
-        return !ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_blocks_line_except_self);
+        return !ai_trace_line((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y}, ai_blocks_line_except_self);
     }
     return false;
 }
@@ -2264,7 +2271,7 @@ static bool entered_flee(Search *s, const AiCandidate *c, int8_t *m, bool on_par
     if (m[MARK_BEST] >= d)
         return false;
     if (on_party_map && d < FLEE_LINE_DISTANCE && (x == g_ai_party.x || y == g_ai_party.y) &&
-        ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_blocks_line_except_self))
+        ai_trace_line((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y}, ai_blocks_line_except_self))
         return false;
     m[MARK_BEST] = (int8_t)d;
     return true;
@@ -2462,7 +2469,7 @@ static bool blocked_door(Search *s, const AiCandidate *c, int16_t x, int16_t y)
         return false;
     if (c->item == DOOR_TARGET_NEXT_TO_PARTY && axis_distance(x, y, g_ai_party.x, g_ai_party.y) != 1)
         return false;
-    ai_cache_square(x, y);
+    ai_cache_square((Location){x, y});
     if (c->mask == DOOR_MODE_OPEN && !(g_ai_square.square & SQUARE_DOOR_STATE))
         return false;
     if (c->mask == DOOR_MODE_CLOSE && (g_ai_square.square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED)
@@ -2640,7 +2647,7 @@ static int search_blocked(Search *s)
     int i = -1;
     if (s->or_flags & KIND_TESTS_BLOCKED) {
         if (s->or_flags & KIND_CACHES_SQUARE)
-            ai_cache_square(s->x, s->y);
+            ai_cache_square((Location){s->x, s->y});
         i = test_candidates(s, true);
     }
     if (!s->blocking)
@@ -2827,7 +2834,7 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
     s->steps_left = 1;
     s->dir = -1;
     s->passage_map = -1;
-    ai_cache_square(x, y);
+    ai_cache_square((Location){x, y});
     if (s->locations &&
         (g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y}))) {
         s->passage_map = g_ai_square_scan.end.map;

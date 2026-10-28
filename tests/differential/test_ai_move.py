@@ -101,6 +101,9 @@ class AiMoveTest(ctypes.Structure):
 # The command tests of the port take each square as one Location: the index of its x in the arguments of the original.
 SQUARE_ARGS = {name: (1, 3) for name in ("ai_try_attack", "ai_try_door_action", "ai_try_move", "ai_try_take_item",
                                          "ai_try_use_wall_actuator")}
+# The square tests of the port take their square as one Location.
+LOCATION_ARGS = {name: (0,) for name in ("ai_square_is_obstacle", "ai_square_blocks_line", "ai_blocks_line_to_target",
+                                         "ai_blocks_line_except_self", "ai_cache_square", "ai_projectile_incoming")}
 
 
 def command_test(name, mode):
@@ -115,8 +118,8 @@ def command_test(name, mode):
 def c_args(name, args):
     """The arguments of the C function from the arguments of the original: each (x, y) pair becomes a Location, the
     packed mode byte of a command test its test struct."""
-    squares, out, i = SQUARE_ARGS.get(name, ()), [], 0
-    if squares:
+    squares, out, i = SQUARE_ARGS.get(name) or LOCATION_ARGS.get(name, ()), [], 0
+    if name in SQUARE_ARGS:
         out.append(command_test(name, args[0]))
         i = 1
     while i < len(args):
@@ -153,8 +156,9 @@ class Ai:
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
         lib.dun_set_current_map.argtypes = [ctypes.c_int16]
-        for name in ("ai_trace_line",):
-            getattr(lib, name).argtypes = [ctypes.c_int16] * 4 + [ctypes.c_void_p]
+        lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
+        for name in LOCATION_ARGS:
+            getattr(lib, name).argtypes = [Location]
         lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
         lib.ai_find_target_in_lines.restype = AiLineTarget
         lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
@@ -329,7 +333,7 @@ def test_square_and_line_tests(ai):
             tx, ty = x + rng.randrange(-6, 7), y + rng.randrange(-6, 7)
             name = rng.choice(LINE_TESTS)
             fn = ctypes.cast(getattr(lib, name), ctypes.c_void_p)
-            mine = lib.ai_trace_line(x, y, tx, ty, fn)
+            mine = lib.ai_trace_line(Location(x, y), Location(tx, ty), fn)
             theirs = ai.emu.call(F["ai_trace_line"], x, y, tx, ty, F[name])
             assert mine == s16(theirs), (g, name, tx, ty)
             tested += mine > 1
