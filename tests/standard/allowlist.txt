@@ -330,7 +330,6 @@ type ui/minion_map.c:inside_map bridge: task 46
 type ui/minion_map.c:set_marker bridge: task 46
 type ui/minion_map.c:show_party_facing bridge: task 46
 type ui/minion_map.c:show_party_icons bridge: task 46
-type ui/optmenu.c:find_folder bridge: task 47
 type ui/session.c:make_slot_name bridge: task 48
 type ui/session.c:render_name_fields bridge: task 48
 type ui/session.c:slot_name bridge: task 48
