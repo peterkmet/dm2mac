@@ -106,7 +106,7 @@ extern const int8_t g_dir_dx[DIR_COUNT], g_dir_dy[DIR_COUNT];
 /* Makes map the map of the square reads; updates the party position as seen from it. */
 void dun_set_current_map(int16_t map);
 /* Puts the party at the square at and makes its map current. */
-void dun_set_party_location(Position at);
+void dun_set_party_position(Position at);
 /* The square forward and to the right of from, seen in dir. */
 Location dun_move_relative(Location from, int16_t dir, int forward, int right);
 /* The square byte of at, with the edge walls around the map. */
@@ -123,7 +123,7 @@ bool dun_get_linked_teleporter_dest(PassageEnd *end, Location at);
 /* ---- Champions ---- */
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
-int dun_get_direction_to(int x1, int y1, int x2, int y2);
+int dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
 /* The champion nearest to the side of the party square that faces at, seen from cell (0xff: any); -1 none. */
 int move_nearest_champion_at(Location at, int16_t cell);
 /* Damage of a bump into a wall or a creature on at for the two champions on that side; returns them. */

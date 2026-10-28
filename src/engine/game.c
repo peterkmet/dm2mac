@@ -38,7 +38,7 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_location((Position){map, x, y});
+    dun_set_party_position((Position){map, x, y});
     g_hooks.enter_map_view(map);
     world_update_day_night(0);
     sensor_process_map_entry(true);
