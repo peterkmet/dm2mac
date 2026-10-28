@@ -1207,7 +1207,7 @@ static void run_target_scanner(int kind, int arg, int plan, uint32_t targets)
     }
     case SCANNER_MINION: {
         uint16_t p = item_find_link_projectile(g_ai.group_thing, THING_NONE);
-        if (p && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
+        if (p != THING_NONE && thing_type(thing_word(p, PROJECTILE_PAYLOAD)) == THING_CONTAINER)
             scan_targets(TARGET_MINION, plan, targets, 0,
                          thing_word(thing_word(p, PROJECTILE_PAYLOAD), MINION_MAP_LOCATION));
         break;

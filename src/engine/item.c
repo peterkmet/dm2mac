@@ -482,12 +482,12 @@ uint16_t item_create_by_index(uint16_t item)
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
 {
     if (group == THING_NONE || group == THING_ENDOFLIST || thing_word(group, THING_NEXT) == THING_NONE)
-        return 0;
+        return THING_NONE;
     for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_PROJECTILE &&
             (payload == THING_NONE || payload == thing_word(t, PROJECTILE_PAYLOAD)))
             return t;
-    return 0;
+    return THING_NONE;
 }
 
 /* Items of the champion actions. */
