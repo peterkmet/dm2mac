@@ -243,7 +243,6 @@ type engine/move.c:push_party_aside bridge: task 32
 type engine/move.c:set_party_position bridge: task 32
 type engine/move.c:take_free_step bridge: task 32
 type engine/projectile.c:blast_square bridge: task 33
-type engine/projectile.c:enter_next_square bridge: task 33
 type engine/projectile.c:hit_champion bridge: task 33
 type engine/projectile.c:hit_creature bridge: task 33
 type engine/projectile.c:hit_explode bridge: task 33
@@ -317,7 +316,6 @@ type ui/session.c:slot_path bridge: task 48
 type ui/session.c:slot_unused bridge: task 48
 type ui/session.c:type_name_key bridge: task 48
 type ui/session.c:write_slot bridge: task 48
-type ui/text.c:baseline_in_zone bridge: task 49
 type ui/ui.c:show_changed_slot bridge: task 50
 type ui/ui.c:show_scroll_line bridge: task 50
 type ui/ui.c:show_slot bridge: task 50

@@ -369,7 +369,7 @@ their allowlist key:
 | `global` | an `extern` without `g_`, a file-static with `g_` |
 | `decompiler` | a decompiler name |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
-| `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer or in a static function of a `.c` file with another type than the table of rule 5.1 |
+| `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer or in a static function of a `.c` file with another type than the table of rule 5.1 (a pointer to the table type passes) |
 | `long` | a function above 60 lines without an allowlist reason |
 | `result` | heuristic: a function whose comment gives 0 or -1 as a result ("0 on success", "-1 on error", "Returns -1", "1/0/-1") |
 | `params` | a prototype with more than five parameters |

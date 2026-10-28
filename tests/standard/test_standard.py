@@ -964,7 +964,7 @@ def test_one_type_per_parameter_name():
                 continue
             for text in f.params:
                 kind, name = parameter(text)
-                if (expected := TYPE_TABLE.get(name)) and kind != expected:
+                if (expected := TYPE_TABLE.get(name)) and kind not in (expected, f"{expected}*"):
                     found.append(f"type {key}  | {name}: {kind}; the table says {expected}")
     found = sorted(set(found))
     for layer in LAYERS:
@@ -979,7 +979,7 @@ def test_one_type_per_parameter_name():
             key, expected = f"{layer}:{name}", TYPE_TABLE.get(name)
             if ("type", key) in ok:
                 continue
-            if expected and kinds != {expected}:
+            if expected and not kinds <= {expected, f"{expected}*"}:
                 found.append(f"type {key}  | {sorted(kinds)}; the table says {expected}")
     report("type", found)
 
