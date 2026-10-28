@@ -129,6 +129,7 @@
 #define SEARCH_MOVERS_DISTANCE 6   /* beyond it groups that move do not block the search */
 #define SEARCH_STEPS           5   /* the first direction and three turns; with level changes two more */
 #define SEARCH_STEPS_LEVELS    7
+#define SEARCH_LEVEL_STEPS     2 /* the last steps of a square with level changes: down, then up */
 #define SEARCH_FAR             100
 #define SEARCH_FAR_RANGE       127
 #define HIDDEN_DISTANCE        4 /* beyond it an invisible party or a party in the dark stays hidden */
@@ -137,6 +138,11 @@
 #define PATH_CHECK_STEPS       5 /* the steps of a stored path that the path check tests */
 /* The feedback of the shift register of the first search direction. */
 #define SEARCH_DIRECTION_TAPS  0xb400
+/* The side of a cell as the creature that takes an item sees it (take_floor_action). */
+#define TAKE_SIDE_BACK_LEFT    0
+#define TAKE_SIDE_FRONT_LEFT   1
+#define TAKE_SIDE_FRONT_RIGHT  2
+#define TAKE_SIDE_BACK_RIGHT   3
 /* The cells of a square that a creature reaches from the side. */
 #define CELLS_NEAR             0x03 /* the two cells on the near side */
 #define CELLS_FAR              0x0c
@@ -751,7 +757,7 @@ static bool party_door_stops_attack(int16_t x, int16_t y)
         g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH || (x == own_x() && y == own_y() && g_party.cur_map == g_ai.map))
         return false;
     return square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR &&
-           axis_distance(x, y, g_ai_party.x, g_ai_party.y) < 2 && rand_2bits();
+           axis_distance(x, y, g_ai_party.x, g_ai_party.y) <= 1 && rand_2bits();
 }
 
 /* The cell of the target that the attack aims at; r: the random bit of the attack variant, a ranged attack may flip it. */
@@ -759,7 +765,7 @@ static int16_t attack_cell(int mode, Location from, int16_t dir, bool melee, int
 {
     if (melee) {
         int c = mode > ATTACK_MODE_PARTY_RANGED ? -1 : move_nearest_champion_at(from, CELL_ANY);
-        return c == -1 ? dir_turn(dir, *r + 2) : champion(c)->cell;
+        return c == -1 ? dir_opposite(dir_turn(dir, *r)) : champion(c)->cell; /* no champion: a near cell */
     }
     if (mode <= ATTACK_MODE_PARTY_RANGED && rand_2bits()) {
         *r = rand_bit();
@@ -1337,7 +1343,7 @@ static bool party_door_stops_move(Move *m)
 {
     return !m->same && g_ai_party.map == g_party.cur_map && class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS &&
            !(g_ai.info->flags & CREATURE_NOT_SEEN_THROUGH) && square_type(g_ai_square.square) == SQUARE_DOOR &&
-           axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) < 2 &&
+           axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1 &&
            (m->sx != own_x() || m->sy != own_y() || rand_2bits());
 }
 
@@ -1699,15 +1705,15 @@ static int16_t give_place(ItemTest *it)
    does. True when it turns instead. */
 static bool take_floor_action(ItemTest *it)
 {
-    int side = dir_turn(it->cell - g_ai.active->facing, 1);
+    int side = dir_turn(it->cell - g_ai.active->facing, TURN_RIGHT);
     if (!it->same) {
-        it->action = side < 2 ? ACTION_TAKE_FRONT : ACTION_TAKE_SIDE;
+        it->action = side <= TAKE_SIDE_FRONT_LEFT ? ACTION_TAKE_FRONT : ACTION_TAKE_SIDE;
         return false;
     }
-    it->action = (int16_t)(ACTION_TAKE_LEFT + (side >= 2));
-    if (side == 0)
+    it->action = (int16_t)(ACTION_TAKE_LEFT + (side >= TAKE_SIDE_FRONT_RIGHT));
+    if (side == TAKE_SIDE_BACK_LEFT)
         g_ai.active->facing = (uint8_t)dir_turn(g_ai.active->facing, TURN_LEFT);
-    else if (side == 3)
+    else if (side == TAKE_SIDE_BACK_RIGHT)
         g_ai.active->facing = (uint8_t)dir_turn(g_ai.active->facing, TURN_RIGHT);
     if (class_flags() & AI_CLASS_TURNS_TO_TAKE && g_ai.active->facing != group_dir(g_ai.group_thing)) {
         ai_turn_toward(g_ai.active->facing);
@@ -2663,8 +2669,8 @@ static void search_enter_map(Search *s, int16_t map)
 static SearchStep search_step(Search *s)
 {
     search_enter_map(s, s->from_map);
-    if (s->levels && s->steps_left <= 2) {
-        if (s->steps_left == 2) {
+    if (s->levels && s->steps_left <= SEARCH_LEVEL_STEPS) {
+        if (s->steps_left == SEARCH_LEVEL_STEPS) {
             if (!s->down_ok)
                 return SEARCH_STEP_SKIP;
             s->dir = DIR_LEVEL_DOWN;

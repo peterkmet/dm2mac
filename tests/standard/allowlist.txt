@@ -14,7 +14,6 @@ dead-api engine/include/champion.h:champ_set_name bridge: task 48
 decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/ai.c bridge: task 20
-decimal engine/ai_move.c bridge: task 21
 decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor bridge: task 23
