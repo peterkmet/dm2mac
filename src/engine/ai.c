@@ -11,6 +11,7 @@
 #include "item.h"
 #include "le.h"
 #include "merchant.h"
+#include "money.h"
 #include "move.h"
 #include "projectile.h"
 #include "random.h"
@@ -408,7 +409,7 @@ DistanceMap g_alt_distance = {.map = -1};
 static struct {
     GroupStore groups[AI_GROUP_KEY_COUNT]; /* the plan state and path of each group */
     /* The scratch blocks of the updates in progress: item filter bitmaps (the 0x100-byte blocks of SKULL.EXE). */
-    uint8_t scratch_blocks[SCRATCH_BLOCKS][FILTER_SLOTS * FILTER_BITMAP_SIZE];
+    uint8_t scratch_blocks[SCRATCH_BLOCKS][FILTER_SLOTS * ITEM_CLASS_SET_SIZE];
     int scratch_depth;
     int16_t dest_x, dest_y; /* the target square of the action that runs */
 } ai_state;
@@ -744,7 +745,7 @@ static bool cond_party_at_pit(int x, int y)
 static bool cond_door_behind(int x, int y)
 {
     int d = dir_opposite(group_dir(g_ai.group_thing));
-    if (!(g_ai.door_flags & DOOR_SKILL_ANY_SIDE))
+    if (!(g_ai.door_flags & DOOR_SKILL_CLOSE_BEHIND))
         return false;
     if (square_type(dun_get_square((int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d]))) != SQUARE_DOOR)
         return false;

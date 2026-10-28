@@ -14,8 +14,6 @@ dead-api engine/include/champion.h:champ_set_name bridge: task 48
 decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length bridge: task 18
 decimal engine/ai.c bridge: task 20
-decimal engine/ai_data.c:g_ai_after_command_table bridge: task 19
-decimal engine/ai_data.c:g_ai_possession_cells bridge: task 19
 decimal engine/ai_move.c bridge: task 21
 decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
@@ -122,10 +120,10 @@ engine-write ui/action_area.c:show_open_panel rule 1.5: g_action.redraw_delay, g
 engine-write ui/action_area.c:show_party_hands rule 1.5: g_action.mode, g_action.flash
 hex control/control.c:key_names rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c:g_ai_action_flags rule 3.12: a table of SKULL.EXE
-hex engine/ai_data.c:g_ai_after_command_table rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_behaviors rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_class_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_command_enabled rule 3.12: a table of SKULL.EXE
+hex engine/ai_data.c:g_ai_command_enabled_overrun rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_kind_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_plans rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_possession_cells rule 3.12: a table of SKULL.EXE

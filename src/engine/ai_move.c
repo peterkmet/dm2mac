@@ -272,7 +272,7 @@ int16_t g_cached_explosion_light_sum = -1;
 int16_t g_last_party_map = -1;
 uint16_t g_search_direction_bits = 1;
 /* The item class bitmap of a filter that the AI does not cache. */
-static uint8_t uncached_bitmap[FILTER_BITMAP_SIZE];
+static uint8_t uncached_bitmap[ITEM_CLASS_SET_SIZE];
 
 /* The outcome of a command test that passed or not, with the command result that the AI context holds. */
 static AiCommand test_outcome(bool passed)
@@ -386,8 +386,8 @@ static int enabled_byte(int command)
                                  g_cached_explosion_light_sum, g_last_party_map,   -1};
         return (uint8_t)(words[(command - COMMAND_PAST_TABLE) / 2] >> ((command & 1) * BYTE_BIT_COUNT));
     }
-    if (command < COMMAND_AFTER_GLOBALS + (int)sizeof g_ai_after_command_table)
-        return g_ai_after_command_table[command - COMMAND_AFTER_GLOBALS];
+    if (command < COMMAND_AFTER_GLOBALS + (int)sizeof g_ai_command_enabled_overrun)
+        return g_ai_command_enabled_overrun[command - COMMAND_AFTER_GLOBALS];
     return 0; /* fix: further bytes are other globals of SKULL.EXE */
 }
 
@@ -935,8 +935,8 @@ static bool skills_reach_door(const DoorAction *a)
 static AiCommand start_door_action(const DoorAction *a)
 {
     uint16_t flags = a->flags;
-    if (flags & DOOR_SKILL_MARK) {
-        flags &= (uint16_t)~DOOR_SKILL_MARK;
+    if (flags & DOOR_SKILL_CLOSE_BEHIND) {
+        flags &= (uint16_t)~DOOR_SKILL_CLOSE_BEHIND;
         if (a->mode == DOOR_MODE_OPEN)
             door_set_flag(a->door, DOOR_MARKED, true);
     }
@@ -1470,7 +1470,7 @@ static void execute_move(Move *m)
         ai_try_attack((AiTest){ATTACK_MODE_GROUP, true}, ai_location(m->sx, m->sy), ai_location(m->tx, m->ty), -1)
             .passed)
         return;
-    if (g_ai.door_flags & DOOR_SKILL_ANY_SIDE)
+    if (g_ai.door_flags & DOOR_SKILL_CLOSE_BEHIND)
         for (int16_t i = 0; i < DIR_COUNT; i++) {
             if (i == m->facing)
                 continue;
@@ -1894,7 +1894,7 @@ static uint8_t *filter_bitmap(int filter, int creature_type, bool is_group)
     g_ai.filter_free--;
     uint8_t *bitmap = g_ai.scratch + g_ai.scratch_used;
     g_ai.filters[filter] = bitmap;
-    g_ai.scratch_used += FILTER_BITMAP_SIZE;
+    g_ai.scratch_used += ITEM_CLASS_SET_SIZE;
     return money_parse_item_class_set(creature_type, filter, bitmap, is_group) ? bitmap : NULL;
 }
 
@@ -1941,7 +1941,7 @@ bool ai_thing_matches_filter(uint16_t thing, int filter)
         return false;
     }
     /* fix: the original reads outside the bitmap for a negative or large value */
-    if (value < 0 || value >= FILTER_BITMAP_SIZE * BYTE_BIT_COUNT)
+    if (value < 0 || value >= ITEM_CLASS_SET_SIZE * BYTE_BIT_COUNT)
         return invert;
     return bitmap[value / BYTE_BIT_COUNT] >> (value % BYTE_BIT_COUNT) & 1 ? !invert : invert;
 }
@@ -2810,8 +2810,8 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
     search_setup(s);
     if (g_ai.move_flags & MOVE_LEVELS && g_ai.move_flags & MOVE_LEVEL_FLAGS) {
         s->levels = true;
-        s->up_ok = g_ai.move_flags & MOVE_DIR4_FLAGS;
-        s->down_ok = g_ai.move_flags & MOVE_DIR5_FLAGS;
+        s->up_ok = g_ai.move_flags & MOVE_LEVEL_UP_FLAGS;
+        s->down_ok = g_ai.move_flags & MOVE_LEVEL_DOWN_FLAGS;
     }
     /* fix: the original clears the first search map only for line targets or a cost; the port always clears it */
     s->map = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);

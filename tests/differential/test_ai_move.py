@@ -1120,7 +1120,7 @@ def test_merchant_commands(ai):
 AI_TABLES = (
     ("g_ai_scripts", 0x73020, 0, 8030), ("g_ai_plans", 0x74F7E, 0, 252), ("g_ai_class_flags", 0x7507A, 0, 188),
     ("g_ai_action_flags", 0x75136, 0, 86), ("g_ai_behaviors", 0x7518C, 0, 188), ("g_ai_command_enabled", 0x7528C, 0, 20),
-    ("g_ai_after_command_table", 0x752AC, 0, 60), ("g_ai_kind_flags", 0x752EA, 0, 28),
+    ("g_ai_command_enabled_overrun", 0x752AC, 0, 60), ("g_ai_kind_flags", 0x752EA, 0, 28),
     ("g_ai_possession_cells", 0x71658, 4, 64),  # kind 0 is another global of SKULL.EXE; the original never reads it
 )
 

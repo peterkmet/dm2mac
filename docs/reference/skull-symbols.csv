@@ -1441,6 +1441,7 @@ address,name,signature,subsystem
 0x00072ffc,g_push_pending_group,uint16_t,creatures
 0x00073000,g_data_file_names,char *[7],file I/O
 0x0007301c,g_active_group_count,uint16_t,creatures
+0x00073020,g_ai_scripts,uint8_t[8030],creatures
 0x00074f7e,g_ai_plan_tables,int8_t *[],creatures
 0x0007507a,g_creature_class_flags,uint32_t[],creatures
 0x00075136,g_ai_action_flags,uint8_t[],creatures
@@ -1456,6 +1457,7 @@ address,name,signature,subsystem
 0x000752cc,g_creature_hit_offsets_any_cell,int16_t[4][2],creatures
 0x000752dc,g_creature_hit_radius_sq,int16_t[],creatures
 0x000752e8,g_search_direction_bits,uint16_t,creatures
+0x000752ea,g_ai_kind_flags,uint8_t[28],creatures
 0x00075308,g_save_slot,int16_t,save and load
 0x0007530a,g_dungeon_fd,int16_t,file I/O
 0x0007530c,g_save_container_count,int16_t,save and load
