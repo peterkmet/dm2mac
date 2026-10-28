@@ -19,7 +19,6 @@ decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature i
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor bridge: task 23
 decimal engine/creature.c:cell_grid bridge: task 24
-decimal engine/creature.c:cells bridge: task 24
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 decimal engine/creature.c:hit_radius_sq bridge: task 24
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
@@ -128,7 +127,6 @@ hex engine/ai_data.c:g_ai_kind_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_plans rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_possession_cells rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_scripts rule 3.12: a table of SKULL.EXE
-hex engine/creature.c:cells rule 3.12: a table of SKULL.EXE
 hex engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 hex engine/item.c:item_index_base rule 3.12: item index bases of SKULL.EXE
 hex engine/item.c:slot_item_masks rule 3.12: slot masks of SKULL.EXE

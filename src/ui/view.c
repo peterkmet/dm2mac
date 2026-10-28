@@ -1598,7 +1598,7 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
         show_object(thing, pos, &(ObjectLook){.spot = spot, .group = group, .record_click = true});
         spot = (spot + 1) % JITTER_COUNT;
         if (info) {
-            if (creature_cell_mask(info->possessions) >> cell & 1)
+            if (creature_cell_mask(info->possessions, DIR_NORTH) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             Location at = {g_view_squares[pos].x, g_view_squares[pos].y};

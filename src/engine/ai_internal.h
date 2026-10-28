@@ -28,7 +28,6 @@
 #define AI_ACTION_COUNT          86
 #define AI_MOVE_TEST_KINDS       20 /* the move test kinds of g_ai_command_enabled */
 #define AI_TARGET_KIND_COUNT     28
-#define AI_POSSESSION_KINDS      16 /* the display kinds of g_ai_possession_cells, with the data after the table */
 #define AI_ENABLED_OVERRUN_BYTES 60
 extern const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE];
 extern const uint32_t g_ai_plans[AI_PLAN_COUNT];
@@ -37,7 +36,6 @@ extern const uint32_t g_ai_behaviors[AI_CLASS_COUNT];
 extern const uint8_t g_ai_command_enabled[AI_MOVE_TEST_KINDS];
 extern const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES];
 extern const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT];
-extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 
 /* The longest path of the path search. */
 #define AI_PATH_MAX 49

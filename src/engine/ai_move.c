@@ -1530,12 +1530,10 @@ AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir)
 /* The cells of the possessions of a static creature seen from side. */
 static int possession_cell_mask(uint16_t possessions, int side)
 {
-    if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
-        return CELLS_ALL;
     /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
     if ((uint16_t)side >= DIR_COUNT)
         return CELLS_ALL;
-    return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
+    return creature_cell_mask(possessions, (int16_t)side);
 }
 
 int ai_find_matching_item_inside(uint16_t thing, int filter, int side)

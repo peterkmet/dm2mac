@@ -564,14 +564,11 @@ bool creature_is_flying(uint16_t group)
     return creature_group_info(group)->movement & CREATURE_FLIES || is_floating(group);
 }
 
-int creature_cell_mask(uint16_t possessions)
+int creature_cell_mask(uint16_t possessions, int16_t side)
 {
-    /* by display kind; the original reads kinds 5 to 15 from the data after its table, which this keeps */
-    static const uint8_t cells[POSSESSIONS_KIND_MASK + 1] = {0,    4,    0x0c, 0x0e, 0x0f, 0,    1, 8,
-                                                             0x20, 0x40, 2,    0x80, 0,    0x12, 0, 0};
     if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
         return CELLS_ALL;
-    return cells[possessions & POSSESSIONS_KIND_MASK];
+    return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
 }
 
 /* Active groups. */

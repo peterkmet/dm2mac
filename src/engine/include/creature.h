@@ -314,8 +314,9 @@ uint16_t creature_group_at(Position at);
 bool creature_is_native_to_map(uint16_t group, int16_t map);
 /* True for a creature that flies over pits and does not press floor sensors. */
 bool creature_is_flying(uint16_t group);
-/* The cells (bits 0 to 3) in which a static creature shows its possessions, from its possessions word. */
-int creature_cell_mask(uint16_t possessions);
+/* The cells (bits 0 to 3) in which a static creature shows its possessions to side (0 to 3), from its possessions
+   word. */
+int creature_cell_mask(uint16_t possessions, int16_t side);
 
 /* Active groups. */
 /* The timeline event of the next update of an active group. */

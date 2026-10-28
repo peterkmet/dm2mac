@@ -31,6 +31,11 @@ static inline uint16_t ai_marker_level(uint16_t text)
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
 
+/* The cells of the possessions of a static creature by display kind and side (ai_data.c; creature_cell_mask reads
+   it). */
+#define AI_POSSESSION_KINDS 16 /* the display kinds, with the data after the table */
+extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
+
 /* A candidate destination of a plan: a 22-byte record with the layout of the original. */
 typedef struct __attribute__((packed)) {
     int8_t cost;          /* +0x00 */
