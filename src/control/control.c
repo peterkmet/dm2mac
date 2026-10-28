@@ -155,7 +155,8 @@ void control_reset(void)
 const char *control_find_value(const char *line, const char *key)
 {
     char pattern[NAME_SIZE + 2];
-    snprintf(pattern, sizeof pattern, "\"%s\"", key);
+    if (snprintf(pattern, sizeof pattern, "\"%s\"", key) >= (int)sizeof pattern)
+        return NULL; /* a key too long for the pattern is missing, not cut short */
     for (const char *p = strstr(line, pattern); p; p = strstr(p, pattern)) {
         p += strlen(pattern);
         while (*p == ' ')
