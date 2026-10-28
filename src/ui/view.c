@@ -2,6 +2,7 @@
 #include "view.h"
 #include <stdlib.h>
 #include <string.h>
+#include "ai.h"
 #include "aspect.h"
 #include "champion.h"
 #include "creature.h"
@@ -1749,7 +1750,7 @@ static void show_cell_objects(uint16_t thing, int pos, int16_t cell, uint16_t gr
                     &(ObjectLook){.spot = spot, .group = group, .record_click = true, .projectile = THING_NONE});
         spot = next_spot(spot, false);
         if (info) {
-            if (creature_cell_mask(info->possessions) >> cell & 1)
+            if (creature_cell_mask(info->possessions, DIR_NORTH) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             Location at = {g_view_squares[pos].x, g_view_squares[pos].y};
@@ -1816,7 +1817,7 @@ static void show_creature(int pos, int depth, uint16_t group)
     uint8_t still[CREATURE_FRAME_SIZE];
     memcpy(still, frame, sizeof still);
     ActiveGroup *active = creature_active(group);
-    if (active && active->action == CREATURE_ACTION_VANISH)
+    if (active && active->action == ACTION_VANISH)
         creature_anim_frame_of(g, type, (uint16_t)active->counters[0], (uint16_t)active->counters[1], still);
     int anim = active ? active->anim_bits : 0;
     int side = creature_info(g, type)->flags & CREATURE_FACES_PARTY ? DIR_SOUTH
@@ -2406,12 +2407,11 @@ static void show_shop_label(uint16_t shop, uint16_t item, int creature, uint8_t 
 {
     int category = item_index_gdat_category(item);
     int index = item_index_gdat_index(item);
-    int16_t lx, ly;
-    zone_get_position(p->zone, &lx, &ly);
+    ScreenPoint label = zone_get_position(p->zone);
     uint16_t place =
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
-    show_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
+    show_centered_label(label.x + gdat_offset_x(place), label.y + gdat_offset_y(place),
                         gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
     PriceTerms buying = {creature, list, true, true};
@@ -3654,9 +3654,9 @@ static bool hit_test_picture(int16_t x, int16_t y, int key)
     return pixel != key;
 }
 
-bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side)
+bool view_hit_test_creature(int16_t x, int16_t y, Location at, int *out_side)
 {
-    uint16_t group = creature_get_group_at(square_x, square_y);
+    uint16_t group = creature_get_group_at(at);
     if (group == THING_NONE)
         return false;
     show_creature(POS_FRONT, HIT_DEPTH, group);
@@ -3738,10 +3738,10 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
 {
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
-        group = creature_group_at(g_party.cur_map, click->square_x, click->square_y);
+        group = creature_group_at((Position){g_party.cur_map, click->at.x, click->at.y});
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(g_party.cur_map, click->square_x, click->square_y);
+        t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);
     }
     if (t == THING_ENDOFLIST)
         return placing ? (ObjectClickResult){OBJECT_CLICK_HIT, thing}

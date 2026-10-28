@@ -21,7 +21,7 @@ void control_reset(void);
 
 /* Requests */
 
-/* The text after "key": in a request line; 0 when the key is missing. */
+/* The text after "key": in a request line; NULL when the key is missing. */
 const char *control_find_value(const char *line, const char *key);
 /* The JSON string value of key, decoded (escapes, \uXXXX to UTF-8); false when it is missing, bad, too long, or has
    a NUL character. */

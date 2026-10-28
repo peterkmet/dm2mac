@@ -9,8 +9,6 @@ byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the 
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
-decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/ai.c bridge: task 20
 decimal engine/champion_action.c:furniture_infos rule 3.12: furniture creature infos of SKULL.EXE
@@ -20,10 +18,8 @@ decimal engine/ai_data.c:g_ai_possession_cells bridge: task 19
 decimal engine/ai_move.c bridge: task 21
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE
-decimal engine/creature.c:cell_grid bridge: task 24
-decimal engine/creature.c:cells bridge: task 24
 decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
-decimal engine/creature.c:hit_radius_sq bridge: task 24
+decimal engine/creature.c:hit_radius_sq rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
 decimal engine/magic.c:power_rune_mana_factor rule 3.12: a table of SKULL.EXE
@@ -33,9 +29,6 @@ decimal engine/minion.c:option_mana rule 3.12: the mana of the minion map option
 decimal engine/magic.c:rune_mana rule 3.12: rune mana by rune set of SKULL.EXE
 decimal engine/magic.c:spells rule 3.12: the spell table of SKULL.EXE
 decimal engine/minion.c:option_mana bridge: task 31
-decimal engine/move.c bridge: task 32
-decimal engine/move.c:free_square_order_party bridge: task 32
-decimal engine/move.c:free_square_order_thing bridge: task 32
 decimal engine/projectile.c:attack_cell_orders rule 3.12: a table of SKULL.EXE
 decimal engine/projectile.c:attack_cell_orders_random rule 3.12: a table of SKULL.EXE
 decimal engine/projectile.c:spell_reflection rule 3.12: a table of SKULL.EXE
@@ -45,7 +38,7 @@ decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
 decimal engine/sensor.c:ambient_wall_dy rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:creature_lightning rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:g_light_power rule 3.12: a table of SKULL.EXE
-decimal engine/weather.c:light_by_hour bridge: task 40
+decimal engine/weather.c:light_by_hour rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_falloff rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
@@ -59,12 +52,6 @@ decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:push_dirs bridge: task 45
-decimal ui/input.c:side_turn bridge: task 45
-decimal ui/input.c:step_dirs bridge: task 45
-decimal ui/minion_map.c:creature_side_dir bridge: task 46
-decimal ui/minion_map.c:mirror_one_side bridge: task 46
-decimal ui/minion_map.c:mirror_two_sides bridge: task 46
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
@@ -102,11 +89,9 @@ decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 engine-write control/control.c:forget_game_end bridge: task 10
 engine-write control/control.c:handle_load bridge: task 10
 engine-write control/control.c:handle_request bridge: task 10
@@ -130,7 +115,6 @@ hex engine/ai_data.c:g_ai_kind_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_plans rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_possession_cells rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_scripts rule 3.12: a table of SKULL.EXE
-hex engine/creature.c:cells rule 3.12: a table of SKULL.EXE
 hex engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 hex engine/item.c:item_index_base rule 3.12: item index bases of SKULL.EXE
 hex engine/item.c:slot_item_masks rule 3.12: slot masks of SKULL.EXE
@@ -164,14 +148,13 @@ hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:entries rule 3.12: a table of SKULL.EXE
+hex ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_children rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_commands rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:zones rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
 hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE
@@ -190,39 +173,13 @@ long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner ki
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
 long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
 module platform/main.c rule 1.7: the entry point has no header
-order control/state_json.c:sections bridge: task 54
 order engine/aspect.c:sections bridge: task 22
 order data/hmp.c:sections bridge: task 18
 order data/mve_video.c:sections bridge: task 18
 order engine/game.c:sections bridge: task 26
-order engine/sensor.c:sections bridge: task 37
-order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
 order ui/fm.c:sections bridge: task 44
-order ui/minion_map.c:sections bridge: task 46
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
-static-prefix engine/sensor.c:sound_square_in_front bridge: task 37
-static-prefix engine/sensor.c:text_play_sound bridge: task 37
-static-prefix engine/sensor.c:text_schedule_spawn bridge: task 37
-static-prefix engine/sensor.c:text_set_shown bridge: task 37
-static-prefix engine/sensor.c:text_update_linked bridge: task 37
-static-prefix ui/ui.c:text_rect_in_zone bridge: task 50
-type control/control.c:get_position bridge: task 54
-type control/state_json.c:draws_at bridge: task 54
-type control/state_json.c:element_name bridge: task 54
-type control/state_json.c:floor_ornament bridge: task 54
-type control/state_json.c:is_wall bridge: task 54
-type control/state_json.c:map_char bridge: task 54
-type control/state_json.c:map_row bridge: task 54
-type control/state_json.c:on_party_map bridge: task 54
-type control/state_json.c:pile_json bridge: task 54
-type control/state_json.c:put_door bridge: task 54
-type control/state_json.c:put_square_things bridge: task 54
-type control/state_json.c:put_view_square bridge: task 54
-type control/state_json.c:top_of_zone bridge: task 54
-type control/state_json.c:viewer_place bridge: task 54
-type control/state_json.c:wall_faces_json bridge: task 54
-type control/state_json.c:wall_sensors_json bridge: task 54
 type control/turn.c:slot_command bridge: task 55
 type engine/ai.c:cond_at_counter bridge: task 20
 type engine/ai.c:cond_door_behind bridge: task 20
@@ -237,11 +194,6 @@ type engine/champion_inventory.c:set_slot_thing bridge: task 28
 type engine/champion_inventory.c:slot_thing bridge: task 28
 type engine/ai_move.c:line_slope bridge: task 21
 type engine/ai_move.c:search_cell bridge: task 21
-type engine/creature.c:alert_anger bridge: task 24
-type engine/creature.c:alert_turn bridge: task 24
-type engine/creature.c:drop_cell bridge: task 24
-type engine/creature.c:is_near_party_front bridge: task 24
-type engine/creature.c:schedule_update bridge: task 24
 type engine/dungeon.c:edge_wall bridge: task 25
 type engine/dungeon.c:first_thing_index bridge: task 25
 type engine/dungeon.c:is_closed_teleporter bridge: task 25
@@ -265,17 +217,6 @@ type engine/merchant.c:offered_value bridge: task 30
 type engine/merchant.c:price_in_coins bridge: task 30
 type engine/merchant.c:sum_items_value bridge: task 30
 type engine/merchant.c:sum_list bridge: task 30
-type engine/move.c:bash_door bridge: task 32
-type engine/move.c:bump_champion bridge: task 32
-type engine/move.c:discard_next_map bridge: task 32
-type engine/move.c:discard_scan_map bridge: task 32
-type engine/move.c:find_free_adjacent_square bridge: task 32
-type engine/move.c:first_thing bridge: task 32
-type engine/move.c:is_side_blocked bridge: task 32
-type engine/move.c:meet_target_square bridge: task 32
-type engine/move.c:push_party_aside bridge: task 32
-type engine/move.c:set_party_position bridge: task 32
-type engine/move.c:take_free_step bridge: task 32
 type engine/save.c:held_thing bridge: task 35
 type engine/save.c:read_thing_list bridge: task 35
 type engine/save.c:saved_bits_mask bridge: task 35
@@ -284,57 +225,8 @@ type engine/seen.c:blocks_sight bridge: task 36
 type engine/seen.c:known_byte bridge: task 36
 type engine/seen.c:map_first_square bridge: task 36
 type engine/seen.c:on_map bridge: task 36
-type engine/sensor.c:altar_schedule_rebirth bridge: task 37
-type engine/sensor.c:closing_door_hits bridge: task 37
-type engine/sensor.c:current_square bridge: task 37
-type engine/sensor.c:fall_risk bridge: task 37
-type engine/sensor.c:fire_sensor bridge: task 37
-type engine/sensor.c:first_thing bridge: task 37
-type engine/sensor.c:floor_holder bridge: task 37
-type engine/sensor.c:floor_scan bridge: task 37
-type engine/sensor.c:floor_text bridge: task 37
-type engine/sensor.c:floor_text_event bridge: task 37
-type engine/sensor.c:ornament_sound bridge: task 37
-type engine/sensor.c:process_floor bridge: task 37
-type engine/sensor.c:sound_square_in_front bridge: task 37
-type engine/sensor.c:start_ambient_sound bridge: task 37
-type engine/sensor.c:text_play_sound bridge: task 37
-type engine/sensor.c:text_schedule_spawn bridge: task 37
-type engine/sensor.c:wall_item bridge: task 37
-type engine/sound_request.c:request_later bridge: task 38
 type engine/timeline.c:fix_queue_slot bridge: task 39
-type engine/weather.c:add_floor_light bridge: task 40
-type platform/scale.c:pixel bridge: task 57
-type ui/input.c:click_command bridge: task 45
-type ui/input.c:click_creature bridge: task 45
-type ui/input.c:click_door_button bridge: task 45
-type ui/input.c:click_drop_object bridge: task 45
-type ui/input.c:click_front_wall bridge: task 45
-type ui/input.c:click_place_object bridge: task 45
-type ui/input.c:click_take_object bridge: task 45
-type ui/input.c:click_throw_object bridge: task 45
-type ui/input.c:click_wall_sensor bridge: task 45
-type ui/input.c:click_with_object bridge: task 45
-type ui/input.c:click_zones_hit bridge: task 45
-type ui/input.c:feedback_spell_icon bridge: task 45
-type ui/input.c:find_click_command bridge: task 45
-type ui/input.c:match_click_in_list bridge: task 45
-type ui/input.c:party_cell_champion bridge: task 45
-type ui/input.c:point_in_rect bridge: task 45
-type ui/input.c:point_in_zone bridge: task 45
-type ui/input.c:select_entry bridge: task 45
 type ui/minion_map.c:inside_map bridge: task 46
 type ui/minion_map.c:set_marker bridge: task 46
 type ui/minion_map.c:show_party_facing bridge: task 46
 type ui/minion_map.c:show_party_icons bridge: task 46
-type ui/session.c:make_slot_name bridge: task 48
-type ui/session.c:render_name_fields bridge: task 48
-type ui/session.c:slot_name bridge: task 48
-type ui/session.c:slot_path bridge: task 48
-type ui/session.c:slot_unused bridge: task 48
-type ui/session.c:type_name_key bridge: task 48
-type ui/session.c:write_slot bridge: task 48
-type ui/ui.c:show_changed_slot bridge: task 50
-type ui/ui.c:show_scroll_line bridge: task 50
-type ui/ui.c:show_slot bridge: task 50
-type ui/zone.c:clip_to_parent bridge: task 53

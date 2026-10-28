@@ -148,6 +148,6 @@ void minion_dismiss(uint16_t group)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));
-    creature_set_next_action(group, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
+    creature_set_next_action(group, (Location){location_x(at), location_y(at)}, ACTION_VANISH, true);
     dun_set_current_map(saved);
 }

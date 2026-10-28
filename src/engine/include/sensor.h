@@ -3,7 +3,7 @@
 #define DM2_ENGINE_SENSOR_H
 /* Prefixes: sensor_ */
 
-/* Floor and wall sensors: their record fields, their timeline events, and the missiles. */
+/* Floor and wall sensors: their record fields, their square events and timers, and wall clicks. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -77,59 +77,29 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
     return thing_field(sensor, SENSOR_TARGET, LAUNCH_STEP_SHIFT, LAUNCH_STEP_MASK);
 }
 
-/* Timeline event types. */
-#define EVENT_DOOR_ANIMATION        0x01
-#define EVENT_DOOR_DESTRUCTION      0x02
-#define EVENT_SQUARE                0x04
-#define EVENT_HIDE_DAMAGE           0x0c
-#define EVENT_ALTAR_REBIRTH         0x0d
-#define EVENT_ITEM_EFFECT           0x0e
-#define EVENT_DELAYED_SOUND         0x15
-#define EVENT_EXPLOSION             0x19
-#define EVENT_PROJECTILE_MOVE       0x1d
-#define EVENT_PROJECTILE_MOVE_2     0x1e
-#define EVENT_CREATURE_ANIMATION    0x21
-#define EVENT_CREATURE_THINK        0x22
-#define EVENT_MOVE_GROUP            0x3c
-#define EVENT_MOVE_GROUP_2          0x3d
-#define EVENT_MAGIC_LIGHT           0x46
-#define EVENT_INVISIBILITY          0x47
-#define EVENT_AURA                  0x48
-#define EVENT_POISON                0x4b
-#define EVENT_WEATHER               0x54
-#define EVENT_SENSOR_ANIMATION_STEP 0x55
-#define EVENT_SENSOR_TIMER          0x56
-#define EVENT_SENSOR_IDLE           0x57
-#define EVENT_DOOR_BUTTON_RELEASE   0x58
-#define EVENT_SENSOR_ANIMATION_END  0x59
-#define EVENT_SENSOR_AMBIENT_SOUND  0x5a
-#define EVENT_SENSOR_READY          0x5b
-#define EVENT_SET_MARKER            0x5c
-#define EVENT_TELEPORT_PARTY        0x5d
-#define EVENT_SPAWN_CREATURE        0x5e
 /* Effects of a square event: what it does to its target. */
-#define EFFECT_SET                  0
-#define EFFECT_CLEAR                1
-#define EFFECT_TOGGLE               2
-#define EFFECT_HOLD                 3
+#define EFFECT_SET                0
+#define EFFECT_CLEAR              1
+#define EFFECT_TOGGLE             2
+#define EFFECT_HOLD               3
 /* Bytes of a square event. */
-#define EVENT_X                     0x00
-#define EVENT_Y                     0x01
-#define EVENT_CELL                  0x02
-#define EVENT_EFFECT                0x03
+#define EVENT_X                   0x00
+#define EVENT_Y                   0x01
+#define EVENT_CELL                0x02
+#define EVENT_EFFECT              0x03
 /* Bytes of the other events of this module: a sensor event holds its sensor thing (an ambient sound or animation end
    event after its square), then the wall flag or the timer factor and phase; a party teleport holds the target word
    and the map; a creature spawn holds the square and the creature type; an altar rebirth holds a square event with
    the steps left in place of the effect. */
-#define SENSOR_EVENT_THING          0x00
-#define SENSOR_EVENT_WALL           0x02
-#define SENSOR_EVENT_TIMER_FACTOR   0x02
-#define SENSOR_EVENT_TIMER_PHASE    0x03
-#define SENSOR_EVENT_SQUARE_THING   0x02
-#define TELEPORT_EVENT_TARGET       0x00
-#define TELEPORT_EVENT_MAP          0x02
-#define SPAWN_EVENT_CREATURE        0x03
-#define ALTAR_EVENT_STEPS           0x03
+#define SENSOR_EVENT_THING        0x00
+#define SENSOR_EVENT_WALL         0x02
+#define SENSOR_EVENT_TIMER_FACTOR 0x02
+#define SENSOR_EVENT_TIMER_PHASE  0x03
+#define SENSOR_EVENT_SQUARE_THING 0x02
+#define TELEPORT_EVENT_TARGET     0x00
+#define TELEPORT_EVENT_MAP        0x02
+#define SPAWN_EVENT_CREATURE      0x03
+#define ALTAR_EVENT_STEPS         0x03
 
 /* Sensor types that launch missiles. */
 #define LAUNCH_ITEM             0x07
@@ -158,11 +128,12 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define SENSOR_TIMER              0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
 #define SENSOR_RELAY              0x20
 #define SENSOR_MAP_ENTRY          0x21
-#define SENSOR_WALL_STATE         0x26
+#define SENSOR_CREATURE_SLOT      0x26 /* a wall slot of a creature type; a square event sets its state */
 #define SENSOR_ANIMATION          0x2c
 #define SENSOR_COUNTDOWN          0x2d
 #define SENSOR_GENERATOR          0x2e
 #define SENSOR_PARTY_TELEPORT     0x2e
+#define SENSOR_SHOP               0x30 /* a floor spot that shows a shop item; a creature places an item there */
 #define SENSOR_BUSY_RELAY         0x31
 #define SENSOR_ACTIVATION         0x32
 #define SENSOR_TIMER_8            0x33
@@ -190,19 +161,19 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define TIMER_SLOW_FACTOR         8
 
 /* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
-   the direction of a creature turn sensor, and the power (bits 0-3) and creature type of an area sensor. */
-#define SENSOR_MAP_MASK     0x3f
-#define AREA_POWER_MASK     0x0f
-/* The positions of the wall cell and the creature type in the sensor data. */
-#define SENSOR_CELL_SHIFT   6
-#define AREA_CREATURE_SHIFT 4
+   the direction of a creature turn sensor, and the power (bits 0-3) and group class of an area sensor. */
+#define SENSOR_MAP_MASK   0x3f
+#define AREA_POWER_MASK   0x0f
+/* The positions of the wall cell and the group class in the sensor data. */
+#define SENSOR_CELL_SHIFT 6
+#define AREA_CLASS_SHIFT  4
 static inline uint16_t sensor_data_map(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_MAP_MASK;
 }
 static inline uint16_t sensor_data_cell(uint16_t sensor)
 {
-    return sensor_data(sensor) >> SENSOR_CELL_SHIFT & DIR_MASK;
+    return sensor_data(sensor) >> SENSOR_CELL_SHIFT & CELL_MASK;
 }
 static inline uint16_t sensor_turn_dir(uint16_t sensor)
 {
@@ -212,9 +183,10 @@ static inline uint16_t sensor_area_power(uint16_t sensor)
 {
     return sensor_data(sensor) & AREA_POWER_MASK;
 }
-static inline uint16_t sensor_area_creature(uint16_t sensor)
+/* The GROUP_ITEM_CLASS word of the groups that an area sensor reaches (an inverted generator sets this word). */
+static inline uint16_t sensor_area_class(uint16_t sensor)
 {
-    return sensor_data(sensor) >> AREA_CREATURE_SHIFT;
+    return sensor_data(sensor) >> AREA_CLASS_SHIFT;
 }
 
 /* Wall sensor types of objects put on a wall cell. */
@@ -242,7 +214,7 @@ static inline uint16_t sensor_area_creature(uint16_t sensor)
 /* A GDAT value of the door type of a door thing. */
 uint16_t sensor_door_value(uint16_t door, int key);
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
-int sensor_party_possesses_type(int type);
+bool sensor_party_possesses_type(int type);
 /* Queues a square event for (x, y) of the current map at time. */
 void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time);
 /* Presses the button of door at the square: toggles the door next tick and queues the button release. */
@@ -283,18 +255,22 @@ void sensor_process_map_entry(bool entering);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
-   with held (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. */
-void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
+   with held (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. True when a sensor
+   reacts, so that the command stops. */
+bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
 
-/* Script variables: 64 flags, 64 bytes, 64 words (0x00, 0x40, 0x80); op 0 set, 1 clear, 2 toggle, 3 add, 4 subtract, 6 assign. */
+/* The operations of a set-global sensor on a script variable. */
 #define GLOBAL_VAR_SET      0
 #define GLOBAL_VAR_CLEAR    1
 #define GLOBAL_VAR_TOGGLE   2
 #define GLOBAL_VAR_ADD      3
 #define GLOBAL_VAR_SUBTRACT 4
 #define GLOBAL_VAR_ASSIGN   6
-/* The first byte variable, and the largest value of a byte variable. */
+/* The script variables: the flags, then the bytes, then the words; the first byte, the first word, the end. */
 #define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
+#define GLOBAL_WORD_FIRST   (GLOBAL_BYTE_FIRST + GLOBAL_BYTE_COUNT)
+#define GLOBAL_VAR_END      (GLOBAL_WORD_FIRST + GLOBAL_WORD_COUNT)
+/* The largest value of a byte variable. */
 #define GLOBAL_BYTE_MAX     255
 
 #endif /* DM2_ENGINE_SENSOR_H */

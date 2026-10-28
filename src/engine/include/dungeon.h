@@ -74,6 +74,7 @@
 #define CELL_COUNT              4
 /* Directions and cells wrap at 4. */
 #define DIR_MASK                (DIR_COUNT - 1)
+#define CELL_MASK               (CELL_COUNT - 1)
 /* Quarter turns of dir_turn. */
 #define TURN_RIGHT              1 /* dir_turn: the direction to the right */
 #define TURN_BACK               2 /* dir_turn: the opposite direction */

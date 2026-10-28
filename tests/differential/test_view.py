@@ -159,7 +159,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     party = PartyHead.in_dll(lib, "g_party")
     party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
-    lib.dun_set_party_location(Position(map_, x, y))
+    lib.dun_set_party_position(Position(map_, x, y))
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
         lib.weather_sky_objects.restype = ctypes.c_void_p

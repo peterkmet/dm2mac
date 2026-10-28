@@ -258,7 +258,7 @@ address,name,signature,subsystem
 0x0001c6f6,rand_2bits,uint32_t rand_2bits(void),runtime library
 0x0001c710,math_mul_shift,"int math_mul_shift(uint16_t a, uint8_t shift, uint16_t b)",runtime library
 0x0001c724,dun_set_current_map,void dun_set_current_map(int16_t map),dungeon data
-0x0001c82d,dun_set_party_location,"void dun_set_party_location(int16_t x, int16_t y, int16_t map)",dungeon data
+0x0001c82d,dun_set_party_position,"void dun_set_party_position(int16_t x, int16_t y, int16_t map)",dungeon data
 0x0001c8e5,dun_find_thing_in_list,"uint16_t *dun_find_thing_in_list(uint16_t *list, uint8_t cell, uint16_t **found_list, int (*match)(uint16_t thing), void *arg, int search_groups, int search_chests)",dungeon data
 0x0001c9e9,dun_move_relative,"void dun_move_relative(int16_t dir, int16_t forward, int16_t right, int16_t *x, int16_t *y)",dungeon data
 0x0001ca43,dun_is_open_square_raw,"int dun_is_open_square_raw(int16_t x, int16_t y)",dungeon data
@@ -1408,6 +1408,7 @@ address,name,signature,subsystem
 0x00071700,g_screen_pitch,int16_t,graphics
 0x00071706,g_viewport_width,int16_t,dungeon view
 0x00071708,g_viewport_height,int16_t,dungeon view
+0x0007172e,g_font_glyph_height,int16_t,text
 0x00071796,g_zone_list,void *,interface
 0x0007179a,g_zone_temp_index,int16_t,interface
 0x0007179c,g_view_zone_ids,int16_t[],dungeon view

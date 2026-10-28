@@ -40,6 +40,8 @@ extern int16_t g_zone_clip_rect[RECT_SIZE];
 
 /* Reads the layout zones from GRAPHICS.DAT; returns false when they are missing or damaged. */
 bool zone_load(const Gdat *gdat);
+/* Frees the zone records; the zones are unknown until the next zone_load. Safe to call twice. */
+void zone_free(void);
 /* Places an image of *out_w x *out_h pixels (0: the size of image) in zone and clips it. Returns rect, or NULL when
    nothing is visible; *out_w and *out_h then hold the clipped left and top pixel counts. */
 int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h);
@@ -52,9 +54,9 @@ int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, ui
 int16_t *zone_get_rect(int16_t zone, int16_t *rect);
 /* The rect of the whole viewport, also while the party walks (zone_get_rect then cuts it to the walk view). */
 int16_t *zone_get_viewport_rect(int16_t *rect);
-/* The offset (*out_dx, *out_dy) at percent (0 to 100) of the way from zone from to zone to; returns false for an unknown
-   zone. */
-bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, int16_t *out_dx, int16_t *out_dy);
+/* Writes to *out the offset at percent (0 to 100) of the way from zone from to zone to; returns false and leaves
+   *out unchanged for an unknown zone. */
+bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPoint *out);
 /* Clips the next zones to the viewport minus these margins. */
 void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom);
 
@@ -62,7 +64,7 @@ void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bot
 /* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
 int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
-void zone_get_position(int16_t zone, int16_t *out_x, int16_t *out_y);
+ScreenPoint zone_get_position(int16_t zone);
 /* The view zone of grid cell grid_cell (0 to 24, 5 x 5) of view element base, turned by dir. */
 int zone_id_for_view_cell(int16_t base, int16_t grid_cell, int16_t dir);
 

@@ -16,7 +16,7 @@ from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixt
     sync_champions, things_of, update_action_area,
 )
 from dm2test.save import Game
-from dm2test.view import Bitmap, u8_p
+from dm2test.view import Bitmap, ScreenPoint, u8_p
 from dm2test.lib import load_lib
 
 
@@ -545,7 +545,8 @@ def test_layout_zone_helpers_match_original(port, original):
     emu = original.emu
     lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
     lib.zone_get_icon_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_position.argtypes = [ctypes.c_int16] + [ctypes.POINTER(ctypes.c_int16)] * 2
+    lib.zone_get_position.argtypes = [ctypes.c_int16]
+    lib.zone_get_position.restype = ScreenPoint
     out = original.alloc(16)
     zones = 0
     for zone in range(1, 0x300):
@@ -556,10 +557,9 @@ def test_layout_zone_helpers_match_original(port, original):
         lib.zone_get_icon_rect(zone, r)
         emu.call(0x37F3A, zone, out)
         assert tuple(r) == struct.unpack("<4h", emu.read(out, 8)), zone
-        x, y = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(zone, ctypes.byref(x), ctypes.byref(y))
+        position = lib.zone_get_position(zone)
         emu.call(0x19BAE, zone, out, out + 2)
-        assert (x.value, y.value) == struct.unpack("<2h", emu.read(out, 4)), zone
+        assert (position.x, position.y) == struct.unpack("<2h", emu.read(out, 4)), zone
     assert zones > 250
 
 

@@ -34,6 +34,7 @@ enum GdatResult {
 #define GDAT_TYPE_DATA          0x0d /* raw data, for example the interface colors */
 
 /* GDAT categories: the first part of a key (category, index, type, entry). */
+#define CAT_GENERAL        0x00 /* index 0: two values; it holds no sound */
 #define CAT_INTERFACE      0x01 /* the interface pictures, the font, the palette, the layout */
 #define CAT_DUNGEON        0x03 /* index 0: the dungeon (sounds, texts, the start hour); index map + 1: a map */
 #define CAT_MUSIC          0x04

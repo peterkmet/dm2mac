@@ -17,7 +17,7 @@ from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from dm2test.save import Game, Timeline
-from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
+from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
 from dm2test.lib import load_lib
 
 
@@ -265,20 +265,20 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     # The offset between two layout zones at a percent: the place of a lightning bolt in the sky.
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
-    dx, dy = ctypes.c_int16(), ctypes.c_int16()
+    offset = ScreenPoint()
     lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
         if rng.random() < 0.5:
             a = rng.choice((6001, 6002, 6003, 3100, 5000))
             b = a + 1
-        dx.value, dy.value = 7, 7
+        offset.x, offset.y = 7, 7
         sc = world
         sc.emu.write(SCRATCH + 0xF8300, struct.pack("<hh", 7, 7))
-        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(dx), ctypes.byref(dy))
+        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(offset))
         theirs = sc.emu.call(ZONE_INTERPOLATE_OFFSET, a, b, p, SCRATCH + 0xF8300, SCRATCH + 0xF8302)
         assert (mine is False) == (theirs & 0xFFFFFFFF == 0xFFFFFFFF), (a, b, p)
-        assert (dx.value, dy.value) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
+        assert (offset.x, offset.y) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
 
 
 def transfer_sensors(lib):
@@ -650,7 +650,7 @@ def ambient_wall_sensors(lib, gdat):
                 t = lib.dungeon_square_first_thing(map_, x, y)
                 while t != C.THING_ENDOFLIST and t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_SENSOR:
                     data, flags = lib.thing_word(t, 2), lib.thing_word(t, 4)
-                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATED and flags & 0x40 and flags >> 12:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATION and flags & 0x40 and flags >> 12:
                         ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
                         frames = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x0D)
                         if frames:

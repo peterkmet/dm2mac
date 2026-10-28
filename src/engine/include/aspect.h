@@ -66,19 +66,14 @@ static inline uint8_t aspect_word_ornament(uint16_t w)
 #define ASPECT_STAIRS_FRONT 0x12
 #define ASPECT_STAIRS_SIDE  0x13
 
-/* The sensor types that the view reads (the others in sensor.h). */
-#define SENSOR_ANIMATED        0x2c
-#define SENSOR_SHOP            0x30
-#define SENSOR_SOUND_ANIMATION 0x32
-#define SENSOR_FRAME_DATA      0x41
 /* (category, ornament, GDAT_TYPE_VALUE, key): wall ornament kind; door: zone row of the damage picture */
-#define ORN_KEY_KIND           0x0a
+#define ORN_KEY_KIND   0x0a
 /* The values of ORN_KEY_KIND of a wall ornament: what the ornament holds. */
-#define KIND_ALCOVE            0x01
-#define KIND_SHOP              0x02
-#define KIND_PORTRAIT          0x03
+#define KIND_ALCOVE    0x01
+#define KIND_SHOP      0x02
+#define KIND_PORTRAIT  0x03
 /* The size of a wall text buffer. */
-#define WALL_TEXT_SIZE         128 /* a GDAT text of the map or ornament pictures */
+#define WALL_TEXT_SIZE 128 /* a GDAT text of the map or ornament pictures */
 
 /* The 5 x 5 grid of the cells of a square and its neighbours (aspect_cell_to_xy), row by row. */
 #define CELL_GRID_SIDE            5

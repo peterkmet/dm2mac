@@ -85,10 +85,7 @@
 #define CMD_OPTIONS              (CMD_LAST + 5) /* the advanced mode: no original command has these numbers */
 
 /* The cursor images of input_cursor_at. */
-#define CURSOR_ARROW    0
-#define CURSOR_HAND     1
-#define CURSOR_OBJECT   2
-#define CURSOR_CHAMPION 3
+enum CursorKind { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
 
 /* A command and the click that made it: position and the rectangle of its zone. */
 typedef struct {
@@ -134,10 +131,15 @@ bool input_is_idle(void);
 
 /* ---- The input tree ---- */
 
-/* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none;
+/* The command of a click with buttons at (x, y) in mode, and the rectangle of its zone; 0 for none. In the advanced
+   mode a left click on a status box outside the hands is a click on the bars when the leader hand holds an object
+   (it stores the object), else a click on the name (it opens the inventory of the champion);
    exported for the tests. */
 uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect);
-/* The command of key in mode, and the rectangle of its zone; 0 for none. */
+/* The command of key in mode, and the rectangle of its zone; 0 for none. In the advanced mode, F5 and F9 in the
+   movement mode give the quick save and the quick load, Tab and M there open the automap, C the cheat screen, Esc
+   the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a
+   command gives the command of its keypad key. */
 uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect); /* exported for the tests */
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */
 void input_set_mode(enum InputMode mode);
@@ -155,12 +157,12 @@ void input_pop_mode(void);
 
 /* The cursor image at (x, y) of the screen: the held object or the hand over a cursor zone of kind 1, the dragged
    champion over a zone of kind 2, else the arrow. */
-int input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
+enum CursorKind input_cursor_at(int16_t x, int16_t y); /* exported for the tests */
 /* Draws the face of champ into the dragged champion cursor. */
 void input_set_champion_cursor(int champ);
 /* The image of a cursor of input_cursor_at. The bits of the object cursor stay valid until the next call for the
    object cursor, the bits of the champion cursor until the next input_set_champion_cursor. */
-CursorImage input_cursor_image(int cursor); /* exported for the tests */
+CursorImage input_cursor_image(enum CursorKind cursor); /* exported for the tests */
 /* Draws the cursor image of input_cursor_at(x, y) with its hot spot at (x, y) into the screen pixels. */
 void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y);
 

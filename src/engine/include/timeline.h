@@ -9,8 +9,37 @@
 #include <stdint.h>
 #include "champion.h"
 
-/* Event type of a free event. */
-#define EVENT_NONE 0x00
+/* Timeline event types; EVENT_NONE marks a free event. */
+#define EVENT_NONE                  0x00
+#define EVENT_DOOR_ANIMATION        0x01
+#define EVENT_DOOR_DESTRUCTION      0x02
+#define EVENT_SQUARE                0x04
+#define EVENT_HIDE_DAMAGE           0x0c
+#define EVENT_ALTAR_REBIRTH         0x0d
+#define EVENT_ITEM_EFFECT           0x0e
+#define EVENT_DELAYED_SOUND         0x15
+#define EVENT_EXPLOSION             0x19
+#define EVENT_PROJECTILE_MOVE       0x1d
+#define EVENT_PROJECTILE_MOVE_2     0x1e
+#define EVENT_CREATURE_ANIMATION    0x21
+#define EVENT_CREATURE_THINK        0x22
+#define EVENT_MOVE_GROUP            0x3c
+#define EVENT_MOVE_GROUP_2          0x3d
+#define EVENT_MAGIC_LIGHT           0x46
+#define EVENT_INVISIBILITY          0x47
+#define EVENT_AURA                  0x48
+#define EVENT_POISON                0x4b
+#define EVENT_WEATHER               0x54
+#define EVENT_SENSOR_ANIMATION_STEP 0x55
+#define EVENT_SENSOR_TIMER          0x56
+#define EVENT_SENSOR_IDLE           0x57
+#define EVENT_DOOR_BUTTON_RELEASE   0x58
+#define EVENT_SENSOR_ANIMATION_END  0x59
+#define EVENT_SENSOR_AMBIENT_SOUND  0x5a
+#define EVENT_SENSOR_READY          0x5b
+#define EVENT_SET_MARKER            0x5c
+#define EVENT_TELEPORT_PARTY        0x5d
+#define EVENT_SPAWN_CREATURE        0x5e
 
 /* The mask of the time in time_map. */
 #define EVENT_TIME_MASK 0x00ffffffu

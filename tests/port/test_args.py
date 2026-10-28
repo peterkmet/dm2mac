@@ -6,6 +6,10 @@ import pytest
 from dm2test.lib import load_lib
 
 
+# The option table of platform/main.c.
+VALUE_OPTIONS = [b"--data", b"--filter", b"--save", b"--control", b"--mode", b"--saves"]
+
+
 @pytest.fixture(scope="module")
 def lib():
     return load_lib()
@@ -25,8 +29,10 @@ def lib():
 ])
 def test_args_drop_save(lib, args, expected):
     argv = (ctypes.c_char_p * (len(args) + 1))(*[a.encode() for a in args], None)
-    lib.args_drop_save.argtypes = [ctypes.c_int, ctypes.c_void_p]
-    argc = lib.args_drop_save(len(args), ctypes.cast(argv, ctypes.c_void_p))
+    options = (ctypes.c_char_p * len(VALUE_OPTIONS))(*VALUE_OPTIONS)
+    lib.args_drop_save.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
+    argc = lib.args_drop_save(len(args), ctypes.cast(argv, ctypes.c_void_p), ctypes.cast(options, ctypes.c_void_p),
+                              len(VALUE_OPTIONS))
     assert argc == len(expected)
     assert [argv[i].decode() for i in range(argc)] == expected
     assert argv[argc] is None

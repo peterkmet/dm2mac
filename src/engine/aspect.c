@@ -223,13 +223,13 @@ static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int
         else
             o->frame = active;
         break;
-    case SENSOR_ANIMATED:
+    case SENSOR_ANIMATION:
         if (active) {
             o->offset = sensor_frame(thing);
             o->animated = true;
         }
         break;
-    case SENSOR_SOUND_ANIMATION:
+    case SENSOR_ACTIVATION:
         if (active) {
             o->time = sensor_data(thing);
             o->animated = true;
@@ -238,7 +238,7 @@ static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int
     case WALL_CLICK_RESET:
         s->text = face == SIDE_FRONT ? thing : THING_TEXT_NONE;
         break;
-    case SENSOR_FRAME_DATA:
+    case SENSOR_FRAME_STEP:
         o->frame = sensor_data(thing);
         break;
     case WALL_CLICK_DOOR_BUTTON:
@@ -326,10 +326,10 @@ static bool floor_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, Or
         if (sensor_data(thing) - 1 != map)
             return false;
         o->animated = active;
-    } else if (type == SENSOR_ANIMATED && active) {
+    } else if (type == SENSOR_ANIMATION && active) {
         o->offset = sensor_frame(thing);
         o->animated = true;
-    } else if (type == SENSOR_SOUND_ANIMATION && active) {
+    } else if (type == SENSOR_ACTIVATION && active) {
         o->time = sensor_data(thing);
         o->animated = true;
     }

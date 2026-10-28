@@ -3,7 +3,8 @@
 #define DM2_ENGINE_CREATURE_H
 /* Prefixes: creature_ */
 
-/* Creature groups: the creature info records and the update of the groups. */
+/* Creature groups: the creature info records and the update of the groups. The AI (ai.c) chooses the actions; this
+   module does not plan, and it draws nothing. */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -54,6 +55,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
    MELEE_MODE_REACH attack of the champions reaches only it, a missile hits it only as harm non-material, and the sight
    of creatures passes it. */
 #define CREATURE_NON_MATERIAL    0x0020
+#define CREATURE_ATTACKS_FIRST   0x0100 /* flags: the creature attacks before it moves */
 #define CREATURE_CATCHES_OBJECTS 0x0200 /* the creature takes a thrown object with ITEM_FLAG_CAUGHT that hits it */
 #define CREATURE_SEES_INVISIBLE  0x0400 /* flags: the party spell of invisibility does not hide the party */
 #define CREATURE_SEES_IN_DARK    0x0800 /* flags: the light does not limit its sight */
@@ -102,7 +104,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 
 /* The nibbles of CreatureInfo.speed and the armor in door_flags. */
 #define INFO_NIBBLE_MASK 0x0f
-#define ARMOR_IMMUNE     INFO_NIBBLE_MASK /* the armor of a creature that takes no damage */
+#define ARMOR_IMMUNE     0x0f /* the armor of a creature that takes no damage: the highest */
 
 /* The shifts of the nibbles of CreatureInfo.speed. */
 #define SPEED_FEAR_SHIFT       4
@@ -188,7 +190,7 @@ typedef struct {
     uint16_t group;           /* record index of the group, ACTIVE_FREE for a free entry */
     int16_t event;            /* the timeline event of its next update, -1 none */
     uint8_t last_action_time; /* low byte of the game time of its last attack or move */
-    uint8_t unused_5;
+    uint8_t padding;
     uint8_t regeneration_time;            /* low byte of game time / 4 of the last health change */
     uint8_t anim_bits;                    /* ANIM_BIT_*: random shift and mirror of the picture */
     uint16_t anim_sequence;               /* first step of the animation sequence */
@@ -215,16 +217,15 @@ typedef struct {
 #define ACTIVE_GROUP_SIZE 34
 _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 bytes");
 
-/* Markers of a free active group, of a group without an active group, and of an active group without an action. */
-#define ACTIVE_FREE        0xffff
-#define GROUP_NOT_ACTIVE   0x00ff
-#define ACTIVE_ACTION_NONE 0x00ff /* an active group without a chosen action */
+/* The marker of a free active group. */
+#define ACTIVE_FREE 0xffff
+
+/* Markers of a group without an active group and of an active group without an action. */
+#define GROUP_NOT_ACTIVE   0xff
+#define ACTIVE_ACTION_NONE 0xff /* an active group without a chosen action */
 
 /* An active group without a scheduled update. */
 #define EVENT_NO_SLOT (-1)
-
-/* The action that makes a creature vanish. */
-#define CREATURE_ACTION_VANISH 0x13
 
 /* The results of creature_anim_next_step: the step is the last, more steps follow, or the sequence ended. */
 typedef enum { ANIM_LAST_STEP, ANIM_MORE_STEPS, ANIM_SEQUENCE_END } AnimStepResult;
@@ -247,6 +248,7 @@ typedef struct {
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_MOOD_BORED 0x0005 /* alert flags: mood bit 5, MOOD_BORED */
 #define ALERT_MOOD_QUICK 0x0006 /* alert flags: mood bit 6, MOOD_QUICK */
 #define ALERT_LOUD       0x2000 /* the alert wakes the creature */
 #define ALERT_ANGER      0x4000 /* alert flags: the creature may become angry */
@@ -257,9 +259,7 @@ typedef struct {
 #define ALERT_ALWAYS 100
 
 /* What a creature that leaves the dungeon drops: its drop items and possessions, its possessions, or nothing. */
-#define DROP_ALL         0
-#define DROP_POSSESSIONS 1
-#define DROP_NOTHING     2
+typedef enum { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING } DropMode;
 
 /* creature_create_group count: the group starts with full health. */
 #define GROUP_COUNT_FULL_HEALTH 7
@@ -267,12 +267,18 @@ typedef struct {
 /* A group that appears on a square of a map, or on a free square beside it. */
 typedef struct {
     int creature_type;
-    int level; /* the creature_create_group count */
-    int dir;
-    int x, y, map;
-    int link;       /* the item that controls a minion, -1 none */
-    int search_dir; /* the first direction of the search for a free square, -1 no search */
+    uint16_t count; /* the creature_create_group count */
+    int16_t dir;
+    int16_t x, y, map;
+    uint16_t link;     /* the item that controls a minion, THING_NONE none */
+    int8_t search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;
+
+/* A new group and the square where its move put it (group THING_NONE: none). */
+typedef struct {
+    uint16_t group;
+    Position at;
+} SummonedGroup;
 
 /* The active groups; NULL before the first game. */
 extern ActiveGroup *g_active_groups;
@@ -285,7 +291,7 @@ extern int g_active_group_count;
 /* The info record at index; NULL past the table. */
 const CreatureInfo *creature_info_at(int index);
 /* A GDAT value (0x0f, creature type, 0x0b, attr) of a creature type. */
-int creature_gdat_attr(int creature_type, int attr);
+uint16_t creature_gdat_attr(int creature_type, int attr);
 /* The info record of a creature type, read through GDAT (0x0f, type, 0x0b, 5). */
 const CreatureInfo *creature_info(const Gdat *g, int creature_type);
 /* The info record of the creature of a group thing. */
@@ -313,16 +319,17 @@ AnimStep creature_anim_start(int creature_type, int action, uint16_t start);
 bool creature_current_step_acts(uint16_t group);
 
 /* Groups on squares. */
-/* The creature group on (x, y) of the current map, THING_NONE for none. */
-uint16_t creature_get_group_at(int16_t x, int16_t y);
-/* The first creature group on the square (x, y) of map, THING_NONE for none. */
-uint16_t creature_group_at(int16_t map, int16_t x, int16_t y);
+/* The creature group on the square at of the current map, THING_NONE for none. */
+uint16_t creature_get_group_at(Location at);
+/* The first creature group on the square at, THING_NONE for none. */
+uint16_t creature_group_at(Position at);
 /* True when the creature of group may stay on map: a wanderer, or a creature type of the map. */
 bool creature_is_native_to_map(uint16_t group, int16_t map);
 /* True for a creature that flies over pits and does not press floor sensors. */
 bool creature_is_flying(uint16_t group);
-/* The cells (bits 0 to 3) in which a static creature shows its possessions, from its possessions word. */
-int creature_cell_mask(uint16_t possessions);
+/* The cells (bits 0 to 3) in which a static creature shows its possessions to side (0 to 3), from its possessions
+   word. */
+int creature_cell_mask(uint16_t possessions, int16_t side);
 
 /* Active groups. */
 /* The timeline event of the next update of an active group. */
@@ -344,48 +351,52 @@ void creature_deactivate_all_groups(void);
 /* Deletes the next update event of a group. */
 void creature_cancel_update(uint16_t group);
 /* Gives a group an active group: its AI state, animation, and first update. */
-void creature_activate_group(uint16_t group, int16_t x, int16_t y);
+void creature_activate_group(uint16_t group, Location at);
 /* Frees an active group; a creature that vanished leaves the dungeon. */
 void creature_deactivate_group(int active_index);
 /* Sets the action of the next update of a group; now: the update comes at once, or the current action stops. */
-void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, bool now);
-/* Schedules the next animation update of the static creature on (x, y); alt: at the end of its loop. */
-void creature_update_anim_at(int16_t x, int16_t y, bool alt);
+void creature_set_next_action(uint16_t group, Location at, int action, bool now);
+/* Schedules the next animation update of the static creature on at; alt: at the end of its loop. */
+void creature_update_anim_at(Location at, bool alt);
 /* Animates the creature in the AI context by one step (picture shift, mirror, sound); returns the time of its next
    update. */
 uint32_t creature_animate_step(void);
 /* The update event of a creature group: regeneration, damage, then the AI or the animation. */
-void creature_process_event(int16_t x, int16_t y, int type);
+void creature_process_event(Location at, int type);
 
 /* Group life: creation, damage, death, alerts. */
-/* A dead creature leaves its drop items and its possessions (mode DROP_*) on (x, y). */
-void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, int sound_map);
-/* Removes the group on (x, y) from the dungeon; it drops what it carries. */
-void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map);
+/* A dead creature leaves its drop items and its possessions (by mode) on at; audible: each item makes a sound. */
+void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool audible);
+/* Removes the group on at from the dungeon; it drops what it carries (by mode). */
+void creature_delete_group_at(Location at, DropMode mode, bool audible);
 /* Damages the group in the AI context; true when it was removed. */
 bool creature_damage_current_group(int damage);
-/* The creature in the AI context hits the group on (x, y): the damage, 0 for a miss, -1 for no group. */
-int creature_attack_group_at(int16_t x, int16_t y);
+/* The creature in the AI context hits the group on at; false when no group is there. *damage_out (may be NULL) gets
+   the damage, 0 for a miss. */
+bool creature_attack_group_at(Location at, int16_t *damage_out);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
-void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int damage);
+void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance, int damage);
 /* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
-int creature_roll_armor_factor(uint16_t group, int amount);
-/* A damage kind that sets or clears a mood bit of the group. */
-void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind);
-/* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
-uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y);
-/* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
-uint16_t creature_summon_group(CreatureSummon summon);
-/* Turns a group, to dir or by dir; a static creature turns its possessions too. */
-void creature_turn_group(uint16_t group, int absolute, int16_t dir);
-/* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
-int creature_get_party_distance(int16_t x, int16_t y);
+int creature_roll_armor_factor(uint16_t group, uint16_t amount);
+/* A damage kind that sets or clears a mood bit of the group. kind keeps ALERT_CLEAR in its mask word, as the AI
+   candidate mask holds it (ai_move.c). */
+void creature_apply_damage_kind(uint16_t group, Location at, int kind);
+/* Creates a group of count + 1 creatures on at of the current map; THING_NONE when the dungeon is full. */
+uint16_t creature_create_group(int creature_type, int count, int16_t dir, Location at);
+/* Creates a group on the square (x, y) of map or on a free square beside it, and returns where it ends; link: the
+   item that controls a minion. */
+SummonedGroup creature_summon_group(CreatureSummon summon);
+/* Turns a group, to dir (absolute) or by dir; a static creature turns its possessions too. */
+void creature_turn_group(uint16_t group, bool absolute, int16_t dir);
+/* The distance from at to the party in the distance map of the current map; -1 when no map has it. */
+int creature_get_party_distance(Location at);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
-/* True when the group on (x, y) can be pushed one square in dir; *out_group gets it. */
-bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_group);
-/* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
-void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength);
+/* True when the group on at can be pushed one square in dir; *out_group (if not NULL) gets it. target_must_be_free:
+   a group on the target square stops the push (a real push); false only asks whether the push arrow shows. */
+bool creature_can_be_pushed(Location at, int16_t dir, bool target_must_be_free, uint16_t *out_group);
+/* Pushes the group on at one square in dir; a push into the party moves the party. */
+void creature_push_group(Location at, int16_t dir, int16_t strength);
 /* The party pushes the creature in front by a push arrow. */
 void creature_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */

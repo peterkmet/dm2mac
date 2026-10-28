@@ -171,10 +171,9 @@ void dialog_draw_button(bool highlighted, GdatKey picture)
     int16_t r[RECT_SIZE];
     rect_center_in(r, g_input_match.rect, image->width, image->height);
     if (g_input_match.origin != -1) {
-        int16_t x, y;
-        zone_get_position(g_input_match.origin, &x, &y);
-        r[RECT_X] = (int16_t)(r[RECT_X] - x);
-        r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
+        ScreenPoint origin = zone_get_position(g_input_match.origin);
+        r[RECT_X] = (int16_t)(r[RECT_X] - origin.x);
+        r[RECT_Y] = (int16_t)(r[RECT_Y] - origin.y);
     }
     gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
                        draw_gdat_image_palette(picture.category, picture.index, picture.entry));

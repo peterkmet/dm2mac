@@ -40,12 +40,10 @@
 #define LIGHT_RADIUS_MAX       8
 #define PARTY_MAP_SEARCH_COST  25 /* the cost of the search of the party distance maps */
 
-/* The wall sensor type of a creature slot (the other sensor types in sensor.h). */
-#define SENSOR_CREATURE_SLOT 0x26 /* a wall slot that a creature type uses */
 /* The state of a creature slot (its sensor effect bits) from which the slot is busy. */
-#define SLOT_STATE_BUSY      2
+#define SLOT_STATE_BUSY    2
 /* g_ai.actuator_flags. */
-#define ACTUATOR_SKILL_USE   0x0001 /* the creature uses wall actuators */
+#define ACTUATOR_SKILL_USE 0x0001 /* the creature uses wall actuators */
 
 /* The explosion types that the AI notices. */
 #define EXPLOSION_OPEN_DOOR     0x04
@@ -689,7 +687,7 @@ AiLineTarget ai_find_target_in_lines(int16_t filter, uint8_t *distance_map, Loca
                     if (found)
                         break;
                 } else if (!ranged && !at_group(tx, ty)) {
-                    uint16_t g = creature_get_group_at(tx, ty);
+                    uint16_t g = creature_get_group_at((Location){tx, ty});
                     if (g != THING_NONE && ai_thing_matches_filter(g, filter)) {
                         found = true;
                         break;
@@ -1388,18 +1386,18 @@ static AiMoveTest onward_test(const Move *m, bool no_movers)
 /* A move onto another map or into a teleporter: the move test goes on at the square where the creature arrives. */
 static void test_move_transition(Move *m, bool no_movers)
 {
-    move_follow_square_transitions(g_ai.group_thing, (MovePath){m->sx, m->sy, m->tx, m->ty}, false);
-    if (g_party.cur_map == g_party.dest_map && m->tx == g_party.dest_x && m->ty == g_party.dest_y)
+    MoveDest end = move_follow_square_transitions(g_ai.group_thing, (MovePath){m->sx, m->sy, m->tx, m->ty}, false).dest;
+    if (g_party.cur_map == end.map && m->tx == end.x && m->ty == end.y)
         return;
     int16_t saved = g_party.cur_map;
-    if (saved != g_party.dest_map) {
-        if (!(g_ai.move_flags & MOVE_LEVELS) || !creature_is_native_to_map(g_ai.group_thing, g_party.dest_map)) {
+    if (saved != end.map) {
+        if (!(g_ai.move_flags & MOVE_LEVELS) || !creature_is_native_to_map(g_ai.group_thing, end.map)) {
             m->result = false;
             return;
         }
-        ai_set_map(g_party.dest_map);
+        ai_set_map(end.map);
     }
-    Location dest = ai_location(g_party.dest_x, g_party.dest_y);
+    Location dest = ai_location(end.x, end.y);
     m->result = ai_try_move(onward_test(m, no_movers), dest, dest, DIR_KEEP_FACING).passed;
     ai_set_map(saved);
 }
@@ -1581,12 +1579,10 @@ AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir)
 /* The cells of the possessions of a static creature seen from side. */
 static int possession_cell_mask(uint16_t possessions, int side)
 {
-    if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
-        return CELLS_ALL;
     /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
     if ((uint16_t)side >= DIR_COUNT)
         return CELLS_ALL;
-    return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];
+    return creature_cell_mask(possessions, (int16_t)side);
 }
 
 AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side)
@@ -2367,7 +2363,7 @@ static bool damage_group_at(const AiCandidate *c, int16_t x, int16_t y)
     uint16_t g = ai_cached_first_group();
     if (g == THING_ENDOFLIST || !ai_thing_matches_filter(g, c->item))
         return false;
-    creature_apply_damage_kind(g, x, y, (int16_t)c->mask);
+    creature_apply_damage_kind(g, (Location){x, y}, (int16_t)c->mask);
     return true;
 }
 
@@ -2495,7 +2491,7 @@ static bool blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, i
     int16_t ny = (int16_t)(y + g_dir_dy[s->dir]);
     bool r = at_party(nx, ny);
     if (!r) {
-        uint16_t other = creature_get_group_at(nx, ny);
+        uint16_t other = creature_get_group_at((Location){nx, ny});
         r = other != THING_NONE && !(creature_group_info(other)->flags & CREATURE_STATIC);
     }
     if (!r)

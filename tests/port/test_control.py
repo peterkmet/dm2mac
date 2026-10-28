@@ -23,6 +23,7 @@ from dm2test.input import session  # noqa: F401 (a fixture)
 from dm2test.markers import ROOT
 from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.interface import UiState, things_of
+from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
 
 
@@ -161,17 +162,17 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     with pumped(lib):
         assert request({"cmd": "key", "key": "1"}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
-        origin_x, origin_y = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(ZONE_VIEWPORT, ctypes.byref(origin_x), ctypes.byref(origin_y))
+        lib.zone_get_position.restype = ScreenPoint
+        origin = lib.zone_get_position(ZONE_VIEWPORT)
         x, y = arrow_center(lib, ZONE_EYE_CLICK)
-        x, y = x + origin_x.value, y + origin_y.value
+        x, y = x + origin.x, y + origin.y
         assert lib.input_click_command(INPUT_MODE_INVENTORY, x, y, LEFT, (ctypes.c_int16 * 4)()) == CMD_EYE
         assert request({"cmd": "click", "x": x, "y": y}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
         assert ui.eye == 0 and ui.panel_mode != PANEL_MODE_SKILLS
         hold_and_release(x, y, PANEL_MODE_SKILLS)
         mouth_x, mouth_y = arrow_center(lib, ZONE_MOUTH_CLICK)
-        mouth_x, mouth_y = mouth_x + origin_x.value, mouth_y + origin_y.value
+        mouth_x, mouth_y = mouth_x + origin.x, mouth_y + origin.y
         assert lib.input_click_command(INPUT_MODE_INVENTORY, mouth_x, mouth_y, LEFT, (ctypes.c_int16 * 4)()) == CMD_MOUTH
         assert request({"cmd": "press", "x": mouth_x, "y": mouth_y}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
