@@ -1748,9 +1748,11 @@ static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p,
             release_queue();
         break;
     case FB_EXECUTE:
+        /* the command may run a nested input_poll (a dialog); the script continues after the opcode, or repeats it
+           when the command waits */
         in.script = p;
         if (!command_execute(&in.current))
-            p = in.script - 1;
+            p = in.script ? in.script - 1 : p - 1;
         else if (g_input_command_stop)
             release_queue();
         break;
