@@ -226,15 +226,6 @@ type control/state_json.c:viewer_place bridge: task 54
 type control/state_json.c:wall_faces_json bridge: task 54
 type control/state_json.c:wall_sensors_json bridge: task 54
 type control/turn.c:slot_command bridge: task 55
-type engine/ai.c:cond_at_counter bridge: task 20
-type engine/ai.c:cond_door_behind bridge: task 20
-type engine/ai.c:cond_party_at_pit bridge: task 20
-type engine/ai.c:cond_sees_party bridge: task 20
-type engine/ai.c:cond_static_ahead bridge: task 20
-type engine/ai.c:find_floor_sensor bridge: task 20
-type engine/ai.c:has_possession bridge: task 20
-type engine/ai.c:melee_attack_party bridge: task 20
-type engine/ai.c:set_destination bridge: task 20
 type engine/ai_move.c:line_slope bridge: task 21
 type engine/ai_move.c:search_cell bridge: task 21
 type engine/aspect.c:apply_floor_things bridge: task 22

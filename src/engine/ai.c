@@ -507,7 +507,7 @@ static Location dest_square(void)
 }
 
 /* Sets the destination square of the action on the current map. */
-static void set_destination(int x, int y)
+static void set_destination(int16_t x, int16_t y)
 {
     g_ai.active->destination = (uint16_t)location_set_xy(g_ai.active->destination, x, y);
 }
@@ -699,7 +699,7 @@ static bool party_beside_special_wall(void)
 }
 
 /* True when the party looks at the creature on (x, y): in front of it, or (not front_only) in range and in sight. */
-static bool cond_sees_party(int x, int y, bool front_only, int16_t range)
+static bool cond_sees_party(int16_t x, int16_t y, bool front_only, int16_t range)
 {
     if (g_ai.map != g_ai_party.map || dun_get_direction_to(g_ai_party.x, g_ai_party.y, x, y) != g_ai_party.dir)
         return false;
@@ -729,7 +729,7 @@ static bool cond_party_holds_weapon(void)
 }
 
 /* True when the party stands next to the creature on (x, y) with an open pit behind it. */
-static bool cond_party_at_pit(int x, int y)
+static bool cond_party_at_pit(int16_t x, int16_t y)
 {
     if (g_ai.map != g_ai_party.map || (x == g_ai_party.x && y == g_ai_party.y))
         return false;
@@ -741,7 +741,7 @@ static bool cond_party_at_pit(int x, int y)
 }
 
 /* True when the creature on (x, y) can close the door behind it. */
-static bool cond_door_behind(int x, int y)
+static bool cond_door_behind(int16_t x, int16_t y)
 {
     int d = dir_opposite(group_dir(g_ai.group_thing));
     if (!(g_ai.door_flags & DOOR_SKILL_ANY_SIDE))
@@ -752,7 +752,7 @@ static bool cond_door_behind(int x, int y)
 }
 
 /* True when a static creature stands in front of the creature on (x, y) and the party is beside a special wall. */
-static bool cond_static_ahead(int x, int y)
+static bool cond_static_ahead(int16_t x, int16_t y)
 {
     if (g_ai.map != g_ai_party.map)
         return false;
@@ -783,7 +783,7 @@ static bool cond_few_of_type(int16_t creature_type)
 }
 
 /* True when the location in plan counter index of the active group is the square (x, y) of the creature. */
-static bool cond_at_counter(int x, int y, int16_t index)
+static bool cond_at_counter(int16_t x, int16_t y, int16_t index)
 {
     uint16_t at = 0; /* fix: the original reads any word of the active group for an argument out of range */
     if (index >= 0 && index < PLAN_COUNTER_COUNT)
@@ -1632,7 +1632,7 @@ static bool try_flee(uint32_t class_flags)
 /* Plan commands: each returns AI_RESULT_DONE, AI_RESULT_FAIL, or AI_RESULT_ISSUED when it set the action. */
 
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
-static uint16_t find_floor_sensor(int x, int y, int cell, int type)
+static uint16_t find_floor_sensor(int16_t x, int16_t y, int16_t cell, int type)
 {
     for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
@@ -1645,7 +1645,7 @@ static uint16_t find_floor_sensor(int x, int y, int cell, int type)
 }
 
 /* True when a group carries an item of index item at cell (CELL_ANY: any; item -2: any item). */
-static bool has_possession(uint16_t group, int item, int cell)
+static bool has_possession(uint16_t group, int item, int16_t cell)
 {
     if (group == THING_NONE)
         return false;
@@ -2256,7 +2256,7 @@ static void act_arrive(bool closes_pits)
 }
 
 /* The champions that the creature on (x, y) hits on the party square (dx, dy); true when it hit one. */
-static bool melee_attack_party(int x, int y, int dx, int dy)
+static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
 {
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
