@@ -37,19 +37,25 @@ typedef struct {
 /* The game screen as a bitmap. */
 extern Bitmap g_draw_screen;
 
+/* Setup */
 /* Selects the GRAPHICS.DAT of the images; frees the decoded images of the last file. */
 void draw_init(const Gdat *gdat);
+/* Frees the temporary bitmaps and the decoded images; safe to call twice. */
+void draw_free(void);
+
+/* Images */
 /* The decoded image (category, index, 1, entry); a missing image gives the GDAT placeholder image. */
 const Bitmap *draw_gdat_image(int category, int index, int entry);
 /* The 16 colors of a 4 bpp image, NULL for an 8 bpp image. */
 const uint8_t *draw_gdat_image_palette(int category, int index, int entry);
+
+/* Temporary bitmaps */
 /* A temporary bitmap (not cleared) that lives until draw_free_temp; NULL when memory is out. */
 Bitmap *draw_temp_bitmap(int width, int height, int bpp);
 /* Frees all temporary bitmaps. */
 void draw_free_temp(void);
-/* Frees the temporary bitmaps and the decoded images; safe to call twice. */
-void draw_free(void);
 
+/* Contexts */
 /* Starts a context for the GDAT image (category, index, entry) at its GDAT offset, to the screen. */
 DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry);
 /* Uses image as the picture of ctx. */

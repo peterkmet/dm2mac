@@ -46,6 +46,8 @@ static const uint8_t button_zone_first[DIALOG_BUTTONS_MAX + 1] = {0, 0, 1, 3, 6}
 
 DialogState g_dialog = {.screen_mode = 1};
 
+/* Drawing */
+
 void dialog_screen_mode(bool begin)
 {
     if (g_dialog.screen_mode && begin)
@@ -159,6 +161,41 @@ int dialog_draw(int id, int message)
     return id;
 }
 
+void dialog_draw_button(bool highlighted, GdatKey picture)
+{
+    if (!highlighted)
+        return;
+    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
+    if (!image)
+        return;
+    int16_t r[RECT_SIZE];
+    rect_center_in(r, g_input_match.rect, image->width, image->height);
+    if (g_input_match.origin != -1) {
+        int16_t x, y;
+        zone_get_position(g_input_match.origin, &x, &y);
+        r[RECT_X] = (int16_t)(r[RECT_X] - x);
+        r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
+    }
+    gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
+                       draw_gdat_image_palette(picture.category, picture.index, picture.entry));
+    play_wait_frames(BUTTON_PRESS_VBLANKS);
+}
+
+void dialog_draw_progress_bar(int permille)
+{
+    int16_t r[RECT_SIZE];
+    if (!g_dialog.progress_enabled || !zone_get_rect(ZONE_PROGRESS_BAR, r))
+        return;
+    r[RECT_W] = (int16_t)(r[RECT_W] * permille / PERMILLE);
+    if (r[RECT_W] <= 0 || r[RECT_W] == g_dialog.progress_width)
+        return;
+    g_dialog.progress_width = r[RECT_W];
+    gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_GOLD], g_view_viewport.width, IMAGE_8BPP);
+    dialog_present();
+}
+
+/* Running */
+
 int dialog_run(int id)
 {
     return dialog_run_cancel(id, DIALOG_NO_CANCEL);
@@ -199,38 +236,7 @@ int dialog_run_cancel(int id, int cancel)
     return result;
 }
 
-void dialog_draw_button(bool highlighted, GdatKey picture)
-{
-    if (!highlighted)
-        return;
-    const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
-    if (!image)
-        return;
-    int16_t r[RECT_SIZE];
-    rect_center_in(r, g_input_match.rect, image->width, image->height);
-    if (g_input_match.origin != -1) {
-        int16_t x, y;
-        zone_get_position(g_input_match.origin, &x, &y);
-        r[RECT_X] = (int16_t)(r[RECT_X] - x);
-        r[RECT_Y] = (int16_t)(r[RECT_Y] - y);
-    }
-    gfx_blit_to_bitmap(image, &g_view_viewport, r, BUTTON_KEY,
-                       draw_gdat_image_palette(picture.category, picture.index, picture.entry));
-    play_wait_frames(BUTTON_PRESS_VBLANKS);
-}
-
-void dialog_draw_progress_bar(int permille)
-{
-    int16_t r[RECT_SIZE];
-    if (!g_dialog.progress_enabled || !zone_get_rect(ZONE_PROGRESS_BAR, r))
-        return;
-    r[RECT_W] = (int16_t)(r[RECT_W] * permille / PERMILLE);
-    if (r[RECT_W] <= 0 || r[RECT_W] == g_dialog.progress_width)
-        return;
-    g_dialog.progress_width = r[RECT_W];
-    gfx_fill_rect(g_view_viewport.pixels, r, g_ui_colors[UI_GOLD], g_view_viewport.width, IMAGE_8BPP);
-    dialog_present();
-}
+/* Volume */
 
 /* The buttons of the settings of one volume, the chosen one lit, and their texts (0: "off"). */
 static void render_volume_buttons(int setting, int button_zone, int text_zone, int off_entry)
