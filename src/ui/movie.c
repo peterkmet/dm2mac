@@ -97,29 +97,6 @@ static int next_picture(void)
     return result;
 }
 
-/* Scripts */
-
-int movie_script_after(int exit_code)
-{
-    if (exit_code == EXIT_COMPLETED)
-        return MOVIE_SCRIPT_COMPLETED;
-    if (exit_code == EXIT_PARTY_DEAD)
-        return MOVIE_SCRIPT_PARTY_DEAD;
-    return MOVIE_SCRIPT_NONE;
-}
-
-void movie_stop(void)
-{
-    if (!mv.playing)
-        return;
-    free(mv.file);
-    mv.file = NULL;
-    mv.playing = false;
-    mv.step = MOVIE_STEP_NONE;
-    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
-    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
-}
-
 /* Reads a file of the data folder into memory; NULL when it is missing, empty, or does not read. */
 static uint8_t *load_file(const char *name, size_t *size)
 {
@@ -192,6 +169,29 @@ static void next_step(uint64_t now_ns)
         if (mv.step == MOVIE_STEP_SPLASH ? start_splash() : start_movie(mv.step))
             return;
     }
+}
+
+/* Scripts */
+
+int movie_script_after(int exit_code)
+{
+    if (exit_code == EXIT_COMPLETED)
+        return MOVIE_SCRIPT_COMPLETED;
+    if (exit_code == EXIT_PARTY_DEAD)
+        return MOVIE_SCRIPT_PARTY_DEAD;
+    return MOVIE_SCRIPT_NONE;
+}
+
+void movie_stop(void)
+{
+    if (!mv.playing)
+        return;
+    free(mv.file);
+    mv.file = NULL;
+    mv.playing = false;
+    mv.step = MOVIE_STEP_NONE;
+    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
+    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
 }
 
 bool movie_start(int script, const char *data_dir, uint64_t now_ns)
