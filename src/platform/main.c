@@ -55,6 +55,9 @@
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
 
+/* The command line options; each takes a value. */
+enum Option { OPTION_DATA, OPTION_FILTER, OPTION_SAVE, OPTION_CONTROL, OPTION_MODE, OPTION_SAVES, OPTION_COUNT };
+
 /* The values of the command line options; NULL for an option that is not given. */
 typedef struct {
     const char *data;
@@ -69,6 +72,12 @@ typedef struct {
 typedef struct {
     uint8_t sdl, pc;
 } ScanCode;
+
+/* The names of the command line options: read_options reads their values, a RESTART passes them on (without --save). */
+static const char *const option_names[OPTION_COUNT] = {
+    [OPTION_DATA] = "--data",       [OPTION_FILTER] = "--filter", [OPTION_SAVE] = "--save",
+    [OPTION_CONTROL] = "--control", [OPTION_MODE] = "--mode",     [OPTION_SAVES] = "--saves",
+};
 
 /* The PC scan codes of the SDL keys. */
 static const ScanCode scan_codes[] = {
@@ -412,26 +421,19 @@ _Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCAL
    *unknown is the first argument that starts with -- and matches no option, or NULL. */
 static const char *read_options(int argc, char **argv, Options *options, const char **unknown)
 {
-    const struct {
-        const char *name;
-        const char **value;
-    } names[] = {
-        {"--data",    &options->data   },
-        {"--filter",  &options->filter },
-        {"--save",    &options->save   },
-        {"--control", &options->control},
-        {"--mode",    &options->mode   },
-        {"--saves",   &options->saves  },
+    const char **values[OPTION_COUNT] = {
+        [OPTION_DATA] = &options->data,       [OPTION_FILTER] = &options->filter, [OPTION_SAVE] = &options->save,
+        [OPTION_CONTROL] = &options->control, [OPTION_MODE] = &options->mode,     [OPTION_SAVES] = &options->saves,
     };
     *unknown = NULL;
     for (int i = 1; i < argc; i++) {
         bool known = false;
-        for (size_t n = 0; n < sizeof names / sizeof names[0] && !known; n++) {
-            if (strcmp(argv[i], names[n].name))
+        for (int n = 0; n < OPTION_COUNT && !known; n++) {
+            if (strcmp(argv[i], option_names[n]))
                 continue;
             if (i + 1 == argc)
                 return argv[i];
-            *names[n].value = argv[++i];
+            *values[n] = argv[++i];
             known = true;
         }
         if (!known && !*unknown && !strncmp(argv[i], "--", 2))
@@ -560,7 +562,8 @@ static void close_platform(void)
    it cannot start. */
 static void restart(int argc, char **argv, bool mode_given)
 {
-    int count = args_drop_save(argc, argv); /* the original always restarts into the start menu */
+    /* the original always restarts into the start menu */
+    int count = args_drop_save(argc, argv, option_names, OPTION_COUNT);
     char **args = calloc((size_t)count + MODE_OPTION_ARGS + 1, sizeof *args);
     if (!args)
         os_fatal("out of memory");

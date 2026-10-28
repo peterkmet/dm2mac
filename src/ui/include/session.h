@@ -72,8 +72,8 @@ void session_end(bool party_dead);
 void session_edit_champion_name(int16_t champion_index);
 
 /* ---- Arguments ---- */
-/* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode, --saves and the other options stay);
-   returns the new argc. */
-int args_drop_save(int argc, char **argv);
+/* Removes every "--save PATH" pair from argv, walking it like the option parser: each of the option_count
+   value_options takes the next argument as its value, and the other options stay. Returns the new argc. */
+int args_drop_save(int argc, char **argv, const char *const *value_options, int option_count);
 
 #endif /* DM2_UI_SESSION_H */

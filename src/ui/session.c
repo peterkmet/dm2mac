@@ -775,14 +775,20 @@ void session_edit_champion_name(int16_t champion_index)
 
 /* ---- Arguments ---- */
 
-int args_drop_save(int argc, char **argv)
+/* Whether arg is one of the option_count value_options. */
+static bool is_value_option(const char *arg, const char *const *value_options, int option_count)
+{
+    for (int n = 0; n < option_count; n++)
+        if (!strcmp(arg, value_options[n]))
+            return true;
+    return false;
+}
+
+int args_drop_save(int argc, char **argv, const char *const *value_options, int option_count)
 {
     int out = 1;
     for (int i = 1; i < argc; i++) {
-        bool is_value_option = !strcmp(argv[i], "--data") || !strcmp(argv[i], "--filter") ||
-                               !strcmp(argv[i], "--save") || !strcmp(argv[i], "--control") ||
-                               !strcmp(argv[i], "--mode") || !strcmp(argv[i], "--saves");
-        if (is_value_option && i + 1 < argc) {
+        if (is_value_option(argv[i], value_options, option_count) && i + 1 < argc) {
             if (strcmp(argv[i], "--save")) {
                 argv[out++] = argv[i];
                 argv[out++] = argv[i + 1];
