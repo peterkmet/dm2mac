@@ -466,7 +466,7 @@ static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
 static void screenshot(const char *path, Json *reply)
 {
-    char absolute[OS_DIR_SIZE];
+    char absolute[OS_PATH_SIZE];
     memcpy(control.screen, g_video_fb, sizeof control.screen);
     if (g_input_mouse_x >= 0 && g_input_mouse_y >= 0)
         input_draw_cursor(&control.screen[0][0], g_input_mouse_x, g_input_mouse_y);
@@ -698,7 +698,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
 /* Answers one request of the real-time and the turn-based mode; no reply while a wait or a turn holds it. */
 static void handle_request(const char *request, Json *reply)
 {
-    char cmd[NAME_SIZE], path[OS_DIR_SIZE];
+    char cmd[NAME_SIZE], path[OS_PATH_SIZE];
     ScreenPoint at;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         put_error(reply, "missing cmd");
