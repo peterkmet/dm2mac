@@ -126,7 +126,7 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
     if (c >= '0' && c <= '9')
         return c - '0';
     if (c >= 'A' && c <= 'Z')
-        return c - 'K'; /* as in SKULL.EXE: 'K' is frame 0 */
+        return c - 'K'; /* as in the original: 'K' is frame 0 */
     return c;
 }
 
