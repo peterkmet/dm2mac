@@ -951,9 +951,22 @@ def parameter(text):
 
 
 def test_one_type_per_parameter_name():
-    """A reserved parameter name of a game value kind has the type of the table in the headers of a layer."""
+    """A reserved parameter name of a game value kind has the type of the table in the headers of a layer and in
+    the static functions of each .c file."""
     ok = allowed()
     found = []
+    for path in sources():
+        if path.suffix != ".c":
+            continue
+        for f in functions(path):
+            key = f"{rel(path)}:{f.name}"
+            if not f.static or ("type", key) in ok:
+                continue
+            for text in f.params:
+                kind, name = parameter(text)
+                if (expected := TYPE_TABLE.get(name)) and kind != expected:
+                    found.append(f"type {key}  | {name}: {kind}; the table says {expected}")
+    found = sorted(set(found))
     for layer in LAYERS:
         types = defaultdict(set)
         for header in (SRC / layer).rglob("*.h"):

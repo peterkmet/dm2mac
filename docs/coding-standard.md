@@ -182,8 +182,8 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 1. One value has one type on its whole path (field, parameter, local, return value), so that no cast is needed
    to pass it on. Game values keep the 16-bit types of the original. The type of each game value kind: [type
-   for the parameter names `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks`, `square`;
-   the rest review only]
+   for the parameter names `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks`, `square`
+   in the public prototypes and in the static functions; the rest review only]
 
    | Value kind | Type | None |
    |---|---|---|
@@ -369,7 +369,7 @@ their allowlist key:
 | `global` | an `extern` without `g_`, a file-static with `g_` |
 | `decompiler` | a decompiler name |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
-| `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer with another type than the table of rule 5.1 |
+| `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer or in a static function of a `.c` file with another type than the table of rule 5.1 |
 | `long` | a function above 60 lines without an allowlist reason |
 | `result` | heuristic: a function whose comment gives 0 or -1 as a result ("0 on success", "-1 on error", "Returns -1", "1/0/-1") |
 | `params` | a prototype with more than five parameters |
