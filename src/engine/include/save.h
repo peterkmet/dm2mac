@@ -78,7 +78,7 @@ static inline void save_set_magic_light(int16_t light)
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and g_game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */
 SaveResult save_load(const char *path, const Gdat *gdat);
-/* Writes the game to path. Like the original, it first renames an old file at path to bak_path and
+/* Writes the game to path. As in the original, it first renames an old file at path to bak_path and
    keeps the header bytes after the name from it; name goes into the header. */
 SaveResult save_write(const char *path, const char *bak_path, const char *name, const Gdat *gdat);
 

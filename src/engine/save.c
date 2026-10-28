@@ -79,7 +79,7 @@
 #define REC_PARTY_Y           0x0c
 #define REC_PARTY_DIR         0x0e
 #define REC_PARTY_MAP         0x10
-#define REC_LEADER            0x12
+#define REC_LEADER            0x12 /* two bits: LEADER_NONE loads as 3, as in the original */
 #define REC_TIMELINE_EVENTS   0x14
 #define REC_UNKNOWN_TIME_A    0x16
 #define REC_UNKNOWN_TIME_B    0x1a
