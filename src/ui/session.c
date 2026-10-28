@@ -220,11 +220,9 @@ void session_close_slot_dialog(void)
 static int clicked_slot(void)
 {
     int16_t r[RECT_SIZE] = {0};
-    int16_t x = 0;
-    int16_t y = 0;
     zone_get_rect(g_input_match.zone, r);
-    zone_get_position(g_input_match.origin, &x, &y);
-    int slot = (int16_t)(g_input_match.y - (r[RECT_Y] + y)) / TEXT_LINE_HEIGHT;
+    ScreenPoint origin = zone_get_position(g_input_match.origin);
+    int slot = (int16_t)(g_input_match.y - (r[RECT_Y] + origin.y)) / TEXT_LINE_HEIGHT;
     return slot < SAVE_SLOT_COUNT ? slot : SAVE_SLOT_COUNT;
 }
 
@@ -693,10 +691,9 @@ void session_edit_champion_name(Champion *champion)
     char name[CHAMPION_NAME_SIZE], title[CHAMPION_TITLE_SIZE];
     memcpy(name, champion->name, sizeof name);
     memcpy(title, champion->title, sizeof title);
-    int16_t name_x, name_y, title_x, title_y;
     game_set_panel_mode(PANEL_MODE_NAME);
-    zone_get_position(ZONE_NAME, &name_x, &name_y);
-    zone_get_position(ZONE_TITLE, &title_x, &title_y);
+    ScreenPoint name_at = zone_get_position(ZONE_NAME);
+    ScreenPoint title_at = zone_get_position(ZONE_TITLE);
     input_push_mode(INPUT_MODE_NAME);
     editing = true;
     play_hide_view();
@@ -706,8 +703,8 @@ void session_edit_champion_name(Champion *champion)
         char *text = in_name ? champion->name : champion->title;
         int max = in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX;
         int length = (int)strlen(text);
-        int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE;
-        int y = in_name ? name_y : title_y;
+        int x = (in_name ? name_at.x : title_at.x) + length * FONT_ADVANCE;
+        int y = in_name ? name_at.y : title_at.y;
         bool field_done = false;
         bool redraw = true;
         while (!field_done && !g_main_loop.quit) {

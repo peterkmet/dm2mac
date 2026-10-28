@@ -2262,12 +2262,11 @@ static void show_shop_label(uint16_t shop, uint16_t item, int creature, uint8_t 
 {
     int category = item_index_gdat_category(item);
     int index = item_index_gdat_index(item);
-    int16_t lx, ly;
-    zone_get_position(p->zone, &lx, &ly);
+    ScreenPoint label = zone_get_position(p->zone);
     uint16_t place =
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, ORN_KEY_SHOP_LABEL);
     char raw[TEXT_SIZE], name[TEXT_SIZE];
-    show_centered_label(lx + gdat_offset_x(place), ly + gdat_offset_y(place),
+    show_centered_label(label.x + gdat_offset_x(place), label.y + gdat_offset_y(place),
                         gtext_format(gtext_gdat(category, index, GFX_ITEM_NAME, raw), name));
     int list = sensor_delay(shop);
     PriceTerms buying = {creature, list, true, true};

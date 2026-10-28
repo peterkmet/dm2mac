@@ -928,7 +928,9 @@ static void show_description(const char *text)
 {
     if (*text == '\f') {
         text++;
-        zone_get_position(ZONE_DESCRIPTION, &cache.description_x, &cache.description_y);
+        ScreenPoint at = zone_get_position(ZONE_DESCRIPTION);
+        cache.description_x = at.x;
+        cache.description_y = at.y;
     }
     char buf[TEXT_SIZE];
     snprintf(buf, sizeof buf, "%s", text);
@@ -993,8 +995,10 @@ static void show_scroll(uint16_t scroll)
     int lines = newlines + 1;
     if (n && text[n - 1] == '\n')
         lines = n > 1 && text[n - 2] == '\n' ? newlines - 1 : newlines;
-    int16_t x, y, r[RECT_SIZE];
-    zone_get_position(ZONE_SCROLL_TEXT, &x, &y);
+    int16_t r[RECT_SIZE];
+    ScreenPoint at = zone_get_position(ZONE_SCROLL_TEXT);
+    int16_t x = at.x;
+    int16_t y = at.y;
     zone_get_rect(ZONE_INVENTORY_PANEL, r);
     y = (int16_t)(y - ((((int16_t)lines * TEXT_LINE_HEIGHT - FONT_BASELINE - 1) >> 1) - FONT_GLYPH_HEIGHT));
     for (int16_t pos = 0; text[pos];) {
@@ -1173,10 +1177,11 @@ static void show_skills_and_stats(void)
     int champ = g_ui.inventory - 1;
     Champion *c = champion(champ);
     char text[TEXT_SIZE];
-    int16_t x, y, stat_x, unused;
     game_set_panel_mode(PANEL_MODE_SKILLS);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
-    zone_get_position(ZONE_SKILLS, &x, &y);
+    ScreenPoint skills_at = zone_get_position(ZONE_SKILLS);
+    int16_t x = skills_at.x;
+    int16_t y = skills_at.y;
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
         if (champ_get_skill_level(champ, skill, 1) == 1)
             continue;
@@ -1185,8 +1190,9 @@ static void show_skills_and_stats(void)
         cache.shown_raised[skill] = g_champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
-    zone_get_position(ZONE_STATS, &stat_x, &unused);
-    y = unused;
+    ScreenPoint stats_at = zone_get_position(ZONE_STATS);
+    int16_t stat_x = stats_at.x;
+    y = stats_at.y;
     for (int stat = 1; stat < STAT_COUNT; stat++) {
         text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], gtext_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
         int16_t current = (int16_t)champ_get_stat(c, stat, 0);

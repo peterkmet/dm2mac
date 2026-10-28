@@ -960,10 +960,9 @@ static bool get_input_zone_rect(uint16_t zone, int16_t *rect)
     if (!zone_get_rect(zone & ZONE_ID_MASK, rect))
         return false;
     if (zone & (ZONE_IN_PANEL | ZONE_IN_ACTION_AREA)) {
-        int16_t x, y;
-        zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN, &x, &y);
-        rect[RECT_X] = (int16_t)(rect[RECT_X] + x);
-        rect[RECT_Y] = (int16_t)(rect[RECT_Y] + y);
+        ScreenPoint origin = zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN);
+        rect[RECT_X] = (int16_t)(rect[RECT_X] + origin.x);
+        rect[RECT_Y] = (int16_t)(rect[RECT_Y] + origin.y);
     }
     return true;
 }

@@ -366,7 +366,10 @@ static SkyObject *show_lightning(SkyObject *o)
         if (load_sky_object(o)) {
             bolt = true;
             int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
-            g_hooks.zone_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
+            ScreenPoint offset = {o->dx, o->dy};
+            g_hooks.zone_offset(o->zone, (int16_t)(o->zone + 1), percent, &offset);
+            o->dx = offset.x;
+            o->dy = offset.y;
             o->flip = (uint8_t)rand_2bits();
             o++;
         }

@@ -16,6 +16,11 @@
 #define RECT_H    3
 #define RECT_SIZE 4
 
+/* A point or an offset on the screen, in pixels. */
+typedef struct {
+    int16_t x, y;
+} ScreenPoint;
+
 /* Blit mirror modes, as flags. */
 #define MIRROR_NONE 0x0
 #define MIRROR_H    0x1

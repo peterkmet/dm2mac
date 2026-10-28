@@ -390,15 +390,15 @@ int16_t *zone_get_viewport_rect(int16_t *rect)
     return result;
 }
 
-bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, int16_t *out_dx, int16_t *out_dy)
+bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPoint *out)
 {
     const int16_t *a = find_zone(from);
     const int16_t *b = find_zone(to);
     if (!a || !b)
         return false;
     percent = percent < 0 ? 0 : percent > PERCENT ? PERCENT : percent;
-    *out_dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
-    *out_dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
+    out->x = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
+    out->y = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
     return true;
 }
 
@@ -424,14 +424,13 @@ int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect)
     return rect;
 }
 
-void zone_get_position(int16_t zone, int16_t *out_x, int16_t *out_y)
+ScreenPoint zone_get_position(int16_t zone)
 {
     int16_t r[RECT_SIZE] = {0};
     int16_t w = 1;
     int16_t h = 1;
     zone_compute_rect(NULL, r, zone, &w, &h);
-    *out_x = r[RECT_X];
-    *out_y = r[RECT_Y];
+    return (ScreenPoint){r[RECT_X], r[RECT_Y]};
 }
 
 int zone_id_for_view_cell(int16_t base, int16_t grid_cell, int16_t dir)
