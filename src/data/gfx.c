@@ -14,10 +14,9 @@
 #define BYTE_FRACTION_SHIFT 8
 #define DIM_SHIFT           6
 
-/* The color ramps: GDAT (1, 0, 7, 2) holds the ramp count, the length of each ramp, the brightness steps
+/* The color ramps: GDAT (1, 0, GDAT_TYPE_REMAP, 2) holds the ramp count, the length of each ramp, the brightness steps
    and the colors of each ramp, then the ramp and step of each of the 256 palette colors. */
 #define RAMP_INDEX         0
-#define RAMP_TYPE          7
 #define RAMP_MAX           256
 #define RAMP_OF_COLOR_SIZE 2 /* the ramp and the step of a color */
 
@@ -298,7 +297,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale)
 bool pal_load_color_ramps(const Gdat *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, GFX_RAMP), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, GDAT_TYPE_REMAP, GFX_RAMP), &size);
     if (!p || size < 1)
         return false;
     const uint8_t *end = p + size;

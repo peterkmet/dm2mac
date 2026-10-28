@@ -27,6 +27,7 @@ enum GdatResult {
 #define GDAT_TYPE_REMAP         0x07 /* a color remap table, for example a depth shading table */
 #define GDAT_TYPE_CREATURE_DATA 0x07 /* the animation tables of a creature */
 #define GDAT_TYPE_TABLE         0x08 /* a word table */
+#define GDAT_TYPE_PALETTE       0x09 /* the game palette */
 #define GDAT_TYPE_VALUE         0x0b
 #define GDAT_TYPE_VALUE2        0x0c
 #define GDAT_TYPE_DATA          0x0d /* raw data, for example the interface colors */

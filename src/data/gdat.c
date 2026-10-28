@@ -104,9 +104,8 @@
 #define RUN_LONG      0x0f
 #define RUN_HUGE      0xff
 
-/* The game palette: key (1, 0, 9, 254), 256 entries of color index, red, green, blue. */
+/* The game palette: key (1, 0, GDAT_TYPE_PALETTE, 254), 256 entries of color index, red, green, blue. */
 #define PALETTE_INDEX      0
-#define PALETTE_TYPE       9
 #define PALETTE_ENTRY_SIZE 4
 #define PALETTE_RED        1
 #define VGA_DAC_SHIFT      2 /* the file holds 8-bit values, the VGA DAC takes 6 bits */
@@ -321,7 +320,8 @@ const uint8_t *gdat_image_colormap(const Gdat *g, int item)
 enum GdatResult gdat_palette_color(const Gdat *g, int color, uint8_t rgb[GDAT_RGB_SIZE])
 {
     uint32_t size;
-    const uint8_t *palette = gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, PALETTE_TYPE, GFX_PALETTE), &size);
+    const uint8_t *palette =
+        gdat_item(g, gdat_find(g, CAT_INTERFACE, PALETTE_INDEX, GDAT_TYPE_PALETTE, GFX_PALETTE), &size);
     if (!palette || size < GDAT_PALETTE_COLORS * PALETTE_ENTRY_SIZE)
         return GDAT_ERR_FORMAT;
     if (color < 0 || color >= GDAT_PALETTE_COLORS)
