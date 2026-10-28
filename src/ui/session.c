@@ -89,7 +89,7 @@ static uint8_t slots[SAVE_SLOT_COUNT][SAVE_HEADER_SIZE + 1];
 static bool editing; /* the player types the slot name or a champion name */
 
 /* The path of slot in the save folder; bak: the backup file. */
-static char *slot_path(char *path, int slot, bool bak)
+static char *slot_path(char *path, int16_t slot, bool bak)
 {
     snprintf(path, OS_PATH_SIZE, "%s/DATA/SKSAVE%d.%s", g_session.data_dir, slot, bak ? "BAK" : "DAT");
     return path;
@@ -149,27 +149,27 @@ void menu_show_picture_and_wait(void)
 
 /* ---- Slot dialogs ---- */
 
-static const char *slot_name(int slot)
+static const char *slot_name(int16_t slot)
 {
     return (const char *)slots[slot] + SAVE_HEADER_NAME;
 }
 
-static bool slot_unused(int slot)
+static bool slot_unused(int16_t slot)
 {
     return le32(slots[slot] + SAVE_HEADER_UNUSED) == UNUSED_SLOT;
 }
 
-void session_draw_slot_selection(int chosen)
+void session_draw_slot_selection(int16_t chosen)
 {
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_LIST, r))
         return;
-    int y = r[RECT_Y] + SLOT_NAME_TOP;
-    for (int i = 0; i < SAVE_SLOT_COUNT; i++, y += TEXT_LINE_HEIGHT)
+    int16_t y = r[RECT_Y] + SLOT_NAME_TOP;
+    for (int16_t i = 0; i < SAVE_SLOT_COUNT; i++, y += TEXT_LINE_HEIGHT)
         text_draw_in_viewport(r[RECT_X], y, g_ui_colors[i == chosen ? UI_WHITE : UI_YELLOW], slot_name(i));
 }
 
-void session_draw_name_entry(const char *name, int cursor)
+void session_draw_name_entry(const char *name, bool cursor)
 {
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(ZONE_SLOT_NAME, r))
@@ -234,20 +234,21 @@ void session_close_slot_dialog(void)
 }
 
 /* The slot of a click in the slot list. */
-static int clicked_slot(void)
+static int16_t clicked_slot(void)
 {
     int16_t r[RECT_SIZE] = {0};
     int16_t x = 0;
     int16_t y = 0;
     zone_get_rect(g_input_match.zone, r);
     zone_get_position(g_input_match.origin, &x, &y);
-    int slot = (int16_t)(g_input_match.y - (r[RECT_Y] + y)) / TEXT_LINE_HEIGHT;
+    int16_t row_y = g_input_match.y - r[RECT_Y] - y;
+    int16_t slot = row_y / TEXT_LINE_HEIGHT;
     return slot < SAVE_SLOT_COUNT ? slot : SAVE_SLOT_COUNT;
 }
 
 /* The load dialog: the slot that the player loads, SAVE_SLOT_NONE when cancelled. A restore after the end of the
    game loads the last slot without a dialog. */
-static int choose_load_slot(void)
+static int16_t choose_load_slot(void)
 {
     if (g_session.loaded)
         return g_session.slot;
@@ -255,7 +256,7 @@ static int choose_load_slot(void)
     session_draw_slot_selection(SAVE_SLOT_NONE);
     dialog_present();
     dialog_screen_mode(0);
-    int chosen = SAVE_SLOT_NONE;
+    int16_t chosen = SAVE_SLOT_NONE;
     bool done = false;
     g_input_match.choice = DIALOG_NO_CHOICE;
     while (!done && !g_main_loop.quit) {
@@ -281,7 +282,7 @@ static int choose_load_slot(void)
 }
 
 /* The default name of slot: "GAME n". */
-static void make_slot_name(char *dst, int slot)
+static void make_slot_name(char *dst, int16_t slot)
 {
     snprintf(dst, SAVE_NAME_SIZE, "GAME %d", slot);
 }
@@ -307,9 +308,9 @@ static void type_slot_name_key(char *name, int *length)
 
 /* The slot that the save dialog lights first, with its name in name: the slot of the last load or save, else the
    first empty slot (SAVE_SLOT_COUNT: none). */
-static int first_save_slot(char *name)
+static int16_t first_save_slot(char *name)
 {
-    int chosen = g_session.slot;
+    int16_t chosen = g_session.slot;
     if (chosen < 0) {
         for (chosen = 0; chosen < SAVE_SLOT_COUNT && !slot_unused(chosen); chosen++) {
         }
@@ -323,12 +324,12 @@ static int first_save_slot(char *name)
 
 /* The save dialog: the slot that the player saves into (its name in g_session.save_name), SAVE_SLOT_NONE when
    cancelled. */
-static int choose_save_slot(void)
+static int16_t choose_save_slot(void)
 {
     char *name = g_session.save_name;
     session_open_slot_dialog(DIALOG_SAVE_SLOTS, SLOT_BUTTONS_SAVE);
     g_dialog.right_choice = SLOT_CANCEL;
-    int chosen = first_save_slot(name);
+    int16_t chosen = first_save_slot(name);
     int length = 0;
     bool done = false;
     session_draw_slot_selection(chosen);
@@ -427,7 +428,7 @@ bool session_load(void)
     char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
     bool from_bak = false;
     if (!g_session.new_game) {
-        int slot = choose_load_slot();
+        int16_t slot = choose_load_slot();
         if (slot < 0) {
             game_set_save_slot(0); /* as in the original: a cancelled load leaves slot 0 */
             return false;
@@ -465,7 +466,7 @@ bool session_load(void)
 }
 
 /* Writes the game into slot; returns false on an error. */
-static bool write_slot(int slot)
+static bool write_slot(int16_t slot)
 {
     char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
     if (save_write(slot_path(path, slot, false), slot_path(bak, slot, true), g_session.save_name, gdat_current()) !=
@@ -476,7 +477,7 @@ static bool write_slot(int slot)
 }
 
 /* The save menu until the player saves (returns the slot), quits (*quit true), or resumes (SAVE_SLOT_NONE). */
-static int run_save_menu(bool *quit)
+static int16_t run_save_menu(bool *quit)
 {
     for (;;) {
         int choice = dialog_run_cancel(dialog_draw(DIALOG_SAVE_MENU, MESSAGE_NONE), SAVE_MENU_RESUME);
@@ -493,7 +494,7 @@ static int run_save_menu(bool *quit)
             *quit = true;
             return SAVE_SLOT_NONE;
         }
-        int slot = choose_save_slot();
+        int16_t slot = choose_save_slot();
         if (slot >= 0)
             return slot;
     }
@@ -507,7 +508,7 @@ void session_save(void)
     area_update(false);
     play_hide_view();
     timeline_rebuild_free_list();
-    int slot = run_save_menu(&quit);
+    int16_t slot = run_save_menu(&quit);
     if (slot >= 0) {
         game_set_save_slot(slot);
         dialog_draw(DIALOG_SAVING, MESSAGE_NONE);

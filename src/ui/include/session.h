@@ -32,9 +32,9 @@ void menu_show_picture_and_wait(void);
 
 /* ---- Slot dialogs ---- */
 /* The slot names of the slot dialog with the chosen one (SAVE_SLOT_NONE: none) lit. */
-void session_draw_slot_selection(int chosen); /* exported for the tests */
+void session_draw_slot_selection(int16_t chosen); /* exported for the tests */
 /* The name field of the save dialog with its background, and the cursor while the player types. */
-void session_draw_name_entry(const char *name, int cursor); /* exported for the tests */
+void session_draw_name_entry(const char *name, bool cursor); /* exported for the tests */
 /* Opens the slot dialog id (0x80 load, 0x81 save) with its button count and the slot headers (an empty slot gets the
    name "n UNUSED"). */
 void session_open_slot_dialog(int id, int buttons); /* exported for the tests */

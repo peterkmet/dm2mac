@@ -27,7 +27,7 @@
 #include "weather.h"
 #include "zone.h"
 
-static int tick_elapsed;
+static bool tick_elapsed; /* a game step is due */
 void (*g_play_frame_hook)(void);
 
 /* Modal loops */
@@ -170,7 +170,7 @@ static bool step_view(void)
 /* The part of a game step before the input wait: events, the view, the party clocks. */
 static void step_before_input(void)
 {
-    tick_elapsed = 0;
+    tick_elapsed = false;
     game_reset_step_ticks();
     if (step_view()) {
         g_input_feedback_busy = false;
@@ -251,7 +251,7 @@ void play_tick(void)
         return;
     game_count_timer_tick();
     if (game_count_step_tick())
-        tick_elapsed = 1;
+        tick_elapsed = true;
     command_process_queue();
     /* a viewport screen stops the game time; a quit (a lost game) ends all game work */
     if (!tick_elapsed || !g_main_loop.running || g_advanced_screen || g_main_loop.quit) {

@@ -328,11 +328,6 @@ type ui/minion_map.c:set_marker bridge: task 46
 type ui/minion_map.c:show_party_facing bridge: task 46
 type ui/minion_map.c:show_party_icons bridge: task 46
 type ui/optmenu.c:find_folder bridge: task 47
-type ui/session.c:make_slot_name bridge: task 48
-type ui/session.c:slot_name bridge: task 48
-type ui/session.c:slot_path bridge: task 48
-type ui/session.c:slot_unused bridge: task 48
-type ui/session.c:write_slot bridge: task 48
 type ui/ui.c:show_changed_slot bridge: task 50
 type ui/ui.c:show_scroll_line bridge: task 50
 type ui/ui.c:show_slot bridge: task 50
