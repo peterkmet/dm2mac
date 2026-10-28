@@ -192,6 +192,8 @@ int ai_cmd_seek_with_carried(void);
 /* The update of a creature that acts: the next action and its animation, then the next update event. */
 void ai_update_group(void);
 
+/* Squares (ai_move.c) */
+
 /* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide.
    It is exported for the tests. */
 bool ai_square_blocks_line(Location at);
@@ -203,6 +205,9 @@ bool ai_blocks_line_except_self(Location at);
 uint16_t ai_cached_first_object(void);
 /* The first creature group of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_group(void);
+
+/* Items (ai_move.c) */
+
 /* An item of filter inside a chest or in the possessions of a group that the creature may take from: the cell of the
    chest or of the possession, cell -1 for none; exported for the tests. */
 AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side);
@@ -222,6 +227,9 @@ uint16_t ai_find_matching_item(int16_t filter, uint16_t first_thing, int16_t cel
 /* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
    whose kind is in id_mask: its id (0 to 31), -1 none; exported for the tests. */
 int16_t ai_find_marker(int16_t level_delta, uint16_t id_mask);
+
+/* Paths (ai_move.c) */
+
 /* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state.
    It is exported for the tests. */
 void ai_load_cached_path(void);

@@ -168,17 +168,16 @@
 #define COMMAND_PAST_TABLE    0x14 /* the first command past the enabled table: it reads globals */
 #define COMMAND_AFTER_GLOBALS 0x20 /* ... the commands that read the bytes after the globals */
 
-/* A path step: direction bits 0-2, x bits 3-7, y bits 8-12. */
-#define PATH_DIR_MASK         0x0007 /* path step and search cell: the direction */
-#define PATH_MAP_CHANGE       0x2000
-#define PATH_KEEP_BITS        0xc000
+/* A path step: direction bits 0-2, x bits 3-7, y bits 8-12, map change bit 13. */
+#define PATH_DIR_MASK      0x0007 /* path step and search cell: the direction */
+#define PATH_MAP_CHANGE    0x2000
+#define PATH_KEEP_BITS     0xc000
 /* The fields of a path step. */
-#define PATH_X_SHIFT          3
-#define PATH_Y_SHIFT          8
-#define PATH_MAP_CHANGE_SHIFT 13
+#define PATH_X_SHIFT       3
+#define PATH_Y_SHIFT       8
 /* The move command of the path check of ai_plan_path: the original reads a byte after the path buffer
    that nothing writes. */
-#define PATH_CHECK_COMMAND    0
+#define PATH_CHECK_COMMAND 0
 
 /* The bytes of a square of a search map. */
 #define SEARCH_AT_DIST            0
@@ -279,6 +278,44 @@ static uint8_t uncached_bitmap[ITEM_CLASS_SET_SIZE];
 static AiCommand test_outcome(bool passed)
 {
     return (AiCommand){passed, g_ai.command_result};
+}
+
+/* Fails the command: when the test executes, the creature reports the failure. */
+static AiCommand fail_command(bool execute)
+{
+    if (execute)
+        g_ai.command_result = AI_RESULT_FAIL;
+    return test_outcome(false);
+}
+
+/* The cell of (x, y) in the search map cells. */
+static uint8_t *search_cell(uint8_t *cells, int16_t x, int16_t y)
+{
+    return cells + x * SEARCH_COLUMN_SIZE + y * SEARCH_CELL_SIZE;
+}
+
+/* The step of a path: the direction (bits 0-2) and the square (x, y) that the step reaches. */
+static uint16_t path_step_pack(int16_t dir, int16_t x, int16_t y)
+{
+    return (uint16_t)((dir & PATH_DIR_MASK) | (x & LOCATION_COORD_MASK) << PATH_X_SHIFT |
+                      (y & LOCATION_COORD_MASK) << PATH_Y_SHIFT);
+}
+/* The direction, square, and map change of a path step. */
+static int16_t path_step_dir(uint16_t step)
+{
+    return step & PATH_DIR_MASK;
+}
+static int16_t path_step_x(uint16_t step)
+{
+    return step >> PATH_X_SHIFT & LOCATION_COORD_MASK;
+}
+static int16_t path_step_y(uint16_t step)
+{
+    return step >> PATH_Y_SHIFT & LOCATION_COORD_MASK;
+}
+static bool path_step_map_change(uint16_t step)
+{
+    return step & PATH_MAP_CHANGE;
 }
 
 /* ---- Squares ---- */
@@ -582,12 +619,6 @@ AiCommand ai_turn_toward(int16_t dir)
     return test_outcome(true);
 }
 
-/* The cell of (x, y) in the search map cells. */
-static uint8_t *search_cell(uint8_t *cells, int16_t x, int16_t y)
-{
-    return cells + x * SEARCH_COLUMN_SIZE + y * SEARCH_CELL_SIZE;
-}
-
 /* True when the wall face of (x, y) toward side shows an ornament that is a shooting target of filter. */
 static bool wall_shows_shoot_target(int16_t x, int16_t y, int16_t side, int16_t filter)
 {
@@ -725,20 +756,6 @@ static uint32_t random_set_bit(uint32_t bits)
     return 0;
 }
 
-/* The command test of a packed mode byte of a candidate: the mode and the bit AI_EXECUTE. */
-static AiTest packed_test(uint8_t mode)
-{
-    return (AiTest){mode, mode & AI_EXECUTE};
-}
-
-/* Fails the command: when the test executes, the creature reports the failure. */
-static AiCommand fail_command(bool execute)
-{
-    if (execute)
-        g_ai.command_result = AI_RESULT_FAIL;
-    return test_outcome(false);
-}
-
 /* True when the creature on the square at can step to a side square: then it does not attack its own square. */
 static bool can_step_off(Location at)
 {
@@ -780,9 +797,11 @@ static int16_t attack_cell(int mode, Location from, int16_t dir, bool melee, int
    when the creature cannot step off it, ranged attacks farther, all in the attack range; 0 for none. */
 static uint16_t attacks_in_range(uint16_t flags, Location from, int16_t distance)
 {
-    if (distance > 1 && !(flags &= ATTACK_RANGED_MASK))
-        return 0;
-    if (distance == 0 && !(flags &= ATTACK_MELEE_MASK))
+    if (distance > 1)
+        flags &= ATTACK_RANGED_MASK;
+    else if (distance == 0)
+        flags &= ATTACK_MELEE_MASK;
+    if (!flags)
         return 0;
     if (distance > creature_attack_range(g_ai.info))
         return 0;
@@ -802,6 +821,18 @@ static bool has_attack_target(int mode, int16_t tx, int16_t ty)
         return ai_cached_first_group() != THING_ENDOFLIST;
     }
     return true;
+}
+
+/* The attacks of flags that reach the target square to: a creature that avoids clouds keeps only melee attacks on a
+   target in a lasting cloud. */
+static uint16_t attacks_through_cloud(uint16_t flags, Location to)
+{
+    if (!(class_flags() & AI_CLASS_AVOIDS_CLOUDS))
+        return flags;
+    ai_cache_square(to);
+    if (has_explosion(ai_cached_first_object(), EXPLOSION_LASTING_CLOUD))
+        flags &= ATTACK_MELEE_MASK;
+    return flags;
 }
 
 /* Sets the action (and the missile) of the chosen attack bit; r selects the variant of the action. */
@@ -864,14 +895,14 @@ AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir)
     int16_t steal_cell = -1;
     if (flags & ATTACK_STEAL) {
         steal_cell = steal_target_cell(x, y);
-        if (steal_cell < 0 && !(flags &= (uint16_t)~ATTACK_STEAL))
+        if (steal_cell < 0)
+            flags &= (uint16_t)~ATTACK_STEAL;
+        if (!flags)
             return fail_command(execute);
     }
-    if (class_flags() & AI_CLASS_AVOIDS_CLOUDS) {
-        ai_cache_square((Location){tx, ty});
-        if (has_explosion(ai_cached_first_object(), EXPLOSION_LASTING_CLOUD) && !(flags &= ATTACK_MELEE_MASK))
-            return fail_command(execute);
-    }
+    flags = attacks_through_cloud(flags, (Location){tx, ty});
+    if (!flags)
+        return fail_command(execute);
     if (party_door_stops_attack(x, y))
         return fail_command(execute);
     if (!execute)
@@ -997,8 +1028,11 @@ static DoorTest test_door(DoorAction *a)
         return DOOR_TEST_FAIL;
     if (moving && (opening ? a->mode == DOOR_MODE_OPEN : a->mode != DOOR_MODE_OPEN))
         return DOOR_TEST_SPELL_ON_WAY;
-    if (moving && !opening && !(a->flags &= (uint16_t)~(DOOR_SKILL_SPELL | DOOR_SKILL_BASH)))
-        return DOOR_TEST_FAIL;
+    if (moving && !opening) {
+        a->flags &= (uint16_t)~(DOOR_SKILL_SPELL | DOOR_SKILL_BASH);
+        if (!a->flags)
+            return DOOR_TEST_FAIL;
+    }
     a->distance = axis_distance(a->from.x, a->from.y, a->to.x, a->to.y);
     if (!skills_reach_door(a))
         return DOOR_TEST_FAIL;
@@ -1401,6 +1435,21 @@ static void test_move_over_pit(Move *m, bool no_movers)
         g_ai_square_scan.blocking = 1;
 }
 
+/* The move flags that the party or a group on the target square of the move needs; a group of
+   FILTER_ATTACKED_GROUPS gets attacked instead when the test attacks groups. */
+static uint16_t occupant_move_flags(Move *m, AiMoveTest test)
+{
+    uint16_t also = at_party(m->tx, m->ty) ? MOVE_PARTY : 0;
+    if (m->same)
+        return also;
+    uint16_t g = ai_cached_first_group();
+    if (g == THING_ENDOFLIST || (test.no_movers && creature_group_info(g)->movement))
+        return also;
+    if (test.attack_groups && !m->map_changed)
+        m->attack_group = ai_thing_matches_filter(g, FILTER_ATTACKED_GROUPS);
+    return m->attack_group ? also : also | MOVE_GROUPS;
+}
+
 /* Tests the move; true when the move continues to the execution, false when the result is final. */
 static bool test_move(Move *m, AiMoveTest test)
 {
@@ -1430,14 +1479,7 @@ static bool test_move(Move *m, AiMoveTest test)
         return true;
     if (m->kind == MOVE_KIND_KEEP_DISTANCE && axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1)
         return true;
-    uint16_t also = at_party(m->tx, m->ty) ? MOVE_PARTY : 0;
-    if (!m->same) {
-        uint16_t g = ai_cached_first_group();
-        if (g != THING_ENDOFLIST && !(no_movers && creature_group_info(g)->movement) &&
-            (!test.attack_groups || m->map_changed ||
-             !(m->attack_group = ai_thing_matches_filter(g, FILTER_ATTACKED_GROUPS))))
-            also |= MOVE_GROUPS;
-    }
+    uint16_t also = occupant_move_flags(m, test);
     if ((g_ai.move_flags & also) != also)
         return true;
     if (is_safe_kind(m->kind) && is_dangerous(m))
@@ -2453,12 +2495,20 @@ static bool blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, i
     }
     int16_t nx = (int16_t)(x + g_dir_dx[s->dir]);
     int16_t ny = (int16_t)(y + g_dir_dy[s->dir]);
-    uint16_t other;
-    bool r = at_party(nx, ny) || ((other = creature_get_group_at(nx, ny)) != THING_NONE &&
-                                  !(creature_group_info(other)->flags & CREATURE_STATIC));
+    bool r = at_party(nx, ny);
+    if (!r) {
+        uint16_t other = creature_get_group_at(nx, ny);
+        r = other != THING_NONE && !(creature_group_info(other)->flags & CREATURE_STATIC);
+    }
     if (!r)
         s->visit = VISIT_BLOCKED;
     return r;
+}
+
+/* The command test of a packed mode byte of a candidate: the mode and the bit AI_EXECUTE. */
+static AiTest packed_test(uint8_t mode)
+{
+    return (AiTest){mode, mode & AI_EXECUTE};
 }
 
 /* The door target: a door that the creature can open or close (DOOR_MODE_* in the mask) and that is not yet so. */
@@ -2784,8 +2834,7 @@ static void search_write_path(Search *s, uint8_t *path)
         uint8_t *cell = search_map_cell(s, map, x, y);
         uint16_t from = le16(cell + SEARCH_AT_FROM);
         uint16_t step = le16(path + n * 2) & PATH_KEEP_BITS;
-        step |= (uint16_t)((cell[SEARCH_AT_DIR] & PATH_DIR_MASK) | (x & LOCATION_COORD_MASK) << PATH_X_SHIFT |
-                           (y & LOCATION_COORD_MASK) << PATH_Y_SHIFT);
+        step |= path_step_pack(cell[SEARCH_AT_DIR], x, y);
         if (location_map(from) != map) {
             map = location_map(from);
             step |= PATH_MAP_CHANGE;
@@ -2836,8 +2885,10 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
     s->dir = -1;
     s->passage_map = -1;
     ai_cache_square((Location){x, y});
-    if (s->locations &&
-        (g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y}))) {
+    if (!s->locations)
+        return;
+    g_ai_square_scan.passage = (uint8_t)dun_get_linked_teleporter_dest(&g_ai_square_scan.end, (Location){x, y});
+    if (g_ai_square_scan.passage) {
         s->passage_map = g_ai_square_scan.end.map;
         s->passage_x = g_ai_square_scan.end.x;
         s->passage_y = g_ai_square_scan.end.y;
@@ -2846,7 +2897,7 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
 
 int ai_search_area(Location from, int command, int count, AiCandidate *candidates, uint8_t *out_path)
 {
-    if (!candidates[0].kind) {
+    if (candidates[0].kind == TARGET_ANY) {
         candidates[0].found = pack_location(from.x, from.y, g_party.cur_map);
         candidates[0].destination = candidates[0].found;
         candidates[0].path_length = 0;
@@ -2905,7 +2956,7 @@ void ai_load_cached_path(void)
 }
 
 /* A step of the stored path. */
-static uint16_t path_step(int index)
+static uint16_t stored_step(int index)
 {
     return le16(g_ai.cached_path + index * 2);
 }
@@ -2914,9 +2965,9 @@ int ai_next_path_step(void)
 {
     ActiveGroup *a = g_ai.active;
     ai_load_cached_path();
-    int left = 0;
-    if (g_ai.cache.path_length && (left = g_ai.cache.path_left)) {
-        a->direction = path_step(g_ai.cache.path_length - left) & PATH_DIR_MASK;
+    int left = g_ai.cache.path_length ? g_ai.cache.path_left : 0;
+    if (left) {
+        a->direction = (uint8_t)path_step_dir(stored_step(g_ai.cache.path_length - left));
         return left;
     }
     uint16_t found = g_ai.cache.found;
@@ -2932,7 +2983,9 @@ static bool path_holds(int16_t saved)
     int16_t x = location_x(g_ai.cache.found);
     int16_t y = location_y(g_ai.cache.found);
     uint8_t path[AI_PATH_MAX * 2];
-    if (ai_search_area(ai_location(x, y), MOVE_KIND_NONE, 1, g_ai.candidates, path) || g_ai.candidates[0].path_length)
+    /* the search of the one candidate (index 0) from the found square: the target must be on that square */
+    if (ai_search_area(ai_location(x, y), MOVE_KIND_NONE, 1, g_ai.candidates, path) != 0 ||
+        g_ai.candidates[0].path_length)
         return false;
     int16_t cx = own_x();
     int16_t cy = own_y();
@@ -2945,13 +2998,12 @@ static bool path_holds(int16_t saved)
     if (!g_ai.cached_path)
         return false;
     for (int16_t checks = PATH_CHECK_STEPS;;) {
-        uint16_t step = path_step(g_ai.cache.path_length - left);
-        if (!ai_try_move(ai_move_test(PATH_CHECK_COMMAND), ai_location(cx, cy), AI_SQUARE_IN_DIR, step & PATH_DIR_MASK)
+        uint16_t step = stored_step(g_ai.cache.path_length - left);
+        if (!ai_try_move(ai_move_test(PATH_CHECK_COMMAND), ai_location(cx, cy), AI_SQUARE_IN_DIR, path_step_dir(step))
                  .passed)
             return false;
-        if ((step >> PATH_X_SHIFT & LOCATION_COORD_MASK) != g_ai_square.x ||
-            (step >> PATH_Y_SHIFT & LOCATION_COORD_MASK) != g_ai_square.y ||
-            (step >> PATH_MAP_CHANGE_SHIFT & 1) != (g_ai_square.map != g_party.cur_map))
+        if (path_step_x(step) != g_ai_square.x || path_step_y(step) != g_ai_square.y ||
+            path_step_map_change(step) != (g_ai_square.map != g_party.cur_map))
             return false;
         ai_set_map(g_ai_square.map);
         cx = g_ai_square.x;
