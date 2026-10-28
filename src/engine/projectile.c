@@ -26,15 +26,15 @@
 #define PROJECTILE_HIT_CHAMPION     (-2)
 #define PROJECTILE_HIT_CREATURE     (-1)
 
-/* Explosion types (EXPLOSION_DATA bits 0-6). */
-#define BLAST_FIREBALL           0x00
-#define BLAST_LIGHTNING          0x02
-#define BLAST_HARM_NON_MATERIAL  0x03
-#define BLAST_POISON_CLOUD       0x07
-#define BLAST_MISSILE_WALL       0x0e
-#define BLAST_DEATH_CLOUD        0x28
-#define BLAST_FADING             0x30
-#define BLAST_SMOKE              0x64
+/* Explosion types (EXPLOSION_DATA bits 0-6): the explosion payload - SPELL_THING_FIRST. */
+#define BLAST_FIREBALL           (SPELL_FIREBALL - SPELL_THING_FIRST)
+#define BLAST_LIGHTNING          (SPELL_LIGHTNING - SPELL_THING_FIRST)
+#define BLAST_HARM_NON_MATERIAL  (SPELL_HARM_NON_MATERIAL - SPELL_THING_FIRST)
+#define BLAST_POISON_CLOUD       (SPELL_POISON_CLOUD - SPELL_THING_FIRST)
+#define BLAST_MISSILE_WALL       (SPELL_MISSILE_WALL - SPELL_THING_FIRST)
+#define BLAST_DEATH_CLOUD        (EXPLOSION_DEATH_CLOUD - SPELL_THING_FIRST)
+#define BLAST_STORM_LIGHTNING    (EXPLOSION_STORM_LIGHTNING - SPELL_THING_FIRST)
+#define BLAST_SMOKE              (EXPLOSION_SMOKE - SPELL_THING_FIRST)
 /* The explosion types with an attack. */
 #define BLAST_TYPE_COUNT         8
 /* What an explosion type attacks: bit 0 random power, 1 doors, 2 the party, 3 creatures. */
@@ -57,12 +57,8 @@
 /* A champion that a creature hurts screams after the next game step. */
 #define SOUND_DELAY_HURT      2
 
-/* Sensor types that react to projectiles and explosions. */
-#define SENSOR_PROJECTILE_HIT    0x22 /* the wall sensor of a cell triggers when an object hits it */
-#define SENSOR_PROJECTILE_PORTAL 0x23 /* the object goes through the wall to the target square */
-#define SENSOR_EXPLOSION         0x26 /* the floor sensor triggers on an explosion */
 /* Sensor data: any object or explosion type. */
-#define SENSOR_ANY_THING         0x1ff
+#define SENSOR_ANY_THING   0x1ff
 /* Sensor flags and effects that projectiles read. */
 #define SENSOR_STRONG_ONLY SENSOR_STATE /* explosions of power 0xff (0x7f for lightning) only; a hit stops the object */
 #define SENSOR_EFFECT_ALWAYS   EFFECT_HOLD /* effect: trigger with the inverted match */
@@ -72,18 +68,13 @@
 /* Ornament and door values of the keys that projectiles test. */
 #define ORNAMENT_KEY_CATCH     0x13 /* ornament value: the alcove catches thrown objects */
 #define DOOR_KEY_GRATE         0x10 /* door value: objects and weak spells fly through the door */
-/* Item flags that projectiles test. */
-#define ITEM_GRATE_PASSES      0x0002 /* the object can fly through a grate */
-#define ITEM_CAUGHT            0x0040 /* a creature that catches objects catches it */
 
 /* Potions that explode on a hit. */
 #define POTION_VEN_BOMB  0x03
 #define POTION_FIRE_BOMB 0x13
 
 /* Creature info bits that projectiles test. */
-#define CREATURE_REFLECTS_SPELLS  0x0002 /* flags */
 #define CREATURE_NON_MATERIAL     CREATURE_NOT_DOOR_HIT
-#define CREATURE_CATCHES_OBJECTS  0x0200 /* flags */
 #define STATIC_SPELLS_ONLY        0x0100 /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION     0x0001 /* possessions bits 0-3: a dropped object lies in the flight direction cell */
 /* Creature info values that projectiles and melee attacks test. */
@@ -220,7 +211,7 @@ void projectile_create(const ProjectileLaunch *launch)
     uint16_t t = dungeon_unused_thing(THING_PROJECTILE);
     if (t == THING_NONE) {
         if (thing_type(payload) != THING_EXPLOSION)
-            move_thing(thing_with_cell(payload, launch->cell), -1, 0, launch->x, launch->y);
+            move_thing(thing_with_cell(payload, launch->cell), MOVE_NEW_ITEM, 0, launch->x, launch->y);
         return;
     }
     sndreq_request_with_fallback((SoundCue){item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH,
@@ -546,7 +537,8 @@ static bool hit_creature(Hit *h, int16_t cell)
         if (info->door_flags & CREATURE_RESISTS_NON_FIRE && a.type != ATTACK_TYPE_FIRE)
             damage = (uint16_t)((int16_t)damage >> 2);
         creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, damage);
-        if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ATTR_FLAGS) & ITEM_CAUGHT)
+        if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS &&
+            item_attr(payload, ATTR_FLAGS) & ITEM_FLAG_CAUGHT)
             h->holder = group_possessions(g);
     }
     if (h->potion_bomb || h->payload_type == THING_WEAPON ||
@@ -597,7 +589,7 @@ static bool hit_door(Hit *h)
             passes = h->payload >= SPELL_HARM_NON_MATERIAL;
         } else {
             passes = projectile_hit_chance(h->projectile) > (rand_next() & ROLL_GRATE) &&
-                     item_attr(h->payload, ATTR_FLAGS) & ITEM_GRATE_PASSES;
+                     item_attr(h->payload, ATTR_FLAGS) & ITEM_FLAG_GRATE_PASSES;
         }
         if (passes)
             return false;
@@ -955,7 +947,7 @@ void explosion_process_event(TimelineEvent *e)
     }
     type = explosion_type(t);
     if (g_party.cur_map == g_game.party_map &&
-        (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_FADING))
+        (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_STORM_LIGHTNING))
         g_party.redraw |= REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
     thing_set_word(t, THING_NEXT, THING_NONE);
@@ -1018,7 +1010,7 @@ static uint16_t attack_wounds(const CreatureInfo *info)
 {
     uint32_t r = rand_next();
     if (!(r & ROLL_WOUND_LOCATION) || (!info->wound_feet_legs && !info->wound_torso_head))
-        return (uint16_t)((r & 1) + 1);
+        return r & 1 ? WOUND_ACTION_HAND : WOUND_READY_HAND;
     uint16_t roll = r & NIBBLE_MASK;
     if (!roll)
         roll = 1;

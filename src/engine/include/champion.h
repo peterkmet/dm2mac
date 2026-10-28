@@ -122,7 +122,9 @@ typedef struct __attribute__((packed)) {
 
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
-/* Champion.wounds bits: 0x01 and 0x02 the hands, then the head, the torso, the legs, the feet. */
+/* Champion.wounds bits: the hands, the head, the torso, the legs, the feet. */
+#define WOUND_READY_HAND      0x01
+#define WOUND_ACTION_HAND     0x02
 #define WOUND_HEAD            0x04
 #define WOUND_TORSO           0x08
 #define WOUND_LEGS            0x10
