@@ -1991,7 +1991,7 @@ void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell)
     }
 }
 
-int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, int into_groups, int into_containers)
+int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers)
 {
     int count = 0;
     cell = (uint8_t)cell;

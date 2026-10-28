@@ -166,6 +166,7 @@ class Ai:
         lib.ai_turn_toward.restype = AiCommand
         lib.ai_thing_matches_filter.restype = ctypes.c_bool
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
+        lib.ai_count_matching_items.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0

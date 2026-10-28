@@ -119,7 +119,7 @@ bool ai_projectile_incoming(int16_t x, int16_t y);
 void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell);
 /* The number of items of filter in a thing list (cell CELL_ANY: any cell), with the possessions of groups and the
    contents of chests on request. */
-int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, int into_groups, int into_containers);
+int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers);
 /* The AI marker text on the square in the AI cache for the level delta with kind id: its id, -1 none. */
 int ai_find_marker_by_id(int level_delta, int id);
 /* The direction of the next step of the stored path into the action; returns the steps left (0: none). A group

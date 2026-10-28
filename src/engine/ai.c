@@ -977,7 +977,7 @@ static AiItemCounts *get_item_counts(uint32_t targets, int scan)
                     slot->extra = (int8_t)(slot->extra + (int8_t)extra.want);
                 }
                 int16_t n = (int16_t)ai_count_matching_items(
-                    (int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY, 0, 1);
+                    (int16_t)t.item, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY, false, true);
                 p[COUNT_AT_CARRIED] = (int8_t)n;
                 slot->total = (int8_t)(slot->total + (int8_t)n);
                 slot->wanted = (int8_t)(slot->wanted - (int8_t)count_carried(&wanted, n));
