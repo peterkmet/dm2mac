@@ -208,7 +208,7 @@ static uint16_t take_next_missile(int champ, int hand, bool throwing)
         if (slot > SLOT_QUIVER_LAST) {
             if (!throwing)
                 return THING_NONE;
-            slot = SLOT_QUIVER_ACTION; /* the original then takes what lies in the quiver slot */
+            slot = SLOT_QUIVER_ACTION; /* as in the original, the hand then takes what lies in the quiver slot */
         }
     }
     return champ_remove_object_from_slot(champ, slot);
