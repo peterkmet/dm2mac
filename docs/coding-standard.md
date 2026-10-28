@@ -25,8 +25,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 3. Only `platform/` includes SDL and operating system headers (`_WIN32`, POSIX, `<sys/...>`, `<unistd.h>`,
    `<dirent.h>`). The other layers reach the operating system through `data/os.h` (`os_log`, `os_fatal`,
    `os_get_full_path`) and its hooks, which `platform/` and the tests set. The socket is
-   `platform/transport.c`; the Windows build has no socket and links `platform/transport_none.c`. [layer for SDL;
-   platform for the rest]
+   `platform/transport.c`; the Windows build has no socket and links `platform/transport_none.c`. The other layers
+   call no `rand`, `srand`, `time` or `clock`: the random numbers come from `engine/random.h`, so a game repeats
+   from the same input. [layer for SDL; platform for the rest]
 4. Game rules in `engine/` do not call the user interface. They set redraw flags (`Champion.redraw`,
    `REDRAW_*`), and they call a member of `g_hooks` (`engine/hooks.h`) for an event that must run the user
    interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/ui_hooks.c` sets every
@@ -202,14 +203,14 @@ that this port cannot use keeps its number with "No rule in dm2".
    `true`/`false` and the functions whose comment says they return 1 or 0 are a heuristic of the check; the
    rest review only]
 3. No `long`, because it has 32 bits on Windows and 64 bits on macOS. A value wider than `int` uses a fixed-width
-   type with the `<inttypes.h>` formats. [review only]
+   type with the `<inttypes.h>` formats. [long-type]
 4. A cast is allowed only where it changes the result (16-bit wrap, sign, truncation), with a short comment
    when the reason is not obvious. No cast that only repeats the x86 operand size of the Watcom code, no double
    integer cast. [packed; the rest review only]
 5. The port assumes an arithmetic right shift of a negative value: `random.h` asserts it,
    and the build passes `-fwrapv` so signed overflow wraps. [review only]
 6. One statement per line: no comma operator outside the header of a `for`, no chained assignment, at most
-   one variable with an initializer per declaration. [format; review only]
+   one variable with an initializer per declaration. [statement]
 7. Use `for`, `while`, `switch`, and early `return`. `goto` only for one cleanup label in a function that
    frees memory. [review only]
 8. One function does one game task; split a long original function where its parts have their own meaning. A
@@ -246,7 +247,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 ## 8. File order
 
-1. A `.c` file has this order: includes; constants; types; file-static state; functions. [order]
+1. A `.c` file has this order: includes; constants; types; file-static state; functions. An `enum` is a constant
+   (rule 3.2); a `static const` table is state, so it stands after the type of its elements. [order for the first
+   constant, type, file-scope variable and function; the place of the includes review only]
 2. The public functions are in the order of the header. The header lists them by topic: setup and reset
    first, then queries, then commands; a one-line section comment names each topic in the header and in the
    `.c` file. [order for the function order; the section comments review only]
@@ -346,7 +349,7 @@ their allowlist key:
 | Key | Fails on |
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
-| `platform` | an operating system header or `_WIN32` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
+| `platform` | an operating system header or `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
 | `engine-write` | a write of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
 | `module` | a `.c` file without its header, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
@@ -375,7 +378,9 @@ their allowlist key:
 | `long` | a function above 60 lines without an allowlist reason |
 | `result` | heuristic: a function whose comment gives 0 or -1 as a result ("0 on success", "-1 on error", "Returns -1", "1/0/-1") |
 | `params` | a prototype with more than five parameters |
-| `order` | a `.c` file whose public definitions are not in header order, or a forward declaration without a recursion comment |
+| `order` | a `.c` file whose public definitions are not in header order, a forward declaration without a recursion comment; a `.c` file whose first `#define` or `enum`, first type, first file-scope variable (also a `static const` table) and first function definition are not in this order (target `<file>:sections`) |
+| `statement` | a chained assignment, a second variable with an initializer in one declaration, a comma statement; the header of a `for` is skipped |
+| `long-type` | `long` in code |
 | `event-comment` | an event number in a comment (`event 11`) |
 | `todo` | a TODO marker in code |
 | `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |

@@ -275,6 +275,24 @@ def test_constant_blocks_have_a_comment():
                      for line, commented, items in constant_blocks(path) if not commented])
 
 
+LVALUE = r"\w+(?:\s*(?:\.|->)\s*\w+|\s*\[[^\]=;]*\])*"
+ASSIGN = r"(?:[-+*/%&|^]|<<|>>)?=(?!=)"
+STATEMENT = re.compile(rf"(?<![=!<>])=(?!=)\s*{LVALUE}\s*{ASSIGN}"  # a chained assignment
+                       # a second initializer in one declaration
+                       rf"|^\s*(?!return\b|else\b|case\b)(?:\w+\s+)*\w+[\s*]+{LVALUE}\s*=(?!=)[^;]*?,\s*\**{LVALUE}\s*=(?!=)"
+                       rf"|^\s*{LVALUE}\s*(?:{ASSIGN}[^;,(){{}}]*|\+\+|--)\s*,")  # a comma statement
+FOR_HEADER = re.compile(r"\bfor\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)")
+
+
+def test_one_statement_per_line():
+    """No chained assignment, no second initializer in one declaration, no comma statement; a for header is skipped."""
+    line_check("statement", STATEMENT, ignore=FOR_HEADER)
+
+
+def test_no_long_type():
+    line_check("long-type", re.compile(r"\blong\b"))
+
+
 def test_no_decompiler_names():
     line_check("decompiler", DECOMPILER)
 
@@ -635,10 +653,12 @@ def test_tables_are_const():
 PLATFORM_CODE = re.compile(r"^\s*#\s*if.*\b_WIN32\b|^\s*#\s*include\s*<(?:unistd|dirent|strings|execinfo|fcntl|poll"
                            r"|windows|direct|io)\.h>|^\s*#\s*include\s*<(?:sys|arpa|netinet)/", re.M)
 STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\bexit\s*\(")
+NONDETERMINISM = re.compile(r"\b(?:s?rand|time|clock)\s*\(")
 
 
 def test_platform_code_only_in_platform():
-    """Operating system headers only in platform/; stderr and exit only in platform/ and data/os.c."""
+    """Operating system headers, rand, srand, time and clock only in platform/; stderr and exit only in platform/
+    and data/os.c."""
     ok = allowed()
     found = []
     for path in sources():
@@ -646,9 +666,9 @@ def test_platform_code_only_in_platform():
             continue
         text = path.read_text(errors="replace")
         found += [f"platform {rel(path)}  | {m.group().strip()}" for m in PLATFORM_CODE.finditer(text)]
-        if rel(path) != "data/os.c":
-            found += [f"platform {rel(path)}  | {n}: {line.strip()}" for n, line in enumerate(strip(text).splitlines(), 1)
-                      if STDERR_OR_EXIT.search(line)]
+        for n, line in enumerate(strip(text).splitlines(), 1):
+            if NONDETERMINISM.search(line) or rel(path) != "data/os.c" and STDERR_OR_EXIT.search(line):
+                found.append(f"platform {rel(path)}  | {n}: {line.strip()}")
     report("platform", found)
 
 
@@ -911,15 +931,39 @@ def test_function_comments():
 
 
 FORWARD_STATIC = re.compile(r"^static\b[^=;{]*?\b(\w+)\s*\([^;{]*\)\s*;", re.M)
+SECTIONS = ["constant", "type", "state", "function"]
+SECTION_START = [("constant", re.compile(r"^\s*#\s*define\b|^(?:typedef\s+)?enum\b[^=;(]*(?:\{|$)")),
+                 ("type", re.compile(r"^typedef\b|^(?:struct|union)\s+\w+\s*\{")),
+                 ("state", re.compile(r"^(?!extern\b)[A-Za-z_][^(]*?(?:=|;|\{)\s*$|^(?!extern\b)[A-Za-z_][^(;]*?="))]
+
+
+def first_sections(path):
+    """The 1-based line of the first #define or enum, type, file-scope variable and function definition of a .c file;
+    a static const table counts as a variable."""
+    starts = {start for _, start, _, _ in definitions(path)}
+    first, depth = {}, 0
+    for number, line in enumerate(strip(path.read_text(errors="replace")).splitlines(), 1):
+        if depth == 0:
+            kind = "function" if number in starts else next((k for k, p in SECTION_START if p.search(line)), None)
+            first.setdefault(kind, number)
+        if not line.lstrip().startswith("#"):
+            depth += line.count("{") - line.count("}")
+    return {kind: line for kind, line in first.items() if kind}
 
 
 def test_file_order():
-    """Public definitions follow the header order; a static forward declaration names its recursion."""
+    """Public definitions follow the header order; a static forward declaration names its recursion; the first
+    constant, type, file-scope variable and function stand in that order (target <file>:sections)."""
     ok = allowed()
     found = []
     for path in sources():
         if path.suffix != ".c" or ("order", rel(path)) in ok:
             continue
+        if ("order", f"{rel(path)}:sections") not in ok:
+            first = first_sections(path)
+            present = sorted(first, key=SECTIONS.index)
+            found += [f"order {rel(path)}:sections  | {first[b]}: the first {b} stands before the first {a} ({first[a]})"
+                      for a, b in zip(present, present[1:]) if first[b] < first[a]]
         header = base_header(path)
         if header:
             order = [f.name for f in functions(header) if not f.static]
