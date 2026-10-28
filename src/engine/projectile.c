@@ -8,6 +8,7 @@
 #include "item.h"
 #include "le.h"
 #include "move.h"
+#include "num.h"
 #include "random.h"
 #include "save.h"
 #include "sensor.h"
@@ -206,15 +207,6 @@ static int flight_dir(const TimelineEvent *e)
     return location_dir(le16(e->data + PROJECTILE_EVENT_POSITION));
 }
 
-static int16_t min16(int16_t a, int16_t b)
-{
-    return a < b ? a : b;
-}
-static int16_t max16(int16_t a, int16_t b)
-{
-    return a > b ? a : b;
-}
-
 /* ---- Projectile events ---- */
 
 int projectile_dir(uint16_t projectile)
@@ -301,7 +293,7 @@ static void blast_square(int type, int power, int x, int y, int cell)
         if (g != THING_NONE && !creature_current_step_acts(g)) {
             const CreatureInfo *info = creature_group_info(g);
             if (info->door_flags & CREATURE_RESISTS_NON_FIRE && type != SPELL_FIREBALL)
-                damage = (uint16_t)max16(1, (int16_t)(damage >> 2));
+                damage = (uint16_t)max_int(1, (int16_t)(damage >> 2));
             int dodge = info->dodge >> NIBBLE_BIT_COUNT;
             if (dodge != DODGE_NONE) {
                 if (info->flags & CREATURE_NON_MATERIAL)
@@ -337,7 +329,7 @@ void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell)
     explosion_set_power(t, (unsigned)power);
     int volume = dun_on_party_square(ex, ey)
                      ? SOUND_VOLUME_FULL
-                     : min16(SOUND_VOLUME_FULL, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
+                     : min_int(SOUND_VOLUME_FULL, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
     SoundCue cue = {CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, volume};
     sndreq_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, 1);
     dungeon_link_thing_to_square(t, g_party.cur_map, ex, ey);
@@ -455,8 +447,8 @@ static HitAttack roll_attack(uint16_t projectile, uint16_t payload)
     uint16_t r = rand_below((uint16_t)((attack >> 1) + 1));
     attack = (uint16_t)(attack + rand_2bits() + r);
     int bonus = HIT_CHANCE_BONUS_BASE - (projectile_hit_chance(projectile) >> HIT_CHANCE_BONUS_SHIFT);
-    int16_t raised = max16((int16_t)attack, (int16_t)((attack - bonus) * 2));
-    a.attack = min16(raised, (int16_t)(energy * 2));
+    int16_t raised = max_int((int16_t)attack, (int16_t)((attack - bonus) * 2));
+    a.attack = min_int((int16_t)raised, (int16_t)(energy * 2));
     return a;
 }
 
@@ -701,7 +693,7 @@ static bool hit_impact(int impact, Location at, Location stop, int cell, uint16_
     dungeon_unlink_thing_from_square(h.projectile, g_party.cur_map, fall_x, fall_y);
     projectile_destroy(h.projectile, h.holder, h.stop_x, h.stop_y);
     if (push_strength) {
-        int16_t strength = max16(min16((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
+        int16_t strength = max_int((int16_t)min_int((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
         int dir = h.payload == SPELL_PUSH ? h.push_dir : dir_opposite(h.push_dir);
         creature_push_group(at.x, at.y, (int16_t)dir, strength);
     }
@@ -900,9 +892,10 @@ int explosion_get_attack(uint16_t explosion, uint16_t target)
     case BLAST_HARM_NON_MATERIAL:
         return creature_group_info(target)->flags & CREATURE_NON_MATERIAL ? attack : 0;
     case BLAST_POISON_CLOUD:
-        attack = (uint16_t)max16(1, (int16_t)(min16((int16_t)(explosion_power(explosion) >> POISON_CLOUD_POWER_SHIFT),
-                                                    POISON_CLOUD_ATTACK_MAX) +
-                                              rand_bit()));
+        attack =
+            (uint16_t)max_int(1, (int16_t)(min_int((int16_t)(explosion_power(explosion) >> POISON_CLOUD_POWER_SHIFT),
+                                                   POISON_CLOUD_ATTACK_MAX) +
+                                           rand_bit()));
         if (kind == THING_GROUP)
             attack = (uint16_t)creature_roll_armor_factor(target, attack);
         return attack;
@@ -1048,13 +1041,13 @@ int projectile_attack_champion(uint16_t group, int champ)
     int kind = info->attack_kind;
     uint16_t dexterity = info->dexterity;
     if (kind == ATTACK_KIND_ANY_DEXTERITY)
-        dexterity = (uint16_t)min16(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
+        dexterity = (uint16_t)min_int(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
     else if (kind == ATTACK_KIND_ALWAYS_HITS)
         dexterity = DEXTERITY_ALWAYS_HITS;
     if (!attack_missed(info, champ, dexterity, difficulty)) {
         uint16_t wounds = attack_wounds(info);
-        int16_t power =
-            (int16_t)(info->attack + min16(info->attack, (int16_t)((rand_next() & ROLL_MELEE_POWER) + difficulty)));
+        int16_t power = (int16_t)(info->attack + min_int((int16_t)info->attack,
+                                                         (int16_t)((rand_next() & ROLL_MELEE_POWER) + difficulty)));
         bool skipped = false;
         if (kind != ATTACK_KIND_ALWAYS_HITS) {
             power = (int16_t)(power - champ_get_skill_level(champ, SKILL_PARRY, 1) * 2);
@@ -1221,9 +1214,9 @@ void projectile_launch_from_champion(int champ, uint16_t payload, int energy, in
                                           .y = g_game.party_y,
                                           .cell = (int16_t)cell,
                                           .dir = (int16_t)dir,
-                                          .energy = (uint8_t)min16((int16_t)energy, UINT8_MAX),
-                                          .hit_chance = (uint8_t)min16((int16_t)attack, UINT8_MAX),
-                                          .step = (uint8_t)min16((int16_t)step, UINT8_MAX)});
+                                          .energy = (uint8_t)min_int((int16_t)energy, UINT8_MAX),
+                                          .hit_chance = (uint8_t)min_int((int16_t)attack, UINT8_MAX),
+                                          .step = (uint8_t)min_int((int16_t)step, UINT8_MAX)});
     g_game.throw_cooldown = THROW_COOLDOWN;
     g_game.throw_dir = (uint16_t)dir;
 }

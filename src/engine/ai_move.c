@@ -14,6 +14,7 @@
 #include "le.h"
 #include "money.h"
 #include "move.h"
+#include "num.h"
 #include "os.h"
 #include "projectile.h"
 #include "random.h"
@@ -327,15 +328,10 @@ static uint16_t pack_location(int16_t x, int16_t y, int16_t map)
     return (uint16_t)location_pack(x, y, map);
 }
 
-static int16_t abs16(int v)
-{
-    return (int16_t)abs((int16_t)v);
-}
-
 /* The distance between two squares along the axes. */
 static int16_t axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
 {
-    return (int16_t)(abs16(x1 - x2) + abs16(y1 - y2));
+    return (int16_t)(abs_int((int16_t)(x1 - x2)) + abs_int((int16_t)(y1 - y2)));
 }
 
 /* A GDAT value of the door type on (x, y). */
@@ -475,10 +471,10 @@ static int16_t line_slope(bool steep, int x1, int y1, int x, int y)
 
 int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked)(int16_t x, int16_t y))
 {
-    if (abs16(x1 - x2) + abs16(y1 - y2) <= 1)
+    if (abs_int((int16_t)(x1 - x2)) + abs_int((int16_t)(y1 - y2)) <= 1)
         return 1;
-    int16_t dx = abs16(x2 - x1);
-    int16_t dy = abs16(y2 - y1);
+    int16_t dx = abs_int((int16_t)(x2 - x1));
+    int16_t dy = abs_int((int16_t)(y2 - y1));
     bool steep = dx < dy;
     bool diagonal = dx == dy;
     int16_t step_x = (int16_t)(x2 - x1) > 0 ? -1 : 1;
@@ -495,8 +491,8 @@ int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked
             if (blocked(x, y))
                 return 0;
         } else {
-            int16_t err_x = abs16(line_slope(steep, x1, y1, x + step_x, y) - slope);
-            int16_t err_y = abs16(line_slope(steep, x1, y1, x, y + step_y) - slope);
+            int16_t err_x = abs_int((int16_t)(line_slope(steep, x1, y1, x + step_x, y) - slope));
+            int16_t err_y = abs_int((int16_t)(line_slope(steep, x1, y1, x, y + step_y) - slope));
             if (err_x < err_y)
                 x += step_x;
             else
@@ -510,7 +506,7 @@ int ai_trace_line(int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool (*blocked
                     return 0;
             }
         }
-    } while (abs16(x - x1) + abs16(y - y1) > 1);
+    } while (abs_int((int16_t)(x - x1)) + abs_int((int16_t)(y - y1)) > 1);
     return axis_distance(x1, y1, x2, y2);
 }
 
@@ -1424,7 +1420,7 @@ static bool test_move(Move *m, AiMoveTest test)
     uint16_t need = needed_move_flags(m->kind, no_movers, m->map_changed, m->tx, m->ty) & g_ai.move_flags;
     if (!need)
         return true;
-    if (m->kind == MOVE_KIND_KEEP_DISTANCE && abs16(m->tx - g_ai_party.x) + abs16(m->ty - g_ai_party.y) <= 1)
+    if (m->kind == MOVE_KIND_KEEP_DISTANCE && axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1)
         return true;
     uint16_t also = at_party(m->tx, m->ty) ? MOVE_PARTY : 0;
     if (!m->same) {
@@ -1490,7 +1486,8 @@ static void execute_move(Move *m)
         m->facing = (int16_t)dir_opposite(m->facing);
         m->action = ACTION_TURN_BACK;
     } else if (m->action == -1) {
-        m->action = abs16(m->sx - m->tx) + abs16(m->sy - m->ty) <= 1 ? ACTION_MOVE_NEAR : ACTION_MOVE;
+        m->action =
+            abs_int((int16_t)(m->sx - m->tx)) + abs_int((int16_t)(m->sy - m->ty)) <= 1 ? ACTION_MOVE_NEAR : ACTION_MOVE;
     }
     int16_t current = group_dir(g_ai.group_thing);
     if (current != m->facing && (current == dir_opposite(m->facing) || m->action != ACTION_MOVE_NEAR)) {
@@ -2047,11 +2044,6 @@ static uint8_t *search_map_cell(Search *s, int16_t map, int16_t x, int16_t y)
     return search_cell(s->maps[map], x, y);
 }
 
-static int16_t max16(int a, int b)
-{
-    return (int16_t)a > (int16_t)b ? (int16_t)a : (int16_t)b;
-}
-
 /* Steps the shift register that picks the first search direction. */
 static int next_direction_bits(void)
 {
@@ -2127,7 +2119,7 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
     case TARGET_FLEE: {
         int16_t d = g_party.cur_map == g_ai_party.map ? axis_distance(own_x(), own_y(), g_ai_party.x, g_ai_party.y)
                                                       : SEARCH_FAR;
-        m[MARK_BEST] = (int8_t)max16(d, (int16_t)c->item);
+        m[MARK_BEST] = (int8_t)max_int((int16_t)d, (int16_t)c->item);
         break;
     }
     case TARGET_SHOOT_PARTY:
@@ -2138,9 +2130,9 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
         s->saved_attack = g_ai.attack_flags;
         break;
     case TARGET_NEAR_MARKER:
-        m[MARK_BEST] =
-            (int8_t)(m[MARK_MAP] == g_party.cur_map ? max16(1, axis_distance(own_x(), own_y(), m[MARK_X], m[MARK_Y]))
-                                                    : SEARCH_FAR);
+        m[MARK_BEST] = (int8_t)(m[MARK_MAP] == g_party.cur_map
+                                    ? max_int(1, (int16_t)axis_distance(own_x(), own_y(), m[MARK_X], m[MARK_Y]))
+                                    : SEARCH_FAR);
         break;
     case TARGET_LIGHT:
         g_ai.move_flags = MOVE_FLAGS_LIGHT;
@@ -2178,7 +2170,7 @@ static void search_setup(Search *s)
             s->locations = true;
         if (!s->enabled && flags & KIND_PARTY_LOCATION)
             hide_party_target(c);
-        s->max_cost = max16(s->max_cost, c->cost + (c->kind_flags & KIND_TESTS_BLOCKED ? 1 : 0));
+        s->max_cost = max_int((int16_t)s->max_cost, (int16_t)(c->cost + (c->kind_flags & KIND_TESTS_BLOCKED ? 1 : 0)));
     }
 }
 
@@ -2614,7 +2606,8 @@ static bool search_found(Search *s, int i)
         uint8_t flags = s->cands[k].kind_flags;
         s->or_flags |= flags;
         if (k == 0 || s->cands[k].path_length < 0)
-            s->max_cost = max16(s->cands[k].cost + (flags & KIND_TESTS_BLOCKED ? 1 : 0), s->max_cost);
+            s->max_cost =
+                max_int((int16_t)(s->cands[k].cost + (flags & KIND_TESTS_BLOCKED ? 1 : 0)), (int16_t)s->max_cost);
     }
     return false;
 }
