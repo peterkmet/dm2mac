@@ -358,7 +358,8 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, in
         int target = brightness[rs[1]] * light >> DIM_SHIFT;
         int k = nearest_step(brightness, last, target);
         int color = colors[k];
-        /* the keys keep their meaning: take the nearest other step, alternating below and above */
+        /* the keys keep their meaning: take the nearest other step, alternating below and above; as in the original,
+           a ramp of key colors only reads on into the next ramp */
         int lo = k - 1;
         int hi = k + 1;
         while (color == key1 || color == key2) {

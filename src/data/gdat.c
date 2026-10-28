@@ -510,7 +510,7 @@ char *gdat_text(const Gdat *g, GdatKey entry_key, char *buffer, size_t buffer_si
 
 int gdat_text_int_field(const char *text, const char *key)
 {
-    int value = 0; /* like the original, a second match goes on with the digits of the first */
+    int value = 0; /* as in the original, a second match goes on with the digits of the first */
     for (const char *p = strstr(text, key); p; p = strstr(p, key)) {
         p += strlen(key);
         if (*p == '=')

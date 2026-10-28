@@ -102,3 +102,4 @@ The port keeps the `DUNGENB.DAT` fallback logic: it opens `DUNGENB.DAT` when it 
 - The port supports only the complete `GRAPHICS.DAT`; it does not read `GRAPHIC2.DAT`.
 - The port decodes the 8-bit codecs 2 and 3 only; codec 1 (LZW) gives a data error. No shipped image uses codec 1.
 - Fix: the port rejects a color ramp item (`(1, 0, 7, 2)`) whose ramp lengths reach past the item; the original reads on past it.
+- Kept quirk: `gdat_text_int_field` goes on with the digits of the first match when the key comes a second time in the text, as in the original.
