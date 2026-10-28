@@ -222,6 +222,7 @@ typedef struct {
 
 extern ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
 extern int g_champ_action_count;
+/* The hand thing of the open action menu; exported for the tests. */
 extern uint16_t g_champ_action_thing;
 /* The party sleeps. */
 extern bool g_party_sleeping;

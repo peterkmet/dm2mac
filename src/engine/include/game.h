@@ -151,6 +151,10 @@ bool game_count_step_tick(void);
 void game_reset_step_ticks(void);
 /* A loaded or a new game runs: the end of the last game is over. */
 void game_clear_end(void);
+/* The loop stops (on): the party died or the player quit. */
+void game_set_end(bool on);
+/* The platform ended the program (on): no end movies. */
+void game_set_closed(bool on);
 /* The program ends. */
 void game_request_quit(void);
 

@@ -55,13 +55,6 @@ typedef struct {
     int dir, x, y;
 } ViewWall;
 
-/* The open action menu, kept while the state lists the actions of the other hands. */
-typedef struct {
-    ChampionAction actions[CHAMPION_ACTION_MAX];
-    int count;
-    uint16_t thing;
-} SavedActionMenu;
-
 /* Appends n bytes; the buffer doubles when they do not fit. */
 static void put(Json *j, const char *text, size_t n)
 {
@@ -393,26 +386,10 @@ static void put_action_names(Json *j)
     json_close(j, ']');
 }
 
-/* Keeps the open action menu in saved before the state lists the actions of a hand. */
-static void remember_action_menu(SavedActionMenu *saved)
-{
-    memcpy(saved->actions, g_champ_actions, sizeof saved->actions);
-    saved->count = g_champ_action_count;
-    saved->thing = g_champ_action_thing;
-}
-
-/* Gives the open action menu back after the state listed the actions of a hand. */
-static void restore_action_menu(const SavedActionMenu *saved)
-{
-    memcpy(g_champ_actions, saved->actions, sizeof saved->actions);
-    g_champ_action_count = saved->count;
-    g_champ_action_thing = saved->thing;
-}
-
 /* Lists in g_champ_actions the actions of a hand of a champion; none for a dead champion. */
 static void list_hand_actions(int champ, int hand)
 {
-    g_champ_action_count = 0;
+    champ_action_list_restore(&(ChampActionList){.thing = THING_NONE});
     if (champion(champ)->health)
         champ_list_actions(champ, champion(champ)->slots[hand], hand);
 }
@@ -420,8 +397,8 @@ static void list_hand_actions(int champ, int hand)
 /* The action menu that each hand of a living champion opens; the open action menu stays as it is. */
 static void hands_json(Json *j, int champ)
 {
-    SavedActionMenu saved;
-    remember_action_menu(&saved);
+    ChampActionList saved;
+    champ_action_list_save(&saved);
     json_open(j, '{');
     for (int hand = SLOT_READY_HAND; hand < SLOT_HAND_COUNT; hand++) {
         list_hand_actions(champ, hand);
@@ -429,16 +406,16 @@ static void hands_json(Json *j, int champ)
         put_action_names(j);
     }
     json_close(j, '}');
-    restore_action_menu(&saved);
+    champ_action_list_restore(&saved);
 }
 
 int state_json_hand_action_count(int champ, int hand)
 {
-    SavedActionMenu saved;
-    remember_action_menu(&saved);
+    ChampActionList saved;
+    champ_action_list_save(&saved);
     list_hand_actions(champ, hand);
     int count = g_champ_action_count;
-    restore_action_menu(&saved);
+    champ_action_list_restore(&saved);
     return count;
 }
 
@@ -758,7 +735,7 @@ void state_json_state(Json *j)
     json_close(j, ']');
     outdoor_json(j);
     json_close(j, '}');
-    g_random_seed = seed;
+    rand_set_seed(seed);
 }
 
 /* ---- The view and the map ---- */
