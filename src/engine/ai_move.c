@@ -5,7 +5,6 @@
 #include <string.h>
 #include "ai.h"
 #include "ai_internal.h"
-#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -41,10 +40,7 @@
 #define LIGHT_RADIUS_MAX       8
 #define PARTY_MAP_SEARCH_COST  25 /* the cost of the search of the party distance maps */
 
-/* The sensor types of the wall actuators that creatures use (the others in aspect.h). */
-#define ACTUATOR_SWITCH      0x01
-#define ACTUATOR_ANY_ITEM    0x02
-#define ACTUATOR_ITEM        0x03
+/* The wall sensor type of a creature slot (the other sensor types in sensor.h). */
 #define SENSOR_CREATURE_SLOT 0x26 /* a wall slot that a creature type uses */
 /* The state of a creature slot (its sensor effect bits) from which the slot is busy. */
 #define SLOT_STATE_BUSY      2
@@ -1787,7 +1783,7 @@ uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int
         if (kind == SENSOR_NONE || kind == SENSOR_CREATURE_SLOT)
             continue;
         found = t;
-        if (kind != SENSOR_HOLDER)
+        if (kind != WALL_ITEM_HOLDER)
             continue;
         int wanted = sensor_flag(t, SENSOR_STATE) ? ACTUATOR_MODE_TAKE : ACTUATOR_MODE_PUT;
         if ((int16_t)mode == wanted && ai_thing_matches_filter(t, filter))
@@ -1803,21 +1799,21 @@ bool ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t 
     int kind = sensor_type(actuator);
     mode = (int16_t)mode;
     switch (kind) {
-    case ACTUATOR_SWITCH:
-    case SENSOR_TIMED_ORNAMENT:
-    case SENSOR_TIMED_ORNAMENT_2:
+    case WALL_CLICK_ANY:
+    case WALL_CLICK_BUTTON:
+    case WALL_CLICK_BUTTON_2:
         return mode == ACTUATOR_MODE_USE;
-    case ACTUATOR_ANY_ITEM:
+    case WALL_CLICK_EMPTY_HAND:
         return mode == ACTUATOR_MODE_USE && (int16_t)filter != -1;
-    case ACTUATOR_ITEM:
+    case WALL_CLICK_ITEM:
         return mode == ACTUATOR_MODE_USE && ai_thing_matches_filter(actuator, filter);
-    case SENSOR_TOGGLE_ORNAMENT:
+    case WALL_CLICK_TOGGLE:
         return mode == ACTUATOR_MODE_USE && (int16_t)state != !sensor_flag(actuator, SENSOR_STATE);
-    case SENSOR_HOLDER:
+    case WALL_ITEM_HOLDER:
         if (sensor_flag(actuator, SENSOR_STATE) ? mode != ACTUATOR_MODE_TAKE : mode != ACTUATOR_MODE_PUT)
             return false;
         return ai_thing_matches_filter(actuator, filter);
-    case SENSOR_STATE_MATCH:
+    case WALL_CLICK_COUNTED_ITEM:
         if (mode != ACTUATOR_MODE_PUT || !sensor_data(actuator))
             return false;
         return ai_thing_matches_filter(actuator, filter);
@@ -1928,9 +1924,9 @@ bool ai_thing_matches_filter(uint16_t thing, int filter)
         value = group_creature(thing);
     } else if (type == THING_SENSOR) {
         int kind = sensor_type(thing);
-        if (kind == SENSOR_STATE_MATCH && !sensor_data(thing))
+        if (kind == WALL_CLICK_COUNTED_ITEM && !sensor_data(thing))
             return false;
-        if (kind == SENSOR_HOLDER || kind == SENSOR_STATE_MATCH)
+        if (kind == WALL_ITEM_HOLDER || kind == WALL_CLICK_COUNTED_ITEM)
             value = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, item_gdat_index(thing),
                                               GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
         else

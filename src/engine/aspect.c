@@ -12,6 +12,8 @@
 
 /* The square byte that the floor things see on an open fake wall. */
 #define FAKE_WALL_FLOOR_SQUARE  1
+/* The sensor flag of a shown altar. */
+#define SENSOR_ALTAR_SHOWN      SENSOR_STATE
 /* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
 #define MAP_KEY_FLOOR_ORNAMENT  0x6b
 #define ORN_KEY_FRAMES          0x0d /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
@@ -193,22 +195,22 @@ static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int
     bool active = sensor_flag(thing, SENSOR_BUSY);
     bool state = sensor_flag(thing, SENSOR_STATE);
     switch (sensor_type(thing)) {
-    case SENSOR_TOGGLE_ORNAMENT:
+    case WALL_CLICK_TOGGLE:
         o->animated = state;
         o->frame = state;
         break;
-    case SENSOR_TIMED_ORNAMENT:
-    case SENSOR_TIMED_ORNAMENT_2:
+    case WALL_CLICK_BUTTON:
+    case WALL_CLICK_BUTTON_2:
         o->frame = active ^ state;
         break;
-    case SENSOR_HOLDER:
+    case WALL_ITEM_HOLDER:
         o->frame = state;
         if (o->frame) {
             o->animated = true;
             o->hides_rest = true;
         }
         break;
-    case SENSOR_STATE_MATCH:
+    case WALL_CLICK_COUNTED_ITEM:
         if (active == state)
             o->animated = true;
         else
@@ -226,16 +228,16 @@ static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int
             o->animated = true;
         }
         break;
-    case SENSOR_WALL_TEXT:
+    case WALL_CLICK_RESET:
         s->text = face == SIDE_FRONT ? thing : THING_TEXT_NONE;
         break;
     case SENSOR_FRAME_DATA:
         o->frame = sensor_data(thing);
         break;
-    case SENSOR_FRAME_STATE:
+    case WALL_CLICK_DOOR_BUTTON:
         o->frame = active;
         break;
-    case SENSOR_ALTAR:
+    case WALL_CLICK_PORTRAIT:
         altar_ornament(s, thing, face, o);
         break;
     }
@@ -313,7 +315,7 @@ static bool floor_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, Or
     o->ornament = listed_ornament(thing, dungeon_map_floor_ornaments(map));
     if (o->ornament == ORNAMENT_NONE)
         return false;
-    if (type == SENSOR_LINK) {
+    if (type == SENSOR_TELEPORTER_LINK) {
         if (sensor_data(thing) - 1 != map)
             return false;
         o->animated = active;

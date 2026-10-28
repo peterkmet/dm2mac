@@ -2110,7 +2110,7 @@ static uint8_t wall_text_glyph(uint8_t c)
     return c == '.' ? GLYPH_PERIOD : GLYPH_SPACE;
 }
 
-/* Shops: a wall sensor (SENSOR_WALL_TEXT with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
+/* Shops: a wall sensor (WALL_CLICK_RESET with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
    on its target square, with the item name and the merchant prices in coins. */
 #define SHOP_CLASS_TEXT      0x10 /* + list * 3: the class set of the items of the list */
 #define ORN_KEY_SHOP_LABEL   0xf2 /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offsets of the name and prices */
