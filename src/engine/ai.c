@@ -724,7 +724,8 @@ static bool cond_sees_party(int16_t x, int16_t y, bool front_only, int16_t range
     int16_t d = (int16_t)manhattan(g_ai_party.x, g_ai_party.y, x, y);
     if (d <= 1)
         return true;
-    return d <= range && !g_ui.inventory && ai_trace_line(g_ai_party.x, g_ai_party.y, x, y, ai_square_is_obstacle) != 0;
+    return d <= range && !g_ui.inventory &&
+           ai_trace_line((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y}, ai_square_is_obstacle) != 0;
 }
 
 /* True when a champion holds an item of FILTER_WEAPON_HANDS in a hand. */
@@ -886,7 +887,7 @@ static bool test_condition(int condition, int arg, int plan)
         r = g_ai.map == location_map(home);
         break;
     case COND_MARKER:
-        ai_cache_square(x, y);
+        ai_cache_square((Location){x, y});
         if (g_ai_square.square & SQUARE_HAS_THINGS)
             r = !ai_find_marker_by_id(a, (int16_t)thing_word(g_ai.group_thing, GROUP_ITEM_CLASS));
         break;
@@ -1602,7 +1603,7 @@ static bool flee_or_dodge(bool second_round)
         if (class_flags & AI_CLASS_DODGES) {
             uint16_t mood = group_mood(g_ai.group_thing);
             bool look = (mood & MOOD_FEAR && rand_2bits()) || (mood & MOOD_QUICK && rand_bit()) || !rand_2bits();
-            if (look && ai_projectile_incoming(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y])) {
+            if (look && ai_projectile_incoming(ai_group_square())) {
                 a->plan = -1;
                 a->plan_step = 0;
                 a->action = ACTION_DODGE;
@@ -1641,7 +1642,7 @@ static bool try_flee(uint32_t class_flags)
     if (class_flags & AI_CLASS_NO_FLEE || ai_try_move(ai_move_test(g_ai.search_flags), at, at, -1).passed)
         return false;
     bool flee =
-        (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at.x, at.y)) || !g_ai.alert ||
+        (g_ai.search_flags == MOVE_KIND_SAFE_FLEE && ai_projectile_incoming(at)) || !g_ai.alert ||
         !ai_try_attack((AiTest){ATTACK_MODE_PARTY, false}, at, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing)).passed ||
         rand_below((uint16_t)((creature_armor(g_ai.info) >> 2) + 1)) <= 1;
     return flee && flee_or_dodge(second_round);
