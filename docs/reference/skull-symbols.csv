@@ -1408,6 +1408,7 @@ address,name,signature,subsystem
 0x00071700,g_screen_pitch,int16_t,graphics
 0x00071706,g_viewport_width,int16_t,dungeon view
 0x00071708,g_viewport_height,int16_t,dungeon view
+0x0007172e,g_font_glyph_height,int16_t,text
 0x00071796,g_zone_list,void *,interface
 0x0007179a,g_zone_temp_index,int16_t,interface
 0x0007179c,g_view_zone_ids,int16_t[],dungeon view

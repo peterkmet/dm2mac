@@ -43,8 +43,10 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `gtext_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `gtext_decode_raw` in `engine/game_text.c`. `gtext_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
-- Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types; the dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon).
+- Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types; the dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon); a description line without a space breaks at 18 characters and goes on with the rest (`show_description` in `src/ui/ui.c`; the original `inv_draw_description_text` scans back before the start of the text).
 - Kept quirks of the original:
   - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
   - the minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again
+  - `offscreen_draw_ctx` adds the clipped part of a picture to its size, not to its position, and `offscreen_draw_text_at` marks the changed rectangle from the base line down (`src/ui/ui.c`)
+  - a gauge bar scales the 16-bit difference of the value and the low end (`show_gauge_bar` in `src/ui/ui.c`, `ui_draw_gauge_bar`)
   - a wall square of the minion map shows also the wall ornaments and the things of the first other map of the level that has a wall on the same square; the search leaves the square on that map, and `show_square` (`src/ui/minion_map.c`) switches the current map to it and back

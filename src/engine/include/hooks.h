@@ -24,23 +24,24 @@ typedef struct {
     void (*reset_action_champion)(int champ);           /* clears the drawn state of the action area for a champion */
     void (*render_hand_icon)(void);                     /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry,
-                                 int zone);        /* an interface picture in a screen zone */
-    void (*enter_map_view)(int16_t map);           /* the view loads the graphics of the map that the party enters */
-    void (*flush_input)(void);                     /* drops the waiting clicks and keys */
-    void (*poll_input)(void);                      /* reads the clicks and keys that came since the last read */
-    void (*clear_viewport)(void);                  /* fills the cleared band of the viewport */
-    void (*set_input_mode)(enum InputMode mode);   /* the clicks and keys map to the commands of an INPUT_MODE_* */
-    void (*show_view)(void);                       /* shows the dungeon view again (recruit) */
-    void (*hide_view)(void);                       /* hides the dungeon view (recruit) */
-    void (*present_viewport)(void);                /* copies the view picture to the screen */
-    void (*refresh_input_mode)(void);              /* recomputes the active zones of the input mode */
-    void (*set_wait)(int steps);                   /* the commands wait for steps timer ticks */
-    void (*set_champion_cursor)(int champ);        /* the dragged champion cursor shows the face of champ */
-    void (*toggle_inventory)(int champ);           /* opens the inventory of champ, or closes it (CHAMPION_MAX) */
-    void (*draw_champion_state)(int champ);        /* draws what changed of the status box of champ */
-    void (*draw_all_champion_states)(int tick);    /* draws all status boxes, the inventory, the action area */
-    void (*draw_movement_arrows)(void);            /* draws the movement arrows */
-    void (*fill_screen_zone)(int zone, int color); /* fills a screen zone with a palette color */
+                                 int zone);      /* an interface picture in a screen zone */
+    void (*enter_map_view)(int16_t map);         /* the view loads the graphics of the map that the party enters */
+    void (*flush_input)(void);                   /* drops the waiting clicks and keys */
+    void (*poll_input)(void);                    /* reads the clicks and keys that came since the last read */
+    void (*clear_viewport)(void);                /* fills the cleared band of the viewport */
+    void (*set_input_mode)(enum InputMode mode); /* the clicks and keys map to the commands of an INPUT_MODE_* */
+    void (*show_view)(void);                     /* shows the dungeon view again (recruit) */
+    void (*hide_view)(void);                     /* hides the dungeon view (recruit) */
+    void (*present_viewport)(void);              /* copies the view picture to the screen */
+    void (*refresh_input_mode)(void);            /* recomputes the active zones of the input mode */
+    void (*set_wait)(int steps);                 /* the commands wait for steps timer ticks */
+    void (*set_champion_cursor)(int champ);      /* the dragged champion cursor shows the face of champ */
+    void (*toggle_inventory)(
+        int16_t champion_index); /* opens the inventory of a champion, or closes it (CHAMPION_MAX) */
+    void (*draw_champion_state)(int16_t champion_index); /* draws what changed of the status box of a champion */
+    void (*draw_all_champion_states)(bool tick);         /* draws all status boxes, the inventory, the action area */
+    void (*draw_movement_arrows)(void);                  /* draws the movement arrows */
+    void (*fill_screen_zone)(int zone, int color);       /* fills a screen zone with a palette color */
     void (*draw_viewport_image)(int category, int index, int entry, int zone,
                                 int transparent);            /* a picture in a zone of the view */
     void (*complete_game)(void);                             /* the party finished the game */

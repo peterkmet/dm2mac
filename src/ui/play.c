@@ -181,7 +181,7 @@ static void step_before_input(void)
     champ_apply_pending_damage();
     game_run_party_clocks();
     inv_update_hand_cursor();
-    ui_draw_all_champion_states(1);
+    ui_draw_all_champion_states(true);
     if (g_main_loop.end) {
         input_reset_states();
         return;

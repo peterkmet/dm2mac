@@ -1593,7 +1593,7 @@ static void feedback_init_rect(Feedback *f, int16_t *r, int w, int h)
 {
     if (!f->opened) {
         memcpy(f->o.rect, in.current.rect, sizeof f->o.rect);
-        offscreen_create(&f->o, -1, false);
+        offscreen_create(&f->o, ZONE_NONE, false);
         f->opened = true;
     }
     rect_center_in(r, f->o.rect, w, h);
@@ -2341,7 +2341,7 @@ static bool execute_party_command(const Command *c, bool idle)
         area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
         champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
-        ui_draw_all_champion_states(0);
+        ui_draw_all_champion_states(false);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         int champ = command - CMD_INVENTORY_FIRST;
         if (g_ui.candidate)
