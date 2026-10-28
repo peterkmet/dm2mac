@@ -530,6 +530,6 @@ bool item_use_charge(uint16_t thing)
         return false;
     item_add_charges(thing, -1);
     if (thing == g_game.leader_hand)
-        champ_put_in_leader_hand(thing, 0);
+        champ_put_in_leader_hand(thing);
     return true;
 }

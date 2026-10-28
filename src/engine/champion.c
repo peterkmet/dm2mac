@@ -90,7 +90,7 @@ void champ_init_party_state(void)
         /* without a leader the hand applies no item effects: the loaded champions hold them already */
         uint16_t leader = g_game.leader;
         g_game.leader = LEADER_NONE;
-        champ_put_in_leader_hand(g_game.leader_hand, true);
+        champ_put_in_leader_hand(g_game.leader_hand);
         g_game.leader = leader;
     }
     for (int i = 0; i < g_game.champion_count; i++) {

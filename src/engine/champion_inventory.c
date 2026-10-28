@@ -192,7 +192,7 @@ void inv_show_object_name(uint16_t thing)
     g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
 }
 
-void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
+void champ_put_in_leader_hand(uint16_t thing)
 {
     if (thing == THING_NONE)
         return;
@@ -202,7 +202,6 @@ void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
     g_game.leader_hand = thing;
     g_hooks.render_hand_icon();
     inv_show_object_name(thing);
-    (void)defer_cursor; /* the port draws the cursor each frame (inv_cursor_object) */
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_ADD);
     sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
 }
@@ -292,7 +291,7 @@ void inv_click_slot(int16_t slot)
         champ_take_from_leader_hand();
     if (thing != THING_NONE) {
         champ_remove_object_from_slot(champ, slot);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
@@ -457,7 +456,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
             return;
         item_set_gdat_index(flask, EMPTY_FLASK);
         if (slot == -1)
-            champ_put_in_leader_hand(flask, 0);
+            champ_put_in_leader_hand(flask);
         else
             c->slots[slot] = flask;
     }
