@@ -614,6 +614,11 @@ uint8_t dungeon_map_door_type(int16_t map, int16_t slot)
     return dungeon_map_graphics(map) >> (slot ? MAP_DOOR_TYPE_1_SHIFT : MAP_DOOR_TYPE_SHIFT) & MAP_NIBBLE_MASK;
 }
 
+uint8_t dungeon_door_type(int16_t map, uint16_t door)
+{
+    return dungeon_map_door_type(map, (int16_t)door_map_type(door));
+}
+
 /* The map ornament counts word: wall bits 0-3, random wall 4-7, floor 8-11, random floor 12-15. */
 static uint16_t map_ornament_counts(int16_t map)
 {

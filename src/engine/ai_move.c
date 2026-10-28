@@ -371,7 +371,8 @@ static int16_t axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
 /* A GDAT value of the door type on (x, y). */
 static int read_door_value(int16_t x, int16_t y, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(first_thing(x, y)), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, first_thing(x, y)),
+                            GDAT_TYPE_VALUE, key);
 }
 
 /* The search cost of the door on (x, y). */
@@ -1618,7 +1619,7 @@ static void scan_wall_ornaments(int16_t side)
     uint16_t first = cached_first_thing();
     uint16_t t = first;
     for (; t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
-        if (!dun_is_alcove_shown(first, t))
+        if (!sensor_is_alcove_shown(first, t))
             continue;
         if (thing_cell(t) == g_ai_square_scan.cells[0])
             g_ai_square_scan.facing_ornament = 1;

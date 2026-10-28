@@ -59,14 +59,6 @@
 /* The GDAT value of a wall ornament that leads up. */
 #define WALL_ORNAMENT_GOES_UP 0x11 /* GDAT value (9, ornament, 0x0b, 0x11) */
 
-/* The GDAT value of a wall ornament that is an alcove. */
-#define ORNAMENT_KEY_ALCOVE 0x0a /* ornament value 1: an alcove */
-
-/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
-#define GLOBAL_BIT_SHIFT 3
-/* The bit of a flag variable in its byte. */
-#define GLOBAL_BIT_MASK  0x07
-
 /* Random parts of the champion values. */
 #define BASH_ROLL_MASK 0x0f /* the random part of the strength of a champion who bashes a door */
 
@@ -1664,75 +1656,6 @@ bool move_party_warp_to_marker(void)
         return true;
     }
     return false;
-}
-
-/* Dungeon reads: alcoves, script variables, and doors. */
-
-bool dun_is_alcove_shown(uint16_t first, uint16_t thing)
-{
-    int ornament = item_gdat_index(thing);
-    if (ornament == GDAT_NO_INDEX ||
-        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
-        return false;
-    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
-}
-
-int dun_get_global_var(int var)
-{
-    if (var < GLOBAL_BYTE_FIRST)
-        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
-    if (var < GLOBAL_WORD_FIRST)
-        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
-    if (var < GLOBAL_VAR_END)
-        return g_game.global_words[var - GLOBAL_WORD_FIRST];
-    return 0;
-}
-
-int dun_modify_global_var(int var, int value, int op)
-{
-    int old = dun_get_global_var(var);
-    int v = old;
-    switch (op) {
-    case GLOBAL_VAR_SET:
-        v = 1;
-        break;
-    case GLOBAL_VAR_CLEAR:
-        v = 0;
-        break;
-    case GLOBAL_VAR_TOGGLE:
-        v = !old;
-        break;
-    case GLOBAL_VAR_ADD:
-        v = old + value;
-        break;
-    case GLOBAL_VAR_SUBTRACT:
-        v = old - value;
-        break;
-    case GLOBAL_VAR_ASSIGN:
-        v = value;
-        break;
-    }
-    if (var < GLOBAL_BYTE_FIRST) {
-        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
-        if ((int16_t)v)
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
-        else
-            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
-        return (int16_t)v != 0;
-    }
-    v = (int16_t)v;
-    if (var < GLOBAL_WORD_FIRST) {
-        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
-        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
-    } else if (var < GLOBAL_VAR_END) {
-        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
-    }
-    return v;
-}
-
-int dun_get_door_type(uint16_t door)
-{
-    return dungeon_map_door_type(g_party.cur_map, door_map_type(door));
 }
 
 /* Party state that the interface sets. */

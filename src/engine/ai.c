@@ -1277,7 +1277,7 @@ static int update_mood(uint32_t entries)
         if (!mask)
             break;
         if ((mask & MOOD_GLOBAL_TEST) == MOOD_GLOBAL_TEST) {
-            if (dun_get_global_var(mask & MOOD_GLOBAL_MASK))
+            if (game_global_var(mask & MOOD_GLOBAL_MASK))
                 break;
             continue;
         }

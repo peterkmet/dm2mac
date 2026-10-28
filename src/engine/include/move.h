@@ -191,18 +191,6 @@ bool move_party_can_push_group(uint16_t group);
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
 bool move_party_warp_to_marker(void);
 
-/* Dungeon reads: alcoves, script variables, and doors. */
-/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
-bool dun_is_alcove_shown(uint16_t first, uint16_t thing);
-/* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */
-int dun_get_global_var(int var);
-/* Changes the global variable var by op (GLOBAL_VAR_*) with value and returns the new value; the bytes stay in their
-   range. */
-int dun_modify_global_var(int var, int value, int op);
-/* The door type (0 or 1 of the party map) of a door thing, 0xff for none as in the original (the callers pass it to
-   GDAT as the entry index). */
-int dun_get_door_type(uint16_t door);
-
 /* Party state that the interface sets. */
 /* The movement arrows show the push arrows (on) or the move arrows: the party and the interface flag. */
 void move_set_push_mode(bool on);

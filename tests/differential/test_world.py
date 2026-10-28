@@ -67,7 +67,7 @@ def set_weather(sc, **values):
 
 
 def set_global(sc, var, value):
-    sc.lib.dun_modify_global_var(var, value, 6)
+    sc.lib.game_modify_global_var(var, value, 6)
     sc.emu.write(G_GLOBAL_BYTES + var - 0x40, bytes([value]))
 
 
@@ -78,7 +78,7 @@ def assert_world(sc, where):
     sc.sounds_seen = getattr(sc, "sounds_seen", []) + sc.sounds
     sc.assert_same_sounds(where)
     for var in (0x40, 0x41):
-        assert sc.lib.dun_get_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
+        assert sc.lib.game_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
     assert ctypes.c_uint32.in_dll(sc.lib, "g_random_seed").value == sc.emu.read_u32(VIEW_SEED_ADDR), where
     assert sc.differences() == [], where
 
@@ -421,13 +421,13 @@ def test_lightning_strikes_match_original(world, lib):
         value = lightning_seed(lib, rng, storm, 0x28 if storm >= 0xCD else 7, target)
         ctypes.c_uint32.in_dll(lib, "g_random_seed").value = value
         sc.emu.write_u32(VIEW_SEED_ADDR, value)
-        before = lib.dun_get_global_var(0x41)
+        before = lib.game_global_var(0x41)
         lib.world_update_day_night(0)
         sc.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
         hit = [e for e in sc.explosions if (e[2], e[3]) == target]
         party_hits += case == 0 and bool(hit)
         creature_hits += case == 1 and bool(hit)
-        seen += lib.dun_get_global_var(0x41) != before
+        seen += lib.game_global_var(0x41) != before
         assert_world(sc, (n, map_, target, party))
     set_party_state(sc, 0, 0)
     assert party_hits > 5 and creature_hits > 5 and seen > 5, (party_hits, creature_hits, seen)

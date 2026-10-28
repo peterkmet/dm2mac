@@ -17,7 +17,6 @@
 #include "num.h"
 #include "projectile.h"
 #include "random.h"
-#include "sensor.h"
 #include "weather.h"
 
 /* The size of the spell table. */
@@ -663,7 +662,7 @@ static void report_cast_failure(CastResult result, const Spell *spell)
     case CAST_OK:
         return;
     }
-    int count = dun_modify_global_var(var, 1, GLOBAL_VAR_ADD);
+    int count = game_modify_global_var(var, 1, GLOBAL_VAR_ADD);
     g_action.redraw_delay = (int16_t)max_int(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 

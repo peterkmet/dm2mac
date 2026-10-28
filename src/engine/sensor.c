@@ -5,6 +5,7 @@
 #include <string.h>
 #include "action.h"
 #include "ai.h"
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -36,6 +37,7 @@ enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
 #define ORNAMENT_KEY_ALTAR       0x0c /* ornament value: an altar that brings back a champion from its bones */
 #define ORNAMENT_KEY_FRAMES      0x0d /* ornament value (or text): the frame count of its animation */
 #define ORNAMENT_KEY_SOUND_DELAY 0x88 /* ornament value: the delay of its sound in its animation cycle */
+#define ORNAMENT_KEY_ALCOVE      0x0a /* ornament value 1: an alcove */
 /* The frame count in the ORNAMENT_KEY_FRAMES value. */
 #define ORNAMENT_FRAMES_MASK     0x7fff
 
@@ -178,7 +180,7 @@ static uint32_t current_map_time(uint32_t time)
 
 uint16_t sensor_door_value(uint16_t door, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dun_get_door_type(door), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
 }
 
 static int holder_item(int ornament)
@@ -631,14 +633,14 @@ static void forward_effect(const TimelineEvent *e, uint16_t sensor, int delay)
 static void set_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
     int op = e->data[EVENT_EFFECT] + (sensor_flag(sensor, SENSOR_INVERTED) ? GLOBAL_VAR_ADD : GLOBAL_VAR_SET);
-    dun_modify_global_var(sensor_data(sensor), 1, op);
+    game_modify_global_var(sensor_data(sensor), 1, op);
     sensor_trigger_target(sensor, passed_effect(sensor, e->data[EVENT_EFFECT]), 0);
 }
 
 /* Triggers the target when the script variable of the sensor data matches the event effect (inverted: the reverse). */
 static void test_global_flag(const TimelineEvent *e, uint16_t sensor)
 {
-    bool set = dun_get_global_var(sensor_data(sensor)) != 0;
+    bool set = game_global_var(sensor_data(sensor)) != 0;
     bool inverted = sensor_flag(sensor, SENSOR_INVERTED);
     int effect = e->data[EVENT_EFFECT];
     if ((set != inverted && (effect == EFFECT_SET || effect == EFFECT_TOGGLE)) ||
@@ -1481,7 +1483,7 @@ void sensor_event_door_animation(TimelineEvent *e)
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED)
             again = true;
         sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR, dun_get_door_type(door),
+            (SoundCue){CAT_DOOR, dungeon_door_type(g_party.cur_map, door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
                        SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, x, y, SOUND_STEP_END);
@@ -1635,9 +1637,18 @@ static int ornament_value(uint16_t thing, int key)
                : gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, key);
 }
 
+bool sensor_is_alcove_shown(uint16_t first, uint16_t thing)
+{
+    int ornament = item_gdat_index(thing);
+    if (ornament == GDAT_NO_INDEX ||
+        gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
+        return false;
+    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
+}
+
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
 {
-    return dun_is_alcove_shown(first, thing) ? ornament_value(thing, key) : 0;
+    return sensor_is_alcove_shown(first, thing) ? ornament_value(thing, key) : 0;
 }
 
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */
@@ -1941,7 +1952,7 @@ bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
         c.cell = thing_cell(t);
         if (c.cell != side)
             continue;
-        if (dun_is_alcove_shown(first, t)) {
+        if (sensor_is_alcove_shown(first, t)) {
             wall_click_alcove(&c);
             break;
         }

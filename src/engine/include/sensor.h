@@ -252,25 +252,13 @@ void sensor_process_event(TimelineEvent *e);
 void sensor_process_map_entry(bool entering);
 
 /* Wall clicks. */
+/* True when thing on a wall cell is the alcove ornament that the wall face shows; first: the first thing of the square. */
+bool sensor_is_alcove_shown(uint16_t first, uint16_t thing);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
 /* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
    with held (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. True when a sensor
    reacts, so that the command stops. */
 bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
-
-/* The operations of a set-global sensor on a script variable. */
-#define GLOBAL_VAR_SET      0
-#define GLOBAL_VAR_CLEAR    1
-#define GLOBAL_VAR_TOGGLE   2
-#define GLOBAL_VAR_ADD      3
-#define GLOBAL_VAR_SUBTRACT 4
-#define GLOBAL_VAR_ASSIGN   6
-/* The script variables: the flags, then the bytes, then the words; the first byte, the first word, the end. */
-#define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
-#define GLOBAL_WORD_FIRST   (GLOBAL_BYTE_FIRST + GLOBAL_BYTE_COUNT)
-#define GLOBAL_VAR_END      (GLOBAL_WORD_FIRST + GLOBAL_WORD_COUNT)
-/* The largest value of a byte variable. */
-#define GLOBAL_BYTE_MAX     255
 
 #endif /* DM2_ENGINE_SENSOR_H */

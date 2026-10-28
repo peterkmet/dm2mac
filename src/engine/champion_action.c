@@ -472,7 +472,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
 /* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
 static void show_failure(int result, int counter)
 {
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
+    int16_t count = (int16_t)game_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
     g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
     g_action.result = (int16_t)result;
 }
@@ -643,7 +643,8 @@ static bool run_melee(ActionRun *a)
         sensor_door_try_destroy(a->fx, a->fy, champ_get_strength(a->champ, a->hand, a->skill), false, DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
+            (SoundCue){CAT_DOOR,
+                       dungeon_door_type(g_party.cur_map, dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
                        SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, a->fx, a->fy, SOUND_STEP_END);
         return true;
