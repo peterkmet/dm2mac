@@ -148,10 +148,12 @@ static bool read_bytes(FILE *f, void *dst, size_t size)
 /* Reads count little-endian words into dst. */
 static bool read_words(FILE *f, uint16_t *dst, int count)
 {
-    if (!read_bytes(f, dst, (size_t)count * sizeof *dst))
-        return false;
-    for (int i = 0; i < count; i++)
-        dst[i] = le16((const uint8_t *)(dst + i));
+    for (int i = 0; i < count; i++) {
+        uint8_t le[sizeof *dst];
+        if (!read_bytes(f, le, sizeof le))
+            return false;
+        dst[i] = le16(le);
+    }
     return true;
 }
 
@@ -931,11 +933,16 @@ void dungeon_restore_record(uint16_t thing, const uint8_t *buffer)
 
 void dungeon_unlink_thing_from_list(uint16_t thing, uint16_t *list)
 {
-    uint8_t *link = (uint8_t *)list;
-    while (le16(link) != THING_ENDOFLIST && (le16(link) & THING_ID_MASK) != (thing & THING_ID_MASK))
-        link = dungeon_thing_record(le16(link)) + THING_NEXT;
-    if (le16(link) != THING_ENDOFLIST)
-        put_le16(link, dungeon_next_thing(le16(link)));
+    uint16_t id = thing & THING_ID_MASK;
+    if (*list != THING_ENDOFLIST && (*list & THING_ID_MASK) == id) {
+        *list = dungeon_next_thing(*list);
+    } else if (*list != THING_ENDOFLIST) {
+        uint16_t prev = *list;
+        while (dungeon_next_thing(prev) != THING_ENDOFLIST && (dungeon_next_thing(prev) & THING_ID_MASK) != id)
+            prev = dungeon_next_thing(prev);
+        if (dungeon_next_thing(prev) != THING_ENDOFLIST)
+            thing_set_word(prev, THING_NEXT, dungeon_next_thing(dungeon_next_thing(prev)));
+    }
     thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 

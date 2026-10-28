@@ -3,7 +3,8 @@
 #define DM2_ENGINE_DUNGEON_H
 /* Prefixes: dungeon_ dir_ square_ thing_ location_ event_ door_ group_ teleporter_ container_ misc_ potion_ scroll_ weapon_ armour_ moneybox_ textrec_ */
 
-/* The dungeon: the things, their record layout, the squares, and the maps. */
+/* The dungeon: the things, their record layout, the squares, and the maps. It reads and links records and squares;
+   it does not move things or apply the rules of play (move.h and the game modules do). */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -224,7 +225,9 @@ static inline void thing_set_bit(uint16_t thing, int field, uint16_t bit, bool o
     uint16_t w = thing_word(thing, field);
     thing_set_word(thing, field, on ? w | bit : w & ~bit);
 }
-/* The head word of a thing list in a record: possessions, contents, or the link to the next thing. */
+/* The head word of a thing list in a record: possessions, contents, or the link to the next thing. The callers
+   read it natively, so the port needs a little-endian host. */
+_Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "thing_list reads the record words natively");
 static inline uint16_t *thing_list(uint16_t holder, int field)
 {
     return (uint16_t *)(void *)(dungeon_thing_record(holder) + field);
