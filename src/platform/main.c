@@ -461,11 +461,11 @@ static bool options_are_valid(const char *missing, const char *unknown)
 /* Sets g_game_mode from its name; false with a message for an unknown name. */
 static bool select_mode(const char *mode)
 {
-    for (g_game_mode = 0; g_game_mode < GAME_MODE_COUNT && strcmp(mode, g_game_mode_names[g_game_mode]);
-         g_game_mode++) {
-    }
-    if (g_game_mode < GAME_MODE_COUNT)
-        return true;
+    for (enum GameMode m = GAME_MODE_VANILLA; m < GAME_MODE_COUNT; m++)
+        if (!strcmp(mode, g_game_mode_names[m])) {
+            g_game_mode = m;
+            return true;
+        }
     os_log("unknown mode %s: use vanilla, advanced, or turnbased", mode);
     return false;
 }
