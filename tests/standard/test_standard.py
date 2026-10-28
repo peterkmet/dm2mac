@@ -25,7 +25,7 @@ BRIDGE_REASON = re.compile(r"^bridge: task \d+$")
 EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
-DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[25-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
+DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[5-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
                      r"|(?<=[=,(+\-*/%<>&|?:]\s)[3-9](?![\w.\]])")
 BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
 MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"

@@ -90,13 +90,13 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 1. Name every game value. Plain numbers are allowed only for 0, 1, -1, and for 2 when the 2 halves or doubles a
    value. A byte or nibble mask (`0xf`, `0x0f`, `0xff`, `0xffff`) is allowed as an operand of `&`, `|`, `^`, `<<`
-   and `>>` (also `&=`, `|=`, `^=`). `3` and `4` are allowed as the size or the index of a fixed tuple (RGB, a 2D
-   or 4D vector). Every other number is a named constant, also in an array size and in a loop bound. The base
-   argument of `strtol` and its siblings is a plain number. The names cover thing types (`THING_DOOR`), no
-   thing (`THING_NONE`) and the end of a list (`THING_ENDOFLIST`), directions, cells, champion slots
-   (`SLOT_HAND_READY`), statistics, skills, square types, sensor types, door states, timeline event types,
+   and `>>` (also `&=`, `|=`, `^=`). `2`, `3` and `4` are allowed as the size or the index of a fixed tuple
+   (an (x, y) pair, RGB, a 4D vector). Every other number is a named constant, also in an array size and in a
+   loop bound. The base argument of `strtol` and its siblings is a plain number. The names cover thing types
+   (`THING_DOOR`), no thing (`THING_NONE`) and the end of a list (`THING_ENDOFLIST`), directions, cells, champion
+   slots (`SLOT_HAND_READY`), statistics, skills, square types, sensor types, door states, timeline event types,
    commands, and the systems of Dungeon Master II: money types, minion types (`MINION_GUARD`), weather states,
-   and the states of the Skullkeep machines. [hex, decimal; a `2` outside `[2]` and `< 2;`: review only]
+   and the states of the Skullkeep machines. [hex, decimal; a `2` outside `< 2;`: review only]
 2. A constant is `#define NAME value` with the value written out; a negative value is in parentheses:
    `#define COLOR_NONE (-1)`. A closed set of symbolic values (a result type of rule 6.1, a mode, a state) is a
    named `enum` type whose members share one first word (`MOVE_DONE`, `MOVE_WAIT` of `MoveResult`), if no
@@ -354,7 +354,7 @@ their allowlist key:
 | `include` | a header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
 | `dead-api` | an exported name with no use outside its file and no test marker |
-| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
+| `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
 | `notation` | a block that mixes hex and decimal, a flag block in decimal, a count block in hex |
