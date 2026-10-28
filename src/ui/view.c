@@ -145,6 +145,109 @@
 /* The door types of a map: door slots 0 and 1. */
 #define MAP_DOOR_TYPE_COUNT   2
 
+/* The smallest click zone of a picture. */
+#define CLICK_MIN_WIDTH             14
+#define CLICK_MIN_HEIGHT            11
+#define CLICK_LOW_HEIGHT            15 /* a lower picture moves its zone up to its middle */
+#define CLICK_HALF_SIZE             7  /* a narrow or low zone starts this far before the middle of its picture */
+/* The fixed click zones 4 to 7: the possessions of a static creature, by cell. */
+#define CLICK_ZONE_POSSESSION_FIRST 4
+
+/* Shops: a wall sensor (WALL_CLICK_RESET with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
+   on its target square, with the item name and the merchant prices in coins. */
+#define SHOP_CLASS_TEXT      0x10 /* + list * 3: the class set of the items of the list */
+#define ORN_KEY_SHOP_LABEL   0xf2 /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offsets of the name and prices */
+#define ORN_KEY_SHOP_SELL    0xf1
+#define ORN_KEY_SHOP_BUY     0xf0
+/* The item flag and the price table bit of a shop. */
+#define ITEM_FLAG_UNIQUE     0x1000 /* ATTR_FLAGS: the shop shows the item only when it exists */
+#define SHOP_TABLE_CREATE    0x8000 /* table word: a new item is made when the display shows it */
+/* The class text step of a price list, the coins of a price, and the coin picture size. */
+#define SHOP_CLASS_TEXT_STEP 3
+#define SHOP_PRICE_COINS     6
+#define COIN_WIDTH           8
+#define COIN_HEIGHT          7
+#define DISPLAY_POS          POS_FRONT /* only the wall in front shows the name and prices */
+
+/* The hit test of the creature in front of the party. */
+#define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
+#define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
+
+/* The hit test of a wall ornament. */
+#define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
+
+/* States of a hit test on a chest. */
+#define CHEST_HIT_NONE          0
+#define CHEST_HIT_OPEN          2
+#define CHEST_HIT_INSIDE        3
+/* The items a chest holds. */
+#define CHEST_CAPACITY          8
+/* ATTR_SLOTS: no container takes the item. */
+#define ATTR_SLOTS_NO_CONTAINER 0x8000
+
+/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
+   colors of its color remap, and its draw mode. */
+typedef struct {
+    int flip, scale_x, scale_y, dx, dy, depth, zone, anchor, key, key2;
+    enum DrawMode mode;
+} PicturePlace;
+
+/* How an object shows: lifted by dy, at a jitter spot that keeps the objects of a cell apart (-1 none), as a
+   possession of the static creature group, with its click zone, as a chest in an open state, or in the alcove. */
+typedef struct {
+    int dy, spot;
+    uint16_t group;
+    bool record_click;
+    int open_state;
+    bool in_alcove;
+    uint16_t projectile; /* the projectile that carries the object in flight, THING_NONE for none */
+} ObjectLook;
+
+/* The eye of the party in the thing grid: the direction it looks to and its grid point. */
+typedef struct {
+    int16_t dir;
+    int16_t x, y;
+} ViewEye;
+
+/* A door picture to put together: the door type, its ornament (an ordinal of the map door ornaments, 0 none), its
+   damage, the picture entry and scale, the depth of its shade and of its ornaments, the zone row of the depth, and
+   its transparent color. */
+typedef struct {
+    uint8_t type;
+    int ornament;
+    bool destroyed;
+    int entry, scale, shade_depth, depth, row, key;
+} DoorPicture;
+
+/* The picture of a creature from one side: its entry, its mirror, and whether it is the picture of the other side. */
+typedef struct {
+    int entry, flip;
+    bool mirrored;
+} SidePicture;
+
+/* An offset on the map as the party sees it: to the right (negative to the left) and forward. */
+typedef struct {
+    int16_t lateral, forward;
+} RelativeOffset;
+
+/* A grid cell (0 to 24) of the square at a view position. */
+typedef struct {
+    int pos, cell;
+} SquareCell;
+
+/* The picture of a thing: its entry and its mirror (MIRROR_*). */
+typedef struct {
+    int entry, flip;
+} ThingPicture;
+
+/* A projectile of a view (its thing id without the cell), its view square, and the picture corner in the views of
+   the game step before and of the last game step. */
+typedef struct {
+    uint16_t thing;
+    int pos;
+    ViewPoint from, to;
+} FlightTrack;
+
 /* Right and forward square offset of each view position. */
 static const int8_t view_offset[VIEW_SQUARE_COUNT][2] = {
     {0,  0},
@@ -629,6 +732,10 @@ static const int8_t toward_party_diagonal[CREATURE_SIZE_MAX][OCTANT_COUNT][2] = 
     {{1, -1}, {1, -1}, {1, 1}, {1, 1}, {-1, 1}, {-1, 1}, {-1, -1}, {-1, -1}},
     {{1, -2}, {2, -1}, {2, 1}, {1, 2}, {-1, 2}, {-2, 1}, {-2, 1},  {-1, -2}}, /* (-2, 1) twice, as in SKULL.EXE */
 };
+/* The cell and the scale of the creature that the party pushes, by push arrow. */
+static const uint8_t arrow_cells[PUSH_ARROW_NONE + 1] = {2, 0x0e, 0x16, 0x16, 0x16, 0x0a, 0x0c};
+static const uint8_t arrow_scales[PUSH_ARROW_NONE + 1] = {0x34, 0x40, 0x4e, 0x4e, 0x4e, 0x40, 0x40};
+
 /* Sparkle fields: the tile start (in 16 pixels), the mask picture (bit 7 mirrored, 0xff none), width, height. */
 static const uint8_t sparkle_field[POS_FAR_ROW][4] = {
     {0x3b, 0xff, 224, 136},
@@ -705,69 +812,6 @@ static const uint8_t sky_state_rain[SKY_STATE_COUNT] = {0, 1, 0, 0, 1};
 /* The projectiles of one view whose flight the views between game steps show. */
 #define FLIGHT_TRACK_MAX 32
 
-/* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
-   colors of its color remap, and its draw mode. */
-typedef struct {
-    int flip, scale_x, scale_y, dx, dy, depth, zone, anchor, key, key2;
-    enum DrawMode mode;
-} PicturePlace;
-
-/* How an object shows: lifted by dy, at a jitter spot that keeps the objects of a cell apart (-1 none), as a
-   possession of the static creature group, with its click zone, as a chest in an open state, or in the alcove. */
-typedef struct {
-    int dy, spot;
-    uint16_t group;
-    bool record_click;
-    int open_state;
-    bool in_alcove;
-    uint16_t projectile; /* the projectile that carries the object in flight, THING_NONE for none */
-} ObjectLook;
-
-/* The eye of the party in the thing grid: the direction it looks to and its grid point. */
-typedef struct {
-    int16_t dir;
-    int16_t x, y;
-} ViewEye;
-
-/* A door picture to put together: the door type, its ornament (an ordinal of the map door ornaments, 0 none), its
-   damage, the picture entry and scale, the depth of its shade and of its ornaments, the zone row of the depth, and
-   its transparent color. */
-typedef struct {
-    uint8_t type;
-    int ornament;
-    bool destroyed;
-    int entry, scale, shade_depth, depth, row, key;
-} DoorPicture;
-
-/* The picture of a creature from one side: its entry, its mirror, and whether it is the picture of the other side. */
-typedef struct {
-    int entry, flip;
-    bool mirrored;
-} SidePicture;
-
-/* An offset on the map as the party sees it: to the right (negative to the left) and forward. */
-typedef struct {
-    int16_t lateral, forward;
-} RelativeOffset;
-
-/* A grid cell (0 to 24) of the square at a view position. */
-typedef struct {
-    int pos, cell;
-} SquareCell;
-
-/* The picture of a thing: its entry and its mirror (MIRROR_*). */
-typedef struct {
-    int entry, flip;
-} ThingPicture;
-
-/* A projectile of a view (its thing id without the cell), its view square, and the picture corner in the views of
-   the game step before and of the last game step. */
-typedef struct {
-    uint16_t thing;
-    int pos;
-    ViewPoint from, to;
-} FlightTrack;
-
 static struct {
     int16_t map; /* the map of the squares that the view reads now */
     int16_t party_map;
@@ -819,6 +863,7 @@ bool g_view_arrows_enabled;
 uint8_t g_view_object_grid[VIEW_GRID_SIZE];
 uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];
+int16_t g_view_hit_offset_y;
 
 /* The square offset of a view position to the right of the view axis (negative to the left). */
 static int lateral_of(int pos)
@@ -878,6 +923,69 @@ static RelativeOffset relative_offset(int16_t dir, int dx, int dy)
     }
 }
 
+static bool is_item(uint16_t thing)
+{
+    int type = thing_type(thing);
+    return type >= THING_WEAPON && type <= THING_MISC;
+}
+
+/* The grid cell of a thing in its square for the party looking to dir. */
+static int get_thing_position(uint16_t thing, int16_t dir)
+{
+    int cell = CELL_CENTER;
+    switch (thing_type(thing)) {
+    case THING_GROUP:
+        return aspect_creature_cell(thing, dir_relative(dir, group_dir(thing)));
+    case THING_EXPLOSION:
+        if (explosion_is_centered(thing))
+            break;
+        __attribute__((fallthrough));
+    case THING_WEAPON:
+    case THING_ARMOUR:
+    case THING_SCROLL:
+    case THING_POTION:
+    case THING_CONTAINER:
+    case THING_MISC:
+    case THING_PROJECTILE:
+        cell = cell_view_position[thing_cell(thing)];
+        break;
+    }
+    return aspect_rotate_cell(cell, dir);
+}
+
+/* The cell (0 to 3) of a grid cell that holds objects, -1 for the others. */
+static int position_to_cell(int position)
+{
+    for (int cell = 0; cell < DIR_COUNT; cell++)
+        if (cell_view_position[cell] == position)
+            return cell;
+    return position == CELL_CENTER ? DIR_COUNT : -1;
+}
+
+/* True when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
+static bool get_flip_parity(int kind, int16_t dir, int16_t x, int16_t y)
+{
+    int parity =
+        (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) + dungeon_map_level(view.map)) &
+        1;
+    int party_parity = g_game.party_dir & 1;
+    int time = g_game.game_time & GAME_TIME_FRAMES;
+    uint16_t flags = view.flip_flags;
+    if (kind == PARITY_FLOOR) {
+        if (!(flags & FLIP_FLOOR_BY_SQUARE))
+            return flags & FLIP_FLOOR_BY_PARTY ? party_parity : 0;
+        if (flags & FLIP_FLOOR_BY_TIME)
+            return time >= HALF_TIME_FRAMES;
+        return parity;
+    }
+    if (kind == PARITY_CEILING) {
+        if (flags & FLIP_CEILING_BY_SQUARE)
+            return flags & FLIP_CEILING_BY_TIME ? time < HALF_TIME_FRAMES : !parity;
+        return flags & FLIP_CEILING_BY_PARTY ? party_parity : 0;
+    }
+    return parity;
+}
+
 /* ---- Map graphics ---- */
 
 void view_enter_map(int16_t map)
@@ -913,74 +1021,11 @@ void view_enter_map(int16_t map)
     view.clear_color = colors && size ? colors[0] : 0;
 }
 
-/* True when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
-static bool get_flip_parity(int kind, int16_t dir, int16_t x, int16_t y)
-{
-    int parity =
-        (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) + dungeon_map_level(view.map)) &
-        1;
-    int party_parity = g_game.party_dir & 1;
-    int time = g_game.game_time & GAME_TIME_FRAMES;
-    uint16_t flags = view.flip_flags;
-    if (kind == PARITY_FLOOR) {
-        if (!(flags & FLIP_FLOOR_BY_SQUARE))
-            return flags & FLIP_FLOOR_BY_PARTY ? party_parity : 0;
-        if (flags & FLIP_FLOOR_BY_TIME)
-            return time >= HALF_TIME_FRAMES;
-        return parity;
-    }
-    if (kind == PARITY_CEILING) {
-        if (flags & FLIP_CEILING_BY_SQUARE)
-            return flags & FLIP_CEILING_BY_TIME ? time < HALF_TIME_FRAMES : !parity;
-        return flags & FLIP_CEILING_BY_PARTY ? party_parity : 0;
-    }
-    return parity;
-}
-
 /* ---- Things of the view squares ---- */
-
-static bool is_item(uint16_t thing)
-{
-    int type = thing_type(thing);
-    return type >= THING_WEAPON && type <= THING_MISC;
-}
 
 static bool has_creature_picture(int type, int entry)
 {
     return picture_exists(CAT_CREATURE, type, (uint8_t)entry);
-}
-
-/* The grid cell of a thing in its square for the party looking to dir. */
-static int get_thing_position(uint16_t thing, int16_t dir)
-{
-    int cell = CELL_CENTER;
-    switch (thing_type(thing)) {
-    case THING_GROUP:
-        return aspect_creature_cell(thing, dir_relative(dir, group_dir(thing)));
-    case THING_EXPLOSION:
-        if (explosion_is_centered(thing))
-            break;
-        __attribute__((fallthrough));
-    case THING_WEAPON:
-    case THING_ARMOUR:
-    case THING_SCROLL:
-    case THING_POTION:
-    case THING_CONTAINER:
-    case THING_MISC:
-    case THING_PROJECTILE:
-        cell = cell_view_position[thing_cell(thing)];
-        break;
-    }
-    return aspect_rotate_cell(cell, dir);
-}
-
-/* The cell (0 to 3) of a grid cell that holds objects, -1 for the others. */
-static int position_to_cell(int position)
-{
-    for (int cell = 0; cell < DIR_COUNT; cell++)
-        if (cell_view_position[cell] == position)
-            return cell;
-    return position == CELL_CENTER ? DIR_COUNT : -1;
 }
 
 GridPoint view_offset_toward_party(GridPoint eye, GridPoint creature, int16_t creature_size)
@@ -1244,14 +1289,6 @@ static void add_click_zone(const int16_t *rect, int kind, int16_t cell)
     z->cell = (uint8_t)cell;
     z->thing = THING_NONE;
 }
-
-/* The smallest click zone of a picture. */
-#define CLICK_MIN_WIDTH             14
-#define CLICK_MIN_HEIGHT            11
-#define CLICK_LOW_HEIGHT            15 /* a lower picture moves its zone up to its middle */
-#define CLICK_HALF_SIZE             7  /* a narrow or low zone starts this far before the middle of its picture */
-/* The fixed click zones 4 to 7: the possessions of a static creature, by cell. */
-#define CLICK_ZONE_POSSESSION_FIRST 4
 
 /* Sets click zone index to the rectangle of the last picture (at least 14 x 11 pixels), or widens it. */
 static void set_click_zone(int index, uint16_t thing, int16_t cell, int kind)
@@ -1788,8 +1825,6 @@ static void show_creature(int pos, int depth, uint16_t group)
     int cell = still[FRAME_CELL], scale;
     if (pos == POS_FRONT && g_view_arrows_enabled) {
         /* by push arrow: the cell and scale of the creature that the party pushes */
-        static const uint8_t arrow_cells[PUSH_ARROW_NONE + 1] = {2, 0x0e, 0x16, 0x16, 0x16, 0x0a, 0x0c};
-        static const uint8_t arrow_scales[PUSH_ARROW_NONE + 1] = {0x34, 0x40, 0x4e, 0x4e, 0x4e, 0x40, 0x40};
         cell = arrow_cells[g_party.push_arrow];
         scale = arrow_scales[g_party.push_arrow];
         side = 0;
@@ -2230,24 +2265,6 @@ static uint8_t wall_text_glyph(uint8_t c)
         return (uint8_t)(c - 'A');
     return c == '.' ? GLYPH_PERIOD : GLYPH_SPACE;
 }
-
-/* Shops: a wall sensor (WALL_CLICK_RESET with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
-   on its target square, with the item name and the merchant prices in coins. */
-#define SHOP_CLASS_TEXT      0x10 /* + list * 3: the class set of the items of the list */
-#define ORN_KEY_SHOP_LABEL   0xf2 /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offsets of the name and prices */
-#define ORN_KEY_SHOP_SELL    0xf1
-#define ORN_KEY_SHOP_BUY     0xf0
-/* The item flag and the price table bit of a shop. */
-#define ITEM_FLAG_UNIQUE     0x1000 /* ATTR_FLAGS: the shop shows the item only when it exists */
-#define SHOP_TABLE_CREATE    0x8000 /* table word: a new item is made when the display shows it */
-/* The class text step of a price list, the coins of a price, and the coin picture size. */
-#define SHOP_CLASS_TEXT_STEP 3
-#define SHOP_PRICE_COINS     6
-#define COIN_WIDTH           8
-#define COIN_HEIGHT          7
-#define DISPLAY_POS          POS_FRONT /* only the wall in front shows the name and prices */
-
-int16_t g_view_hit_offset_y;
 
 /* The target square of the sensor record. */
 static Location record_target(uint16_t record)
@@ -3636,10 +3653,6 @@ static bool hit_test_picture(int16_t x, int16_t y, int key)
     return pixel != key;
 }
 
-/* The hit test of the creature in front of the party. */
-#define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
-#define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
-
 bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, int *out_side)
 {
     uint16_t group = creature_get_group_at(square_x, square_y);
@@ -3662,9 +3675,6 @@ bool view_hit_test_creature(int16_t x, int16_t y, int square_x, int square_y, in
     return true;
 }
 
-/* The hit test of a wall ornament. */
-#define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
-
 bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
 {
     if (pos > POS_FRONT)
@@ -3684,15 +3694,6 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
     draw_free_temp();
     return hit;
 }
-
-/* States of a hit test on a chest. */
-#define CHEST_HIT_NONE          0
-#define CHEST_HIT_OPEN          2
-#define CHEST_HIT_INSIDE        3
-/* The items a chest holds. */
-#define CHEST_CAPACITY          8
-/* ATTR_SLOTS: no container takes the item. */
-#define ATTR_SLOTS_NO_CONTAINER 0x8000
 
 /* A click on a chest in the view that hit_state tells: it opens or closes, takes thing (placing), or gives its last
    item to the leader hand. hit: the object that the click hits. */

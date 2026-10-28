@@ -200,7 +200,6 @@ order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
 order ui/fm.c:sections bridge: task 44
 order ui/minion_map.c:sections bridge: task 46
-order ui/view.c:sections bridge: task 52
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
 static-prefix engine/sensor.c:sound_square_in_front bridge: task 37
 static-prefix engine/sensor.c:text_play_sound bridge: task 37
