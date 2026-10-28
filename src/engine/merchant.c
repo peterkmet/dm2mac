@@ -291,6 +291,7 @@ int shop_cmd_pay_change(void)
         a->counters[1] = (int16_t)max_int(0, (int16_t)value);
         return AI_RESULT_DONE;
     }
+    /* else position: the change due that shop_cmd_count_payment set */
     int16_t *change = g_ai.arg1 == PAY_COUNTED ? &a->counters[1]
                       : g_ai.arg1 == PAY_PRICE ? &a->counters[0]
                                                : (int16_t *)&a->position;
