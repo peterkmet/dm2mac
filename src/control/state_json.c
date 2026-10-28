@@ -1325,7 +1325,7 @@ void state_json_map(Json *j)
     json_close(j, '}');
 }
 
-char *state_json_string(int part)
+char *state_json_string(StateJsonPart part)
 {
     Json j = {0};
     if (part == STATE_JSON_STATE)

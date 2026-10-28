@@ -80,6 +80,11 @@
 #define STORED_BLOCK_COUNT       ((PNG_RAW_SIZE + STORED_BLOCK_MAX - 1) / STORED_BLOCK_MAX)
 #define ZLIB_SIZE (ZLIB_HEADER_SIZE + PNG_RAW_SIZE + STORED_BLOCK_HEADER_SIZE * STORED_BLOCK_COUNT + ADLER_SIZE)
 
+/* A screen position of a request, in pixels. */
+typedef struct {
+    int16_t x, y;
+} ScreenPoint;
+
 /* The wait request, the screenshot buffers, and the game state of the control. */
 static struct {
     /* A wait request: the reply goes out when g_main_loop.timer_ticks reached start + ticks. */
@@ -170,18 +175,18 @@ const char *control_find_value(const char *line, const char *key)
     return NULL;
 }
 
-/* Four hex digits at p, -1 when they are not. */
-static int32_t hex4(const char *p)
+/* The value of the four hex digits at p in value; false when they are not four hex digits. */
+static bool hex4(const char *p, int32_t *value)
 {
-    int32_t value = 0;
+    *value = 0;
     for (int i = 0; i < HEX_DIGITS; i++) {
         if (!isxdigit((unsigned char)p[i]))
-            return -1;
-        value = value * HEX_BASE + (isdigit((unsigned char)p[i]) ? p[i] - '0'
-                                                                 : tolower((unsigned char)p[i]) - 'a' +
-                                                                       DECIMAL_BASE); /* a to f follow the ten digits */
+            return false;
+        /* a to f follow the ten digits */
+        int32_t digit = isdigit((unsigned char)p[i]) ? p[i] - '0' : tolower((unsigned char)p[i]) - 'a' + DECIMAL_BASE;
+        *value = *value * HEX_BASE + digit;
     }
-    return value;
+    return true;
 }
 
 /* Appends code point c as UTF-8; false when it does not fit. */
@@ -239,13 +244,13 @@ bool control_get_string(const char *line, const char *key, char *out, size_t siz
             if (plain) {
                 c = plain;
                 p++;
-            } else if (*p++ != 'u' || (c = hex4(p)) < 0)
+            } else if (*p++ != 'u' || !hex4(p, &c))
                 return false;
             else {
                 p += HEX_DIGITS;
                 if (c >= SURROGATE_HIGH && c < SURROGATE_LOW && p[0] == '\\' && p[1] == 'u') { /* a surrogate pair */
-                    int32_t low = hex4(p + UNICODE_ESCAPE_PREFIX);
-                    if (low < SURROGATE_LOW || low >= SURROGATE_END)
+                    int32_t low;
+                    if (!hex4(p + UNICODE_ESCAPE_PREFIX, &low) || low < SURROGATE_LOW || low >= SURROGATE_END)
                         return false;
                     c = UTF8_THREE_BYTE_END + ((c - SURROGATE_HIGH) << SURROGATE_SHIFT) + (low - SURROGATE_LOW);
                     p += UNICODE_ESCAPE_PREFIX + HEX_DIGITS;
@@ -474,15 +479,14 @@ static void screenshot(const char *path, Json *reply)
     put(reply, "}");
 }
 
-/* A screen position of a request; false with an error reply when it is missing or off the screen. */
-static bool get_position(const char *request, int *x, int *y, Json *reply)
+/* A screen position of a request in at; false with an error reply when it is missing or off the screen. */
+static bool get_position(const char *request, ScreenPoint *at, Json *reply)
 {
     int64_t px = control_get_int(request, "x", -1);
     int64_t py = control_get_int(request, "y", -1);
     char error[ERROR_SIZE];
     if (px >= 0 && py >= 0 && px < SCREEN_W && py < SCREEN_H) {
-        *x = (int)px;
-        *y = (int)py;
+        *at = (ScreenPoint){(int16_t)px, (int16_t)py};
         return true;
     }
     snprintf(error, sizeof error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
@@ -511,8 +515,8 @@ static void handle_key(const char *request, Json *reply)
 static void handle_button(const char *request, bool down, bool up, Json *reply)
 {
     char button[NAME_SIZE] = "left";
-    int x, y;
-    if (!get_position(request, &x, &y, reply))
+    ScreenPoint at;
+    if (!get_position(request, &at, reply))
         return;
     control_get_string(request, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
@@ -525,12 +529,12 @@ static void handle_button(const char *request, bool down, bool up, Json *reply)
         if (down)
             movie_click(); /* a movie takes only clicks; the game input stays empty */
     } else {
-        g_input_mouse_x = x;
-        g_input_mouse_y = y;
+        g_input_mouse_x = at.x;
+        g_input_mouse_y = at.y;
         if (down)
-            input_mouse_down(x, y, bit);
+            input_mouse_down(at.x, at.y, bit);
         if (up)
-            input_mouse_up(x, y, bit);
+            input_mouse_up(at.x, at.y, bit);
     }
     put_ok(reply);
 }
@@ -694,7 +698,7 @@ static bool handle_turnbased_request(const char *request, const char *cmd, Json 
 static void handle_request(const char *request, Json *reply)
 {
     char cmd[NAME_SIZE], path[OS_DIR_SIZE];
-    int x, y;
+    ScreenPoint at;
     if (!control_get_string(request, "cmd", cmd, sizeof cmd)) {
         put_error(reply, "missing cmd");
     } else if (g_game_mode == GAME_MODE_TURNBASED && handle_turnbased_request(request, cmd, reply)) {
@@ -710,10 +714,10 @@ static void handle_request(const char *request, Json *reply)
     } else if (!strcmp(cmd, "release")) {
         handle_button(request, false, true, reply);
     } else if (!strcmp(cmd, "move")) {
-        if (!get_position(request, &x, &y, reply))
+        if (!get_position(request, &at, reply))
             return;
-        g_input_mouse_x = x;
-        g_input_mouse_y = y;
+        g_input_mouse_x = at.x;
+        g_input_mouse_y = at.y;
         put_ok(reply);
     } else if (!strcmp(cmd, "command")) {
         int64_t id = control_get_int(request, "id", -1);

@@ -210,7 +210,6 @@ static-prefix engine/sensor.c:text_schedule_spawn bridge: task 37
 static-prefix engine/sensor.c:text_set_shown bridge: task 37
 static-prefix engine/sensor.c:text_update_linked bridge: task 37
 static-prefix ui/ui.c:text_rect_in_zone bridge: task 50
-type control/control.c:get_position bridge: task 54
 type control/turn.c:slot_command bridge: task 55
 type engine/ai.c:cond_at_counter bridge: task 20
 type engine/ai.c:cond_door_behind bridge: task 20
