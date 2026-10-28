@@ -517,7 +517,7 @@ class Scenario(CreatureOracle):
         self.emu.write(0x7F254, struct.pack("<h", direction))
         self.party.cur_map = -1
         self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
-        self.lib.dun_set_party_location(Position(map_, x, y))
+        self.lib.dun_set_party_position(Position(map_, x, y))
         self.emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
         self.load_map_graphics()
 

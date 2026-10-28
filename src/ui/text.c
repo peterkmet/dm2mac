@@ -10,9 +10,8 @@
 #include "view.h"
 #include "zone.h"
 
-/* GDAT index and type of the font and the UI colors. */
+/* The GDAT index of the font and the UI colors. */
 #define FONT_INDEX 0x00
-#define FONT_TYPE  0x07
 
 /* Font bits of a glyph row: the first and the second pixel of a pixel pair. */
 #define GLYPH_BIT_FIRST  0x10
@@ -28,6 +27,12 @@
 #define MESSAGE_WIDTH         SCREEN_W
 #define MESSAGE_SCROLL_HEIGHT 7                                      /* rows the message area moves up for a new row */
 #define MESSAGE_LINE_BASE     (TEXT_LINE_HEIGHT - FONT_BASELINE - 2) /* base line of the text in the new row bitmap */
+
+/* The base line start of a text in a zone, and whether the zone shows it. */
+typedef struct {
+    bool visible;
+    int16_t x, y;
+} Baseline;
 
 uint32_t g_text_message_expiry[MESSAGE_ROWS];
 
@@ -45,10 +50,12 @@ static struct {
     .line_bitmap = {text_state.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP}
 };
 
+/* ---- Setup ---- */
+
 bool text_init(const Gdat *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, GFX_FONT), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &size);
     const uint8_t *colors =
         gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
     if (!p || !colors)
@@ -65,6 +72,61 @@ bool text_init(const Gdat *gdat)
     text_state.top = (int16_t)((r[RECT_H] - (TEXT_LINE_HEIGHT * MESSAGE_ROWS - FONT_SPACING)) >> 1);
     return true;
 }
+
+/* ---- Queries ---- */
+
+TextSize text_measure(const char *text)
+{
+    if (!text)
+        return (TextSize){0, 0};
+    int16_t w = -FONT_SPACING;
+    for (; *text; text++)
+        w += FONT_ADVANCE;
+    if (w <= 0)
+        return (TextSize){0, 0};
+    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
+}
+
+int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width)
+{
+    int16_t p = *out_pos;
+    int16_t out = 0;
+    int16_t width = 0;
+    int16_t space = -1;
+    int16_t space_out = 0;
+    int16_t space_width = 0;
+    for (;;) {
+        line[out] = '\0';
+        char c = text[p];
+        if (c == '\n' || c == '\0')
+            break;
+        if (c == ' ') {
+            space = p;
+            space_out = out;
+            space_width = width;
+        }
+        if (width + FONT_ADVANCE > max_width) {
+            if (space == -1)
+                break;
+            *out_pos = (int16_t)(space + 1);
+            line[space_out] = '\0';
+            return space_width;
+        }
+        if (width == 0)
+            width = -FONT_SPACING;
+        width += FONT_ADVANCE;
+        line[out++] = text[p++];
+    }
+    *out_pos = p;
+    return width;
+}
+
+const char *text_message_row(int row)
+{
+    return row >= 0 && row < MESSAGE_ROWS ? text_state.message_text[row] : "";
+}
+
+/* ---- Drawing ---- */
 
 /* A 4 bpp glyph of 6 x 6 pixels (3 bytes a row): fg on the set bits, bg on the others. */
 static const uint8_t *build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
@@ -115,52 +177,6 @@ void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char 
     }
 }
 
-TextSize text_measure(const char *text)
-{
-    if (!text)
-        return (TextSize){0, 0};
-    int16_t w = -FONT_SPACING;
-    for (; *text; text++)
-        w += FONT_ADVANCE;
-    if (w <= 0)
-        return (TextSize){0, 0};
-    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
-}
-
-int text_wrap_line(const char *text, char *line, int16_t *out_pos, int max_width)
-{
-    int16_t p = *out_pos;
-    int16_t out = 0;
-    int16_t width = 0;
-    int16_t space = -1;
-    int16_t space_out = 0;
-    int16_t space_width = 0;
-    for (;;) {
-        line[out] = '\0';
-        char c = text[p];
-        if (c == '\n' || c == '\0')
-            break;
-        if (c == ' ') {
-            space = p;
-            space_out = out;
-            space_width = width;
-        }
-        if (width + FONT_ADVANCE > (int16_t)max_width) {
-            if (space == -1)
-                break;
-            *out_pos = (int16_t)(space + 1);
-            line[space_out] = '\0';
-            return space_width;
-        }
-        if (width == 0)
-            width = -FONT_SPACING;
-        width += FONT_ADVANCE;
-        line[out++] = text[p++];
-    }
-    *out_pos = p;
-    return width;
-}
-
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
     TextSize size = text_measure(text);
@@ -174,7 +190,7 @@ void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors,
     TextColors shadow = {g_ui_colors[UI_BLACK], g_ui_colors[UI_WHITE] | TEXT_TRANSPARENT};
     text_draw(dst, x, (int16_t)(y + 1), shadow, text);
     text_draw(dst, (int16_t)(x + 1), (int16_t)(y + 1), shadow, text);
-    text_draw(dst, x, y, (TextColors){colors.color, (int16_t)(colors.bg | TEXT_TRANSPARENT)}, text);
+    text_draw(dst, x, y, (TextColors){colors.color, colors.bg | TEXT_TRANSPARENT}, text);
 }
 
 void text_draw_on_screen(int16_t x, int16_t y, int color, int bg, const char *text)
@@ -187,31 +203,31 @@ void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text)
     text_draw(&g_view_viewport, x, y, (TextColors){color, g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT}, text);
 }
 
-/* The base line start of text placed in zone; returns false when it is not visible. */
-static bool baseline_in_zone(int zone, const char *text, int16_t *x, int16_t *y)
+/* The base line start of text placed in zone; not visible for an empty text or a zone off the view. */
+static Baseline baseline_in_zone(int zone, const char *text)
 {
     TextSize size = text_measure(text);
     int16_t r[RECT_SIZE];
     if (!size.w || !zone_compute_rect(NULL, r, (int16_t)zone, &size.w, &size.h))
-        return false;
-    *x = r[RECT_X];
-    *y = (int16_t)(r[RECT_Y] + r[RECT_H] - 1);
-    return true;
+        return (Baseline){false, 0, 0};
+    return (Baseline){true, r[RECT_X], (int16_t)(r[RECT_Y] + r[RECT_H] - 1)};
 }
 
 void text_draw_in_zone(int zone, int color, const char *text)
 {
-    int16_t x, y;
-    if (baseline_in_zone(zone, text, &x, &y))
-        text_draw_in_viewport(x, y, (uint16_t)color, text);
+    Baseline at = baseline_in_zone(zone, text);
+    if (at.visible)
+        text_draw_in_viewport(at.x, at.y, color, text);
 }
 
 void text_draw_in_zone_shadowed(int zone, int color, int bg, const char *text)
 {
-    int16_t x, y;
-    if (baseline_in_zone(zone, text, &x, &y))
-        text_draw_with_shadow(&g_view_viewport, x, y, (TextColors){color, bg}, text);
+    Baseline at = baseline_in_zone(zone, text);
+    if (at.visible)
+        text_draw_with_shadow(&g_view_viewport, at.x, at.y, (TextColors){color, bg}, text);
 }
+
+/* ---- Message area ---- */
 
 void text_set_message_cursor(int column, int row)
 {
@@ -222,11 +238,6 @@ void text_set_message_cursor(int column, int row)
     text_state.column = x < limit ? x : limit;
     text_state.row = (int16_t)(row < 0 ? 0 : row > MESSAGE_ROWS - 1 ? MESSAGE_ROWS - 1 : row);
     text_state.scroll_pending = false;
-}
-
-const char *text_message_row(int row)
-{
-    return row >= 0 && row < MESSAGE_ROWS ? text_state.message_text[row] : "";
 }
 
 void text_clear_expired_rows(void)
@@ -315,14 +326,14 @@ static void flush_pending_row(void)
     text_state.scroll_pending = false;
 }
 
-void text_print_message(int color, const char *text)
+void text_print_message(int ui_color, const char *text)
 {
     flush_pending_row();
-    int c = g_ui_colors[color];
+    int c = g_ui_colors[ui_color];
     char line[TEXT_SIZE];
     int16_t pos = 0;
     while (text[pos]) {
-        int width = text_wrap_line(text, line, &pos, MESSAGE_WIDTH - text_state.column);
+        int16_t width = text_wrap_line(text, line, &pos, (int16_t)(MESSAGE_WIDTH - text_state.column));
         if (text[pos] == '\n') {
             new_message_line();
             show_message_line(c, line);
@@ -340,12 +351,12 @@ void text_print_message(int color, const char *text)
     flush_pending_row();
 }
 
-void text_print_number(int color, int32_t value)
+void text_print_number(int ui_color, int32_t value)
 {
     char s[NUMBER_SIZE];
     snprintf(s, sizeof s, "%d", value);
-    text_print_message(color, s);
-    text_print_message(color, " ");
+    text_print_message(ui_color, s);
+    text_print_message(ui_color, " ");
 }
 
 void text_print_newline(void)

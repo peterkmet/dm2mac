@@ -12,9 +12,7 @@
 #include "seen.h"
 
 /* The parts of the game state that state_json_string gives. */
-#define STATE_JSON_STATE 0
-#define STATE_JSON_VIEW  1
-#define STATE_JSON_MAP   2
+typedef enum { STATE_JSON_STATE, STATE_JSON_VIEW, STATE_JSON_MAP } StateJsonPart;
 
 /* The limit of the creature groups in view. */
 #define STATE_JSON_VISIBLE_GROUPS_MAX SEEN_VISIBLE_MAX
@@ -68,7 +66,7 @@ void state_json_state(Json *j);
 const char *state_json_side_name(int side);
 /* Appends the name of an explosion type, or its number when the name table has none. */
 void state_json_explosion_name(Json *j, uint16_t type);
-/* Appends the name of a creature type, or its number when the name table has none. */
+/* Appends a creature type as its number: the game data has no creature names. */
 void state_json_creature_name(Json *j, uint16_t type);
 /* Writes to things (at most max) the things of a thing type that the view draws on the visible non-wall squares, in
    view order; returns the count. */
@@ -80,6 +78,6 @@ void state_json_view(Json *j);
 /* The explored squares of the party map as rows of glyphs. */
 void state_json_map(Json *j);
 /* A part of the game state as a new JSON text (free it with free); an unknown part gives null. */
-char *state_json_string(int part); /* exported for the tests */
+char *state_json_string(StateJsonPart part); /* exported for the tests */
 
 #endif /* DM2_CONTROL_STATE_JSON_H */

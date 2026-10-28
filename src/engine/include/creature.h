@@ -45,18 +45,21 @@ typedef struct {
 _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info records of SKULL.EXE have 36 bytes");
 
 /* Bits of CreatureInfo.flags. */
-#define CREATURE_STATIC         0x0001 /* the creature does not act: no active group, animation state in its record */
-#define CREATURE_FACES_PARTY    0x0004 /* the creature always shows its front */
-#define CREATURE_ATTACKS_ALL    0x0008 /* a melee attack hits several champions */
-#define CREATURE_ATTACKS_RANDOM 0x0010 /* ... random champions */
+#define CREATURE_STATIC          0x0001 /* the creature does not act: no active group, animation state in its record */
+#define CREATURE_REFLECTS_SPELLS 0x0002 /* spells do not hit the creature: they turn away or fly on */
+#define CREATURE_FACES_PARTY     0x0004 /* the creature always shows its front */
+#define CREATURE_ATTACKS_ALL     0x0008 /* a melee attack hits several champions */
+#define CREATURE_ATTACKS_RANDOM  0x0010 /* ... random champions */
 /* CREATURE_NON_MATERIAL: a closing door does not hit the creature, a melee hit reaches it only when the hit pierces, a
-   MELEE_MODE_REACH attack of the champions reaches only it, and a missile hits it only as harm non-material. */
-#define CREATURE_NON_MATERIAL   0x0020
-#define CREATURE_SEES_INVISIBLE 0x0400 /* flags: the party spell of invisibility does not hide the party */
-#define CREATURE_SEES_IN_DARK   0x0800 /* flags: the light does not limit its sight */
-#define CREATURE_FAST_VANISH    0x1000 /* flags: the creature vanishes quickly in a party action effect */
-#define CREATURE_WANDERER       0x4000 /* the creature may enter any map */
-#define CREATURE_NOT_SOLID      0x8000 /* the party and objects pass the creature */
+   MELEE_MODE_REACH attack of the champions reaches only it, a missile hits it only as harm non-material, and the sight
+   of creatures passes it. */
+#define CREATURE_NON_MATERIAL    0x0020
+#define CREATURE_CATCHES_OBJECTS 0x0200 /* the creature takes a thrown object with ITEM_FLAG_CAUGHT that hits it */
+#define CREATURE_SEES_INVISIBLE  0x0400 /* flags: the party spell of invisibility does not hide the party */
+#define CREATURE_SEES_IN_DARK    0x0800 /* flags: the light does not limit its sight */
+#define CREATURE_FAST_VANISH     0x1000 /* flags: the creature vanishes quickly in a party action effect */
+#define CREATURE_WANDERER        0x4000 /* the creature may enter any map */
+#define CREATURE_NOT_SOLID       0x8000 /* the party and objects pass the creature */
 
 /* Bits 6-7 of CreatureInfo.flags: the door height that the creature blocks. */
 #define CREATURE_DOOR_LEVEL_MASK 0x3
@@ -244,6 +247,7 @@ typedef struct {
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_MOOD_BORED 0x0005 /* alert flags: mood bit 5, MOOD_BORED */
 #define ALERT_MOOD_QUICK 0x0006 /* alert flags: mood bit 6, MOOD_QUICK */
 #define ALERT_LOUD       0x2000 /* the alert wakes the creature */
 #define ALERT_ANGER      0x4000 /* alert flags: the creature may become angry */
@@ -270,6 +274,12 @@ typedef struct {
     int link;       /* the item that controls a minion, -1 none */
     int search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;
+
+/* A new group and the square where its move put it (group THING_NONE: none). */
+typedef struct {
+    uint16_t group;
+    Position at;
+} SummonedGroup;
 
 /* The active groups; NULL before the first game. */
 extern ActiveGroup *g_active_groups;
@@ -371,8 +381,9 @@ int creature_roll_armor_factor(uint16_t group, int amount);
 void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind);
 /* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
 uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y);
-/* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
-uint16_t creature_summon_group(CreatureSummon summon);
+/* Creates a group on (x, y) of map or on a free square beside it, and returns where it ends; link: the item that
+   controls a minion. */
+SummonedGroup creature_summon_group(CreatureSummon summon);
 /* Turns a group, to dir or by dir; a static creature turns its possessions too. */
 void creature_turn_group(uint16_t group, int absolute, int16_t dir);
 /* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */

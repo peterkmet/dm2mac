@@ -140,7 +140,7 @@ static bool step_view(void)
         game_process_timeline();
         if (g_party.new_map != -1)
             continue;
-        world_update_day_night(0);
+        world_update_day_night(false);
         if (g_party_sleeping)
             return false;
         if (!g_ui.candidate)
@@ -224,7 +224,7 @@ void play_start_session(void)
     ai_refresh_party_maps();
     creature_reset_active_groups();
     if (g_session.new_game)
-        move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+        move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_dialog.screen_mode = 0;
     step_before_input();
 }
