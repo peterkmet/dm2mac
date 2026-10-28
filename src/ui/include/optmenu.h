@@ -12,6 +12,11 @@
 /* The platform sets it: shows the filter (SETTINGS_FILTER_*) in the window; false when it cannot. NULL: no window. */
 extern bool (*g_optmenu_filter_hook)(int filter);
 
+/* The rows of the menu. */
+#define OPTMENU_ROW_FILTER   0
+#define OPTMENU_ROW_CONTINUE 1
+#define OPTMENU_ROW_COUNT    2
+
 /* Setup */
 /* Starts the menu state at the beginning of the program, after the game mode is chosen. filter is the SETTINGS_FILTER_*
    value that --filter or DM2_FILTER gave, or 0 for none given: the advanced mode then takes the filter of SETTINGS.TXT. */
@@ -22,11 +27,6 @@ void optmenu_start(int filter);
 int optmenu_get_filter(void);
 /* The selected row (OPTMENU_ROW_*); exported for the tests. */
 int optmenu_get_row(void);
-
-/* The rows of the menu. */
-#define OPTMENU_ROW_FILTER   0
-#define OPTMENU_ROW_CONTINUE 1
-#define OPTMENU_ROW_COUNT    2
 
 /* Commands */
 /* Opens the menu in the viewport with the FILTER row selected. */

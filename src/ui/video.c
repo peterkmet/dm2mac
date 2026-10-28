@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "video.h"
 #include <math.h>
+#include "num.h"
 
 /* Bit depth of a VGA DAC value and of an output channel. */
 #define VGA_DEPTH     6
@@ -33,14 +34,9 @@ VideoLayout video_layout(int output_w, int output_h)
     return (VideoLayout){s, (output_w - SCREEN_W * s) / 2, (output_h - SCREEN_H * s) / 2};
 }
 
-static int clamp(int v, int max)
-{
-    return v < 0 ? 0 : v > max ? max : v;
-}
-
 VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_y)
 {
     VideoLayout layout = video_layout(output_w, output_h);
-    return (VideoPoint){clamp((int)floorf((output_x - layout.x) / layout.scale), SCREEN_W - 1),
-                        clamp((int)floorf((output_y - layout.y) / layout.scale), SCREEN_H - 1)};
+    return (VideoPoint){clamp_int(0, (int)floorf((output_x - layout.x) / layout.scale), SCREEN_W - 1),
+                        clamp_int(0, (int)floorf((output_y - layout.y) / layout.scale), SCREEN_H - 1)};
 }

@@ -322,7 +322,7 @@ def test_pressed_buttons_match_original(ui, original):
     from dm2test.dialog import find_point
     lib, emu = ui, original.emu
     lib.input_init()
-    lib.dialog_draw_button.argtypes = [ctypes.c_int, ctypes.c_int, GdatKey]
+    lib.dialog_draw_button.argtypes = [ctypes.c_bool, GdatKey]
     match = InputMatch.in_dll(lib, "g_input_match")
     state = DialogState.in_dll(lib, "g_dialog")
     for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
@@ -336,7 +336,7 @@ def test_pressed_buttons_match_original(ui, original):
                 emu.write(G_MATCH_RECT, bytes(match.rect))
                 emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
                 emu.write(G_BUTTON_PICTURE, bytes([C.CAT_DIALOG, 0xFE, entry]))
-                lib.dialog_draw_button(match.zone, 1, GdatKey(C.CAT_DIALOG, 0xFE, entry))
+                lib.dialog_draw_button(True, GdatKey(C.CAT_DIALOG, 0xFE, entry))
                 emu.call(UI_DIALOG_DRAW_BUTTON, match.zone, 1)
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
 

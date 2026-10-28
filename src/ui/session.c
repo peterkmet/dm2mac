@@ -35,17 +35,8 @@
 #define END_SOUND_VBLANKS    240
 #define QUIT_SAFE_TICKS      100 /* a quit within this time after a load or a save needs no question */
 
-/* The header byte where the slot list marks an empty slot with UNUSED_SLOT. */
-#define SAVE_HEADER_UNUSED 0x26
-
-/* The mark of an empty slot in the slot list. */
-#define UNUSED_SLOT 0xdeadbeefu
-
 /* The characters of a slot name. */
 #define SAVE_NAME_MAX 31
-
-/* The last command of a text key: the commands CMD_TEXT_FIRST to it type a character. */
-#define CMD_TEXT_KEY_LAST 0xd6
 
 /* The buttons of the save menu (DIALOG_SAVE_MENU) and of the question before a quit (DIALOG_NOT_SAVED). */
 #define SAVE_MENU_SAVE    0
@@ -158,7 +149,7 @@ static const char *slot_name(int16_t slot)
 
 static bool slot_unused(int16_t slot)
 {
-    return le32(slots[slot] + SAVE_HEADER_UNUSED) == UNUSED_SLOT;
+    return le32(slots[slot] + SAVE_HEADER_EMPTY_MARK) == SAVE_EMPTY_SLOT_MARK;
 }
 
 void session_draw_slot_selection(int16_t chosen)
@@ -206,7 +197,7 @@ static void list_slots(void)
             continue;
         }
         snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
-        put_le32(slots[i] + SAVE_HEADER_UNUSED, UNUSED_SLOT);
+        put_le32(slots[i] + SAVE_HEADER_EMPTY_MARK, SAVE_EMPTY_SLOT_MARK);
     }
 }
 
@@ -219,7 +210,7 @@ void session_open_slot_dialog(int id, int buttons)
     if (zone_get_rect(ZONE_DIALOG_BACK, r))
         gfx_blit_to_bitmap(draw_gdat_image(CAT_DIALOG, id, 0), &g_view_viewport, r, GFX_OPAQUE,
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
-    dialog_screen_mode(1);
+    dialog_screen_mode(true);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
     text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
     text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
@@ -257,7 +248,7 @@ static int16_t choose_load_slot(void)
     session_open_slot_dialog(DIALOG_LOAD_SLOTS, SLOT_BUTTONS_LOAD);
     session_draw_slot_selection(SAVE_SLOT_NONE);
     dialog_present();
-    dialog_screen_mode(0);
+    dialog_screen_mode(false);
     int16_t chosen = SAVE_SLOT_NONE;
     bool done = false;
     g_input_match.choice = DIALOG_NO_CHOICE;
@@ -377,7 +368,7 @@ static int16_t choose_save_slot(void)
             }
             break;
         }
-        if (editing && g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_KEY_LAST)
+        if (editing && g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_SLOT_TEXT_LAST)
             editing = type_slot_name_key(name, &length);
         g_input_match.choice = 0;
         g_input_match.value = 0;
