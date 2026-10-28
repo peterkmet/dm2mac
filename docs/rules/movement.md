@@ -65,4 +65,6 @@ The rules of the main loop, the input, and the movement: the timing and the game
   - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
   - `dun_get_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or else at the coordinates of the pit square
+  - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
+  - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
