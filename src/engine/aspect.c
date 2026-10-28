@@ -14,9 +14,10 @@
 #define FAKE_WALL_FLOOR_SQUARE  1
 /* The sensor flag of a shown altar. */
 #define SENSOR_ALTAR_SHOWN      SENSOR_STATE
-/* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
+/* (CAT_WALLSET, graphics set, GDAT_TYPE_VALUE, key): ornament on every floor square, bit 15: animated */
 #define MAP_KEY_FLOOR_ORNAMENT  0x6b
-#define ORN_KEY_FRAMES          0x0d /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
+/* (category, ornament, GDAT_TYPE_VALUE, key): animation frames, bit 15: frames start at 1 */
+#define ORN_KEY_FRAMES          0x0d
 /* Bit 15 of the values of the keys above. */
 #define FRAMES_FROM_ONE         0x8000
 #define FLOOR_ORNAMENT_ANIMATED 0x8000
@@ -42,6 +43,12 @@ typedef struct {
 /* Random wall ornaments: the list of the map that aspect_enter_map entered last. */
 static const uint8_t *wall_ornaments;
 
+/* Whether (x, y) is a square of map. */
+static bool is_on_map(int16_t map, int16_t x, int16_t y)
+{
+    return x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map);
+}
+
 /* ---- Setup ---- */
 
 void aspect_enter_map(int16_t map)
@@ -53,7 +60,7 @@ void aspect_enter_map(int16_t map)
 
 uint16_t aspect_first_thing(int16_t map, int16_t x, int16_t y)
 {
-    if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map))
+    if (!is_on_map(map, x, y))
         return THING_ENDOFLIST;
     return dungeon_square_first_thing(map, x, y);
 }
@@ -87,7 +94,7 @@ static void set_random_wall_ornaments(ViewSquare *s, int16_t map, int16_t dir, i
         s->side[k] = random_ornament(map, allowed, count, x, (((dir + k) & DIR_MASK) + 1) * (y + 1));
     }
     /* an edge wall away from the map keeps no ornament that has a kind */
-    if (x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map))
+    if (is_on_map(map, x, y))
         return;
     for (int k = 0; k < VIEW_SIDE_COUNT; k++)
         if (aspect_word_ornament(s->side[k]) != ORNAMENT_NONE &&
@@ -444,7 +451,7 @@ void aspect_get(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
         }
         break;
     case SQUARE_STAIRS:
-        s->aspect = (uint16_t)(ASPECT_STAIRS_FRONT + (square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1)));
+        s->aspect = square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1) ? ASPECT_STAIRS_SIDE : ASPECT_STAIRS_FRONT;
         s->side[SIDE_STAIRS_UP] = square & SQUARE_STAIRS_UP;
         floor_things = false;
         break;

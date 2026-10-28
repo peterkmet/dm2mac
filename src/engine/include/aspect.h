@@ -51,7 +51,7 @@ static inline uint8_t aspect_word_ornament(uint16_t w)
 #define SIDE_STAIRS_UP      0
 #define SIDE_PIT_UP         0
 #define SIDE_FRONT          2 /* the wall face that looks at the party */
-#define SIDE_SHOP_DISPLAY   3 /* floor: a shop display there sets it to 0 (read by the things drawing, 12b) */
+#define SIDE_SHOP_DISPLAY   3 /* floor: a shop display there sets it to 0 (read by the things drawing) */
 /* Value of a view square that the original reads as "no thing" or "none". */
 #define THING_TEXT_NONE     0xffff
 
@@ -71,7 +71,7 @@ static inline uint8_t aspect_word_ornament(uint16_t w)
 #define SENSOR_SHOP            0x30
 #define SENSOR_SOUND_ANIMATION 0x32
 #define SENSOR_FRAME_DATA      0x41
-/* (category, ornament, 0x0b, key): wall ornament kind; door: zone row of the damage picture */
+/* (category, ornament, GDAT_TYPE_VALUE, key): wall ornament kind; door: zone row of the damage picture */
 #define ORN_KEY_KIND           0x0a
 /* The values of ORN_KEY_KIND of a wall ornament: what the ornament holds. */
 #define KIND_ALCOVE            0x01
@@ -101,7 +101,7 @@ void aspect_enter_map(int16_t map);
 /* Lookups */
 /* The first thing of the square (x, y) of map, THING_ENDOFLIST away from the map. */
 uint16_t aspect_first_thing(int16_t map, int16_t x, int16_t y);
-/* The value (category, index, 0x0b, entry) of the graphics. */
+/* The value (category, index, GDAT_TYPE_VALUE, entry) of the graphics. */
 uint16_t aspect_value_key(int category, int index, int entry);
 
 /* Square aspects */
