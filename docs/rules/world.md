@@ -40,6 +40,8 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 - Uninitialized data of the original: a storm step event (`0x54`) keeps 6 data bytes from the stack; the port sets them to 0. A transfer sensor with charge mode 3 adds an uninitialized amount; the port adds 0.
 - Bounds: the thunder delay divides by the storm multiplier; the port uses 1 for a multiplier of 0 (the original divides by 0). A sky state past the table shows no weather (`GRAPHICS.DAT` has states 0 to 4 only).
+- Kept quirk of the original: `light_update_party_light` makes one bubble pass over the hand lights, not a full sort, so the brightest torch moves up by one place only and the half-weight sum depends on the hand order.
+- Kept quirk of the original: a floor ornament without light (value key `0xf8` is 0 and not animated-only) hides all other light of its square: `light_add_square_light` adds no missile, explosion or creature light there.
 - `view_enter_map` holds the view part of `gdat_load_map_graphics`. Its callers (`game_enter_map` and the pit fall in `move_follow_square_transitions`) then call `world_update_day_night(false)`, as the original does at the end of `gdat_load_map_graphics`. `view_enter_map` builds no sky objects: the weather update builds them.
 - The second fall view of a pit below a pit (`move_follow_square_transitions`, with its map change and weather update) runs only with the debug flag `g_debug_flag_g` of the original. In the game it never runs; the port keeps the code, and no test can reach it.
 - The port reads the map graphics flags (rain, clouds, lightning pictures) and the sky state from the party map when it needs them; the original keeps them in globals that `gdat_load_map_graphics` sets.
