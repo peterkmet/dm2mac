@@ -502,7 +502,7 @@ def test_message_area_scrolls(port):
     # in SKULL.EXE: the port moves the rows).
     lib = port
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
     r = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_MESSAGE_AREA, r)
     x, y, w, h = r
@@ -542,9 +542,9 @@ def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
     emu = original.emu
-    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_icon_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_position.argtypes = [ctypes.c_int] + [ctypes.POINTER(ctypes.c_int16)] * 2
+    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_icon_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_position.argtypes = [ctypes.c_int16] + [ctypes.POINTER(ctypes.c_int16)] * 2
     out = original.alloc(16)
     zones = 0
     for zone in range(1, 0x300):
