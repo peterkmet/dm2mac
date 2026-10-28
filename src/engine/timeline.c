@@ -279,7 +279,7 @@ void timeline_event_move_group(TimelineEvent *e)
     int y = e->data[1];
     if (!move_thing(le16(e->data + EVENT_GROUP_WORD), MOVE_RETRY, 0, x, y) && e->type == EVENT_MOVE_GROUP_2)
         sndreq_request((SoundCue){CAT_DUNGEON, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, x, y,
-                       1);
+                       SOUND_STEP_END);
 }
 
 void timeline_event_apply_item_effect(const TimelineEvent *e, enum EffectMode mode)

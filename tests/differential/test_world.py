@@ -32,6 +32,7 @@ EVENT_WEATHER, CHAMPION_HANDS = C.EVENT_WEATHER, 0xC3
 OUTDOOR_MAPS = (1, 14, 15, 16, 17, 25, 27, 29, 30, 33, 39, 41, 42)  # sky state 1 or 4: the weather shows
 MAP_LIGHTNING_TARGET = 1  # its graphics set gives a fixed square that lightning hits
 INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the light
+WHEN = {0: C.SOUND_NOW, 1: C.SOUND_STEP_END, -1: C.SOUND_DEFERRED}  # the delay of the original as SoundWhen
 
 
 @pytest.fixture
@@ -610,12 +611,15 @@ def test_sound_requests_match_original(world, lib, gdat):
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
                 args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
             last = args
-            lib.sndreq_request(SoundCue(*args[:5]), *args[5:])
+            if args[7] > 1:
+                lib.sndreq_request_after(SoundCue(*args[:5]), *args[5:])
+            else:
+                lib.sndreq_request(SoundCue(*args[:5]), *args[5:7], WHEN[args[7]])
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
-            lib.sndreq_flush_requests(1)
+            lib.sndreq_flush_requests(True)
             sc.emu.call(0x1616D, 1)
         if passage:
             sc.party.alt_view_map = -1

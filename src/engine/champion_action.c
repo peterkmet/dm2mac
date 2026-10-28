@@ -645,7 +645,7 @@ static bool run_melee(ActionRun *a)
         sndreq_request_with_fallback(
             (SoundCue){CAT_DOOR, dun_get_door_type(dungeon_square_first_thing(g_party.cur_map, a->fx, a->fy)),
                        SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, a->fx, a->fy, 1);
+            SOUND_FALLBACK, a->fx, a->fy, SOUND_STEP_END);
         return true;
     }
     bool done = true;
@@ -661,7 +661,7 @@ static bool run_melee(ActionRun *a)
     if (done && a->target != THING_NONE)
         sndreq_request(
             (SoundCue){CAT_CREATURE, item_gdat_index(a->target), SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
-            a->fx, a->fy, 1);
+            a->fx, a->fy, SOUND_STEP_END);
     return done;
 }
 
@@ -947,7 +947,7 @@ bool champ_perform_action(int champ, int index, bool repeated)
     if (!a.silent)
         sndreq_request_with_fallback(
             (SoundCue){action.category, action.index, sound, SOUND_ACTION_PRIORITY, SOUND_VOLUME_LOUD}, SOUND_FALLBACK,
-            g_game.party_x, g_game.party_y, 0);
+            g_game.party_x, g_game.party_y, SOUND_NOW);
     if (!c->health || repeated)
         return done;
     if (a.delay)

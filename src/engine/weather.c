@@ -354,7 +354,7 @@ static SkyObject *show_lightning(SkyObject *o)
             sndreq_request_with_fallback((SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE,
                                                     SOUND_PRIORITY_EXPLODE,
                                                     (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)},
-                                         SOUND_FALLBACK, x, y, 1); /* the volume: normal plus 0 to 31 */
+                                         SOUND_FALLBACK, x, y, SOUND_STEP_END); /* the volume: normal plus 0 to 31 */
         } else {
             while (strikes && !lightning_strike())
                 strikes--;
@@ -381,7 +381,7 @@ static SkyObject *show_lightning(SkyObject *o)
                                                  (g_game.storm_multiplier ? g_game.storm_multiplier
                                                                           : 1); /* fix: the original divides by 0 */
             delay = clamp_int(1, (int16_t)delay, THUNDER_DELAY_MAX);
-            sndreq_request(
+            sndreq_request_after(
                 (SoundCue){CAT_SKY, dungeon_map_wallset(g_game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME},
                 g_game.party_x, g_game.party_y, delay);
             g_weather.thunder_toggle = true;

@@ -43,7 +43,7 @@ void sound_set_volume_and_test(int level, int device)
         save_set_sound_volume((uint8_t)level);
         sndreq_request((SoundCue){CAT_DUNGEON, TEST_SOUND_INDEX, SOUND_ENTRY_TRANSFORM, SOUND_PRIORITY_TRANSFORM,
                                   SOUND_VOLUME_LOUD},
-                       g_game.party_x, g_game.party_y, 0);
+                       g_game.party_x, g_game.party_y, SOUND_NOW);
         sound_set_volume(level);
     } else if (device == DEVICE_MUSIC) {
         save_set_music_volume((uint8_t)level);
