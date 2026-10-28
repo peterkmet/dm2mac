@@ -214,7 +214,7 @@ static void fill_clipped(Offscreen *o, const int16_t *clip, const int16_t *rect,
 
 /* Light gray on every pixel of the icon at the screen place (icon_x, icon_y) with an even x + y: the wall icon shows a
    checkerboard. */
-static void checker_overlay(Offscreen *o, const int16_t *clip, int icon_x, int icon_y)
+static void checker_overlay(Offscreen *o, const int16_t *clip, int16_t icon_x, int16_t icon_y)
 {
     for (int py = icon_y; py < icon_y + MAP_ICON_H; py++)
         for (int px = icon_x; px < icon_x + MAP_ICON_W; px++)
@@ -254,7 +254,7 @@ static Span visible_span(int origin, int start, int count, int clip_start, int c
 
 /* Draws the square that the level position level_at shows, with its icon at the screen place (icon_x, icon_y), when it
    is seen or the reveal map cheat is on. */
-static void show_level_square(Offscreen *o, const int16_t *clip, Location level_at, int icon_x, int icon_y)
+static void show_level_square(Offscreen *o, const int16_t *clip, Location level_at, int16_t icon_x, int16_t icon_y)
 {
     Position position;
     if (!automap_level_square(level_at, &position) || !(game_has_cheat(CHEAT_MAP) || automap_level_seen(level_at)))
@@ -296,7 +296,8 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     int saved = g_party.cur_map;
     for (int x = xs.first; x <= xs.last; x++)
         for (int y = ys.first; y <= ys.last; y++)
-            show_level_square(o, clip, (Location){x, y}, left + x * MAP_CELL_SIZE, top + y * MAP_CELL_SIZE);
+            show_level_square(o, clip, (Location){x, y}, (int16_t)(left + x * MAP_CELL_SIZE),
+                              (int16_t)(top + y * MAP_CELL_SIZE));
     map_frame(o, clip, left, top, rect);
     dun_set_current_map(saved);
 }
