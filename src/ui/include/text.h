@@ -44,16 +44,25 @@ typedef struct {
     int16_t w, h;
 } TextSize;
 
+/* ---- Setup ---- */
+
 /* Loads the font and the UI colors and clears the message area state; returns false when they are missing. */
 bool text_init(const Gdat *gdat);
 
-/* Draws text into dst with its base line at y. */
-void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
+/* ---- Queries ---- */
+
 /* The size of a text line; {0, 0} for an empty text. */
 TextSize text_measure(const char *text);
 /* Copies the part of text from *out_pos that fits in max_width pixels into line, broken at a space when it does
    not fit; *out_pos goes to the rest. Returns the width of line. */
 int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width);
+/* The text of message row (0 at the top to MESSAGE_ROWS - 1); "" when the row is clear. */
+const char *text_message_row(int row);
+
+/* ---- Drawing ---- */
+
+/* Draws text into dst with its base line at y. */
+void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
 /* Draws text with a shadow down and right into an 8 bpp dst; bg without TEXT_TRANSPARENT fills a box behind it
    first. */
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text);
@@ -65,16 +74,16 @@ void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text);
 void text_draw_in_zone(int zone, int color, const char *text);
 /* Draws text placed in a layout zone into the view picture, with a shadow. */
 void text_draw_in_zone_shadowed(int zone, int color, int bg, const char *text);
-/* Message area. ui_color is a UI color. */
+
+/* ---- Message area ---- */
+
 /* Moves the message cursor to a character column and a row; exported for the tests. */
 void text_set_message_cursor(int column, int row);
-/* The text of message row (0 at the top to MESSAGE_ROWS - 1); "" when the row is clear. */
-const char *text_message_row(int row);
 /* Clears the message rows whose show time is over. */
 void text_clear_expired_rows(void);
-/* Prints a message at the message cursor. */
+/* Prints a message at the message cursor in UI color ui_color. */
 void text_print_message(int ui_color, const char *text);
-/* Prints a number and a space at the message cursor; exported for the tests. */
+/* Prints a number and a space at the message cursor in UI color ui_color; exported for the tests. */
 void text_print_number(int ui_color, int32_t value);
 /* Prints a new line at the message cursor. */
 void text_print_newline(void);

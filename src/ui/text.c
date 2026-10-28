@@ -50,6 +50,8 @@ static struct {
     .line_bitmap = {text_state.line, SCREEN_W, TEXT_LINE_HEIGHT, IMAGE_8BPP}
 };
 
+/* ---- Setup ---- */
+
 bool text_init(const Gdat *gdat)
 {
     uint32_t size;
@@ -70,6 +72,61 @@ bool text_init(const Gdat *gdat)
     text_state.top = (int16_t)((r[RECT_H] - (TEXT_LINE_HEIGHT * MESSAGE_ROWS - FONT_SPACING)) >> 1);
     return true;
 }
+
+/* ---- Queries ---- */
+
+TextSize text_measure(const char *text)
+{
+    if (!text)
+        return (TextSize){0, 0};
+    int16_t w = -FONT_SPACING;
+    for (; *text; text++)
+        w += FONT_ADVANCE;
+    if (w <= 0)
+        return (TextSize){0, 0};
+    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
+}
+
+int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width)
+{
+    int16_t p = *out_pos;
+    int16_t out = 0;
+    int16_t width = 0;
+    int16_t space = -1;
+    int16_t space_out = 0;
+    int16_t space_width = 0;
+    for (;;) {
+        line[out] = '\0';
+        char c = text[p];
+        if (c == '\n' || c == '\0')
+            break;
+        if (c == ' ') {
+            space = p;
+            space_out = out;
+            space_width = width;
+        }
+        if (width + FONT_ADVANCE > max_width) {
+            if (space == -1)
+                break;
+            *out_pos = (int16_t)(space + 1);
+            line[space_out] = '\0';
+            return space_width;
+        }
+        if (width == 0)
+            width = -FONT_SPACING;
+        width += FONT_ADVANCE;
+        line[out++] = text[p++];
+    }
+    *out_pos = p;
+    return width;
+}
+
+const char *text_message_row(int row)
+{
+    return row >= 0 && row < MESSAGE_ROWS ? text_state.message_text[row] : "";
+}
+
+/* ---- Drawing ---- */
 
 /* A 4 bpp glyph of 6 x 6 pixels (3 bytes a row): fg on the set bits, bg on the others. */
 static const uint8_t *build_glyph(uint8_t c, uint8_t fg, uint8_t bg)
@@ -118,52 +175,6 @@ void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char 
                      .colormap = colormap};
         gfx_blit(&blit, rect);
     }
-}
-
-TextSize text_measure(const char *text)
-{
-    if (!text)
-        return (TextSize){0, 0};
-    int16_t w = -FONT_SPACING;
-    for (; *text; text++)
-        w += FONT_ADVANCE;
-    if (w <= 0)
-        return (TextSize){0, 0};
-    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
-}
-
-int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width)
-{
-    int16_t p = *out_pos;
-    int16_t out = 0;
-    int16_t width = 0;
-    int16_t space = -1;
-    int16_t space_out = 0;
-    int16_t space_width = 0;
-    for (;;) {
-        line[out] = '\0';
-        char c = text[p];
-        if (c == '\n' || c == '\0')
-            break;
-        if (c == ' ') {
-            space = p;
-            space_out = out;
-            space_width = width;
-        }
-        if (width + FONT_ADVANCE > max_width) {
-            if (space == -1)
-                break;
-            *out_pos = (int16_t)(space + 1);
-            line[space_out] = '\0';
-            return space_width;
-        }
-        if (width == 0)
-            width = -FONT_SPACING;
-        width += FONT_ADVANCE;
-        line[out++] = text[p++];
-    }
-    *out_pos = p;
-    return width;
 }
 
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
@@ -216,6 +227,8 @@ void text_draw_in_zone_shadowed(int zone, int color, int bg, const char *text)
         text_draw_with_shadow(&g_view_viewport, at.x, at.y, (TextColors){color, bg}, text);
 }
 
+/* ---- Message area ---- */
+
 void text_set_message_cursor(int column, int row)
 {
     if (column < 0)
@@ -225,11 +238,6 @@ void text_set_message_cursor(int column, int row)
     text_state.column = x < limit ? x : limit;
     text_state.row = (int16_t)(row < 0 ? 0 : row > MESSAGE_ROWS - 1 ? MESSAGE_ROWS - 1 : row);
     text_state.scroll_pending = false;
-}
-
-const char *text_message_row(int row)
-{
-    return row >= 0 && row < MESSAGE_ROWS ? text_state.message_text[row] : "";
 }
 
 void text_clear_expired_rows(void)
