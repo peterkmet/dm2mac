@@ -47,20 +47,23 @@
 /* The last command of a text key: the commands CMD_TEXT_FIRST to it type a character. */
 #define CMD_TEXT_KEY_LAST 0xd6
 
-/* The buttons of the save menu (dialog 0x1b) and of the question before a quit (dialog 0x0c). */
+/* The buttons of the save menu (DIALOG_SAVE_MENU) and of the question before a quit (DIALOG_NOT_SAVED). */
 #define SAVE_MENU_SAVE    0
 #define SAVE_MENU_QUIT    1
 #define SAVE_MENU_RESTART 2
 #define SAVE_MENU_RESUME  3
 #define NOT_SAVED_CANCEL  3
 
-/* The choices of the slot dialogs: the list of input mode 4 with 5 or 6 buttons. */
+/* The choices of the slot dialogs: the list of INPUT_MODE_DIALOG with 5 or 6 buttons. */
 #define SLOT_CANCEL       1
 #define SLOT_OK           2
 #define SLOT_LIST         3
 #define SLOT_NAME         4
 #define SLOT_BUTTONS_LOAD 5
 #define SLOT_BUTTONS_SAVE 6
+
+/* The slot of a click below the slot list and of a save dialog without an empty slot (SAVE_SLOT_NONE is a cancel). */
+#define SLOT_OUTSIDE SAVE_SLOT_COUNT
 
 /* The layout of a slot dialog. */
 #define SLOT_NAME_TOP   4 /* the text base line below the top of a slot zone */
@@ -86,7 +89,6 @@ static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 
 /* The headers of the save slots in the slot dialogs. */
 static uint8_t slots[SAVE_SLOT_COUNT][SAVE_HEADER_SIZE + 1];
-static bool editing; /* the player types the slot name or a champion name */
 
 /* The path of slot in the save folder; bak: the backup file. */
 static char *slot_path(char *path, int16_t slot, bool bak)
@@ -198,8 +200,8 @@ static void list_slots(void)
         memset(slots[i], 0, sizeof slots[i]);
         FILE *f = fopen(slot_path(path, i, false), "rb");
         if (f) {
-            if (fread(slots[i], 1, SAVE_HEADER_SIZE, f) != SAVE_HEADER_SIZE) { /* a short file keeps what it has */
-            }
+            size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
+            (void)n; /* a short file keeps its zeros after what it has */
             fclose(f);
             continue;
         }
@@ -243,7 +245,7 @@ static int16_t clicked_slot(void)
     zone_get_position(g_input_match.origin, &x, &y);
     int16_t row_y = g_input_match.y - r[RECT_Y] - y;
     int16_t slot = row_y / TEXT_LINE_HEIGHT;
-    return slot < SAVE_SLOT_COUNT ? slot : SAVE_SLOT_COUNT;
+    return slot < SAVE_SLOT_COUNT ? slot : SLOT_OUTSIDE;
 }
 
 /* The load dialog: the slot that the player loads, SAVE_SLOT_NONE when cancelled. A restore after the end of the
@@ -273,7 +275,7 @@ static int16_t choose_load_slot(void)
             session_draw_slot_selection(chosen);
             dialog_present();
         }
-        g_input_match.choice = -1;
+        g_input_match.choice = 0; /* DIALOG_NO_CHOICE while the dialog waits; 0 once a choice is handled */
         if (!done)
             play_wait_frames(1);
     }
@@ -287,16 +289,16 @@ static void make_slot_name(char *dst, int16_t slot)
     snprintf(dst, SAVE_NAME_SIZE, "GAME %d", slot);
 }
 
-/* A key of the name field of the save dialog: delete, end, or a character. */
-static void type_slot_name_key(char *name, int *length)
+/* A key of the name field of the save dialog: delete, end, or a character. Returns false when the key ends the
+   edit. */
+static bool type_slot_name_key(char *name, int *length)
 {
     uint16_t key = g_input_match.key;
+    bool editing = key != KEY_ENTER;
     if (key == KEY_BACKSPACE) {
         if (*length > 0)
             name[--*length] = '\0';
-    } else if (key == KEY_ENTER) {
-        editing = false;
-    } else if (*length < SAVE_NAME_MAX) {
+    } else if (editing && *length < SAVE_NAME_MAX) {
         char c = kbd_key_to_ascii(key);
         if (c >= 'a' && c <= 'z')
             c = (char)(c - 'a' + 'A');
@@ -304,10 +306,11 @@ static void type_slot_name_key(char *name, int *length)
         name[*length] = '\0';
     }
     session_draw_name_entry(name, editing);
+    return editing;
 }
 
 /* The slot that the save dialog lights first, with its name in name: the slot of the last load or save, else the
-   first empty slot (SAVE_SLOT_COUNT: none). */
+   first empty slot (SLOT_OUTSIDE: none). */
 static int16_t first_save_slot(char *name)
 {
     int16_t chosen = g_session.slot;
@@ -331,9 +334,10 @@ static int16_t choose_save_slot(void)
     g_dialog.right_choice = SLOT_CANCEL;
     int16_t chosen = first_save_slot(name);
     int length = 0;
+    bool editing = false; /* the player types the slot name */
     bool done = false;
     session_draw_slot_selection(chosen);
-    if (chosen == SAVE_SLOT_COUNT)
+    if (chosen == SLOT_OUTSIDE)
         dialog_present();
     else
         session_draw_name_entry(name, false);
@@ -347,7 +351,7 @@ static int16_t choose_save_slot(void)
             break;
         case SLOT_OK:
             editing = false;
-            if (chosen == SAVE_SLOT_COUNT)
+            if (chosen == SLOT_OUTSIDE)
                 break;
             if (!*name)
                 make_slot_name(name, chosen);
@@ -366,7 +370,7 @@ static int16_t choose_save_slot(void)
             session_draw_name_entry(name, false);
             break;
         case SLOT_NAME:
-            if (chosen != SAVE_SLOT_COUNT && !editing) {
+            if (chosen != SLOT_OUTSIDE && !editing) {
                 editing = true;
                 session_draw_name_entry(name, true);
                 length = (int)strlen(name);
@@ -374,7 +378,7 @@ static int16_t choose_save_slot(void)
             break;
         }
         if (editing && g_input_match.value >= CMD_TEXT_FIRST && g_input_match.value <= CMD_TEXT_KEY_LAST)
-            type_slot_name_key(name, &length);
+            editing = type_slot_name_key(name, &length);
         g_input_match.choice = 0;
         g_input_match.value = 0;
         if (!done)
@@ -410,22 +414,37 @@ static bool load_new_game(void)
     return true;
 }
 
-/* Loads the slot file at path into the game; returns false on an error. */
-static bool load_slot(const char *path)
+/* Reads the save file at path; the first load of a run also reads the level table. Returns false on an error. */
+static bool read_save(const char *path)
 {
-    save_clear_party();
     bool first = !g_weather.dungeon_loaded;
     if (save_load(path, gdat_current()) != SAVE_OK)
         return false;
     if (first)
         dungeon_read_level_table();
+    return true;
+}
+
+/* Loads the slot file at path into the game; returns false on an error. */
+static bool load_slot(const char *path)
+{
+    save_clear_party();
+    if (!read_save(path))
+        return false;
     game_note_slot_loaded();
     return true;
 }
 
+/* The arrival of the party on its map, with the whole view to draw. */
+static void arrive_on_party_map(void)
+{
+    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
+    g_party.redraw = REDRAW_ALL_VIEW;
+}
+
 bool session_load(void)
 {
-    char path[OS_PATH_SIZE], bak[OS_PATH_SIZE];
+    char path[OS_PATH_SIZE], bak[OS_PATH_SIZE], ftl[OS_PATH_SIZE];
     bool from_bak = false;
     if (!g_session.new_game) {
         int16_t slot = choose_load_slot();
@@ -439,13 +458,13 @@ bool session_load(void)
         if (!file_exists(path) && file_exists(bak)) {
             snprintf(path, sizeof path, "%s", bak);
             from_bak = true;
-        } else if (!file_exists(path) && !g_session.loaded && file_exists(data_path(bak, "DUNGEON.FTL"))) {
+        } else if (!file_exists(path) && !g_session.loaded && file_exists(data_path(ftl, "DUNGEON.FTL"))) {
             game_set_new_game(1);
         }
     }
     bool ok = g_session.new_game ? load_new_game() : load_slot(path);
     if (!ok) {
-        /* fix: the original asks for the disk of the game (dialog 7) when the load of the last slot fails */
+        /* fix: the original asks for the disk of the game when the load of the last slot fails */
         dialog_run(dialog_draw(DIALOG_ERROR, MESSAGE_GAME_DAMAGED));
         if (!g_session.loaded)
             session_quit();
@@ -460,8 +479,7 @@ bool session_load(void)
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
     g_dialog.progress_enabled = 1;
     game_clear_end();
-    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
-    g_party.redraw = REDRAW_ALL_VIEW;
+    arrive_on_party_map();
     return true;
 }
 
@@ -538,6 +556,17 @@ static void run_menu(void)
     } while (g_session.new_game == MENU_REDRAW && !g_main_loop.quit);
 }
 
+/* The sound and music volumes, the interface and the coin table of a loaded game, then its play. */
+static void start_loaded_game(void)
+{
+    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
+    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
+    ui_reset();
+    money_init_coin_table();
+    play_start_session();
+    input_flush();
+}
+
 bool session_init(void)
 {
     do {
@@ -547,12 +576,7 @@ bool session_init(void)
     } while (!session_load() && !g_main_loop.quit);
     if (g_main_loop.quit)
         return false;
-    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
-    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
-    ui_reset();
-    money_init_coin_table();
-    play_start_session();
-    input_flush();
+    start_loaded_game();
     return true;
 }
 
@@ -565,29 +589,19 @@ bool session_start_new_game(void)
     sensor_start_timers();
     game_clear_end();
     game_set_completed(false);
-    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
-    g_party.redraw = REDRAW_ALL_VIEW;
-    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
-    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
-    ui_reset();
-    money_init_coin_table();
-    play_start_session();
-    input_flush();
+    arrive_on_party_map();
+    start_loaded_game();
     return true;
 }
 
 bool session_start_save(const char *path)
 {
-    bool first = !g_weather.dungeon_loaded;
-    if (save_load(path, gdat_current()) != SAVE_OK)
+    if (!read_save(path))
         return false;
-    if (first)
-        dungeon_read_level_table();
     ui_reset();
     money_init_coin_table();
     ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
-    move_compute_map_arrival((Position){g_game.party_map, g_game.party_x, g_game.party_y});
-    g_party.redraw = REDRAW_ALL_VIEW;
+    arrive_on_party_map();
     play_start_session();
     return true;
 }
