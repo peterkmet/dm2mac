@@ -1911,7 +1911,7 @@ static bool show_creatures(uint16_t thing, int pos, uint32_t cell_mask)
                 group_set_mood_flag(thing, GROUP_SEEN, true);
         } else if (info->possessions & POSSESSIONS_KIND_MASK && depth <= DEPTH_FAR) {
             if (g_view_squares[pos].aspect == ASPECT_DOOR_FRONT)
-                cell_mask = THINGS_NEAR; /* like the original, kept */
+                cell_mask = THINGS_NEAR; /* as in the original */
             show_possessions(thing_word(thing, GROUP_POSSESSIONS), pos, cell_mask, thing);
         }
     }
@@ -3353,7 +3353,7 @@ static void outdoor_draw_sky(int16_t dir, int16_t x, int16_t y)
     }
     if (view.no_landmarks)
         return;
-    /* like the original, the landmarks use the first sky object as their record */
+    /* as in the original, the landmarks use the first sky object as their record */
     SkyObject *o = weather_sky_objects();
     for (int e = 0; e < SKY_LANDMARK_MAX; e++) {
         if (!(view.landmarks[e / BYTE_BIT_COUNT] & 1 << (e % BYTE_BIT_COUNT)))
@@ -3390,7 +3390,7 @@ static void show_front_door_side(void)
 /* Draws the squares in sight except the party square, from the far ones to the near ones. */
 static void show_far_squares(void)
 {
-    uint32_t cell_mask = THINGS_ALL; /* like the original, kept from square to square */
+    uint32_t cell_mask = THINGS_ALL; /* kept from square to square, as in the original */
     for (int i = 0; i < POS_DRAWN; i++) {
         int pos = far_order[i];
         int aspect = g_view_squares[pos].aspect;
