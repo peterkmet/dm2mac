@@ -28,9 +28,6 @@
 #define RESULT_SCALE_Y     53
 #define RESULT_DIGITS      5
 
-/* The GDAT index of the aura pictures (category 1, index 7). */
-#define UI_INDEX_AURA 0x07
-
 /* Nothing drawn: no drawn cell or direction of a champion, no drawn wall set. */
 #define DRAWN_NONE 0xff
 

@@ -19,11 +19,13 @@
 #define STAMINA_DISPLAY_UNIT 10 /* the screen shows the stamina divided by this */
 #define WEIGHT_TENTHS        10 /* weights and loads are in tenths of a kilogram */
 
-/* GDAT images of the interface: (category 1, index, 1, entry), the inventory set (7, 0, 1, entry), the wall sets. */
+/* GDAT images of the interface: (CAT_INTERFACE, index, GDAT_TYPE_IMAGE, entry), the inventory set (CAT_PANEL, 0,
+   GDAT_TYPE_IMAGE, entry), the wall sets. */
 #define UI_INDEX_STATUS 2
 #define UI_INDEX_ARROWS 3
 #define UI_INDEX_ACTION 4
 #define UI_INDEX_FACES  6
+#define UI_INDEX_AURA   7 /* the aura pictures of the action area */
 
 /* The transparent color and the icon sizes of the interface pictures. */
 #define UI_KEY    12 /* transparent color of the interface pictures */
