@@ -1639,9 +1639,9 @@ static bool picture_corner(ViewPoint *corner)
     return true;
 }
 
-/* Draws the view picture of the projectile thing (THING_NONE: a picture of no projectile) on view square pos. A view of a game
-   step keeps its corner; a view between game steps draws it part of the way back to its corner of the game step
-   before. */
+/* Draws the view picture of the projectile thing (THING_NONE: a picture of no projectile) on view square pos. A view
+   of a game step keeps its corner; a view between game steps draws it part of the way back to its corner of the game
+   step before. */
 static void flush_projectile(uint16_t thing, int pos)
 {
     ViewPoint corner;
