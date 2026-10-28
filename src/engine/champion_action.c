@@ -149,6 +149,11 @@ static int16_t field_of(ChampionAction action, int field)
     return gtext_gdat_field(action.category, action.index, action.entry, field);
 }
 
+void champ_action_clear_result(void)
+{
+    g_champ_action_result = 0;
+}
+
 void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand)
 {
     Champion *c = champion(champ);
@@ -1039,7 +1044,7 @@ bool champ_throw_object(int champ, int16_t hand, bool right_side)
 
 bool champ_throw_leader_hand_object(bool right_side)
 {
-    if ((int16_t)g_game.leader == -1)
+    if (g_game.leader == LEADER_NONE)
         return false;
-    return champ_throw_object((int16_t)g_game.leader, -1, right_side);
+    return champ_throw_object(champ_leader(), -1, right_side);
 }
