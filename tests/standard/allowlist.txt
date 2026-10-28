@@ -196,7 +196,6 @@ order engine/aspect.c:sections bridge: task 22
 order data/hmp.c:sections bridge: task 18
 order data/mve_video.c:sections bridge: task 18
 order engine/game.c:sections bridge: task 26
-order engine/merchant.c:sections bridge: task 30
 order engine/sensor.c:sections bridge: task 37
 order engine/weather.c:sections bridge: task 40
 order ui/draw.c:sections bridge: task 43
@@ -263,11 +262,6 @@ type engine/dungeon.c:mark_level_link bridge: task 25
 type engine/dungeon.c:number_linked_actuators bridge: task 25
 type engine/dungeon.c:prepare_group bridge: task 25
 type engine/dungeon.c:shift_later_columns bridge: task 25
-type engine/merchant.c:front_customer_has_goods bridge: task 30
-type engine/merchant.c:offered_value bridge: task 30
-type engine/merchant.c:price_in_coins bridge: task 30
-type engine/merchant.c:sum_items_value bridge: task 30
-type engine/merchant.c:sum_list bridge: task 30
 type engine/move.c:bash_door bridge: task 32
 type engine/move.c:bump_champion bridge: task 32
 type engine/move.c:discard_next_map bridge: task 32
