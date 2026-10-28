@@ -36,9 +36,9 @@ decimal engine/minion.c:option_mana bridge: task 31
 decimal engine/move.c bridge: task 32
 decimal engine/move.c:free_square_order_party bridge: task 32
 decimal engine/move.c:free_square_order_thing bridge: task 32
-decimal engine/projectile.c:attack_cell_orders bridge: task 33
-decimal engine/projectile.c:attack_cell_orders_random bridge: task 33
-decimal engine/projectile.c:spell_reflection bridge: task 33
+decimal engine/projectile.c:attack_cell_orders rule 3.12: a table of SKULL.EXE
+decimal engine/projectile.c:attack_cell_orders_random rule 3.12: a table of SKULL.EXE
+decimal engine/projectile.c:spell_reflection rule 3.12: a table of SKULL.EXE
 decimal engine/save.c:light_power rule 3.12: magic light by power of SKULL.EXE
 decimal engine/seen.c:row_half_width bridge: task 36
 decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
@@ -280,17 +280,6 @@ type engine/move.c:meet_target_square bridge: task 32
 type engine/move.c:push_party_aside bridge: task 32
 type engine/move.c:set_party_position bridge: task 32
 type engine/move.c:take_free_step bridge: task 32
-type engine/projectile.c:blast_square bridge: task 33
-type engine/projectile.c:hit_champion bridge: task 33
-type engine/projectile.c:hit_creature bridge: task 33
-type engine/projectile.c:hit_explode bridge: task 33
-type engine/projectile.c:hit_impact bridge: task 33
-type engine/projectile.c:hit_square bridge: task 33
-type engine/projectile.c:hit_wall_sensors bridge: task 33
-type engine/projectile.c:launch_object bridge: task 33
-type engine/projectile.c:reflect_spell bridge: task 33
-type engine/projectile.c:set_event_dir bridge: task 33
-type engine/projectile.c:trigger_explosion_sensors bridge: task 33
 type engine/save.c:held_thing bridge: task 35
 type engine/save.c:read_thing_list bridge: task 35
 type engine/save.c:saved_bits_mask bridge: task 35
