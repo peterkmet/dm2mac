@@ -1201,7 +1201,7 @@ static const uint8_t *get_shaded_palette(int category, int index, int entry, int
     } else if (view.shade == VIEW_SHADE_MAX) {
         return NULL;
     }
-    return pal_apply_dim_remap(view.shaded_palette, (uint8_t)view.shade, key, NO_KEY, &count);
+    return pal_apply_dim_remap(view.shaded_palette, view.shade, key, NO_KEY, &count);
 }
 
 /* Copies a bitmap mirrored left to right. */
@@ -1215,7 +1215,7 @@ static void show_map_picture(int entry, int zone, int key, int flip)
 {
     DrawCtx c;
     draw_ctx_init(&c, CAT_WALLSET, view.gfx_set, entry);
-    pal_apply_dim_remap(c.palette, (uint8_t)view.shade, key, NO_KEY, &c.palette_count);
+    pal_apply_dim_remap(c.palette, view.shade, key, NO_KEY, &c.palette_count);
     c.transparent = (int16_t)key;
     c.dst = &g_view_viewport;
     c.flip = (int16_t)flip;
@@ -1912,7 +1912,7 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
     c->flip = (int16_t)flip;
     c->scale_y = (int16_t)scale;
     c->scale_x = c->scale_y;
-    pal_apply_dim_remap(c->palette, (uint8_t)view.shade, THING_KEY, NO_KEY, &c->palette_count);
+    pal_apply_dim_remap(c->palette, view.shade, THING_KEY, NO_KEY, &c->palette_count);
     draw_ctx_prepare(c);
 }
 

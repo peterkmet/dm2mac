@@ -65,18 +65,18 @@ static const Bitmap *decoded(int item)
     Bitmap *b = draw_state.images + item;
     if (b->pixels)
         return b;
-    int w, h, bpp;
-    int size = gdat_image_size(draw_state.cache_owner, item, &w, &h, &bpp);
-    if (size < 0 || !(b->pixels = malloc(size ? size : 1)))
+    ImageInfo info;
+    if (gdat_image_info(draw_state.cache_owner, item, &info) != GDAT_OK ||
+        !(b->pixels = malloc(info.size ? info.size : 1)))
         return NULL;
-    if (gdat_decode_image(draw_state.cache_owner, item, b->pixels, size) != GDAT_OK) {
+    if (gdat_decode_image(draw_state.cache_owner, item, b->pixels, info.size) != GDAT_OK) {
         free(b->pixels);
         b->pixels = NULL;
         return NULL;
     }
-    b->width = (int16_t)w;
-    b->height = (int16_t)h;
-    b->bpp = (uint8_t)bpp;
+    b->width = (int16_t)info.width;
+    b->height = (int16_t)info.height;
+    b->bpp = (uint8_t)info.bpp;
     return b;
 }
 
