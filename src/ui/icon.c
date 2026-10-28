@@ -16,12 +16,12 @@ static uint8_t decoded[ICON_MAX_BYTES];
 IconSize icon_build(const Gdat *g, uint32_t *pixels, int max)
 {
     const IconSize none = {0, 0};
-    int width;
-    int height;
-    int bpp;
+    ImageInfo info;
     int item = gdat_find(g, CAT_CREATURE, ICON_INDEX, GDAT_TYPE_IMAGE, GFX_ICON);
-    if (item < 0 || gdat_image_size(g, item, &width, &height, &bpp) < 0 || bpp != IMAGE_8BPP)
+    if (item < 0 || gdat_image_info(g, item, &info) != GDAT_OK || info.bpp != IMAGE_8BPP)
         return none;
+    int width = info.width;
+    int height = info.height;
     if (width * height > max || width * height > ICON_MAX_BYTES ||
         gdat_decode_image(g, item, decoded, sizeof decoded) < 0)
         return none;

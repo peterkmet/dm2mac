@@ -112,3 +112,7 @@ The original game loads a save with the blocks: its loader stops at the last bit
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
 - Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than the queue holds, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
 - A poison event of a champion that does not exist is skipped on load (the original writes to the record past the last champion).
+- A damage display event of a champion past the four champion records is not linked to a champion (the original writes past the last record).
+- A creature group whose creature info index lies past the table stores the bits of a group that is not static (the original reads past the table).
+- A deferred minion map or carried projectile whose link lies past the records of its target type writes the record position 0 (the original reads past its table).
+- Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`game_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, else the party stays without a leader.

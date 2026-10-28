@@ -208,7 +208,7 @@ static void cast_spell(const Spell *spell)
         text_print_message(UI_WHITE, "\nNO CHAMPION CAN CAST");
         return;
     }
-    if ((magic_cast_cheat_spell(caster, spell) & CAST_KIND_MASK) == CAST_NEEDS_FLASK)
+    if (magic_cast_cheat_spell(caster, spell) == CAST_NEEDS_FLASK)
         text_print_message(UI_WHITE, "\nNO EMPTY FLASK IN HAND");
 }
 

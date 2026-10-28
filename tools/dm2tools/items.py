@@ -68,6 +68,10 @@ class GdatKey(ctypes.Structure):
     _fields_ = [("category", ctypes.c_int), ("index", ctypes.c_int), ("entry", ctypes.c_int)]
 
 
+class ImageInfo(ctypes.Structure):
+    _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int), ("bpp", ctypes.c_int), ("size", ctypes.c_size_t)]
+
+
 class Gdat:
     """GRAPHICS.DAT loaded in the port library."""
 
@@ -79,9 +83,8 @@ class Gdat:
         lib.gdat_entry_index.restype = ctypes.c_uint16
         lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
         lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-        int_p = ctypes.POINTER(ctypes.c_int)
         u8_p = ctypes.POINTER(ctypes.c_uint8)
-        lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int, int_p, int_p, int_p]
+        lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
         lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
         lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
         lib.gdat_image_colormap.restype = u8_p
@@ -112,15 +115,14 @@ class Gdat:
         item = lib.gdat_find(handle, cat, index, TYPE_IMAGE, entry)
         if item < 0:
             return None
-        w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-        size = lib.gdat_image_size(handle, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
-        if size <= 0:
+        info = ImageInfo()
+        if lib.gdat_image_info(handle, item, ctypes.byref(info)) != 0 or info.size == 0:
             return None
-        pixels = (ctypes.c_uint8 * size)()
-        if lib.gdat_decode_image(handle, item, pixels, size) != 0:
+        pixels = (ctypes.c_uint8 * info.size)()
+        if lib.gdat_decode_image(handle, item, pixels, info.size) != 0:
             return None
-        w, h = w.value, h.value
-        if bpp.value == IMAGE_4BPP:
+        w, h = info.width, info.height
+        if info.bpp == IMAGE_4BPP:
             colormap = lib.gdat_image_colormap(handle, item)
             stride = (w + 1) // 2
             local = [pixels[y * stride + x // 2] >> 4 if x % 2 == 0 else pixels[y * stride + x // 2] & 0x0f

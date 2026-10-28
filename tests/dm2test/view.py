@@ -4,7 +4,7 @@ import ctypes
 import struct
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey
+from dm2test.gdat import GdatKey, image_info
 from dm2test.markers import ROOT
 from dm2test.save import Game
 
@@ -121,11 +121,11 @@ class OriginalView:
 
     def image(self, item):
         if item not in self.images:
-            w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-            size = self.lib.gdat_image_size(self.gdat, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
-            pixels = (ctypes.c_uint8 * max(size, 1))()
-            assert self.lib.gdat_decode_image(self.gdat, item, pixels, size) == 0
-            self.images[item] = self.put(struct.pack("<BBhh", bpp.value, 0, w.value, h.value) + bytes(pixels)) + 6
+            result, info = image_info(self.lib, self.gdat, item)
+            assert result == 0
+            pixels = (ctypes.c_uint8 * max(info.size, 1))()
+            assert self.lib.gdat_decode_image(self.gdat, item, pixels, info.size) == 0
+            self.images[item] = self.put(struct.pack("<BBhh", info.bpp, 0, info.width, info.height) + bytes(pixels)) + 6
         return self.images[item]
 
     def image_palette(self, category, index, entry, *_):
@@ -138,11 +138,9 @@ class OriginalView:
         return self.palettes[item]
 
     def image_size(self, category, index, entry, width, height):
-        w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-        self.lib.gdat_image_size(self.gdat, self.image_item(category, index, entry), ctypes.byref(w), ctypes.byref(h),
-                                 ctypes.byref(bpp))
-        self.emu.write(width, struct.pack("<H", w.value))
-        self.emu.write(height, struct.pack("<H", h.value))
+        info = image_info(self.lib, self.gdat, self.image_item(category, index, entry))[1]
+        self.emu.write(width, struct.pack("<H", info.width))
+        self.emu.write(height, struct.pack("<H", info.height))
 
     def text(self, category, index, entry, buf):
         text = ctypes.create_string_buffer(128)

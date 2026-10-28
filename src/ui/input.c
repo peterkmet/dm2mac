@@ -2056,7 +2056,7 @@ static void click_take_object(int x, int y, int index)
     if (thing != THING_NONE) {
         move_thing(thing, sx, sy, -1, z->kind == CLICK_POSSESSIONS ? -1 : 0);
         clear_moneybox_placed(thing);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     game_set_command_stop(true);
 }

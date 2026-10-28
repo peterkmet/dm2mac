@@ -27,6 +27,7 @@ enum GdatResult {
 #define GDAT_TYPE_REMAP         0x07 /* a color remap table, for example a depth shading table */
 #define GDAT_TYPE_CREATURE_DATA 0x07 /* the animation tables of a creature */
 #define GDAT_TYPE_TABLE         0x08 /* a word table */
+#define GDAT_TYPE_PALETTE       0x09 /* the game palette */
 #define GDAT_TYPE_VALUE         0x0b
 #define GDAT_TYPE_VALUE2        0x0c
 #define GDAT_TYPE_DATA          0x0d /* raw data, for example the interface colors */
@@ -76,6 +77,12 @@ typedef struct {
     int entry;
 } GdatKey;
 
+/* The size of an image item: bits per pixel IMAGE_4BPP or IMAGE_8BPP, and the decoded byte size. */
+typedef struct {
+    int width, height, bpp;
+    size_t size;
+} ImageInfo;
+
 typedef struct gdat Gdat;
 
 /* Loading */
@@ -97,8 +104,8 @@ const uint8_t *gdat_item(const Gdat *g, int item, uint32_t *out_size);
 int gdat_find(const Gdat *g, int category, int index, int type, int entry);
 
 /* Images */
-/* Width, height, and bits per pixel (4 or 8) of an image item; returns the decoded byte size or an error. */
-int gdat_image_size(const Gdat *g, int item, int *out_width, int *out_height, int *out_bpp);
+/* The width, height, bits per pixel, and decoded byte size of an image item. */
+enum GdatResult gdat_image_info(const Gdat *g, int item, ImageInfo *out);
 /* Decodes an image item into dst. 4 bpp rows hold an even pixel count, high nibble first; pad nibbles keep the dst content. */
 enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t dst_size);
 /* The 16 palette indices of the colors of a 4 bpp image, NULL for an 8 bpp image. */
