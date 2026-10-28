@@ -25,7 +25,8 @@ BRIDGE_REASON = re.compile(r"^bridge: task \d+$")
 EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
-DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[25-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;")
+DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[25-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
+                     r"|(?<=[=,(+\-*/%<>&|?:]\s)[3-9](?![\w.\]])")
 BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
 MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"
 MASK_OPERAND = re.compile(rf"{BIT_OPERATOR}\s*\(?\s*{MASK}|\b{MASK}\s*\)?\s*{BIT_OPERATOR}")
@@ -102,7 +103,8 @@ TABLE_START = re.compile(r"\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{")
 
 
 def tables(path):
-    """Each table name of the file and the 1-based lines of its initializer, from the name to the closing brace."""
+    """Each 1-based line of a table initializer of the file, from the = to the closing brace: (table name, column
+    where the initializer starts on the line); the declaration before the = stays outside."""
     text = strip(path.read_text(errors="replace"))
     found, end = {}, 0
     for m in TABLE_START.finditer(text):
@@ -112,9 +114,11 @@ def tables(path):
         while depth and i < len(text):
             depth += {"{": 1, "}": -1}.get(text[i], 0)
             i += 1
-        first = text.count("\n", 0, m.start()) + 1
+        equals = text.rindex("=", m.start(), m.end())
+        first = text.count("\n", 0, equals) + 1
         end = i
-        found.setdefault(m.group(1), set()).update(range(first, text.count("\n", 0, i) + 2))
+        for n in range(first, text.count("\n", 0, i) + 2):
+            found.setdefault(n, (m.group(1), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
     return found
 
 
@@ -134,13 +138,12 @@ def line_check(check, pattern, owners=(), ignore=None):
     for path in sources():
         if (check, rel(path)) in ok or path.name in owners:
             continue
-        table_lines = {n: name for name, lines in tables(path).items() for n in lines}
+        table_lines = tables(path)
         for n, line in code_lines(path):
-            if not pattern.search(ignore.sub("", line) if ignore else line):
-                continue
-            target = f"{rel(path)}:{table_lines[n]}" if n in table_lines else rel(path)
-            if (check, target) not in ok:
-                found.append(f"{check} {target}  | {n}: {line.strip()}")
+            name, column = table_lines.get(n, (None, len(line)))
+            for target, part in ((rel(path), line[:column]), (f"{rel(path)}:{name}", line[column:])):
+                if part and pattern.search(ignore.sub("", part) if ignore else part) and (check, target) not in ok:
+                    found.append(f"{check} {target}  | {n}: {line.strip()}")
     report(check, found)
 
 
