@@ -113,9 +113,16 @@ static Strip map_icon_strip(int category, int index)
     return s;
 }
 
-/* The party, minion, and marker icons of the map item. */
+/* The party, minion, and marker icons of the map item; THING_NONE (the automap) takes the first map item image. */
 static Strip map_item_icons(uint16_t thing)
 {
+    if (thing == THING_NONE) {
+        int item = mmap_party_icons_item();
+        if (item < 0)
+            return (Strip){0};
+        return (Strip){draw_gdat_image(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS),
+                       draw_gdat_image_palette(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS), 0};
+    }
     int category = item_gdat_category(thing);
     int index = item_gdat_index(thing);
     return (Strip){draw_gdat_image(category, index, GFX_MAP_ITEM_ICONS),

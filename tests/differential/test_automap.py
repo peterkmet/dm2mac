@@ -583,3 +583,61 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
         assert static == (kind == TREE)
         assert (cell(x, y) != before) == static, kind
     press(lib, KEY_TAB)
+
+
+MINION, CAT_CONTAINER, MAP_ITEM_ICONS, ICON_KEY = 48, 0x14, 0x40, 10  # a moving creature without a map icon strip
+ICON_SIZE, ICON_GAP = 7, 1
+
+
+class Bitmap(ctypes.Structure):
+    _fields_ = [("pixels", ctypes.POINTER(ctypes.c_uint8)), ("width", ctypes.c_int16), ("height", ctypes.c_int16),
+                ("bpp", ctypes.c_uint8)]
+
+
+def icon_pixels(lib, category, index, entry, icon):
+    """The 7 x 7 pixels of icon of the GDAT image, as the map draws them: None where the icon is transparent."""
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
+    lib.draw_gdat_image_palette.restype = ctypes.POINTER(ctypes.c_uint8)
+    image = lib.draw_gdat_image(category, index, entry).contents
+    colors = lib.draw_gdat_image_palette(category, index, entry)
+    row_bytes = (image.width + 1) // 2 if image.bpp == 4 else image.width
+    rows = []
+    for r in range(ICON_SIZE):
+        row = []
+        for c in range(icon * ICON_SIZE, (icon + 1) * ICON_SIZE):
+            v = image.pixels[r * row_bytes + c // 2] >> (0 if c & 1 else 4) & 0xF if image.bpp == 4 else \
+                image.pixels[r * row_bytes + c]
+            row.append(None if v == ICON_KEY else (colors[v] if colors else v))
+        rows.append(row)
+    return rows
+
+
+def test_automap_draws_a_creature_without_map_icons_with_the_map_item_icon(lib, automap):
+    # A moving creature without its own map icons (a minion) takes the creature icon of the map item, as on the minion
+    # map; the automap has no map item thing, so it takes the image of the party icons, not the missing image.
+    game, _ = automap
+    lib.creature_create_group.restype = ctypes.c_uint16
+    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    m, d = game.party_map, game.party_dir
+    x, y = ahead(game.party_x, game.party_y, d, 1)
+    assert lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m)
+    lib.dun_set_current_map(m)
+    g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, x, y)
+    assert g != 0xFFFF
+    lib.dungeon_thing_record(g)[GROUP_CREATURE] = MINION
+    game.game_time &= ~1  # the creature icon 0 of the two that alternate
+    press(lib, KEY_TAB)
+    lib.advanced_draw_automap()
+    vx, vy, w, h = viewport(lib)
+    left = vx + (w - CELL) // 2 + (x - game.party_x) * CELL + ICON_GAP
+    top = vy + (h - CELL) // 2 + (y - game.party_y) * CELL + ICON_GAP
+    item = lib.mmap_party_icons_item()
+    assert item >= 0
+    icon = icon_pixels(lib, CAT_CONTAINER, item, MAP_ITEM_ICONS, 0)
+    fb = screen(lib)
+    drawn = [[fb[(top + r) * SCREEN_W + left + c] for c in range(ICON_SIZE)] for r in range(ICON_SIZE)]
+    assert any(v is not None for row in icon for v in row)
+    assert all(v is None or v == drawn[r][c] for r, row in enumerate(icon) for c, v in enumerate(row))
+    press(lib, KEY_TAB)
