@@ -50,7 +50,7 @@
 
 /* The state of the minion map panel. */
 typedef struct {
-    int16_t marker_state;       /* 0 none, 1 the marker square shows, 2 its level above, 3 its level below */
+    int16_t marker_state;       /* MARKER_* */
     int16_t y_offset, x_offset; /* pixel shift of the grid: the minion stands off the middle of its square */
     int16_t below_y, below_x;   /* where the marker square leads one level down */
     int16_t above_map;          /* the map one level up from the marker square, -1 none */
