@@ -176,8 +176,8 @@
 /* Random bits of the wander scanner. */
 #define ROLL_WANDER_STOP  0x1f
 #define ROLL_WANDER_START 0x3f /* random bits: a creature starts to wander in 1 of 64 updates */
-/* The roll of a creature that wanders at random: 0 turns, 1 to WANDER_ROLL_STEP steps one square forward, above it
-   stands. */
+/* The roll of a creature that wanders at random: 0 turns it, 1 to WANDER_ROLL_STEP moves it one square forward,
+   a higher roll makes it stand. */
 #define WANDER_ROLL_MASK  0x07
 /* The highest wander roll that steps forward. */
 #define WANDER_ROLL_STEP  3
