@@ -10,7 +10,8 @@
 #include "gdat.h"
 #include "gfx.h"
 
-/* The font: 6 rows of 128 bytes in GDAT (1, 0, 7, 0), one byte per character and row, 5 pixels in bits 4 to 0. */
+/* The font: 6 rows of 128 bytes in GDAT (CAT_INTERFACE, 0, GDAT_TYPE_FONT, GFX_FONT), one byte per character and row,
+   5 pixels in bits 4 to 0. */
 #define FONT_GLYPH_WIDTH  5
 #define FONT_GLYPH_HEIGHT 6
 #define FONT_SPACING      1 /* the gap after a glyph */
@@ -64,7 +65,7 @@ void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text);
 void text_draw_in_zone(int zone, int color, const char *text);
 /* Draws text placed in a layout zone into the view picture, with a shadow. */
 void text_draw_in_zone_shadowed(int zone, int color, int bg, const char *text);
-/* Message area. color is a UI color. */
+/* Message area. ui_color is a UI color. */
 /* Moves the message cursor to a character column and a row; exported for the tests. */
 void text_set_message_cursor(int column, int row);
 /* The text of message row (0 at the top to MESSAGE_ROWS - 1); "" when the row is clear. */
@@ -72,9 +73,9 @@ const char *text_message_row(int row);
 /* Clears the message rows whose show time is over. */
 void text_clear_expired_rows(void);
 /* Prints a message at the message cursor. */
-void text_print_message(int color, const char *text);
+void text_print_message(int ui_color, const char *text);
 /* Prints a number and a space at the message cursor; exported for the tests. */
-void text_print_number(int color, int32_t value);
+void text_print_number(int ui_color, int32_t value);
 /* Prints a new line at the message cursor. */
 void text_print_newline(void);
 

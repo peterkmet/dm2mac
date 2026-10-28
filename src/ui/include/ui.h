@@ -122,7 +122,7 @@ void ui_draw_movement_arrows(void);
 void ui_draw_champion_state(int champ);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
 void ui_draw_all_champion_states(int tick);
-/* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
+/* Opens the inventory of champ, or closes it when it is open (champ CHAMPION_MAX: close). */
 void ui_toggle_inventory(int champ);
 
 #endif /* DM2_UI_UI_H */

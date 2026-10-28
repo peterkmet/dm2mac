@@ -10,9 +10,8 @@
 #include "view.h"
 #include "zone.h"
 
-/* GDAT index and type of the font and the UI colors. */
+/* The GDAT index of the font and the UI colors. */
 #define FONT_INDEX 0x00
-#define FONT_TYPE  0x07
 
 /* Font bits of a glyph row: the first and the second pixel of a pixel pair. */
 #define GLYPH_BIT_FIRST  0x10
@@ -54,7 +53,7 @@ static struct {
 bool text_init(const Gdat *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, FONT_TYPE, GFX_FONT), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &size);
     const uint8_t *colors =
         gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
     if (!p || !colors)
@@ -319,10 +318,10 @@ static void flush_pending_row(void)
     text_state.scroll_pending = false;
 }
 
-void text_print_message(int color, const char *text)
+void text_print_message(int ui_color, const char *text)
 {
     flush_pending_row();
-    int c = g_ui_colors[color];
+    int c = g_ui_colors[ui_color];
     char line[TEXT_SIZE];
     int16_t pos = 0;
     while (text[pos]) {
@@ -344,12 +343,12 @@ void text_print_message(int color, const char *text)
     flush_pending_row();
 }
 
-void text_print_number(int color, int32_t value)
+void text_print_number(int ui_color, int32_t value)
 {
     char s[NUMBER_SIZE];
     snprintf(s, sizeof s, "%d", value);
-    text_print_message(color, s);
-    text_print_message(color, " ");
+    text_print_message(ui_color, s);
+    text_print_message(ui_color, " ");
 }
 
 void text_print_newline(void)
