@@ -1536,8 +1536,8 @@ static const uint8_t *click_feedback_script(Command *c)
         offset = SCRIPT_REMOVE_RUNE;
     else if (command == CMD_CAST_SPELL)
         offset = SCRIPT_CAST_SPELL;
-    else if (command > CMD_ACTION_CANCEL && command <= CMD_ACTION_LAST)
-        offset = (command - CMD_ACTION_CANCEL - 1) * SCRIPT_ACTION_SIZE + SCRIPT_ACTION_FIRST;
+    else if (command >= CMD_ACTION_FIRST && command <= CMD_ACTION_LAST)
+        offset = (command - CMD_ACTION_FIRST) * SCRIPT_ACTION_SIZE + SCRIPT_ACTION_FIRST;
     else if (command == CMD_INVENTORY_LEADER || command == CMD_RECRUIT_CANCEL)
         offset = SCRIPT_INVENTORY_CLOSE;
     else if (command == CMD_SLEEP)
@@ -2383,8 +2383,8 @@ static bool execute_champion_command(int command, bool idle)
 {
     if (command == CMD_ACTION_CANCEL) {
         champ_execute_selected_action(-1);
-    } else if (command > CMD_ACTION_CANCEL && command <= CMD_ACTION_LAST) {
-        game_set_command_stop(champ_execute_selected_action(command - CMD_ACTION_CANCEL - 1));
+    } else if (command >= CMD_ACTION_FIRST && command <= CMD_ACTION_LAST) {
+        game_set_command_stop(champ_execute_selected_action(command - CMD_ACTION_FIRST));
     } else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
         action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT,
                               (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);

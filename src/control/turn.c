@@ -729,7 +729,7 @@ static const char *choose_action(const char *r)
         return "index out of range of the action menu (see state champions hands)";
     if (!open && !add_shown_command(hand_command))
         return "this hand cannot be clicked now";
-    add_command(CMD_ACTION_CANCEL + 1 + (uint16_t)index);
+    add_command(CMD_ACTION_FIRST + (uint16_t)index);
     turn.has_damage = true;
     champ_action_clear_result();
     return NULL;

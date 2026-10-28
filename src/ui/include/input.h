@@ -60,6 +60,7 @@
 #define CMD_DRAG_FIRST           0x7d
 #define CMD_DRAG_CANCEL          0x81
 #define CMD_ACTION_CANCEL        0x70
+#define CMD_ACTION_FIRST         0x71
 #define CMD_ACTION_LAST          0x73
 #define CMD_MOUTH                0x46
 #define CMD_EYE                  0x47
