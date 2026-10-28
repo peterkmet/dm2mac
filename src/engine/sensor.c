@@ -880,7 +880,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
     uint8_t bits[ITEM_CLASS_SET_SIZE];
     if (tr.use_filter)
         money_parse_item_class_set(data & ITEM_CLASS_SET_MASK,
-                                   sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, 0);
+                                   sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, false);
     for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
         if (count > 0 && is_object(t) && (tr.any_cell || thing_cell(t) == from.cell)) {
