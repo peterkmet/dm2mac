@@ -2231,7 +2231,7 @@ static void decide(void)
     ai_scratch_pop();
 }
 
-/* Actions: what a creature does at the acting step of its animation. The result of each is 0 when it was done. */
+/* Actions: what a creature does at the acting step of its animation. Each returns true when the action failed. */
 
 /* Action: the creature turns to its new facing. */
 static void act_turn(void)
@@ -2317,7 +2317,7 @@ static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
 }
 
 /* The creature hits the party, a door, or another creature in front of it. */
-static int act_melee_attack(void)
+static bool act_melee_attack(void)
 {
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
@@ -2331,23 +2331,23 @@ static int act_melee_attack(void)
     bool at_self = x == dx && y == dy;
     if (!at_self) {
         if (manhattan(x, y, dx, dy) > 1)
-            return 1;
+            return true;
         if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
-            return 1;
+            return true;
     }
     if (g_party.cur_map == g_ai_party.map && dx == g_ai_party.x && dy == g_ai_party.y) {
         if (!melee_attack_party(x, y, dx, dy))
-            return 1;
+            return true;
     } else {
         if (square_type(dun_get_square(dx, dy)) == SQUARE_DOOR) {
             int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
             if (sensor_door_try_destroy(dx, dy, (int16_t)strength, 0, 0))
-                return 1;
+                return true;
         }
         if (at_self)
-            return 1;
+            return true;
         if ((int16_t)creature_attack_group_at(dx, dy) < 0)
-            return 1;
+            return true;
     }
     if (a->action == ACTION_MELEE_2) {
         bool push;
@@ -2358,11 +2358,11 @@ static int act_melee_attack(void)
         if (push)
             creature_push_group(dx, dy, dir, PUSH_BY_CREATURE);
     }
-    return 0;
+    return false;
 }
 
 /* Action: the creature moves to its destination square, after an attack if it attacks first. */
-static int act_move(void)
+static bool act_move(void)
 {
     ActiveGroup *a = g_ai.active;
     if (g_ai.info->flags & CREATURE_ATTACKS_FIRST) {
@@ -2374,7 +2374,7 @@ static int act_move(void)
                      a->direction)
              .passed ||
         !(ai_action_flag((int8_t)a->action) & ACTION_FLAG_MOVES))
-        return 1;
+        return true;
     bool closes = g_ai.info->traits & TRAIT_CLOSES_PITS;
     if (closes)
         dun_set_pit_teleporter_state(g_ai.event.data[0], g_ai.event.data[1], PIT_STATE_CLOSED);
@@ -2382,10 +2382,10 @@ static int act_move(void)
         act_arrive(closes);
     else
         g_ai.removed = true;
-    return 0;
+    return false;
 }
 
-/* Action: the creature falls or jumps two squares, one step per phase. */
+/* Action: the creature falls or jumps two squares, one per phase; then the result is a stale register. */
 static int act_move_two_steps(void)
 {
     ActiveGroup *a = g_ai.active;
@@ -2415,14 +2415,14 @@ static int act_move_two_steps(void)
 }
 
 /* Action: the creature takes stairs, a pit, or a level link to the next map. */
-static int act_move_stairs(void)
+static bool act_move_stairs(void)
 {
     ActiveGroup *a = g_ai.active;
     if (!ai_try_move(executed_move(a->mode), ai_group_square(), ai_location(ai_state.dest_x, ai_state.dest_y),
                      a->direction)
              .passed ||
         !(ai_action_flag((int8_t)a->action) & ACTION_FLAG_MOVES))
-        return 1;
+        return true;
     int dir = facing();
     ai_state.dest_x = (int16_t)dest_x();
     ai_state.dest_y = (int16_t)dest_y();
@@ -2455,10 +2455,10 @@ static int act_move_stairs(void)
         g_ai.removed = true;
     else
         act_arrive(closes);
-    return 0;
+    return false;
 }
 
-/* Action: the creature turns, then moves. */
+/* Action: the creature turns, then moves; after the move the result is a stale register. */
 static int act_turn_then_move(void)
 {
     ActiveGroup *a = g_ai.active;
@@ -2476,14 +2476,14 @@ static int act_turn_then_move(void)
 }
 
 /* Action: the creature shoots a missile, with a power from its attack. */
-static int act_shoot(void)
+static bool act_shoot(void)
 {
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
     if (a->mode <= ATTACK_MODE_PARTY_RANGED)
         g_game.last_combat_time = g_game.game_time;
     if (facing() != (int8_t)a->direction && !(info->flags & CREATURE_ATTACKS_ANY_DIR))
-        return 1;
+        return true;
     uint16_t p = (uint16_t)((info->attack >> 2) + 1);
     p = (uint16_t)(p + rand_below(p));
     p = (uint16_t)(p + rand_below(p));
@@ -2514,20 +2514,20 @@ static int act_shoot(void)
         int hurt = (power >> 1) + rand_bit();
         if (creature_damage_current_group((uint16_t)hurt)) {
             g_ai.removed = true;
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 /* Action: the creature steals an item from the hands of a champion. */
-static int act_steal(void)
+static bool act_steal(void)
 {
     if (g_party.cur_map != g_ai_party.map || ai_state.dest_x != g_ai_party.x || ai_state.dest_y != g_ai_party.y)
-        return 1;
+        return true;
     int c = champ_get_index_in_cell(g_ai.active->cell);
     if (c == -1)
-        return 1;
+        return true;
     Champion *ch = champion(c);
     uint32_t r = rand_next();
     bool stolen = false;
@@ -2559,20 +2559,20 @@ static int act_steal(void)
 }
 
 /* Action: the creature operates the door on its destination square. */
-static int act_trigger_square(void)
+static bool act_trigger_square(void)
 {
     if (ai_try_door_action(executed_test(g_ai.active->mode), ai_group_square(),
                            ai_location(ai_state.dest_x, ai_state.dest_y), facing())
             .passed &&
         g_ai.active->action == ACTION_OPERATE_DOOR) {
         sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, 2, g_game.game_time);
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 /* Action: the creature picks up the items of the filter on its destination square. */
-static int act_pick_up_items(void)
+static bool act_pick_up_items(void)
 {
     int n = 0;
     for (uint16_t t = dungeon_square_first_object(g_party.cur_map, ai_state.dest_x, ai_state.dest_y);
@@ -2589,24 +2589,24 @@ static int act_pick_up_items(void)
         if (!(g_ai.active->sub & SUB_REPEAT))
             break;
     }
-    return !n;
+    return n == 0;
 }
 
 /* Action: the creature turns to the items, picks them up, and turns back. */
-static int act_turn_pick_up(void)
+static bool act_turn_pick_up(void)
 {
     ActiveGroup *a = g_ai.active;
-    int r = 0;
+    bool failed = false;
     if (a->phase == 0) {
         int f = facing();
         act_turn();
         a->facing = (uint8_t)f;
     } else if (a->phase == 1) {
         act_turn();
-        r = act_pick_up_items();
+        failed = act_pick_up_items();
     }
     a->phase++;
-    return (int16_t)r;
+    return failed;
 }
 
 /* The sound of the first item that a creature drops. */
@@ -2619,7 +2619,7 @@ static void drop_sound(uint16_t t, int n)
 }
 
 /* Action: the creature drops its items of the filter on its destination square. */
-static int act_drop_items(void)
+static bool act_drop_items(void)
 {
     int n = 0;
     do {
@@ -2632,7 +2632,7 @@ static int act_drop_items(void)
         move_thing(t, -1, 0, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
-    return !n;
+    return n == 0;
 }
 
 /* Action: the creature leaves the dungeon. */
@@ -2643,11 +2643,11 @@ static void act_vanish(void)
 }
 
 /* Action: the creature throws a carried item of the filter. */
-static int act_throw_item(void)
+static bool act_throw_item(void)
 {
     uint16_t t = ai_find_matching_item(g_ai.active->sub, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
     if (t == THING_ENDOFLIST)
-        return 1;
+        return true;
     dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
     uint16_t p = (uint16_t)((g_ai.info->attack >> 2) + 1);
     p = (uint16_t)(p + rand_below(p));
@@ -2661,26 +2661,26 @@ static int act_throw_item(void)
                                           .energy = (uint8_t)power,
                                           .hit_chance = g_ai.info->dexterity,
                                           .step = 8});
-    return 0;
+    return false;
 }
 
 /* Action: the creature turns the group on its destination square. */
-static int act_turn_target_group(void)
+static bool act_turn_target_group(void)
 {
     uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
     if (g == THING_NONE)
-        return 1;
+        return true;
     creature_turn_group(g, 0, g_ai.active->facing);
-    return 0;
+    return false;
 }
 
 /* Action: the creature gives its items of the filter to the static creature on its destination square. */
-static int act_give_items(void)
+static bool act_give_items(void)
 {
     int n = 0;
     uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_STATIC))
-        return 1;
+        return true;
     do {
         uint16_t t = ai_find_matching_item(g_ai.active->sub, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (t == THING_ENDOFLIST)
@@ -2696,16 +2696,16 @@ static int act_give_items(void)
         move_thing(t, -1, -1, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
-    return !n;
+    return n == 0;
 }
 
 /* Action: the creature takes items of the filter from the static creature on its destination square. */
-static int act_take_items(void)
+static bool act_take_items(void)
 {
     int n = 0;
     uint16_t g = creature_get_group_at(ai_state.dest_x, ai_state.dest_y);
     if (g == THING_NONE || !(creature_group_info(g)->flags & CREATURE_STATIC))
-        return 1;
+        return true;
     do {
         uint16_t t = ai_find_matching_item(g_ai.active->sub, thing_word(g, GROUP_POSSESSIONS), g_ai.active->cell);
         if (t == THING_ENDOFLIST)
@@ -2714,27 +2714,27 @@ static int act_take_items(void)
         move_thing(t, ai_state.dest_x, ai_state.dest_y, -1, -1);
         dungeon_append_thing(t & THING_ID_MASK, group_possessions(g_ai.group_thing));
     } while (g_ai.active->sub & SUB_REPEAT);
-    return !n;
+    return n == 0;
 }
 
 /* Action: the creature uses a wall actuator, with a carried item of the filter. */
-static int act_use_wall_sensor(void)
+static bool act_use_wall_sensor(void)
 {
     ActiveGroup *a = g_ai.active;
     int8_t sub = a->sub;
     if (!ai_try_use_wall_actuator(executed_test(a->mode), ai_group_square(),
                                   ai_location(ai_state.dest_x, ai_state.dest_y), facing(), sub)
              .passed)
-        return 1;
+        return true;
     uint16_t hand = THING_NONE;
     if (a->mode != ACTUATOR_MODE_TAKE && sub != -1) {
         hand = ai_find_matching_item(sub, thing_word(g_ai.group_thing, GROUP_POSSESSIONS), CELL_ANY);
         if (hand == THING_ENDOFLIST)
-            return 1;
+            return true;
         dungeon_unlink_thing_from_list(hand, group_possessions(g_ai.group_thing));
     }
     sensor_process_wall_click(dest_x(), dest_y(), dir_opposite(a->facing), g_ai.group_thing, hand);
-    return 0;
+    return false;
 }
 
 /* The creature becomes another creature type: its health, animation, and map. */
@@ -2785,7 +2785,7 @@ static void act_transform(void)
 }
 
 /* Action: the creature explodes, spawns a creature, or becomes another creature type. */
-static int act_explode_or_spawn(void)
+static bool act_explode_or_spawn(void)
 {
     ActiveGroup *a = g_ai.active;
     if (a->mode == MODE_EXPLODE) {
@@ -2810,13 +2810,13 @@ static int act_explode_or_spawn(void)
                                  .link = -1,
                                  .search_dir = (int8_t)facing()};
         if (creature_summon_group(summon) == THING_NONE)
-            return 1;
+            return true;
     } else if (a->mode == MODE_BECOME) {
         a->action = ACTION_IDLE;
         a->phase = 0;
         become_creature((uint8_t)a->sub);
     }
-    return 0;
+    return false;
 }
 
 /* The act of an action code at the acting step; the result is 0 when it was done. */
