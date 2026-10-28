@@ -236,7 +236,9 @@ that this port cannot use keeps its number with "No rule in dm2".
 1. A global holds state that lives across calls. Module-private state is `static`. [dead-api]
 2. A file with four or more file-scope variables keeps them in one `static struct` named after the module.
    [review only]
-3. Every exported function and global has a use outside its file, or the test marker of rule 2.5. [dead-api]
+3. Every exported function and global has a use outside its module, or the test marker of rule 2.5; a function that
+   only the files of its module use is in `<module>_internal.h`. A name of `<module>_internal.h` has a use outside
+   the file that defines it, or the test marker. [dead-api]
 4. Data of one entity lives in the struct of the entity, not in parallel arrays. [review only]
 5. Session state lives in the `Session` struct of `engine/game.h`; the calls of the rules into the user
    interface live in `g_hooks` (`engine/hooks.h`). [review only]
@@ -314,8 +316,10 @@ that this port cannot use keeps its number with "No rule in dm2".
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
 7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
    between bytes and a struct variable: read and write the fields through the byte order helpers of rule 3.10.
+   Outside `data/`, no cast to `(uint8_t *)` or `(const uint8_t *)`.
    Exception: a packed struct that mirrors a record or a memory layout of `SKULL.EXE` that the save or the
-   differential tests use; its allowlist line names the struct as `<file>:<type>` and gives `rule 10.7`.
+   differential tests use; its allowlist line names the struct as `<file>:<type>` and gives `rule 10.7`. A byte
+   cast that reads no value of more than one byte; its allowlist line names the file and gives `rule 10.7`.
    [byteorder]
 
 ## 11. Tests
@@ -356,7 +360,7 @@ their allowlist key:
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
 | `include` | a header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
-| `dead-api` | an exported name with no use outside its file and no test marker |
+| `dead-api` | an exported name with no use outside its module and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
 | `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
@@ -364,7 +368,7 @@ their allowlist key:
 | `duplicate` | a constant name defined in more than one header |
 | `numbered` | an event number, a byte offset or an address in a name |
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
-| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable |
+| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)` or `(const uint8_t *)` cast outside `data/` |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
 | `name` | a function name above four words after the prefix or above 40 characters |
 | `static-prefix` | a static function with a module prefix |

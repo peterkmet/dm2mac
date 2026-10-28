@@ -175,6 +175,6 @@ typedef struct {
     int8_t cells[CELL_COUNT]; /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
-extern AiSquareScan g_ai_square_scan;
+extern AiSquareScan g_ai_square_scan; /* exported for the tests */
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */

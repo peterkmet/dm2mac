@@ -22,8 +22,6 @@ typedef struct {
 
 /* The slot that a hand loads from (12 or 7-9 for the action hand, 11 or 6 for the ready hand), -1 none. */
 int champ_find_hand_source_slot(int champ, int hand);
-/* Champ throws the item in hand (-1: the leader hand object) to the left or the right side; true when it flies. */
-bool champ_throw_object(int champ, int16_t hand, bool right_side);
 /* Prints the name of thing in the message area. */
 void inv_show_object_name(uint16_t thing);
 

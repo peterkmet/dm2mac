@@ -812,6 +812,74 @@ static void run_party_magic(ActionRun *a, int command)
     }
 }
 
+/* The stamina that a throw of thing costs. */
+static int throw_fatigue(uint16_t thing)
+{
+    int16_t left = (int16_t)((uint16_t)item_weight(thing) >> 1);
+    uint16_t fatigue = (uint16_t)clamp_int(1, (int16_t)left, THROW_FATIGUE_STEP);
+    while ((left = (int16_t)(left - THROW_FATIGUE_STEP)) > 0)
+        fatigue = (uint16_t)(fatigue + (left >> 1));
+    return (int16_t)fatigue;
+}
+
+/* Champ throws the item in hand (-1: the leader hand object) to the left or the right side; true when it flies. */
+static bool throw_object(int champ, int16_t hand, bool right_side)
+{
+    Champion *c = champion(champ);
+    bool from_leader_hand = false;
+    uint16_t saved = THING_NONE;
+    uint16_t thing = THING_NONE;
+    if (hand < 0) {
+        if (g_game.leader_hand == THING_NONE)
+            return false;
+        /* the strength reads the object in the action hand */
+        saved = c->slots[SLOT_ACTION_HAND];
+        thing = champ_take_from_leader_hand();
+        c->slots[SLOT_ACTION_HAND] = thing;
+        hand = SLOT_ACTION_HAND;
+        from_leader_hand = true;
+    }
+    int16_t kinetic = (int16_t)champ_get_strength(champ, hand, SKILL_THROW);
+    if (from_leader_hand) {
+        c->slots[SLOT_ACTION_HAND] = saved;
+    } else {
+        thing = champ_remove_object_from_slot(champ, hand);
+        if (thing == THING_NONE)
+            return false;
+    }
+    champ_decrease_stamina(champ, throw_fatigue(thing));
+    champ_add_action_delay(champ, THROW_DELAY, hand);
+    int experience = THROW_EXPERIENCE;
+    int power = 1;
+    uint16_t throw_power = item_attr(thing, ATTR_THROW_POWER);
+    if (throw_power) {
+        experience = (throw_power >> THROW_EXPERIENCE_SHIFT) + THROW_EXPERIENCE_BASE;
+        power = throw_power;
+    }
+    champ_add_experience(champ, SKILL_THROW, (uint16_t)experience);
+    kinetic = (int16_t)(kinetic + power);
+    int level = champ_get_skill_level(champ, SKILL_THROW, true);
+    kinetic =
+        (int16_t)(kinetic + rand_below((uint16_t)((kinetic >> THROW_KINETIC_SHIFT) + THROW_KINETIC_RANDOM)) + level);
+    kinetic = (int16_t)min_int((int16_t)kinetic, KINETIC_MAX);
+    int attack = clamp_int(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL),
+                           ATTACK_MAX);
+    int step = item_attr(thing, ATTR_STEP);
+    if (!step)
+        step = max_int(STEP_MIN, (int16_t)(STEP_BASE - level));
+    projectile_create(&(ProjectileLaunch){.payload = thing,
+                                          .x = g_game.party_x,
+                                          .y = g_game.party_y,
+                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side),
+                                          .dir = g_game.party_dir,
+                                          .energy = (uint8_t)kinetic,
+                                          .hit_chance = (uint8_t)attack,
+                                          .step = (uint8_t)step});
+    g_game.throw_cooldown = THROW_COOLDOWN;
+    g_game.throw_dir = g_game.party_dir;
+    return true;
+}
+
 /* Runs the command of the action; true when the action was done. */
 static bool run_command(ActionRun *a, int command)
 {
@@ -842,7 +910,7 @@ static bool run_command(ActionRun *a, int command)
     case COMMAND_THROW: {
         bool right_side =
             a->c->cell == dir_turn(g_game.party_dir, TURN_RIGHT) || a->c->cell == dir_opposite(g_game.party_dir);
-        return champ_throw_object(a->champ, a->hand, right_side);
+        return throw_object(a->champ, a->hand, right_side);
     }
     case COMMAND_MINION_MAP_SET:
     case COMMAND_MINION_GUARD:
@@ -976,76 +1044,9 @@ void champ_process_repeated_actions(void)
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 
-/* The stamina that a throw of thing costs. */
-static int throw_fatigue(uint16_t thing)
-{
-    int16_t left = (int16_t)((uint16_t)item_weight(thing) >> 1);
-    uint16_t fatigue = (uint16_t)clamp_int(1, (int16_t)left, THROW_FATIGUE_STEP);
-    while ((left = (int16_t)(left - THROW_FATIGUE_STEP)) > 0)
-        fatigue = (uint16_t)(fatigue + (left >> 1));
-    return (int16_t)fatigue;
-}
-
-bool champ_throw_object(int champ, int16_t hand, bool right_side)
-{
-    Champion *c = champion(champ);
-    bool from_leader_hand = false;
-    uint16_t saved = THING_NONE;
-    uint16_t thing = THING_NONE;
-    if (hand < 0) {
-        if (g_game.leader_hand == THING_NONE)
-            return false;
-        /* the strength reads the object in the action hand */
-        saved = c->slots[SLOT_ACTION_HAND];
-        thing = champ_take_from_leader_hand();
-        c->slots[SLOT_ACTION_HAND] = thing;
-        hand = SLOT_ACTION_HAND;
-        from_leader_hand = true;
-    }
-    int16_t kinetic = (int16_t)champ_get_strength(champ, hand, SKILL_THROW);
-    if (from_leader_hand) {
-        c->slots[SLOT_ACTION_HAND] = saved;
-    } else {
-        thing = champ_remove_object_from_slot(champ, hand);
-        if (thing == THING_NONE)
-            return false;
-    }
-    champ_decrease_stamina(champ, throw_fatigue(thing));
-    champ_add_action_delay(champ, THROW_DELAY, hand);
-    int experience = THROW_EXPERIENCE;
-    int power = 1;
-    uint16_t throw_power = item_attr(thing, ATTR_THROW_POWER);
-    if (throw_power) {
-        experience = (throw_power >> THROW_EXPERIENCE_SHIFT) + THROW_EXPERIENCE_BASE;
-        power = throw_power;
-    }
-    champ_add_experience(champ, SKILL_THROW, (uint16_t)experience);
-    kinetic = (int16_t)(kinetic + power);
-    int level = champ_get_skill_level(champ, SKILL_THROW, true);
-    kinetic =
-        (int16_t)(kinetic + rand_below((uint16_t)((kinetic >> THROW_KINETIC_SHIFT) + THROW_KINETIC_RANDOM)) + level);
-    kinetic = (int16_t)min_int((int16_t)kinetic, KINETIC_MAX);
-    int attack = clamp_int(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL),
-                           ATTACK_MAX);
-    int step = item_attr(thing, ATTR_STEP);
-    if (!step)
-        step = max_int(STEP_MIN, (int16_t)(STEP_BASE - level));
-    projectile_create(&(ProjectileLaunch){.payload = thing,
-                                          .x = g_game.party_x,
-                                          .y = g_game.party_y,
-                                          .cell = (int16_t)dir_turn(g_game.party_dir, right_side),
-                                          .dir = g_game.party_dir,
-                                          .energy = (uint8_t)kinetic,
-                                          .hit_chance = (uint8_t)attack,
-                                          .step = (uint8_t)step});
-    g_game.throw_cooldown = THROW_COOLDOWN;
-    g_game.throw_dir = g_game.party_dir;
-    return true;
-}
-
 bool champ_throw_leader_hand_object(bool right_side)
 {
     if (g_game.leader == LEADER_NONE)
         return false;
-    return champ_throw_object(champ_leader(), -1, right_side);
+    return throw_object(champ_leader(), -1, right_side);
 }

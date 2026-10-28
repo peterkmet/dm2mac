@@ -530,10 +530,13 @@ def test_no_packed_fields_at_call_sites():
 BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32", "read_u32")
 BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32|read_u32)\w*)", re.M)
 BYTE_SHIFT = re.compile(r"\]\s*\)?\s*<<\s*(?:8|16|24)\b|>>\s*(?:8|16|24)\s*\)?\s*&\s*0x[fF]{2}\b")
+BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?uint8_t\s*\*\s*\)")
 
 
 def test_byte_order_helpers_only_in_le_header():
-    """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h."""
+    """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h; a cast to
+    (uint8_t *) or (const uint8_t *) stands only in data/."""
+    ok = allowed()
     found = []
     for path in sources():
         if rel(path) == "data/include/le.h":
@@ -542,6 +545,8 @@ def test_byte_order_helpers_only_in_le_header():
         found += [f"byteorder {rel(path)}  | {name}" for _, name in declarations(path) if name.startswith(BYTE_ORDER_HELPERS)]
         found += [f"byteorder {rel(path)}  | #define {name}" for name in BYTE_ORDER_MACRO.findall(text)]
         found += [f"byteorder {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path) if BYTE_SHIFT.search(line)]
+        if layer_of(path) != "data" and ("byteorder", rel(path)) not in ok:
+            found += [f"byteorder {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path) if BYTE_CAST.search(line)]
     report("byteorder", found)
 
 
@@ -1055,14 +1060,21 @@ def test_at_most_five_parameters():
 TEST_MARKER = "exported for the tests"
 
 
+def defines(path, name):
+    """True when the .c file defines the function or the variable name at column 0."""
+    text = strip(path.read_text(errors="replace"))
+    return (any(f.name == name and f.definition for f in functions(path))
+            or re.search(rf"^(?!extern\b)\w[^\n;(=]*\b{name}\s*(?:\[[^\n;=]*\])*\s*[=;]", text, re.M) is not None)
+
+
 def test_exports_have_users():
-    """An exported function or global has a use outside its module, or the test marker on its declaration."""
+    """An exported function or global has a use outside its module, or the test marker on its declaration; a name of
+    an _internal.h header has a use outside the file that defines it."""
     used_in = {path: set(IDENTIFIER.findall(strip(path.read_text(errors="replace")))) for path in sources()}
     ok = allowed()
     found = []
     for header in headers():
-        if header.stem.endswith("_internal"):
-            continue
+        internal = header.stem.endswith("_internal")
         own = module_files(header)
         lines = header.read_text(errors="replace").splitlines()
         text = strip("\n".join(lines))
@@ -1070,10 +1082,13 @@ def test_exports_have_users():
         names += [(n, text.count("\n", 0, m.start()) + 1) for m in EXTERN_VARIABLE.finditer(text) for n in extern_names(m.group(1))]
         for name, line in names:
             key = f"{rel(header)}:{name}"
+            if internal:
+                own = {header} | {p for p in module_files(header) if p.suffix == ".c" and defines(p, name)}
             if ("dead-api", key) in ok or any(name in ids for p, ids in used_in.items() if p not in own):
                 continue
             if TEST_MARKER not in lines[line - 1] + comment_above(lines, line):
-                found.append(f"dead-api {key}  | no use outside {header.stem} and no test marker")
+                where = "the file that defines it" if internal else header.stem
+                found.append(f"dead-api {key}  | no use outside {where} and no test marker")
     report("dead-api", found)
 
 

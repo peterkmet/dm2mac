@@ -1,8 +1,16 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
+byteorder engine/ai.c bridge: task 20
+byteorder engine/dungeon.c bridge: task 25
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
+byteorder engine/magic.c bridge: task 29
+byteorder ui/draw.c bridge: task 43
+dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
+dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
+dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
+dead-api engine/include/champion.h:champ_set_name bridge: task 48
 decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length bridge: task 18
 decimal engine/ai.c bridge: task 20
@@ -33,10 +41,10 @@ decimal engine/seen.c:row_half_width bridge: task 36
 decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
 decimal engine/sensor.c:ambient_wall_dy rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:creature_lightning rule 3.12: a table of SKULL.EXE
+decimal engine/weather.c:g_light_power rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_by_hour bridge: task 40
 decimal engine/weather.c:light_falloff rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:light_levels rule 3.12: a table of SKULL.EXE
-decimal engine/weather.c:g_light_power rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
@@ -94,10 +102,6 @@ decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:wall_faces bridge: task 52
-dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
-dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
-dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 engine-write control/control.c:forget_game_end bridge: task 10
 engine-write control/control.c:handle_load bridge: task 10
 engine-write control/control.c:handle_request bridge: task 10

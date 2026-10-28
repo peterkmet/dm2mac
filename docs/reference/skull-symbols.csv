@@ -843,7 +843,7 @@ address,name,signature,subsystem
 0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champ, int16_t amount)",champions
 0x00047773,projectile_launch_from_champion,"void projectile_launch_from_champion(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
 0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
-0x000478a1,champ_throw_object,"int champ_throw_object(uint16_t champ, int16_t slot, int side)",champions
+0x000478a1,throw_object,"int throw_object(uint16_t champ, int16_t slot, int side)",champions
 0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
 0x00047b39,get_step_time,int16_t get_step_time(int16_t champ),champions
 0x00047b9e,get_party_step_time,int16_t get_party_step_time(void),champions
