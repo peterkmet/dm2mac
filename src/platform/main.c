@@ -4,6 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#include <process.h>
+#include <sys/stat.h>
+#else
+#include <unistd.h>
+#endif
 #include <SDL3/SDL.h>
 #include "advanced.h"
 #include "control.h"
@@ -31,14 +39,6 @@
 #include "transport.h"
 #include "video.h"
 #include "zone.h"
-#ifdef _WIN32
-#include <fcntl.h>
-#include <io.h>
-#include <process.h>
-#include <sys/stat.h>
-#else
-#include <unistd.h>
-#endif
 
 /* Sizes of the window, the icon, and the paths. */
 #define WINDOW_SCALE    3
