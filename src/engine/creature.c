@@ -1277,7 +1277,7 @@ static uint16_t create_group(int creature_type, int count, int16_t dir, Location
     thing_set_word(group, GROUP_HOME, (uint16_t)location_pack(at.x, at.y, g_party.cur_map));
     thing_set_word(group, GROUP_ITEM_CLASS, THING_NONE);
     if (move_thing(group, MOVE_CREATED, 0, at.x, at.y) == MOVE_LEFT_DUNGEON) {
-        /* the original frees a stale thing here when the group links no projectile */
+        /* fix: the original frees a stale thing here when the group links no projectile */
         if (minion)
             thing_set_word(projectile, THING_NEXT, THING_NONE);
         return THING_NONE;
