@@ -282,8 +282,6 @@ type engine/projectile.c:reflect_spell bridge: task 33
 type engine/projectile.c:set_event_dir bridge: task 33
 type engine/projectile.c:trigger_explosion_sensors bridge: task 33
 type engine/save.c:held_thing bridge: task 35
-type engine/save.c:read_thing_list bridge: task 35
-type engine/save.c:saved_bits_mask bridge: task 35
 type engine/save.c:set_held_thing bridge: task 35
 type engine/seen.c:blocks_sight bridge: task 36
 type engine/seen.c:known_byte bridge: task 36

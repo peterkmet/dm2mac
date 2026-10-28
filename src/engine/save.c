@@ -455,11 +455,11 @@ static bool write_thing_list(uint16_t thing, bool with_cell, bool follow)
     return write_value(0, MORE_MASK);
 }
 
-/* The mask of the stored square bits; *skip when a linked teleporter of a lower map stores the things. */
-static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
+/* The mask of the stored bits of the square at; *skip when a linked teleporter of a lower map stores the things. */
+static uint8_t saved_bits_mask(Position at, bool *skip)
 {
     *skip = false;
-    switch (square_type(dungeon_square(map, x, y))) {
+    switch (square_type(dungeon_square(at.map, at.x, at.y))) {
     case SQUARE_PIT:
         return PIT_SAVED_BITS;
     case SQUARE_DOOR:
@@ -467,10 +467,10 @@ static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
     case SQUARE_FAKE_WALL:
         return FAKE_WALL_SAVED_BITS;
     case SQUARE_TELEPORTER: {
-        int target = dungeon_teleporter_link_map(map, x, y);
+        int target = dungeon_teleporter_link_map(at.map, at.x, at.y);
         if (target < 0)
             return TELEPORTER_SAVED_BITS;
-        *skip = target < map;
+        *skip = target < at.map;
         return 0;
     }
     default:
@@ -481,11 +481,11 @@ static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
 /* Writes the saved bits and the thing list of each square, column by column. */
 static bool write_squares(void)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++) {
+    for (int16_t map = 0; map < dungeon_map_count(); map++)
+        for (int16_t x = 0; x < dungeon_map_width(map); x++)
+            for (int16_t y = 0; y < dungeon_map_height(map); y++) {
                 bool skip;
-                uint8_t mask = saved_bits_mask(map, x, y, &skip);
+                uint8_t mask = saved_bits_mask((Position){map, x, y}, &skip);
                 if (mask && !write_packed(dungeon_square_byte(map, x, y), &mask, 1, 1))
                     return false;
                 if (!skip && !write_thing_list(dungeon_square_first_thing(map, x, y), true, true))
@@ -665,7 +665,7 @@ static bool write_state(void)
 }
 
 /* Recursion: read_thing_list reads the things that a thing holds through read_held_things. */
-static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow);
+static bool read_thing_list(const Position *at, uint16_t *list, bool with_cell, bool follow);
 
 /* Puts thing into the data of a timeline event at offset. */
 static bool set_event_thing(uint16_t event, int offset, uint16_t thing)
@@ -771,8 +771,8 @@ static bool read_thing(uint16_t thing)
            read_held_things(thing, mask, carried);
 }
 
-/* Reads a thing list into new records: with list onto the end of *list, else onto square. */
-static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow)
+/* Reads a thing list into new records: with list onto the end of *list, else onto the square at. */
+static bool read_thing_list(const Position *at, uint16_t *list, bool with_cell, bool follow)
 {
     do {
         uint16_t more;
@@ -800,7 +800,7 @@ static bool read_thing_list(const Position *square, uint16_t *list, bool with_ce
         thing = thing_with_cell(thing, cell);
         if (list)
             dungeon_append_thing(thing, list);
-        else if (!dungeon_link_thing_to_square(thing, square->map, square->x, square->y))
+        else if (!dungeon_link_thing_to_square(thing, at->map, at->x, at->y))
             return false;
         if (thing_masks[type] && !read_thing(thing))
             return false;
@@ -811,9 +811,9 @@ static bool read_thing_list(const Position *square, uint16_t *list, bool with_ce
 /* Removes the creature groups and items from the squares and frees their records; the bit stream creates them again. */
 static void free_movable_things(void)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++)
+    for (int16_t map = 0; map < dungeon_map_count(); map++)
+        for (int16_t x = 0; x < dungeon_map_width(map); x++)
+            for (int16_t y = 0; y < dungeon_map_height(map); y++)
                 for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST;
                      t = dungeon_next_thing(t))
                     if (thing_type(t) > THING_SENSOR) {
@@ -832,8 +832,9 @@ static bool read_squares(void)
     for (int16_t map = 0; map < dungeon_map_count(); map++)
         for (int16_t x = 0; x < dungeon_map_width(map); x++)
             for (int16_t y = 0; y < dungeon_map_height(map); y++) {
+                Position at = {map, x, y};
                 bool skip;
-                uint8_t mask = saved_bits_mask(map, x, y, &skip);
+                uint8_t mask = saved_bits_mask(at, &skip);
                 if (mask && !read_packed(dungeon_square_byte(map, x, y), &mask, 1, 1, true))
                     return false;
                 if (skip)
@@ -852,8 +853,7 @@ static bool read_squares(void)
                     if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, true))
                         return false;
                 }
-                Position square = {map, x, y};
-                if (!read_thing_list(&square, NULL, true, true))
+                if (!read_thing_list(&at, NULL, true, true))
                     return false;
             }
     return true;
