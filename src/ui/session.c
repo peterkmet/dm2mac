@@ -73,6 +73,14 @@
 #define CHAMP_NAME_MAX  7
 #define CHAMP_TITLE_MAX 15
 
+/* The name editor of the inventory: the champion and its name and title while the player types. */
+typedef struct {
+    int16_t champion_index;
+    char name[CHAMPION_NAME_SIZE];
+    char title[CHAMPION_TITLE_SIZE];
+    bool in_name; /* the cursor is in the name field, else in the title field */
+} NameEditor;
+
 /* The characters of a champion name. */
 static const char name_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ,.;: -()'?!";
 
@@ -644,117 +652,125 @@ void session_end(bool party_dead)
 /* ---- Champion names ---- */
 
 /* A key of a champion name field other than Enter and Tab: deletes the last character, or adds a character of the
-   name alphabet while the text is shorter than max; *x is the cursor. Returns true when the field needs a redraw. */
-static bool type_name_key(char *text, int *length, int max, int *x)
+   name alphabet while the text is shorter than max. Returns true when the field needs a redraw. */
+static bool type_name_key(char *text, size_t max)
 {
     uint16_t key = g_input_match.key;
+    size_t length = strlen(text);
     if (key == KEY_BACKSPACE) {
-        if (*length > 0) {
-            text[--*length] = '\0';
-            *x -= FONT_ADVANCE;
-        }
+        if (length > 0)
+            text[length - 1] = '\0';
         return true;
     }
-    if (*length >= max)
+    if (length >= max)
         return true;
     char ch = kbd_key_to_ascii(key);
     if (ch >= 'a' && ch <= 'z')
         ch = (char)(ch - 'a' + 'A');
-    if (!ch || !strchr(name_alphabet, ch) || (ch == ' ' && !*length))
+    if (!ch || !strchr(name_alphabet, ch) || (ch == ' ' && !length))
         return false;
-    text[(*length)++] = ch;
-    text[*length] = '\0';
-    *x += FONT_ADVANCE;
+    text[length] = ch;
+    text[length + 1] = '\0';
     return true;
 }
 
-/* Removes the spaces at the end of text. */
-static void trim_spaces(char *text)
+/* The field that the cursor is in. */
+static char *edited_text(NameEditor *e)
 {
-    /* fix: the original reads the byte before an empty text */
-    for (size_t n = strlen(text); n > 0 && text[n - 1] == ' '; n--)
-        text[n - 1] = '\0';
+    return e->in_name ? e->name : e->title;
 }
 
-/* The name and title fields of the champion, with the cursor at (x, y). */
-static void render_name_fields(const Champion *c, int x, int y)
+/* Writes the fields into the champion: the editor changes the champion with each key, as in the original. */
+static void store_name_fields(const NameEditor *e)
 {
+    champ_set_name(e->champion_index, e->name, e->title);
+}
+
+/* Removes the spaces at the end of the edited field, one by one as in the original. */
+static void trim_spaces(NameEditor *e)
+{
+    char *text = edited_text(e);
+    /* fix: the original reads the byte before an empty text */
+    for (size_t n = strlen(text); n > 0 && text[n - 1] == ' '; n--) {
+        text[n - 1] = '\0';
+        store_name_fields(e);
+    }
+}
+
+/* The name and title fields of the champion, with the cursor after the edited field. */
+static void render_name_fields(const NameEditor *e)
+{
+    int16_t x = 0;
+    int16_t y = 0;
+    zone_get_position(e->in_name ? ZONE_NAME : ZONE_TITLE, &x, &y);
+    x = (int16_t)(x + (int)strlen(e->in_name ? e->name : e->title) * FONT_ADVANCE);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_NAME_BUTTON_DOWN, ZONE_NAME_BUTTON, GFX_OPAQUE);
-    text_draw_in_zone(ZONE_NAME, g_ui_colors[UI_YELLOW], c->name);
-    text_draw_in_zone(ZONE_TITLE, g_ui_colors[UI_YELLOW], c->title);
+    text_draw_in_zone(ZONE_NAME, g_ui_colors[UI_YELLOW], e->name);
+    text_draw_in_zone(ZONE_TITLE, g_ui_colors[UI_YELLOW], e->title);
     text_draw_in_viewport(x, y, g_ui_colors[UI_GOLD], "_");
     play_present_viewport();
 }
 
 /* Ends the name edit: the close button, the champion state with the new name, and the view again. */
-static void close_name_editor(Champion *c)
+static void close_name_editor(int16_t champion_index)
 {
-    editing = false;
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_BUTTON_CLOSE, ZONE_NAME_BUTTON, GFX_OPAQUE);
-    c->redraw |= REDRAW_NAME;
+    champion(champion_index)->redraw |= REDRAW_NAME;
     ui_draw_champion_state(g_ui.inventory - 1);
     play_show_view();
     input_pop_mode();
 }
 
-void session_edit_champion_name(Champion *champion)
+/* One command of the name editor; returns true when the edit ends. *redraw is set when the fields need a redraw. */
+static bool run_name_command(NameEditor *e, const NameEditor *before, bool *redraw)
 {
-    char name[CHAMPION_NAME_SIZE], title[CHAMPION_TITLE_SIZE];
-    memcpy(name, champion->name, sizeof name);
-    memcpy(title, champion->title, sizeof title);
-    int16_t name_x, name_y, title_x, title_y;
-    game_set_panel_mode(PANEL_MODE_NAME);
-    zone_get_position(ZONE_NAME, &name_x, &name_y);
-    zone_get_position(ZONE_TITLE, &title_x, &title_y);
-    input_push_mode(INPUT_MODE_NAME);
-    editing = true;
-    play_hide_view();
-    bool in_name = true;
-    bool done = false;
-    while (!done && !g_main_loop.quit) {
-        char *text = in_name ? champion->name : champion->title;
-        int max = in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX;
-        int length = (int)strlen(text);
-        int x = (in_name ? name_x : title_x) + length * FONT_ADVANCE;
-        int y = in_name ? name_y : title_y;
-        bool field_done = false;
-        bool redraw = true;
-        while (!field_done && !g_main_loop.quit) {
-            if (redraw)
-                render_name_fields(champion, x, y);
-            redraw = false;
-            g_input_match.choice = 0;
-            g_input_match.value = 0;
-            command_process_queue();
-            int command = g_input_match.value;
-            if (command == CMD_EDIT_NAME && !in_name) {
-                in_name = true;
-                field_done = true;
-            } else if (command == CMD_EDIT_TITLE && in_name) {
-                in_name = false;
-                field_done = true;
-            } else if (command == CMD_EDIT_CANCEL) {
-                memcpy(champion->name, name, sizeof name);
-                memcpy(champion->title, title, sizeof title);
-                field_done = true;
-                done = true;
-            } else if (!command) {
-                play_wait_frames(1);
-            } else if (g_input_match.key == KEY_ENTER || g_input_match.key == KEY_TAB) {
-                trim_spaces(text);
-                field_done = true;
-                if (in_name)
-                    in_name = false;
-                else if (g_input_match.key == KEY_TAB)
-                    in_name = true;
-                else
-                    done = true;
-            } else {
-                redraw = type_name_key(text, &length, max, &x);
-            }
-        }
+    uint16_t command = g_input_match.value;
+    if (command == CMD_EDIT_NAME && !e->in_name) {
+        e->in_name = true;
+        *redraw = true;
+    } else if (command == CMD_EDIT_TITLE && e->in_name) {
+        e->in_name = false;
+        *redraw = true;
+    } else if (command == CMD_EDIT_CANCEL) {
+        store_name_fields(before); /* the bytes after the end marks keep what the player typed there */
+        return true;
+    } else if (!command) {
+        play_wait_frames(1);
+    } else if (g_input_match.key == KEY_ENTER || g_input_match.key == KEY_TAB) {
+        trim_spaces(e);
+        if (!e->in_name && g_input_match.key == KEY_ENTER)
+            return true;
+        e->in_name = !e->in_name;
+        *redraw = true;
+    } else if (type_name_key(edited_text(e), e->in_name ? CHAMP_NAME_MAX : CHAMP_TITLE_MAX)) {
+        store_name_fields(e);
+        *redraw = true;
     }
-    close_name_editor(champion);
+    return false;
+}
+
+void session_edit_champion_name(int16_t champion_index)
+{
+    const Champion *c = champion(champion_index);
+    NameEditor e = {.champion_index = champion_index, .in_name = true};
+    memcpy(e.name, c->name, sizeof e.name);
+    memcpy(e.title, c->title, sizeof e.title);
+    const NameEditor before = e;
+    game_set_panel_mode(PANEL_MODE_NAME);
+    input_push_mode(INPUT_MODE_NAME);
+    play_hide_view();
+    bool done = false;
+    bool redraw = true;
+    while (!done && !g_main_loop.quit) {
+        if (redraw)
+            render_name_fields(&e);
+        redraw = false;
+        g_input_match.choice = 0;
+        g_input_match.value = 0;
+        command_process_queue();
+        done = run_name_command(&e, &before, &redraw);
+    }
+    close_name_editor(champion_index);
 }
 
 /* ---- Arguments ---- */

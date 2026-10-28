@@ -241,8 +241,8 @@ def test_champion_name_editor_matches_original(ui, original):
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     try:
         game_champions = bytes(champion_records(lib))
-        lib.session_edit_champion_name.argtypes = [ctypes.c_void_p]
-        lib.session_edit_champion_name(ctypes.addressof(champion_records(lib)))
+        lib.session_edit_champion_name.argtypes = [ctypes.c_int16]
+        lib.session_edit_champion_name(0)
     finally:
         ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = None
     after = bytes(champion_records(lib))[:28]

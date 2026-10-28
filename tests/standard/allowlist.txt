@@ -10,7 +10,6 @@ byteorder ui/draw.c bridge: task 43
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/ai.c bridge: task 20
@@ -105,11 +104,9 @@ decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:wall_faces bridge: task 52
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 dead-api engine/include/champion.h:champ_action_clear_result bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_restore bridge: task 10
 dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
-dead-api engine/include/champion.h:champ_set_name bridge: task 48
 engine-write control/control.c:forget_game_end bridge: task 10
 engine-write control/control.c:handle_load bridge: task 10
 engine-write control/control.c:handle_request bridge: task 10
@@ -332,11 +329,9 @@ type ui/minion_map.c:show_party_facing bridge: task 46
 type ui/minion_map.c:show_party_icons bridge: task 46
 type ui/optmenu.c:find_folder bridge: task 47
 type ui/session.c:make_slot_name bridge: task 48
-type ui/session.c:render_name_fields bridge: task 48
 type ui/session.c:slot_name bridge: task 48
 type ui/session.c:slot_path bridge: task 48
 type ui/session.c:slot_unused bridge: task 48
-type ui/session.c:type_name_key bridge: task 48
 type ui/session.c:write_slot bridge: task 48
 type ui/ui.c:show_changed_slot bridge: task 50
 type ui/ui.c:show_scroll_line bridge: task 50

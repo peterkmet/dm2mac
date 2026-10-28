@@ -2429,7 +2429,7 @@ static bool execute_champion_command(int command, bool idle)
         }
     } else if (command == CMD_EDIT_CHAMPION_NAME) {
         if (g_ui.inventory)
-            session_edit_champion_name(champion(g_ui.inventory - 1));
+            session_edit_champion_name(g_ui.inventory - 1);
     } else {
         return false;
     }

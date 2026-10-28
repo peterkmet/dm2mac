@@ -6,7 +6,7 @@
 /* The start menu, new games, loads and saves through the slot dialogs, and the end of the game. */
 
 #include <stdbool.h>
-#include "champion.h"
+#include <stdint.h>
 
 /* g_session.new_game while the start menu waits. */
 #define MENU_WAITING 99
@@ -68,8 +68,8 @@ void session_complete(void);
 void session_end(bool party_dead);
 
 /* ---- Champion names ---- */
-/* The player edits the name and the title of a champion in the inventory. */
-void session_edit_champion_name(Champion *champion);
+/* The player edits the name and the title of champion_index in the inventory. */
+void session_edit_champion_name(int16_t champion_index);
 
 /* ---- Arguments ---- */
 /* Removes every "--save PATH" pair from argv, walking it like the option parser (--mode, --saves and the other options stay);
