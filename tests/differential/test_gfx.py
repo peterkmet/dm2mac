@@ -264,7 +264,7 @@ def test_dim_remap_matches_original(lib, emu):
 
 
 def test_ramp_lengths_past_the_item(lib, tmp_path):
-    # Regression: a damaged GRAPHICS.DAT whose ramp lengths reach past the ramp item is rejected.
+    # A damaged GRAPHICS.DAT whose ramp lengths reach past the ramp item is rejected.
     from dm2test.gdat import GDAT
     if not GDAT.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
