@@ -432,7 +432,7 @@ static inline uint8_t group_creature(uint16_t group)
 {
     return thing_byte(group, GROUP_CREATURE);
 }
-static inline void group_set_creature(uint16_t group, int type)
+static inline void group_set_creature(uint16_t group, uint8_t type)
 {
     thing_set_byte(group, GROUP_CREATURE, type);
 }
@@ -441,7 +441,7 @@ static inline uint8_t group_active(uint16_t group)
 {
     return thing_byte(group, GROUP_ACTIVE);
 }
-static inline void group_set_active(uint16_t group, int index)
+static inline void group_set_active(uint16_t group, uint8_t index)
 {
     thing_set_byte(group, GROUP_ACTIVE, index);
 }
@@ -549,7 +549,7 @@ static inline uint16_t weapon_charges(uint16_t weapon)
 {
     return thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
 }
-static inline void weapon_set_charges(uint16_t weapon, int16_t charges)
+static inline void weapon_set_charges(uint16_t weapon, uint16_t charges)
 {
     thing_set_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK, charges);
 }
@@ -557,7 +557,7 @@ static inline uint16_t armour_charges(uint16_t armour)
 {
     return thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK);
 }
-static inline void armour_set_charges(uint16_t armour, int16_t charges)
+static inline void armour_set_charges(uint16_t armour, uint16_t charges)
 {
     thing_set_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK, charges);
 }
@@ -566,7 +566,7 @@ static inline uint16_t misc_charges(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);
 }
-static inline void misc_set_charges(uint16_t misc, int16_t charges)
+static inline void misc_set_charges(uint16_t misc, uint16_t charges)
 {
     thing_set_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, charges);
 }
@@ -575,7 +575,7 @@ static inline uint16_t misc_stack(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK);
 }
-static inline void misc_set_stack(uint16_t misc, int count)
+static inline void misc_set_stack(uint16_t misc, uint16_t count)
 {
     thing_set_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count);
 }
@@ -583,7 +583,7 @@ static inline uint16_t potion_power(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK);
 }
-static inline void potion_set_power(uint16_t potion, int power)
+static inline void potion_set_power(uint16_t potion, uint16_t power)
 {
     thing_set_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power);
 }
@@ -591,7 +591,7 @@ static inline uint16_t potion_type(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK);
 }
-static inline void potion_set_type(uint16_t potion, int type)
+static inline void potion_set_type(uint16_t potion, uint16_t type)
 {
     thing_set_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, type);
 }
@@ -619,7 +619,7 @@ static inline uint16_t container_kind(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK);
 }
-static inline void container_set_kind(uint16_t container, int kind)
+static inline void container_set_kind(uint16_t container, uint16_t kind)
 {
     thing_set_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK, kind);
 }
@@ -628,7 +628,7 @@ static inline uint16_t container_type(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK);
 }
-static inline void container_set_type(uint16_t container, int type)
+static inline void container_set_type(uint16_t container, uint16_t type)
 {
     thing_set_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK, type);
 }
@@ -638,7 +638,7 @@ static inline uint16_t container_gdat_index(uint16_t container)
 {
     return (uint16_t)(container_type(container) | container_kind(container) << CONTAINER_INDEX_KIND_SHIFT);
 }
-static inline void container_set_gdat_index(uint16_t container, int index)
+static inline void container_set_gdat_index(uint16_t container, uint16_t index)
 {
     container_set_kind(container, index >> CONTAINER_INDEX_KIND_SHIFT);
     container_set_type(container, index);
@@ -774,8 +774,8 @@ Position dungeon_location_on_map_from(Position from, int level_delta, int *next)
 Position dungeon_find_level_transfer(Position from, int level_delta, unsigned flags);
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {
-    int side, target_side; /* side of the passage on the source and on the target square, 0 to 3 */
-    int x, y, map;         /* the target square */
+    int16_t side, target_side; /* side of the passage on the source and on the target square, 0 to 3 */
+    int16_t x, y, map;         /* the target square */
 } TeleporterLink;
 /* Fills link for a teleporter square whose target is a teleporter, both with link sensors; false when not. */
 bool dungeon_teleporter_link(int16_t map, int16_t x, int16_t y, TeleporterLink *link);
