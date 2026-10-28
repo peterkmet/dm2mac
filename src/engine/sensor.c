@@ -698,7 +698,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
             if (!sensor_flag(sensor, SENSOR_BUSY)) {
                 sensor_set_flag(sensor, SENSOR_BUSY, true);
                 if (g_party.cur_map == g_game.party_map)
-                    g_party.redraw |= REDRAW_VIEW;
+                    g_party.redraw |= PARTY_REDRAW_VIEW;
                 unsigned frame = (cycle - g_game.game_time % cycle) % cycle & SENSOR_DATA_FRAME_MASK;
                 sensor_set_data(sensor, (sensor_data(sensor) & SENSOR_DATA_SOUND) | frame);
                 start_ambient_sound(sensor, e->data[EVENT_X], e->data[EVENT_Y], cycle, wall);
@@ -707,7 +707,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
             unsigned r = (sensor_frame(sensor) + g_game.game_time) % cycle;
             if (!(uint16_t)r) {
                 if (g_party.cur_map == g_game.party_map)
-                    g_party.redraw |= REDRAW_VIEW;
+                    g_party.redraw |= PARTY_REDRAW_VIEW;
                 sensor_set_flag(sensor, SENSOR_BUSY, false);
             } else {
                 /* fix: the original leaves 2 of the data bytes uninitialized */
@@ -1366,7 +1366,7 @@ static void fake_wall_event(TimelineEvent *e)
         *square |= SQUARE_FAKE_WALL_OPEN;
     }
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 void sensor_event_square(TimelineEvent *e)
@@ -1398,7 +1398,7 @@ void sensor_event_door_destruction(TimelineEvent *e)
     uint8_t *square = current_square(e->data[EVENT_X], e->data[EVENT_Y]);
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 /* The closing door at (x, y) hits the party and the creature under it; *state follows a creature that stops it.
@@ -1455,7 +1455,7 @@ void sensor_event_door_animation(TimelineEvent *e)
     if (state == DOOR_STATE_BROKEN)
         return;
     if (g_party.cur_map == g_game.party_map)
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, DOOR_MOVING))
         return;
@@ -1569,7 +1569,7 @@ void sensor_process_event(TimelineEvent *e)
         thing = le16(e->data + SENSOR_EVENT_SQUARE_THING);
         if (!sensor_flag(thing, SENSOR_STATE)) {
             if (g_party.cur_map == g_game.party_map)
-                g_party.redraw |= REDRAW_VIEW;
+                g_party.redraw |= PARTY_REDRAW_VIEW;
             sensor_set_flag(thing, SENSOR_BUSY, false);
         }
         break;
@@ -1774,7 +1774,7 @@ static void wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
         wall_click_put(c);
     }
     c->hand = THING_NONE;
-    g_party.redraw |= REDRAW_VIEW;
+    g_party.redraw |= PARTY_REDRAW_VIEW;
     c->done = true;
 }
 
@@ -1913,7 +1913,7 @@ static void wall_click_holder_text(WallClick *c, uint16_t t, int sub, int value,
         wall_click_put(c);
         c->hand = THING_NONE;
     }
-    g_party.redraw |= REDRAW_VIEW;
+    g_party.redraw |= PARTY_REDRAW_VIEW;
     c->done = true;
 }
 

@@ -1264,7 +1264,7 @@ static bool reach_destination(ThingMove *m)
     if (m->thing != THING_NONE) {
         if (item_attr(m->thing, ATTR_LIGHT_SOURCE) &&
             (m->start_map == g_game.party_map || way.dest.map == g_game.party_map))
-            g_party.redraw |= REDRAW_VIEW;
+            g_party.redraw |= PARTY_REDRAW_VIEW;
         m->thing = thing_with_cell(m->thing, way.dest.cell);
     }
     m->path.dst_x = way.dest.x;
@@ -1319,7 +1319,7 @@ MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int
     };
     m.map = m.start_map;
     if (thing == THING_NONE) {
-        g_party.redraw = REDRAW_ALL_VIEW;
+        g_party.redraw = PARTY_REDRAW_ALL;
         if (src_x >= 0)
             projectile_check_missiles_hit_party((Location){(int16_t)src_x, (int16_t)src_y},
                                                 (Location){(int16_t)dst_x, (int16_t)dst_y});

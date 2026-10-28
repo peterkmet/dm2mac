@@ -3024,7 +3024,7 @@ void ai_refresh_party_maps(void)
     AiCandidate target;
     uint8_t path[AI_PATH_MAX * 2];
     memset(&target, 0, sizeof target);
-    if (g_party.redraw & REDRAW_SQUARES) {
+    if (g_party.redraw & PARTY_REDRAW_SQUARES) {
         g_party_distance.map = (int16_t)g_game.party_map;
         g_party_distance.width = (int16_t)dungeon_map_width(g_game.party_map);
         memset(g_party_distance.cells, 0, (size_t)g_party_distance.width * MAP_SIDE_MAX);
@@ -3038,7 +3038,7 @@ void ai_refresh_party_maps(void)
         target.kind = TARGET_PARTY_DISTANCE;
         ai_search_area(ai_location(g_game.party_x, g_game.party_y), MOVE_KIND_COST, 1, &target, path);
     }
-    if (g_party.redraw & REDRAW_VIEW) {
+    if (g_party.redraw & PARTY_REDRAW_VIEW) {
         bool changed = g_game.party_map != g_last_party_map;
         int radius = gdat_entry_index(gdat_current(), CAT_WALLSET, dungeon_map_wallset(g_game.party_map),
                                       GDAT_TYPE_VALUE, WALLSET_KEY_LIGHT);

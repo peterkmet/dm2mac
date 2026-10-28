@@ -17,10 +17,10 @@
 #define CMD_MOVE_BACK    0x05
 #define CMD_MOVE_LEFT    0x06
 
-/* g_view_redraw_flags: the view squares and the creature maps change. */
-#define REDRAW_VIEW     0x01
-#define REDRAW_SQUARES  0x02
-#define REDRAW_ALL_VIEW 0x03
+/* The bits of g_party.redraw: the view and the squares around the party change. */
+#define PARTY_REDRAW_VIEW    0x01
+#define PARTY_REDRAW_SQUARES 0x02
+#define PARTY_REDRAW_ALL     0x03
 
 /* The push arrows (g_party.push_arrow) by the part of the viewport under the mouse. */
 #define PUSH_ARROW_UP         0
@@ -62,7 +62,7 @@ typedef struct {
     int16_t fell;                                          /* the party falls without damage (a levitation action) */
     int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* the last end of a move, as in the original */
     int teleporter_flag;                                   /* the last teleporter is TELEPORTER_AUDIBLE */
-    uint32_t redraw;                                       /* REDRAW_* */
+    uint32_t redraw;                                       /* PARTY_REDRAW_* */
     uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
     int push_mode;                                         /* the movement arrows show the push arrows */
     int16_t push_arrow;

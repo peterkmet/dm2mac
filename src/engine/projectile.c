@@ -228,7 +228,7 @@ void projectile_create(const ProjectileLaunch *launch)
     projectile_set_hit_chance(t, launch->hit_chance);
     dungeon_link_thing_to_square(t, g_party.cur_map, launch->x, launch->y);
     if (payload == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
-        g_party.redraw |= REDRAW_VIEW;
+        g_party.redraw |= PARTY_REDRAW_VIEW;
     TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map)};
     e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
@@ -359,7 +359,7 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     case EXPLOSION_STORM_BLAST:
         blast_square(type, power, x, y, cell);
         if (g_party.cur_map == g_game.party_map)
-            g_party.redraw |= REDRAW_VIEW;
+            g_party.redraw |= PARTY_REDRAW_VIEW;
         break;
     case SPELL_DOOR_TOGGLE:
     case SPELL_DOOR_SET: {
@@ -857,7 +857,7 @@ void projectile_process_event(TimelineEvent *event)
     if (leaves) {
         MoveDest dest = move_thing_dest(thing_with_cell(projectile, new_cell), from_x, from_y, x, y).dest;
         if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
-            g_party.redraw |= REDRAW_VIEW;
+            g_party.redraw |= PARTY_REDRAW_VIEW;
         set_event_dest(&e, dest);
         projectile = thing_with_cell(projectile, dest.cell);
         alert_creatures_ahead(dest);
@@ -977,7 +977,7 @@ void explosion_process_event(TimelineEvent *e)
     type = explosion_type(t);
     if (g_party.cur_map == g_game.party_map &&
         (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_STORM_LIGHTNING))
-        g_party.redraw |= REDRAW_VIEW;
+        g_party.redraw |= PARTY_REDRAW_VIEW;
     dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
     thing_set_word(t, THING_NEXT, THING_NONE);
 }

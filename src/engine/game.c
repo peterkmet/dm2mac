@@ -48,7 +48,7 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
     world_update_day_night(false);
     sensor_process_map_entry(true);
     creature_activate_groups_on_map();
-    g_party.redraw |= REDRAW_SQUARES;
+    g_party.redraw |= PARTY_REDRAW_SQUARES;
     ai_refresh_party_maps();
     g_hooks.flush_input();
 }
