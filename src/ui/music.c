@@ -91,7 +91,7 @@ void music_quit(void)
 
 /* Songs */
 
-void music_play_song(int song)
+void music_play_song(int16_t song)
 {
     if (g_music.enabled && song && g_music.volume > 0) {
         stop_song();
@@ -105,7 +105,7 @@ void music_play_song(int song)
         g_music.started = true;
         g_music.playing = true;
     }
-    g_music.requested_song = (int16_t)song;
+    g_music.requested_song = song;
 }
 
 void music_pause(void)
