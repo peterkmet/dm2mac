@@ -1946,7 +1946,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
     }
 }
 
-void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held)
+bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held)
 {
     WallClick c = {.x = x, .y = y, .hand = held, .give = THING_NONE, .has_leader = g_game.leader != LEADER_NONE};
     uint16_t first = first_thing(x, y);
@@ -1975,7 +1975,6 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
             champ_take_from_leader_hand();
         if (c.give != THING_NONE)
             champ_put_in_leader_hand(c.give, 1);
-        g_input_command_stop = c.stop;
     } else {
         uint16_t *possessions = group_possessions(actor);
         if (!c.take && held != THING_NONE)
@@ -1983,4 +1982,5 @@ void sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, u
         if (c.give != THING_NONE)
             dungeon_append_thing(c.give, possessions);
     }
+    return c.stop;
 }

@@ -1989,7 +1989,8 @@ static void click_wall_sensor(int cell)
     }
     if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map))
         return;
-    sensor_process_wall_click(x, y, dir_turn(dir, side_turn[cell & DIR_MASK]), THING_NONE, g_game.leader_hand);
+    game_set_command_stop(
+        sensor_process_wall_click(x, y, dir_turn(dir, side_turn[cell & DIR_MASK]), THING_NONE, g_game.leader_hand));
 }
 
 /* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
@@ -2145,8 +2146,8 @@ static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z,
     uint16_t door = dungeon_square_first_thing(g_party.cur_map, dx, dy);
     if (!door_flag(door, DOOR_BUTTON)) {
         int side = dir_turn(v->dir, TURN_RIGHT);
-        sensor_process_wall_click(dx + g_dir_dx[side], dy + g_dir_dy[side], dir_turn(v->dir, TURN_LEFT), THING_NONE,
-                                  hand);
+        game_set_command_stop(sensor_process_wall_click(dx + g_dir_dx[side], dy + g_dir_dy[side],
+                                                        dir_turn(v->dir, TURN_LEFT), THING_NONE, hand));
     } else if (hand == THING_NONE) {
         click_door_button(dx, dy, door);
     }
