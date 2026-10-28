@@ -531,9 +531,7 @@ void champ_apply_pending_damage(void)
             TimelineEvent e = party_event(DAMAGE_SHOW_TIME, EVENT_HIDE_DAMAGE, i);
             c->damage_event = (uint16_t)timeline_add_event(&e);
         } else {
-            g_timeline.events[c->damage_event].time_map =
-                timeline_time_map(g_game.game_time + DAMAGE_SHOW_TIME, g_game.party_map);
-            timeline_reposition_event(c->damage_event);
+            timeline_set_event_time(c->damage_event, g_game.game_time + DAMAGE_SHOW_TIME, g_game.party_map);
         }
     }
 }

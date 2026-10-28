@@ -177,7 +177,7 @@ void game_process_timeline(void)
         g_hooks.poll_input();
         TimelineEvent e;
         timeline_pop_first_event(&e);
-        dun_set_current_map((int8_t)timeline_event_map(&e));
+        dun_set_current_map(timeline_event_map(&e));
         uint16_t word = le16(e.data);
         if (!process_world_event(&e))
             process_party_event(&e, word);

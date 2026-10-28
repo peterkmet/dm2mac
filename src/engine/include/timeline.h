@@ -42,10 +42,10 @@ static inline uint32_t timeline_time_map(uint32_t time, int16_t map)
     return time | (uint32_t)(uint8_t)map << EVENT_MAP_SHIFT;
 }
 
-/* The map of an event. */
-static inline uint8_t timeline_event_map(const TimelineEvent *e)
+/* The map of an event; time_map stores map -1 as 0xff. */
+static inline int16_t timeline_event_map(const TimelineEvent *e)
 {
-    return (uint8_t)(e->time_map >> EVENT_MAP_SHIFT);
+    return (int8_t)(e->time_map >> EVENT_MAP_SHIFT);
 }
 
 /* Moves an event to map and keeps its time. */
@@ -75,8 +75,8 @@ int timeline_add_event(const TimelineEvent *event);
 /* Removes a queued event and frees it. The last queue entry fills its slot; the next operation restores the heap
    order. */
 void timeline_delete_event(int index);
-/* Restores the queue order after the time of a queued event changed. */
-void timeline_reposition_event(int index);
+/* Moves a queued event to time on map and restores the queue order. */
+void timeline_set_event_time(int index, uint32_t time, int16_t map);
 /* Removes the next event and copies it to event; call timeline_is_event_due first. */
 void timeline_pop_first_event(TimelineEvent *event);
 /* Orders the queue of the first count events and links the other events into the free list. */

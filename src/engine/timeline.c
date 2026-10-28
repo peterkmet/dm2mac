@@ -164,10 +164,17 @@ void timeline_delete_event(int index)
     }
 }
 
-void timeline_reposition_event(int index)
+/* Restores the queue order after the time of a queued event changed. */
+static void reposition_event(int index)
 {
     fix_pending_slot();
     fix_queue_slot(find_queue_slot(index));
+}
+
+void timeline_set_event_time(int index, uint32_t time, int16_t map)
+{
+    g_timeline.events[index].time_map = timeline_time_map(time, map);
+    reposition_event(index);
 }
 
 void timeline_pop_first_event(TimelineEvent *event)
