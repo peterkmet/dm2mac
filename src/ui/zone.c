@@ -175,14 +175,15 @@ static int half(int v)
 }
 
 /* The offset from the anchor point of a w x h box to its top left corner, by anchor type. */
-static void anchor_offset(int anchor, int w, int h, int *dx, int *dy)
+static ScreenPoint anchor_offset(int anchor, int16_t w, int16_t h)
 {
     static const int8_t kind_x[ANCHOR_SIZE] = {PART_HALF, PART_NONE, PART_ALL,  PART_ALL, PART_NONE,
                                                PART_HALF, PART_ALL,  PART_HALF, PART_NONE};
     static const int8_t kind_y[ANCHOR_SIZE] = {PART_HALF, PART_NONE, PART_NONE, PART_ALL, PART_ALL,
                                                PART_NONE, PART_HALF, PART_ALL,  PART_HALF};
-    *dx = kind_x[anchor] == PART_HALF ? half(w) : kind_x[anchor] == PART_ALL ? w - 1 : 0;
-    *dy = kind_y[anchor] == PART_HALF ? half(h) : kind_y[anchor] == PART_ALL ? h - 1 : 0;
+    int dx = kind_x[anchor] == PART_HALF ? half(w) : kind_x[anchor] == PART_ALL ? w - 1 : 0;
+    int dy = kind_y[anchor] == PART_HALF ? half(h) : kind_y[anchor] == PART_ALL ? h - 1 : 0;
+    return (ScreenPoint){(int16_t)dx, (int16_t)dy};
 }
 
 /* Places a zone relative to the anchor of its parent, inside the parent's size zone: adds the offsets to the
@@ -204,16 +205,15 @@ static const int16_t *place_relative(const int16_t *rec, int child, Placement *a
         *bad = true;
         return NULL;
     }
-    int ox, oy;
-    anchor_offset(parent_anchor, size[SIZE_W], size[SIZE_H], &ox, &oy);
-    dx -= ox;
-    dy -= oy;
+    ScreenPoint offset = anchor_offset(parent_anchor, size[SIZE_W], size[SIZE_H]);
+    dx -= offset.x;
+    dy -= offset.y;
     at->clip[RECT_X] += dx;
     at->clip[RECT_Y] += dy;
     clip_to_parent(at->clip, dx, dy, size[SIZE_W], size[SIZE_H]);
-    anchor_offset(child - ANCHOR_RELATIVE, size[SIZE_W], size[SIZE_H], &ox, &oy);
-    dx += ox + rec[ZONE_X];
-    dy += oy;
+    offset = anchor_offset(child - ANCHOR_RELATIVE, size[SIZE_W], size[SIZE_H]);
+    dx += offset.x + rec[ZONE_X];
+    dy += offset.y;
     at->x += dx;
     at->y += dy + rec[ZONE_Y];
     return size;
@@ -250,10 +250,9 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
             at->clip[RECT_Y] += dy;
         } else if (parent_type == ANCHOR_SIZE) {
             if (child <= ANCHOR_LEFT) {
-                int ox, oy;
-                anchor_offset(child, p[SIZE_W], p[SIZE_H], &ox, &oy);
-                dx = (int16_t)(rec[ZONE_X] - ox);
-                dy = (int16_t)(rec[ZONE_Y] - oy);
+                ScreenPoint offset = anchor_offset(child, p[SIZE_W], p[SIZE_H]);
+                dx = (int16_t)(rec[ZONE_X] - offset.x);
+                dy = (int16_t)(rec[ZONE_Y] - offset.y);
             }
             if (pending) {
                 pending = false;
@@ -349,10 +348,9 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         return NULL;
     *out_w = *out_w ? *out_w : image->width;
     *out_h = *out_h ? *out_h : image->height;
-    int ox, oy;
-    anchor_offset(type, *out_w, *out_h, &ox, &oy);
-    rect[RECT_X] = (int16_t)(at.x - ox);
-    rect[RECT_Y] = (int16_t)(at.y - oy);
+    ScreenPoint offset = anchor_offset(type, *out_w, *out_h);
+    rect[RECT_X] = (int16_t)(at.x - offset.x);
+    rect[RECT_Y] = (int16_t)(at.y - offset.y);
     if (g_zone_clip_rect[RECT_W]) {
         for (int i = 0; i < RECT_SIZE; i++)
             at.clip[i] = g_zone_clip_rect[i];
