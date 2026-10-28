@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include "creature.h"
 #include "dungeon.h"
-#include "money.h"
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
@@ -93,7 +92,7 @@ typedef struct {
     ActiveGroup *active;
     const uint8_t *anim_step; /* the current animation step (4 bytes) */
     uint16_t *anim;           /* the animation sequence and state words */
-    TimelineEvent event;      /* the next update event: x in data[0], y in data[1] */
+    TimelineEvent event;      /* the next update event: x in data[EVENT_X], y in data[EVENT_Y] */
     uint8_t previous_action;
     uint8_t command_result; /* AI_RESULT_* */
     bool removed;           /* the group left the dungeon */
@@ -223,9 +222,7 @@ void ai_load_cached_path(void);
    and on the map of the alternate view; after a view change also the light sums of the light sources near the party. */
 void ai_refresh_party_maps(void);
 
-/* Creature perception and movement (ai_move.c): squares, lines of sight, item filters, the tests of the AI
-   commands, and the path search. The functions work on the AI context; the command tests set g_ai.command_result and
-   return it. */
+/* The flags, modes, kinds and targets of the AI command tests. */
 /* Bits of a packed move command byte (ai_move_test) and the mode mask of the other command tests (AiTest). */
 #define AI_EXECUTE               0x80 /* set the action when the test passes */
 #define AI_MODE_MASK             0x7f
@@ -311,8 +308,8 @@ void ai_refresh_party_maps(void);
 #define MOVE_DOOR                0x4000
 #define MOVE_FALLS               0x8000
 #define MOVE_LEVEL_FLAGS         0x0118
-#define MOVE_DIR4_FLAGS          0x0110 /* the moves of a level change up (dir 4) */
-#define MOVE_DIR5_FLAGS          0x0108 /* ... down (dir 5) */
+#define MOVE_LEVEL_UP_FLAGS      0x0110 /* the moves of a level change up (DIR_LEVEL_UP) */
+#define MOVE_LEVEL_DOWN_FLAGS    0x0108 /* ... down (DIR_LEVEL_DOWN) */
 #define MOVE_FLAGS_LIGHT         0x0227
 #define MOVE_FLAGS_PARTY_MAP     0x36e7
 #define MOVE_FLAGS_NO_FALL       0x7db7
@@ -324,9 +321,8 @@ void ai_refresh_party_maps(void);
 #define DOOR_SKILL_PRESS_BUTTON  0x0002
 #define DOOR_SKILL_SPELL         0x0004 /* breaks a door that magic breaks with a fireball or lightning */
 #define DOOR_SKILL_BASH          0x0008 /* breaks a breakable door with hits */
-#define DOOR_SKILL_MARK          0x0020
+#define DOOR_SKILL_CLOSE_BEHIND  0x0020 /* marks a door that it opens; closes a door beside or behind it */
 #define DOOR_SKILL_HANDLE        0x0040
-#define DOOR_SKILL_ANY_SIDE      0x0020
 /* AI actions (ActiveGroup.action). A pair or range of codes runs the same act with a variant. */
 #define ACTION_NONE              0x00
 #define ACTION_MOVE              0x01
@@ -385,9 +381,5 @@ void ai_refresh_party_maps(void);
 extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
 /* The shift register that picks the first search direction; exported for the tests. */
 extern uint16_t g_search_direction_bits;
-
-/* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */
-#define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
-#define FILTER_BITMAP_SIZE  ITEM_CLASS_SET_SIZE /* the item class bitmap of an item filter */
 
 #endif /* DM2_ENGINE_AI_H */

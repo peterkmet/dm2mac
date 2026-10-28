@@ -10,8 +10,8 @@
 
 /* Money: the coin types are the miscellaneous items with ITEM_FLAG_COIN, by value. */
 #define COIN_TYPE_MAX       10
-/* The bytes of an item class set: a bit for each item index. */
-#define SHOP_CLASS_SET_SIZE 64
+/* The bytes of an item class set (a GDAT text entry of a creature type): a bit for each item index. */
+#define ITEM_CLASS_SET_SIZE 64
 
 /* The terms of a merchant price: the merchant creature, its price list (0 to 4), buying or selling, the margin. */
 typedef struct {

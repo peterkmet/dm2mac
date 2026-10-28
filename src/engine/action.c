@@ -79,12 +79,13 @@ void action_open_container(uint16_t container)
     if (container == THING_NONE || container == g_action.open_container)
         return;
     int i = 0;
-    for (uint16_t t; (t = thing_word(container, CONTAINER_CONTENTS)) != THING_ENDOFLIST && i < CONTAINER_SLOTS; i++) {
+    for (; i < CONTAINER_SLOTS; i++) {
+        uint16_t t = thing_word(container, CONTAINER_CONTENTS);
+        if (t == THING_ENDOFLIST)
+            break;
         g_action.open_items[i] = t;
-        uint16_t contents = t;
-        /* unlink the first item from the contents list */
-        thing_set_word(container, CONTAINER_CONTENTS, dungeon_next_thing(contents));
-        thing_set_word(contents, THING_NEXT, THING_ENDOFLIST);
+        thing_set_word(container, CONTAINER_CONTENTS, dungeon_next_thing(t)); /* unlink the first item */
+        thing_set_word(t, THING_NEXT, THING_ENDOFLIST);
     }
     for (; i < CONTAINER_SLOTS; i++)
         g_action.open_items[i] = THING_NONE;
@@ -101,10 +102,9 @@ void action_tick_hands(void)
 
 /* The action area of a hand or of the spells. */
 
-void action_area_open_hand(int champ, int hand)
+/* Opens the panel of hand (ACTION_HAND_SPELL: the spells) of champ in the action area. */
+static void open_panel(int champ, int hand)
 {
-    if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
-        return;
     g_action.flash = (int16_t)(champ + 1);
     g_action.redraw_delay = 1;
     g_action.flags = 0;
@@ -113,6 +113,13 @@ void action_area_open_hand(int champ, int hand)
     g_action.hand = (int16_t)hand;
     champ_drag_cancel();
     g_hooks.update_action_area(0);
+}
+
+void action_area_open_hand(int champ, int hand)
+{
+    if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
+        return;
+    open_panel(champ, hand);
     g_hooks.draw_champion_state(champ);
 }
 
@@ -120,14 +127,7 @@ void action_area_open_spells(int champ)
 {
     if (!champion(champ)->health)
         return;
-    g_action.hand = ACTION_HAND_SPELL;
-    g_action.flash_hand = ACTION_HAND_SPELL;
-    g_action.flash = (int16_t)(champ + 1);
-    g_action.redraw_delay = 1;
-    g_action.flags = 0;
-    g_action.champion = g_action.flash;
-    champ_drag_cancel();
-    g_hooks.update_action_area(0);
+    open_panel(champ, ACTION_HAND_SPELL);
 }
 
 void action_request_redraw(void)

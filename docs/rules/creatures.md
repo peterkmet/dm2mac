@@ -52,6 +52,8 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a projectile move also writes the direction into its freed event
   - the power that the sensors test after a door spell comes from the door record
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables
+  - the AI commands past `g_ai_command_enabled` read their enabled byte from the data after it: the commands `0x14` to `0x1f` from the distance map and light globals, the commands `0x20` to `0x5b` from the hit offset and hit radius tables of `creature_find_group_near_point` (`g_ai_command_enabled_overrun` in `src/engine/ai_data.c`); the port gives 0 for the commands after them
+  - an AI command test that sets no result keeps the result of the command before (`AiCommand` in `src/engine/ai_internal.h`)
   - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

@@ -11,30 +11,31 @@
 #include "ai.h"
 #include "dungeon.h"
 #include "move.h"
+#include "sensor.h"
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
-#define AI_SCRIPTS_BASE        0x73020u
-#define AI_TARGET_IDLE         0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_WANDER      0x73392u /* ... of a creature that wanders at random */
-#define AI_CHOICES_NONE        0x73399u /* the plan choices of a creature that does nothing */
+#define AI_SCRIPTS_BASE          0x73020u
+#define AI_TARGET_IDLE           0x731d2u /* the target of a creature that waits or wanders */
+#define AI_CHOICES_WANDER        0x73392u /* ... of a creature that wanders at random */
+#define AI_CHOICES_NONE          0x73399u /* the plan choices of a creature that does nothing */
 /* The sizes of the AI tables and of their records. */
-#define AI_PLAN_COUNT          63
-#define AI_TARGET_SIZE         14
-#define AI_PLAN_STEP_SIZE      7
-#define AI_CHOICE_SIZE         7
-#define AI_MOOD_ENTRY_SIZE     6 /* a mood mask word and the address of its plan choices */
-#define AI_SCRIPTS_SIZE        8030
-#define AI_ACTION_COUNT        86
-#define AI_MOVE_TEST_KINDS     20 /* the move test kinds of g_ai_command_enabled */
-#define AI_TARGET_KIND_COUNT   28
-#define AI_POSSESSION_KINDS    16 /* the display kinds of possession_cells, with the data after the table */
-#define AI_AFTER_COMMAND_BYTES 60
+#define AI_PLAN_COUNT            63
+#define AI_TARGET_SIZE           14
+#define AI_PLAN_STEP_SIZE        7
+#define AI_CHOICE_SIZE           7
+#define AI_MOOD_ENTRY_SIZE       6 /* a mood mask word and the address of its plan choices */
+#define AI_SCRIPTS_SIZE          8030
+#define AI_ACTION_COUNT          86
+#define AI_MOVE_TEST_KINDS       20 /* the move test kinds of g_ai_command_enabled */
+#define AI_TARGET_KIND_COUNT     28
+#define AI_POSSESSION_KINDS      16 /* the display kinds of g_ai_possession_cells, with the data after the table */
+#define AI_ENABLED_OVERRUN_BYTES 60
 extern const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE];
 extern const uint32_t g_ai_plans[AI_PLAN_COUNT];
 extern const uint8_t g_ai_action_flags[AI_ACTION_COUNT];
 extern const uint32_t g_ai_behaviors[AI_CLASS_COUNT];
 extern const uint8_t g_ai_command_enabled[AI_MOVE_TEST_KINDS];
-extern const uint8_t g_ai_after_command_table[AI_AFTER_COMMAND_BYTES];
+extern const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES];
 extern const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT];
 extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 
@@ -63,7 +64,7 @@ static inline Location ai_location(int16_t x, int16_t y)
 /* The square of the group in the AI context. */
 static inline Location ai_group_square(void)
 {
-    return ai_location(g_ai.event.data[0], g_ai.event.data[1]);
+    return ai_location(g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]);
 }
 
 /* The outcome of an AI command test: passed, and the command result (AI_RESULT_*) of g_ai.command_result after it.
@@ -101,6 +102,9 @@ void ai_set_map(int16_t map);
 /* The stored path of the group in the AI context, NULL when it has none. */
 uint8_t *ai_find_path(void);
 
+/* Creature perception and movement (ai_move.c): the functions work on the AI context; the command tests set
+   g_ai.command_result and return it. */
+
 /* Perception, items, and paths (ai_move.c) */
 
 /* True for squares that the sight of a creature does not cross: walls, closed doors that hide, closed fake walls. */
@@ -119,7 +123,7 @@ bool ai_projectile_incoming(int16_t x, int16_t y);
 void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell);
 /* The number of items of filter in a thing list (cell CELL_ANY: any cell), with the possessions of groups and the
    contents of chests on request. */
-int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, int into_groups, int into_containers);
+int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers);
 /* The AI marker text on the square in the AI cache for the level delta with kind id: its id, -1 none. */
 int ai_find_marker_by_id(int level_delta, int id);
 /* The direction of the next step of the stored path into the action; returns the steps left (0: none). A group
@@ -172,7 +176,7 @@ typedef struct {
     uint8_t unused;
     int8_t items_elsewhere;   /* -1 not read; 1: items or ornaments that the creature cannot reach */
     uint8_t facing_ornament;  /* a wall: the face toward the creature shows an alcove */
-    int8_t cells[CELL_COUNT]; /* a floor: the cells that the creature reaches (cells[0] 0xff: not read);
+    int8_t cells[CELL_COUNT]; /* a floor: the cells that the creature reaches (cells[0] CELL_ANY: not read);
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
 extern AiSquareScan g_ai_square_scan; /* exported for the tests */
