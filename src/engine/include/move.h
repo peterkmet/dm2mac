@@ -179,10 +179,9 @@ typedef struct {
 } LevelLink;
 /* The level link (sensor or stairs marker) beside at toward level_delta. */
 LevelLink dun_find_adjacent_level_link(Location at, int level_delta);
-/* Opens or closes the pit or teleporter on at; true when the state changed. */
+/* Opens, closes, or toggles (PIT_STATE_*; another mode closes) the pit or the teleporter that is not fixed on at; an
+   opened one moves the square contents through it. True when the state changed. */
 bool dun_set_pit_teleporter_state(Location at, int mode);
-/* The things on at fall or teleport through its open pit or teleporter. */
-void move_square_contents_through(Location at);
 
 /* Pushing creature groups. */
 /* True when the champions push the group; the push costs stamina. */

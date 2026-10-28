@@ -1546,33 +1546,8 @@ LevelLink dun_find_adjacent_level_link(Location at, int level_delta)
     return (LevelLink){-1, THING_NONE};
 }
 
-bool dun_set_pit_teleporter_state(Location at, int mode)
-{
-    uint8_t *square = dungeon_square_byte(g_party.cur_map, at.x, at.y);
-    uint8_t on_flag;
-    if (square_type(*square) == SQUARE_PIT) {
-        on_flag = SQUARE_PIT_OPEN;
-    } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, at.x, at.y)))
-            return false;
-        on_flag = SQUARE_TELEPORTER_ON;
-    } else {
-        return false;
-    }
-    bool open = (*square & on_flag) != 0;
-    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
-    if (mode == PIT_STATE_TOGGLE)
-        mode = open ? PIT_STATE_CLOSED : PIT_STATE_OPEN;
-    if (mode == PIT_STATE_OPEN) {
-        *square |= on_flag;
-        move_square_contents_through(at);
-        return !open;
-    }
-    *square &= (uint8_t)~on_flag;
-    return open;
-}
-
-void move_square_contents_through(Location at)
+/* The things on at fall or teleport through its open pit or teleporter. */
+static void pass_square_contents(Location at)
 {
     int16_t x = at.x;
     int16_t y = at.y;
@@ -1611,6 +1586,32 @@ void move_square_contents_through(Location at)
             }
         }
     }
+}
+
+bool dun_set_pit_teleporter_state(Location at, int mode)
+{
+    uint8_t *square = dungeon_square_byte(g_party.cur_map, at.x, at.y);
+    uint8_t on_flag;
+    if (square_type(*square) == SQUARE_PIT) {
+        on_flag = SQUARE_PIT_OPEN;
+    } else if (square_type(*square) == SQUARE_TELEPORTER) {
+        if (teleporter_is_fixed(dungeon_square_first_thing(g_party.cur_map, at.x, at.y)))
+            return false;
+        on_flag = SQUARE_TELEPORTER_ON;
+    } else {
+        return false;
+    }
+    bool open = (*square & on_flag) != 0;
+    /* PIT_STATE_TOGGLE closes an open square and opens a closed one: it toggles as in the original. */
+    if (mode == PIT_STATE_TOGGLE)
+        mode = open ? PIT_STATE_CLOSED : PIT_STATE_OPEN;
+    if (mode == PIT_STATE_OPEN) {
+        *square |= on_flag;
+        pass_square_contents(at);
+        return !open;
+    }
+    *square &= (uint8_t)~on_flag;
+    return open;
 }
 
 /* Pushing creature groups. */

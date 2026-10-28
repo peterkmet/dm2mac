@@ -1015,7 +1015,7 @@ address,name,signature,subsystem
 0x00057d4c,transfer_object,"void transfer_object(uint16_t thing, uint8_t *sensor, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y, uint16_t to_cell, int party_hand, int keep_charges)",Skullkeep machines
 0x00057e6c,transfer_objects,"void transfer_objects(uint8_t *event, uint8_t *sensor, uint16_t first_thing, int any_cell, int use_filter, int party_hand, int reverse, int first_only)",Skullkeep machines
 0x00058304,wall_square_event,void wall_square_event(uint8_t *event),timeline
-0x00058c6f,move_square_contents_through,"void move_square_contents_through(uint16_t x, uint16_t y)",dungeon data
+0x00058c6f,pass_square_contents,"void pass_square_contents(uint16_t x, uint16_t y)",dungeon data
 0x00058edb,timeline_event_teleporter_square,void timeline_event_teleporter_square(uint8_t *event),timeline
 0x00058f5c,timeline_event_pit_square,void timeline_event_pit_square(uint8_t *event),timeline
 0x00058fc2,timeline_event_move_group,void timeline_event_move_group(uint8_t *event),creatures

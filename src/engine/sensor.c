@@ -139,6 +139,10 @@ typedef struct {
     bool has_leader;
 } WallClick;
 
+/* A square event passes its effect to dun_set_pit_teleporter_state as the mode. */
+_Static_assert(EFFECT_SET == PIT_STATE_OPEN && EFFECT_CLEAR == PIT_STATE_CLOSED && EFFECT_TOGGLE == PIT_STATE_TOGGLE,
+               "the square effects are the pit and teleporter modes");
+
 /* The step to the square in front of a wall of the ambient sound event: the original indexes g_dir_dx and g_dir_dy
    with the high byte of the sensor thing (cell in bits 6-7, index bits 8-9 of the record in bits 0-1), so it reads
    the data after those tables in SKULL.EXE; these are the values it reads. */
@@ -1299,23 +1303,6 @@ static void floor_square_event(TimelineEvent *e)
     }
 }
 
-/* A square event opens, closes, or toggles a pit or a teleporter (on_bit); an opened one moves the square contents. */
-static void pit_or_teleporter_event(TimelineEvent *e, uint8_t on_bit)
-{
-    int16_t x = e->data[EVENT_X];
-    int16_t y = e->data[EVENT_Y];
-    uint8_t *square = current_square(x, y);
-    int effect = e->data[EVENT_EFFECT];
-    if (effect == EFFECT_TOGGLE)
-        effect = (*square & on_bit) != 0;
-    if (effect == EFFECT_SET) {
-        *square |= on_bit;
-        move_square_contents_through((Location){x, y});
-    } else {
-        *square &= (uint8_t)~on_bit;
-    }
-}
-
 /* A square event opens, closes, or toggles a door that is not broken: it starts or turns the door animation. */
 static void doorway_event(TimelineEvent *e)
 {
@@ -1392,16 +1379,13 @@ void sensor_event_square(TimelineEvent *e)
         floor_square_event(e);
         break;
     case SQUARE_PIT:
-        pit_or_teleporter_event(e, SQUARE_PIT_OPEN);
+    case SQUARE_TELEPORTER:
+        /* the effect opens, closes, or toggles the pit or the teleporter that is not fixed */
+        dun_set_pit_teleporter_state((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->data[EVENT_EFFECT]);
         floor_square_event(e);
         break;
     case SQUARE_DOOR:
         doorway_event(e);
-        break;
-    case SQUARE_TELEPORTER:
-        if (!teleporter_is_fixed(first_thing(e->data[EVENT_X], e->data[EVENT_Y])))
-            pit_or_teleporter_event(e, SQUARE_TELEPORTER_ON);
-        floor_square_event(e);
         break;
     case SQUARE_FAKE_WALL:
         fake_wall_event(e);
