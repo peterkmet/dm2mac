@@ -281,8 +281,6 @@ type engine/projectile.c:launch_object bridge: task 33
 type engine/projectile.c:reflect_spell bridge: task 33
 type engine/projectile.c:set_event_dir bridge: task 33
 type engine/projectile.c:trigger_explosion_sensors bridge: task 33
-type engine/recruit.c:add_to_party bridge: task 34
-type engine/recruit.c:mirror_sensor bridge: task 34
 type engine/save.c:held_thing bridge: task 35
 type engine/save.c:read_thing_list bridge: task 35
 type engine/save.c:saved_bits_mask bridge: task 35

@@ -43,7 +43,7 @@ static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED
 static bool recruit_silent;
 
 /* Makes champion index the champion of portrait, facing dir, in the first free cell. */
-static void add_to_party(int portrait, int index, int dir)
+static void add_to_party(int portrait, int index, int16_t dir)
 {
     Champion *c = champion(index);
     memset(c, 0, sizeof *c);
@@ -62,7 +62,7 @@ static void add_to_party(int portrait, int index, int dir)
     char text[TEXT_SIZE];
     const char *p = gtext_gdat(CAT_CHAMPION, portrait, GFX_PORTRAIT_TEXT, text);
     char ch;
-    /* the name ends at a space or after 7 characters; the title follows (the 8th character of a long name is lost) */
+    /* the name ends at a space or after 7 characters; the 8th character is lost, as in the original */
     for (int i = 0;; i++) {
         ch = *p++;
         if (ch == ' ' || !ch || i >= CHAMPION_NAME_SIZE - 1)
@@ -102,7 +102,7 @@ static void add_to_party(int portrait, int index, int dir)
 }
 
 /* The mirror sensor on the square (x, y) of the current map; its data is the portrait. */
-static uint16_t mirror_sensor(int x, int y)
+static uint16_t mirror_sensor(int16_t x, int16_t y)
 {
     for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
@@ -116,10 +116,10 @@ bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
     int index = g_game.champion_count;
     if (g_game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
         return false;
-    int saved = g_party.cur_map;
+    int16_t saved = g_party.cur_map;
     dun_set_current_map(map);
-    int fx = x + g_dir_dx[dir];
-    int fy = y + g_dir_dy[dir];
+    int16_t fx = (int16_t)(x + g_dir_dx[dir]);
+    int16_t fy = (int16_t)(y + g_dir_dy[dir]);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dun_set_current_map(saved);
@@ -154,7 +154,7 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
 {
     int champ = g_ui.candidate - 1;
     Champion *c = champion(champ);
-    int saved = g_party.cur_map;
+    int16_t saved = g_party.cur_map;
     dun_set_current_map(map);
     uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
@@ -181,8 +181,8 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     if (hand != THING_NONE)
         inv_put_in_free_slot(champ, hand);
     g_ui.candidate = 0;
-    int fx = x + g_dir_dx[dir];
-    int fy = y + g_dir_dy[dir];
+    int16_t fx = (int16_t)(x + g_dir_dx[dir]);
+    int16_t fy = (int16_t)(y + g_dir_dy[dir]);
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
             dungeon_unlink_thing_from_square(c->slots[s], g_party.cur_map, fx, fy);
