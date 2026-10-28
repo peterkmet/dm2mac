@@ -16,7 +16,7 @@ from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixt
     sync_champions, things_of, update_action_area,
 )
 from dm2test.save import Game
-from dm2test.view import Bitmap, u8_p
+from dm2test.view import Bitmap, ScreenPoint, u8_p
 from dm2test.lib import load_lib
 
 
@@ -103,7 +103,7 @@ def test_hand_icon_matches_original(port, original):
                for t in things_of(lib, kind, 4)] + things_of(lib, C.THING_CONTAINER, 2)
     pictures = set()
     for thing in samples:
-        lib.champ_put_in_leader_hand(thing, 0)
+        lib.champ_put_in_leader_hand(thing)
         lib.champ_take_from_leader_hand()
         emu.write(icon, struct.pack("<HI", thing, bitmap))
         emu.call(INV_RENDER_HAND_ICON, icon)
@@ -166,7 +166,7 @@ def test_cursor_images_match_original(port, original):
             images.pop(2, None)
             emu.run(HAND_CURSOR_BODY, HAND_CURSOR_END)
             assert 2 in images, hex(thing)
-            lib.champ_put_in_leader_hand(thing, 0)
+            lib.champ_put_in_leader_hand(thing)
             assert port_image(CURSOR_OBJECT) == images[2], hex(thing)
             lib.champ_take_from_leader_hand()
             objects.add(images[2])
@@ -197,7 +197,7 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     thing = things_of(lib, 5, 1)[0]
     lib.input_init()
     Game.in_dll(lib, "g_game").leader = 0
-    lib.champ_put_in_leader_hand(thing, 0)
+    lib.champ_put_in_leader_hand(thing)
     try:
         lib.input_set_mode(C.INPUT_MODE_MOVE)
         zone = [(x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W) if lib.input_cursor_at(x, y) == CURSOR_OBJECT]
@@ -400,7 +400,8 @@ class TextSize(ctypes.Structure):
 def test_measure_and_wrap_match_original(port, original):
     lib = port
     emu = original.emu
-    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
+    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int16]
+    lib.text_wrap_line.restype = ctypes.c_int16
     lib.text_measure.argtypes = [ctypes.c_char_p]
     lib.text_measure.restype = TextSize
     rng = random.Random(14)
@@ -502,7 +503,7 @@ def test_message_area_scrolls(port):
     # in SKULL.EXE: the port moves the rows).
     lib = port
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
     r = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_MESSAGE_AREA, r)
     x, y, w, h = r
@@ -542,9 +543,10 @@ def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
     emu = original.emu
-    lib.zone_get_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_icon_rect.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_position.argtypes = [ctypes.c_int] + [ctypes.POINTER(ctypes.c_int16)] * 2
+    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_icon_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_position.argtypes = [ctypes.c_int16]
+    lib.zone_get_position.restype = ScreenPoint
     out = original.alloc(16)
     zones = 0
     for zone in range(1, 0x300):
@@ -555,10 +557,9 @@ def test_layout_zone_helpers_match_original(port, original):
         lib.zone_get_icon_rect(zone, r)
         emu.call(0x37F3A, zone, out)
         assert tuple(r) == struct.unpack("<4h", emu.read(out, 8)), zone
-        x, y = ctypes.c_int16(), ctypes.c_int16()
-        lib.zone_get_position(zone, ctypes.byref(x), ctypes.byref(y))
+        position = lib.zone_get_position(zone)
         emu.call(0x19BAE, zone, out, out + 2)
-        assert (x.value, y.value) == struct.unpack("<2h", emu.read(out, 4)), zone
+        assert (position.x, position.y) == struct.unpack("<2h", emu.read(out, 4)), zone
     assert zones > 250
 
 

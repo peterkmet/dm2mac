@@ -11,7 +11,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Position, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -87,6 +87,16 @@ class AiLineTarget(ctypes.Structure):
     _fields_ = [("found", ctypes.c_bool), ("location", ctypes.c_uint16)]
 
 
+class AiInsideItem(ctypes.Structure):
+    """An item inside a chest or a group in the port: the cell (-1 none) and whether it is a cell of the possessions."""
+    _fields_ = [("cell", ctypes.c_int16), ("in_possessions", ctypes.c_bool)]
+
+
+def inside_item(result):
+    """The (cell, in possessions) of a result of the original: the chest cell, 8 plus the possession cell, or -1."""
+    return (result - 8, True) if result >= 8 else (result, False)
+
+
 class AiTest(ctypes.Structure):
     """A command test of the port: the mode and whether the test sets the action."""
     _fields_ = [("mode", ctypes.c_uint8), ("execute", ctypes.c_bool)]
@@ -101,6 +111,9 @@ class AiMoveTest(ctypes.Structure):
 # The command tests of the port take each square as one Location: the index of its x in the arguments of the original.
 SQUARE_ARGS = {name: (1, 3) for name in ("ai_try_attack", "ai_try_door_action", "ai_try_move", "ai_try_take_item",
                                          "ai_try_use_wall_actuator")}
+# The square tests of the port take their square as one Location.
+LOCATION_ARGS = {name: (0,) for name in ("ai_square_is_obstacle", "ai_square_blocks_line", "ai_blocks_line_to_target",
+                                         "ai_blocks_line_except_self", "ai_cache_square", "ai_projectile_incoming")}
 
 
 def command_test(name, mode):
@@ -115,8 +128,8 @@ def command_test(name, mode):
 def c_args(name, args):
     """The arguments of the C function from the arguments of the original: each (x, y) pair becomes a Location, the
     packed mode byte of a command test its test struct."""
-    squares, out, i = SQUARE_ARGS.get(name, ()), [], 0
-    if squares:
+    squares, out, i = SQUARE_ARGS.get(name) or LOCATION_ARGS.get(name, ()), [], 0
+    if name in SQUARE_ARGS:
         out.append(command_test(name, args[0]))
         i = 1
     while i < len(args):
@@ -153,19 +166,24 @@ class Ai:
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
         lib.dun_set_current_map.argtypes = [ctypes.c_int16]
-        for name in ("ai_trace_line",):
-            getattr(lib, name).argtypes = [ctypes.c_int16] * 4 + [ctypes.c_void_p]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
+        lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
+        lib.ai_trace_line.restype = ctypes.c_int16
+        for name in LOCATION_ARGS:
+            getattr(lib, name).argtypes = [Location]
+        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int16, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
         lib.ai_find_target_in_lines.restype = AiLineTarget
         lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
         for name in SQUARE_ARGS:
             test = AiMoveTest if name == "ai_try_move" else AiTest
-            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int] * (
+            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int16] * (
                 1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
             getattr(lib, name).restype = AiCommand
         lib.ai_turn_toward.restype = AiCommand
         lib.ai_thing_matches_filter.restype = ctypes.c_bool
-        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
+        for name in ("ai_find_marker", "ai_find_marker_by_id"):
+            getattr(lib, name).restype = ctypes.c_int16
+        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int16, ctypes.c_int16]
+        lib.ai_count_matching_items.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0
@@ -328,7 +346,7 @@ def test_square_and_line_tests(ai):
             tx, ty = x + rng.randrange(-6, 7), y + rng.randrange(-6, 7)
             name = rng.choice(LINE_TESTS)
             fn = ctypes.cast(getattr(lib, name), ctypes.c_void_p)
-            mine = lib.ai_trace_line(x, y, tx, ty, fn)
+            mine = lib.ai_trace_line(Location(x, y), Location(tx, ty), fn)
             theirs = ai.emu.call(F["ai_trace_line"], x, y, tx, ty, F[name])
             assert mine == s16(theirs), (g, name, tx, ty)
             tested += mine > 1
@@ -410,9 +428,9 @@ def set_creature_type(ai, group, kind):
 
 def native_type(lib, m, x, y, delta):
     """A creature type of the map above (delta -1) or below (1) the square, or None."""
-    nx, ny = ctypes.c_int16(x), ctypes.c_int16(y)
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
+    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
+    lib.dungeon_location_on_map.restype = Position
+    target = lib.dungeon_location_on_map(Position(m, x, y), delta).map
     if target < 0:
         return None
     count = lib.dungeon_map_object_counts(target) >> C.MAP_CREATURE_TYPES_SHIFT & C.MAP_NIBBLE_MASK
@@ -655,7 +673,7 @@ def test_item_lists(ai):
     rng = random.Random(25)
     lib = ai.lib
     lib.ai_find_matching_item.restype = ctypes.c_uint16
-    lib.ai_find_matching_item_inside.restype = ctypes.c_int16
+    lib.ai_find_matching_item_inside.restype = AiInsideItem
     things = all_things(lib)
     containers = [t for t in things if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_GROUP, C.THING_CONTAINER)]
     for g, x, y, m in rng.sample(ai.groups(), 10):
@@ -671,7 +689,7 @@ def test_item_lists(ai):
             assert mine == s16(theirs), (g, n, "count")
             c = rng.choice(containers)
             mine, theirs = ai.call("ai_find_matching_item_inside", c, f, rng.randrange(4))
-            assert mine == s16(theirs), (g, n, "inside", hex(c))
+            assert (mine.cell, mine.in_possessions) == inside_item(s16(theirs)), (g, n, "inside", hex(c))
             ai.check((g, n))
         # removals from the contents of chests and the possessions of groups
         for c in rng.sample(containers, 6):
@@ -1113,3 +1131,22 @@ def test_merchant_commands(ai):
             t = lib.dungeon_next_thing(t)
     assert all(len(r) >= 2 for r in results.values()) and len(results) == 4 and boxes > 80 and change_in_box > 5, (
         results, boxes, change_in_box)
+
+
+# The AI tables of ai_data.c in the data object of SKULL.EXE: (name, address, first byte, size).
+AI_TABLES = (
+    ("g_ai_scripts", 0x73020, 0, 8030), ("g_ai_plans", 0x74F7E, 0, 252), ("g_ai_class_flags", 0x7507A, 0, 188),
+    ("g_ai_action_flags", 0x75136, 0, 86), ("g_ai_behaviors", 0x7518C, 0, 188), ("g_ai_command_enabled", 0x7528C, 0, 20),
+    ("g_ai_command_enabled_overrun", 0x752AC, 0, 60), ("g_ai_kind_flags", 0x752EA, 0, 28),
+    ("g_ai_possession_cells", 0x71658, 4, 64),  # kind 0 is another global of SKULL.EXE; the original never reads it
+)
+
+
+def test_tables_match_the_original(lib):
+    # The copies of the AI tables against the bytes of SKULL.EXE as it loads.
+    from dm2test.markers import ROOT
+    from dm2tools.le import load_image
+    image = load_image(ROOT / "game" / "SKULL.EXE")
+    for name, address, first, size in AI_TABLES:
+        mine = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, name)), size)
+        assert mine[first:] == image.data[address + first - image.base:address + size - image.base], name

@@ -14,8 +14,9 @@
 #define HMP_TICK_RATE   56 /* u32: song timer ticks per second */
 #define HMP_FIRST_TRACK 904
 
-/* Most tracks of a song. */
-#define HMP_MAX_TRACKS 32
+/* Track counts of a song. */
+#define HMP_MAX_TRACKS       32
+#define TEMPO_AND_LAST_TRACK 2 /* track 0 and the last playing track of tracks 1 and up */
 
 /* Track chunk: number, chunk size, MIDI channel, then delta times and events. */
 #define TRACK_SIZE    4
@@ -52,10 +53,6 @@
 #define VARLEN_GROUP_WIDTH  7
 #define STATUS_NIBBLES      16
 
-/* Event length by status high nibble, and for system events by low nibble (tables of SKULL.EXE). */
-static const uint8_t channel_event_length[STATUS_NIBBLES] = {0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 2, 2, 3, 0};
-static const uint8_t system_event_length[STATUS_NIBBLES] = {0, 1, 2, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2};
-
 typedef struct {
     uint32_t start, end; /* track data */
     uint32_t cursor;     /* next event, 0 when the track ended */
@@ -65,6 +62,10 @@ typedef struct {
     int branch_count;
     uint8_t channel;
 } Track;
+
+/* Event length by status high nibble, and for system events by low nibble (tables of SKULL.EXE). */
+static const uint8_t channel_event_length[STATUS_NIBBLES] = {0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 2, 2, 3, 0};
+static const uint8_t system_event_length[STATUS_NIBBLES] = {0, 1, 2, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2};
 
 static struct {
     uint8_t *song; /* owned copy of the playing song */
@@ -144,7 +145,7 @@ static void silence(void)
 
 /* Song playback */
 
-enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
+enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend send)
 {
     hmp_stop();
     if (size < HMP_FIRST_TRACK || memcmp(data, HMP_SIGNATURE, strlen(HMP_SIGNATURE)) || !le32(data + HMP_TICK_RATE))
@@ -182,7 +183,7 @@ enum HmpResult hmp_start(const uint8_t *data, size_t size, HmpSend to_driver)
         return HMP_ERR_MEMORY;
     memcpy(hmp.song, data, size);
     hmp.song_size = size;
-    hmp.send = to_driver;
+    hmp.send = send;
     hmp.track_count = (int)count;
     hmp.active_tracks = (int)count;
     for (int t = 0; t < hmp.track_count; t++) {
@@ -265,7 +266,7 @@ static bool hmi_control(int t, const uint8_t *event)
 static bool end_track(int t)
 {
     hmp.tracks[t].cursor = 0;
-    if (hmp.active_tracks == 2 && hmp.tracks[0].cursor) {
+    if (hmp.active_tracks == TEMPO_AND_LAST_TRACK && hmp.tracks[0].cursor) {
         hmp.active_tracks--;
         hmp.tracks[0].cursor = 0;
     }

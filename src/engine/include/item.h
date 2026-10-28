@@ -49,12 +49,15 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ATTR_FLAGS          0x00
 #define ATTR_WEIGHT         0x01
 #define ATTR_VALUE          0x02
+#define ATTR_FOOD           0x03 /* the food value */
 #define ATTR_SLOTS          0x04
 #define ATTR_AMMO           0x05
 #define ATTR_ICON_ANIMATION 0x06
 #define ATTR_STRENGTH       0x08
 #define ATTR_THROW_POWER    0x09
+#define ATTR_SHOOT_ATTACK   0x0a /* the attack of a launcher */
 #define ATTR_ARMOUR_CLASS   0x0b
+#define ATTR_STEP           0x0c /* the flight step of a missile */
 #define ATTR_EXTRA_DAMAGE 0x0d /* extra damage of a hit: armour piercing against creatures, poison against champions */
 #define ATTR_WEIGHT_PER_CHARGE 0x34
 #define ATTR_VALUE_PER_CHARGE  0x35
@@ -65,6 +68,16 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ITEM_FLAG_SCROLL_INFO  0x0020 /* the inventory shows the object info while it is in the hand */
 #define ITEM_FLAG_REFILLS      0x0001 /* the item holds water */
 #define ITEM_FLAG_LIGHT        0x0010 /* the item gives light */
+#define ITEM_FLAG_GRATE_PASSES 0x0002 /* the object can fly through a grate */
+#define ITEM_FLAG_CAUGHT       0x0040 /* a creature that catches objects catches it */
+#define ITEM_FLAG_USED_UP      0x0800 /* the item vanishes with its last charge */
+/* ATTR_ARMOUR_CLASS fields: the defense (bits 0-7), the sharp factor (bits 8-10), and the bit of a hand item that
+   defends. */
+#define ARMOUR_DEFENSE_MASK    0x00ff
+#define ARMOUR_SHARP_MASK      0x0007
+#define ARMOUR_DEFENDS         0x8000
+/* The position of the sharp factor in ATTR_ARMOUR_CLASS. */
+#define ARMOUR_SHARP_SHIFT     8
 /* ATTR_AMMO bits. */
 #define AMMO_LAUNCHER          0x8000 /* a launcher; the low bits are the ammunition kinds */
 /* ATTR_SLOTS bits. */
@@ -73,6 +86,17 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define SLOT_MASK_HAND         0x0400
 /* The highest power of a potion. */
 #define POTION_POWER_MAX       255
+
+/* The defense of an ATTR_ARMOUR_CLASS value. */
+static inline int item_armour_defense(uint16_t attr)
+{
+    return attr & ARMOUR_DEFENSE_MASK;
+}
+/* The sharp factor of an ATTR_ARMOUR_CLASS value, 0 to 7. */
+static inline int item_armour_sharp_factor(uint16_t attr)
+{
+    return (attr >> ARMOUR_SHARP_SHIFT) & ARMOUR_SHARP_MASK;
+}
 
 /* GDAT keys of things and item indices */
 /* The GDAT category of a thing; a projectile gives the category of what it carries. */
@@ -127,7 +151,7 @@ void item_set_do_not_discard(uint16_t thing, bool keep);
 uint16_t item_create_by_index(uint16_t item);
 
 /* Minion links. */
-/* The projectile among the possessions of group that carries payload (THING_NONE: any); 0 when none. */
+/* The projectile among the possessions of group that carries payload (THING_NONE: any); THING_NONE when none. */
 uint16_t item_find_link_projectile(uint16_t group, uint16_t payload);
 
 /* Items of the champion actions. */

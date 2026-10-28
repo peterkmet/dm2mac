@@ -8,16 +8,13 @@
 /* The high nibble of a 4 bpp byte. */
 #define HIGH_NIBBLE_MASK 0xf0
 
-/* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel; the dimming
-   divides brightness * light by 64. */
+/* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel. */
 #define FRACTION_SHIFT      7
 #define BYTE_FRACTION_SHIFT 8
-#define DIM_SHIFT           6
 
-/* The color ramps: GDAT (1, 0, 7, 2) holds the ramp count, the length of each ramp, the brightness steps
+/* The color ramps: GDAT (1, 0, GDAT_TYPE_REMAP, 2) holds the ramp count, the length of each ramp, the brightness steps
    and the colors of each ramp, then the ramp and step of each of the 256 palette colors. */
 #define RAMP_INDEX         0
-#define RAMP_TYPE          7
 #define RAMP_MAX           256
 #define RAMP_OF_COLOR_SIZE 2 /* the ramp and the step of a color */
 
@@ -290,7 +287,7 @@ void gfx_fill_bitmap(Bitmap *target, int color)
 
 int16_t gfx_scale_64(int16_t value, int16_t scale)
 {
-    return (int16_t)((value * scale + (scale >> 1)) >> DIM_SHIFT);
+    return (int16_t)((value * scale + (scale >> 1)) >> SCALE_FULL_SHIFT);
 }
 
 /* Color ramps and dimming */
@@ -298,7 +295,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale)
 bool pal_load_color_ramps(const Gdat *gdat)
 {
     uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, RAMP_TYPE, GFX_RAMP), &size);
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, RAMP_INDEX, GDAT_TYPE_REMAP, GFX_RAMP), &size);
     if (!p || size < 1)
         return false;
     const uint8_t *end = p + size;
@@ -308,10 +305,14 @@ bool pal_load_color_ramps(const Gdat *gdat)
     for (int i = 0; i < ramps.count; i++)
         ramps.length[i] = *p++;
     for (int i = 0; i < ramps.count; i++) {
+        if (end - p < ramps.length[i])
+            return false; /* fix: a ramp past the item */
         ramps.brightness[i] = p;
         p += ramps.length[i];
     }
     for (int i = 0; i < ramps.count; i++) {
+        if (end - p < ramps.length[i])
+            return false; /* fix: a ramp past the item */
         ramps.colors[i] = p;
         p += ramps.length[i];
     }
@@ -333,11 +334,11 @@ static int nearest_step(const uint8_t *brightness, int last, int target)
     return k;
 }
 
-uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_t *count)
+uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, int16_t *count)
 {
-    if (!table || !(uint8_t)dim)
+    if (!table || !dim)
         return table;
-    int light = (uint8_t)(SCALE_FULL - (uint8_t)dim > 0 ? SCALE_FULL - (uint8_t)dim : 0);
+    int light = SCALE_FULL - dim > 0 ? SCALE_FULL - dim : 0; /* light = 64 - dim, never below 0 */
     bool identity = *count <= 0;
     if (identity)
         *count = REMAP_COLORS;
@@ -352,10 +353,11 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_
         int last = ramps.length[r] - 1;
         const uint8_t *brightness = ramps.brightness[r];
         const uint8_t *colors = ramps.colors[r];
-        int target = brightness[rs[1]] * light >> DIM_SHIFT;
+        int target = brightness[rs[1]] * light >> SCALE_FULL_SHIFT;
         int k = nearest_step(brightness, last, target);
         int color = colors[k];
-        /* the keys keep their meaning: take the nearest other step, alternating below and above */
+        /* the keys keep their meaning: take the nearest other step, alternating below and above; as in the original,
+           a ramp of key colors only reads on into the next ramp */
         int lo = k - 1;
         int hi = k + 1;
         while (color == key1 || color == key2) {

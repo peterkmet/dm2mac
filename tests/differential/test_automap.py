@@ -10,7 +10,7 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import GameRecord, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import GameRecord, Location, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
@@ -556,7 +556,7 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
     # step: the AI never runs the tree that was a moving group.
     game, _ = automap
     lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
+    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
     lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)
     lib.creature_group_info.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
@@ -576,7 +576,7 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
     for (x, y), kind in zip(squares, (MOVING, TREE)):
         before = cell(x, y)
         lib.dun_set_current_map(m)
-        g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, x, y)
+        g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
         assert g != 0xFFFF
         lib.dungeon_thing_record(g)[GROUP_CREATURE] = kind
         static = bool(lib.creature_group_info(g)[0] & CREATURE_STATIC)
@@ -617,14 +617,14 @@ def test_automap_draws_a_creature_without_map_icons_with_the_map_item_icon(lib, 
     # map; the automap has no map item thing, so it takes the image of the party icons, not the missing image.
     game, _ = automap
     lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
+    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
     lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
     m, d = game.party_map, game.party_dir
     x, y = ahead(game.party_x, game.party_y, d, 1)
     assert lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m)
     lib.dun_set_current_map(m)
-    g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, x, y)
+    g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
     assert g != 0xFFFF
     lib.dungeon_thing_record(g)[GROUP_CREATURE] = MINION
     game.game_time &= ~1  # the creature icon 0 of the two that alternate

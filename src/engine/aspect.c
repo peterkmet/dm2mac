@@ -12,9 +12,12 @@
 
 /* The square byte that the floor things see on an open fake wall. */
 #define FAKE_WALL_FLOOR_SQUARE  1
-/* (CAT_WALLSET, graphics set, 0x0b, key): ornament on every floor square, bit 15: animated */
+/* The sensor flag of a shown altar. */
+#define SENSOR_ALTAR_SHOWN      SENSOR_STATE
+/* (CAT_WALLSET, graphics set, GDAT_TYPE_VALUE, key): ornament on every floor square, bit 15: animated */
 #define MAP_KEY_FLOOR_ORNAMENT  0x6b
-#define ORN_KEY_FRAMES          0x0d /* (category, ornament, 0x0b, key): animation frames, bit 15: frames start at 1 */
+/* (category, ornament, GDAT_TYPE_VALUE, key): animation frames, bit 15: frames start at 1 */
+#define ORN_KEY_FRAMES          0x0d
 /* Bit 15 of the values of the keys above. */
 #define FRAMES_FROM_ONE         0x8000
 #define FLOOR_ORNAMENT_ANIMATED 0x8000
@@ -28,8 +31,23 @@
 #define HASH_MAP_FACTOR       11
 #define RANDOM_ORNAMENT_SLOTS 30 /* random wall ornament hash: one of 30 values picks an ornament of the list */
 
+/* How a wall or floor thing shows its ornament: a fixed frame, or an animation at time + offset. */
+typedef struct {
+    uint8_t ornament;
+    bool animated;
+    int frame, offset;
+    uint32_t time;
+    bool hides_rest; /* the things behind it in its cell do not show */
+} OrnamentState;
+
 /* Random wall ornaments: the list of the map that aspect_enter_map entered last. */
 static const uint8_t *wall_ornaments;
+
+/* Whether (x, y) is a square of map. */
+static bool is_on_map(int16_t map, int16_t x, int16_t y)
+{
+    return x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map);
+}
 
 /* ---- Setup ---- */
 
@@ -42,7 +60,7 @@ void aspect_enter_map(int16_t map)
 
 uint16_t aspect_first_thing(int16_t map, int16_t x, int16_t y)
 {
-    if (x < 0 || x >= dungeon_map_width(map) || y < 0 || y >= dungeon_map_height(map))
+    if (!is_on_map(map, x, y))
         return THING_ENDOFLIST;
     return dungeon_square_first_thing(map, x, y);
 }
@@ -55,7 +73,7 @@ uint16_t aspect_value_key(int category, int index, int entry)
 /* ---- Square aspects ---- */
 
 /* A random wall ornament for a wall face, ORNAMENT_NONE when the face shows none. */
-static uint8_t random_ornament(int map, int allowed, int count, int x, int factor)
+static uint8_t random_ornament(int16_t map, bool allowed, int count, int16_t x, int factor)
 {
     if (!allowed)
         return ORNAMENT_NONE;
@@ -68,15 +86,15 @@ static uint8_t random_ornament(int map, int allowed, int count, int x, int facto
 }
 
 /* Gives the wall faces of s the random wall ornaments of map; an edge wall keeps none that has a kind. */
-static void set_random_wall_ornaments(ViewSquare *s, int map, int dir, int x, int y)
+static void set_random_wall_ornaments(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
 {
     int count = dungeon_map_random_wall_count(map);
     for (int k = 0; k < VIEW_SIDE_COUNT; k++) {
-        int allowed = s->square & WALL_FACE(dir_turn(dir, k));
+        bool allowed = (s->square & WALL_FACE(dir_turn(dir, k))) != 0;
         s->side[k] = random_ornament(map, allowed, count, x, (((dir + k) & DIR_MASK) + 1) * (y + 1));
     }
     /* an edge wall away from the map keeps no ornament that has a kind */
-    if (x >= 0 && x < dungeon_map_width(map) && y >= 0 && y < dungeon_map_height(map))
+    if (is_on_map(map, x, y))
         return;
     for (int k = 0; k < VIEW_SIDE_COUNT; k++)
         if (aspect_word_ornament(s->side[k]) != ORNAMENT_NONE &&
@@ -108,7 +126,7 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
     if (c >= '0' && c <= '9')
         return c - '0';
     if (c >= 'A' && c <= 'Z')
-        return c - 'K'; /* as in SKULL.EXE: 'K' is frame 0 */
+        return c - 'K'; /* as in the original: 'K' is frame 0 */
     return c;
 }
 
@@ -118,15 +136,6 @@ static uint8_t listed_ornament(uint16_t sensor, const uint8_t *list)
     int index = sensor_ornament_index(sensor);
     return index >= 0 ? list[index] : ORNAMENT_NONE;
 }
-
-/* How a wall or floor thing shows its ornament: a fixed frame, or an animation at time + offset. */
-typedef struct {
-    uint8_t ornament;
-    bool animated;
-    int frame, offset;
-    uint32_t time;
-    bool hides_rest; /* the things behind it in its cell do not show */
-} OrnamentState;
 
 /* The ornament of a wall text on face of s; a text plate goes on the face at once. Sets o->hides_rest when the
    things behind it in its cell do not show. Returns false when the text shows no ornament. */
@@ -185,7 +194,7 @@ static void altar_ornament(ViewSquare *s, uint16_t thing, int face, OrnamentStat
 /* The ornament of a wall sensor on face of s by its sensor type; wall text and altar sensors set the text of s.
    Sets o->hides_rest when the things behind it in its cell do not show. Returns false when the sensor has no
    ornament. */
-static bool wall_sensor_ornament(ViewSquare *s, int map, uint16_t thing, int face, OrnamentState *o)
+static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int face, OrnamentState *o)
 {
     o->ornament = listed_ornament(thing, dungeon_map_wall_ornaments(map));
     if (o->ornament == ORNAMENT_NONE)
@@ -193,49 +202,49 @@ static bool wall_sensor_ornament(ViewSquare *s, int map, uint16_t thing, int fac
     bool active = sensor_flag(thing, SENSOR_BUSY);
     bool state = sensor_flag(thing, SENSOR_STATE);
     switch (sensor_type(thing)) {
-    case SENSOR_TOGGLE_ORNAMENT:
+    case WALL_CLICK_TOGGLE:
         o->animated = state;
         o->frame = state;
         break;
-    case SENSOR_TIMED_ORNAMENT:
-    case SENSOR_TIMED_ORNAMENT_2:
+    case WALL_CLICK_BUTTON:
+    case WALL_CLICK_BUTTON_2:
         o->frame = active ^ state;
         break;
-    case SENSOR_HOLDER:
+    case WALL_ITEM_HOLDER:
         o->frame = state;
         if (o->frame) {
             o->animated = true;
             o->hides_rest = true;
         }
         break;
-    case SENSOR_STATE_MATCH:
+    case WALL_CLICK_COUNTED_ITEM:
         if (active == state)
             o->animated = true;
         else
             o->frame = active;
         break;
-    case SENSOR_ANIMATED:
+    case SENSOR_ANIMATION:
         if (active) {
             o->offset = sensor_frame(thing);
             o->animated = true;
         }
         break;
-    case SENSOR_SOUND_ANIMATION:
+    case SENSOR_ACTIVATION:
         if (active) {
             o->time = sensor_data(thing);
             o->animated = true;
         }
         break;
-    case SENSOR_WALL_TEXT:
+    case WALL_CLICK_RESET:
         s->text = face == SIDE_FRONT ? thing : THING_TEXT_NONE;
         break;
-    case SENSOR_FRAME_DATA:
+    case SENSOR_FRAME_STEP:
         o->frame = sensor_data(thing);
         break;
-    case SENSOR_FRAME_STATE:
+    case WALL_CLICK_DOOR_BUTTON:
         o->frame = active;
         break;
-    case SENSOR_ALTAR:
+    case WALL_CLICK_PORTRAIT:
         altar_ornament(s, thing, face, o);
         break;
     }
@@ -244,7 +253,7 @@ static bool wall_sensor_ornament(ViewSquare *s, int map, uint16_t thing, int fac
 
 /* Applies the wall things (texts, sensors) to the faces of s; only_front limits them to the front face.
    Returns the first thing that is not a wall thing. */
-static uint16_t apply_wall_things(ViewSquare *s, int map, uint16_t thing, int dir, bool only_front)
+static uint16_t apply_wall_things(ViewSquare *s, int16_t map, uint16_t thing, int16_t dir, bool only_front)
 {
     int done = 0;
     for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
@@ -304,7 +313,7 @@ static bool floor_text_ornament(ViewSquare *s, uint16_t thing, uint8_t square, O
 
 /* The floor ornament of a floor sensor; a shop sensor clears the shop display side of s. Returns false when the
    sensor shows no ornament. */
-static bool floor_sensor_ornament(ViewSquare *s, int map, uint16_t thing, OrnamentState *o)
+static bool floor_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, OrnamentState *o)
 {
     int type = sensor_type(thing);
     bool active = sensor_flag(thing, SENSOR_BUSY);
@@ -313,14 +322,14 @@ static bool floor_sensor_ornament(ViewSquare *s, int map, uint16_t thing, Orname
     o->ornament = listed_ornament(thing, dungeon_map_floor_ornaments(map));
     if (o->ornament == ORNAMENT_NONE)
         return false;
-    if (type == SENSOR_LINK) {
+    if (type == SENSOR_TELEPORTER_LINK) {
         if (sensor_data(thing) - 1 != map)
             return false;
         o->animated = active;
-    } else if (type == SENSOR_ANIMATED && active) {
+    } else if (type == SENSOR_ANIMATION && active) {
         o->offset = sensor_frame(thing);
         o->animated = true;
-    } else if (type == SENSOR_SOUND_ANIMATION && active) {
+    } else if (type == SENSOR_ACTIVATION && active) {
         o->time = sensor_data(thing);
         o->animated = true;
     }
@@ -328,7 +337,7 @@ static bool floor_sensor_ornament(ViewSquare *s, int map, uint16_t thing, Orname
 }
 
 /* The floor ornament of the floor things of a square: texts and sensors with ornaments. */
-static uint16_t apply_floor_things(ViewSquare *s, int map, uint16_t thing, uint8_t square)
+static uint16_t apply_floor_things(ViewSquare *s, int16_t map, uint16_t thing, uint8_t square)
 {
     for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
         OrnamentState o = {.time = g_game.game_time};
@@ -356,7 +365,7 @@ static uint16_t skip_wall_things(uint16_t thing)
 
 /* The aspect of a wall or a closed fake wall: its ornaments and wall things. Things show on a fake wall only in
    the row or column of the party. */
-static void wall_square_aspect(ViewSquare *s, int map, int dir, int x, int y)
+static void wall_square_aspect(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
 {
     bool fake = square_type(s->square) == SQUARE_FAKE_WALL;
     if (fake)
@@ -381,7 +390,7 @@ static void wall_square_aspect(ViewSquare *s, int map, int dir, int x, int y)
 }
 
 /* The floor ornament of every floor square of the current map, if the map graphics have one. */
-static void set_map_floor_ornament(ViewSquare *s, int map)
+static void set_map_floor_ornament(ViewSquare *s, int16_t map)
 {
     uint16_t v = aspect_value_key(CAT_WALLSET, dungeon_map_wallset(map), MAP_KEY_FLOOR_ORNAMENT);
     if (!v)
@@ -393,7 +402,7 @@ static void set_map_floor_ornament(ViewSquare *s, int map)
 }
 
 /* The aspect of a door square: its state and thing; a door front shows the wall things of the face to its right. */
-static void set_door_aspect(ViewSquare *s, int map, int dir, int x, int y)
+static void set_door_aspect(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
 {
     uint8_t square = s->square;
     s->side[SIDE_DOOR_STATE] = square & SQUARE_DOOR_STATE;
@@ -402,7 +411,7 @@ static void set_door_aspect(ViewSquare *s, int map, int dir, int x, int y)
         s->aspect = ASPECT_DOOR_SIDE;
     } else {
         s->aspect = ASPECT_DOOR_FRONT;
-        int d = dir_turn(dir, TURN_RIGHT);
+        int16_t d = dir_turn(dir, TURN_RIGHT);
         apply_wall_things(s, map, aspect_first_thing(map, x + g_dir_dx[d], y + g_dir_dy[d]), d, true);
     }
 }
@@ -442,7 +451,7 @@ void aspect_get(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
         }
         break;
     case SQUARE_STAIRS:
-        s->aspect = (uint16_t)(ASPECT_STAIRS_FRONT + (square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1)));
+        s->aspect = square_flag(square, SQUARE_STAIRS_ALONG_X) != (dir & 1) ? ASPECT_STAIRS_SIDE : ASPECT_STAIRS_FRONT;
         s->side[SIDE_STAIRS_UP] = square & SQUARE_STAIRS_UP;
         floor_things = false;
         break;

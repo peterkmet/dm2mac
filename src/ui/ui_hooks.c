@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The user interface functions that the game rules call (engine/hooks.h). */
+#include "ui.h"
 #include "action_area.h"
 #include "hooks.h"
 #include "input.h"
@@ -7,7 +8,6 @@
 #include "session.h"
 #include "sound.h"
 #include "text.h"
-#include "ui.h"
 #include "ui_internal.h"
 #include "view.h"
 #include "zone.h"

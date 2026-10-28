@@ -28,6 +28,8 @@ enum ActionMode {
 /* The pictures and the font of the spell panel. */
 #define UI_INDEX_SPELL         0x05 /* the spell panel pictures: GDAT (1, 5, 1, entry) */
 #define SPELL_RUNE_GLYPH_FIRST 0x60 /* the font character of the first rune */
+/* g_action.redraw_delay: the open panel redraws on the next update; a larger delay counts down to it. */
+#define ACTION_REDRAW_NEXT     1
 /* Results of an action (g_action.result < 0). */
 #define RESULT_NOTHING         (-1)
 #define RESULT_NO_AMMO         (-2)
@@ -36,18 +38,18 @@ enum ActionMode {
 #define RESULT_WIZARD_FAILED   (-4)
 #define RESULT_PRIEST_FAILED   (-5) /* a failed cast */
 
-/* Action area state; Step 14 (clicks) and Step 15 (actions) change it. */
+/* Action area state; the clicks and the actions change it. */
 typedef struct {
     /* ordinal as in the original: the input tree compares it with node arguments */
     int16_t champion;     /* champion ordinal whose hand or spell panel is open, 0: the hands of the party */
     int16_t hand;         /* the open hand, ACTION_HAND_SPELL for the spell panel */
     int16_t mode;         /* an ActionMode */
-    int16_t dirty;        /* the whole area redraws */
+    int16_t dirty;        /* truth value, mirrored by the tests: the whole area redraws */
     int16_t redraw_delay; /* updates to wait before the open panel redraws */
     uint16_t flags;       /* minion map flags */
     int16_t result;       /* the result to show: damage (>= 0) or a failure (< 0), 0 none */
-    int16_t result_flag;  /* for result -2: 0 shows "no ammunition" with the champion's hand picture */
-    uint16_t result_ammo; /* for result -2: the ammunition kinds (weapon attribute 5) that the action needs */
+    int16_t result_flag;  /* for RESULT_NO_AMMO: 0 shows "no ammunition" with the champion's hand picture */
+    uint16_t result_ammo; /* for RESULT_NO_AMMO: the ammunition kinds of a weapon that the action needs */
     /* ordinal as in the original: the input tree compares it with node arguments */
     int16_t flash; /* champion ordinal whose icon flashes (> 0 on, < 0 off), 0 none */
     int16_t flash_hand;

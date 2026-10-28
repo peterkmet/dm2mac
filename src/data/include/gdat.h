@@ -26,12 +26,15 @@ enum GdatResult {
 #define GDAT_TYPE_TEXT          0x05
 #define GDAT_TYPE_REMAP         0x07 /* a color remap table, for example a depth shading table */
 #define GDAT_TYPE_CREATURE_DATA 0x07 /* the animation tables of a creature */
+#define GDAT_TYPE_FONT          0x07 /* the font of the interface */
 #define GDAT_TYPE_TABLE         0x08 /* a word table */
+#define GDAT_TYPE_PALETTE       0x09 /* the game palette */
 #define GDAT_TYPE_VALUE         0x0b
 #define GDAT_TYPE_VALUE2        0x0c
 #define GDAT_TYPE_DATA          0x0d /* raw data, for example the interface colors */
 
 /* GDAT categories: the first part of a key (category, index, type, entry). */
+#define CAT_GENERAL        0x00 /* index 0: two values; index 1: the item (0, 1, 0, 0); it holds no sound */
 #define CAT_INTERFACE      0x01 /* the interface pictures, the font, the palette, the layout */
 #define CAT_DUNGEON        0x03 /* index 0: the dungeon (sounds, texts, the start hour); index map + 1: a map */
 #define CAT_MUSIC          0x04
@@ -76,6 +79,13 @@ typedef struct {
     int entry;
 } GdatKey;
 
+/* The size of an image item: the width and the height in pixels, bits per pixel IMAGE_4BPP or IMAGE_8BPP, and the
+   decoded byte size. */
+typedef struct {
+    int width, height, bpp;
+    size_t size;
+} ImageInfo;
+
 typedef struct gdat Gdat;
 
 /* Loading */
@@ -97,8 +107,8 @@ const uint8_t *gdat_item(const Gdat *g, int item, uint32_t *out_size);
 int gdat_find(const Gdat *g, int category, int index, int type, int entry);
 
 /* Images */
-/* Width, height, and bits per pixel (4 or 8) of an image item; returns the decoded byte size or an error. */
-int gdat_image_size(const Gdat *g, int item, int *out_width, int *out_height, int *out_bpp);
+/* The width, height, bits per pixel, and decoded byte size of an image item. */
+enum GdatResult gdat_image_info(const Gdat *g, int item, ImageInfo *out);
 /* Decodes an image item into dst. 4 bpp rows hold an even pixel count, high nibble first; pad nibbles keep the dst content. */
 enum GdatResult gdat_decode_image(const Gdat *g, int item, uint8_t *dst, size_t dst_size);
 /* The 16 palette indices of the colors of a 4 bpp image, NULL for an 8 bpp image. */

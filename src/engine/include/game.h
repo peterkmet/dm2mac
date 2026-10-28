@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "os.h"
 #include "save.h"
 
 /* The timing of the main loop. */
@@ -83,11 +84,10 @@ extern int g_input_mouse_buttons;
 
 /* The save slot and the sizes of the session paths. */
 #define SAVE_SLOT_NONE (-1)
-#define SAVE_DIR_SIZE  1024 /* a folder of the session: data_dir, save_dir */
-#define SAVE_FILE_SIZE 28   /* the longest part after the folder: "/DATA/SKSAVE<int>.BAK" with an 11-character int */
-#define SAVE_PATH_SIZE (SAVE_DIR_SIZE + SAVE_FILE_SIZE) /* a folder and its longest file part, without cutting */
 typedef struct {
-    int new_game;       /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot */
+    /* 1: the next session_load starts DUNGEON.DAT; 0: it loads a slot; other values: a state of the start menu that
+       the interface sets */
+    int new_game;
     bool use_dungenb;   /* the new game reads DUNGENB.DAT when it exists */
     bool loaded;        /* a game is in memory: the end of the game can load the last slot again */
     bool completed;     /* the party finished the game */
@@ -99,8 +99,8 @@ typedef struct {
     uint32_t save_time; /* the game time of the last save */
     int exit_code;
     char save_name[SAVE_NAME_SIZE]; /* the name of the slot in the save dialog */
-    char data_dir[SAVE_DIR_SIZE];   /* the game folder: DATA holds the dungeon and the saves */
-    char save_dir[SAVE_DIR_SIZE];   /* the folder of QUICK.DAT (--saves); empty: <data_dir>/DATA */
+    char data_dir[OS_DIR_SIZE];     /* the game folder: DATA holds the dungeon and the saves */
+    char save_dir[OS_DIR_SIZE];     /* the folder of QUICK.DAT (--saves); empty: <data_dir>/DATA */
 } Session;
 extern Session g_session;
 
@@ -121,6 +121,20 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 #define CHEAT_MAP      0x20 /* the automap shows every square of the map */
 #define CHEAT_ALL      0x3f
 
+/* The operations of a set-global sensor on a script variable. */
+#define GLOBAL_VAR_SET      0
+#define GLOBAL_VAR_CLEAR    1
+#define GLOBAL_VAR_TOGGLE   2
+#define GLOBAL_VAR_ADD      3
+#define GLOBAL_VAR_SUBTRACT 4
+#define GLOBAL_VAR_ASSIGN   6
+/* The script variables: the flags, then the bytes, then the words; the first byte, the first word, the end. */
+#define GLOBAL_BYTE_FIRST   (GLOBAL_FLAG_BYTES * BYTE_BIT_COUNT)
+#define GLOBAL_WORD_FIRST   (GLOBAL_BYTE_FIRST + GLOBAL_BYTE_COUNT)
+#define GLOBAL_VAR_END      (GLOBAL_WORD_FIRST + GLOBAL_WORD_COUNT)
+/* The largest value of a byte variable. */
+#define GLOBAL_BYTE_MAX     255
+
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving);
 /* Runs the due timeline events. */
@@ -135,6 +149,11 @@ void game_run_party_clocks(void);
 void game_advance_time(void);
 /* Adds 1 to the global byte variable index (GLOBAL_BYTE_FIRST and up), up to GLOBAL_BYTE_MAX. */
 void game_global_byte_add(int index);
+/* The value of the global variable var: a flag bit, a byte, or a word of the game record; 0 for an unknown var. */
+int game_global_var(int var);
+/* Changes the global variable var by op (GLOBAL_VAR_*) with value and returns the new value; the bytes stay in their
+   range. */
+int game_modify_global_var(int var, int value, int op);
 
 /* The main loop */
 /* The party is awake and pushes nothing; the main loop runs game steps at the normal speed. */
@@ -153,6 +172,10 @@ bool game_count_step_tick(void);
 void game_reset_step_ticks(void);
 /* A loaded or a new game runs: the end of the last game is over. */
 void game_clear_end(void);
+/* The loop stops (on): the party died or the player quit. */
+void game_set_end(bool on);
+/* The platform ended the program (on): no end movies. */
+void game_set_closed(bool on);
 /* The program ends. */
 void game_request_quit(void);
 

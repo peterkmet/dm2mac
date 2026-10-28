@@ -60,7 +60,7 @@ static struct {
     int script, index, step; /* the script, the index of its current step, and that step */
     bool skip;               /* a click waits for movie_update */
     uint64_t start_ns;       /* the start of the step */
-    char data_dir[SAVE_PATH_SIZE];
+    char data_dir[OS_DIR_SIZE];
     uint8_t *file; /* the movie file of the step */
     MveStream mve;
     int16_t ring[AUDIO_RING_FRAMES][STEREO_CHANNELS];
@@ -97,46 +97,31 @@ static int next_picture(void)
     return result;
 }
 
-/* Scripts */
-
-int movie_script_after(int exit_code)
-{
-    if (exit_code == EXIT_COMPLETED)
-        return MOVIE_SCRIPT_COMPLETED;
-    if (exit_code == EXIT_PARTY_DEAD)
-        return MOVIE_SCRIPT_PARTY_DEAD;
-    return MOVIE_SCRIPT_NONE;
-}
-
-void movie_stop(void)
-{
-    if (!mv.playing)
-        return;
-    free(mv.file);
-    mv.file = NULL;
-    mv.playing = false;
-    mv.step = MOVIE_STEP_NONE;
-    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
-    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
-}
-
 /* Reads a file of the data folder into memory; NULL when it is missing, empty, or does not read. */
 static uint8_t *load_file(const char *name, size_t *size)
 {
-    char path[SAVE_PATH_SIZE * 2];
+    char path[OS_PATH_SIZE];
     snprintf(path, sizeof path, "%s/%s", mv.data_dir, name);
     FILE *f = fopen(path, "rb");
     if (!f)
         return NULL;
-    uint8_t *data = NULL;
     int64_t length = fseek(f, 0, SEEK_END) ? -1 : ftell(f);
-    if (length > 0 && !fseek(f, 0, SEEK_SET) && (data = malloc((size_t)length)) &&
-        fread(data, 1, (size_t)length, f) != (size_t)length) {
-        free(data);
-        data = NULL;
+    if (length <= 0 || fseek(f, 0, SEEK_SET)) {
+        fclose(f);
+        return NULL;
     }
+    uint8_t *data = malloc((size_t)length);
+    if (!data) {
+        fclose(f);
+        return NULL;
+    }
+    size_t read = fread(data, 1, (size_t)length, f);
     fclose(f);
-    *size = length > 0 ? (size_t)length : 0;
+    if (read != (size_t)length) {
+        free(data);
+        return NULL;
+    }
+    *size = read;
     return data;
 }
 
@@ -184,6 +169,29 @@ static void next_step(uint64_t now_ns)
         if (mv.step == MOVIE_STEP_SPLASH ? start_splash() : start_movie(mv.step))
             return;
     }
+}
+
+/* Scripts */
+
+int movie_script_after(int exit_code)
+{
+    if (exit_code == EXIT_COMPLETED)
+        return MOVIE_SCRIPT_COMPLETED;
+    if (exit_code == EXIT_PARTY_DEAD)
+        return MOVIE_SCRIPT_PARTY_DEAD;
+    return MOVIE_SCRIPT_NONE;
+}
+
+void movie_stop(void)
+{
+    if (!mv.playing)
+        return;
+    free(mv.file);
+    mv.file = NULL;
+    mv.playing = false;
+    mv.step = MOVIE_STEP_NONE;
+    memcpy(g_video_fb, mv.saved_fb, sizeof g_video_fb);
+    memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
 }
 
 bool movie_start(int script, const char *data_dir, uint64_t now_ns)

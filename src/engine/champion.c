@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "champion.h"
+#include <string.h>
 #include "action.h"
 #include "champion_internal.h"
 #include "creature.h"
@@ -11,6 +12,7 @@
 #include "ids.h"
 #include "item.h"
 #include "move.h"
+#include "num.h"
 #include "random.h"
 #include "recruit.h"
 #include "sensor.h"
@@ -84,9 +86,10 @@ void champ_init_party_state(void)
     if (g_game.leader_hand == THING_NONE) {
         g_leader_hand.icon = HAND_ICON_NONE;
     } else {
+        /* without a leader the hand applies no item effects: the loaded champions hold them already */
         uint16_t leader = g_game.leader;
-        g_game.leader = (uint16_t)-1;
-        champ_put_in_leader_hand(g_game.leader_hand, true);
+        g_game.leader = LEADER_NONE;
+        champ_put_in_leader_hand(g_game.leader_hand);
         g_game.leader = leader;
     }
     for (int i = 0; i < g_game.champion_count; i++) {
@@ -94,16 +97,16 @@ void champ_init_party_state(void)
         action_reset_champion(i);
     }
     set_redraw_flags(REDRAW_STATUS_BOX);
-    int leader = (int16_t)g_game.leader;
-    if (leader != -1) {
-        g_game.leader = (uint16_t)-1;
+    if (g_game.leader != LEADER_NONE) {
+        int16_t leader = champ_leader();
+        g_game.leader = LEADER_NONE;
         champ_set_leader(leader);
     }
 }
 
 /* Statistics and load */
 
-int champ_get_stat(Champion *c, int stat, int which)
+int champ_get_stat(const Champion *c, int stat, int which)
 {
     int v = c->stats[stat][which];
     if (which == STAT_CURRENT && c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST &&
@@ -111,7 +114,7 @@ int champ_get_stat(Champion *c, int stat, int which)
         int aura = c->aura_value > AURA_MAX ? AURA_MAX : c->aura_value;
         v = (uint16_t)(v + rand_below((uint16_t)((aura * v >> AURA_STAT_SHIFT) + 1)) + AURA_BASE);
     }
-    return champ_clamp16(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
+    return clamp_int(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
 
 int champ_get_skill_level(int champ, int skill, bool with_bonus)
@@ -145,7 +148,7 @@ int champ_scale_by_stamina(const Champion *c, int value)
     return value;
 }
 
-int champ_get_max_load(Champion *c)
+int champ_get_max_load(const Champion *c)
 {
     int strength = champ_get_stat(c, STAT_STRENGTH, STAT_CURRENT);
     uint16_t load = (uint16_t)champ_scale_by_stamina(c, (int16_t)(strength * LOAD_PER_STRENGTH + LOAD_BASE));
@@ -224,7 +227,7 @@ static bool is_command_allowed(uint16_t thing, int command)
     if (type < MINION_MAP_FIRST_TYPE || type > MINION_MAP_LAST_TYPE)
         return false;
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    if (!item_find_link_projectile(group, thing)) {
+    if (item_find_link_projectile(group, thing) == THING_NONE) {
         if (command == COMMAND_MINION_ATTACK || command == COMMAND_MINION_MAP_SET)
             return true;
         if (thing_word(thing, MINION_MAP_LOCATION) == THING_NONE)
@@ -292,6 +295,20 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
     return item_is_minion_map(thing) || count > 0;
 }
 
+void champ_action_list_save(ChampActionList *out)
+{
+    memcpy(out->actions, g_champ_actions, sizeof out->actions);
+    out->count = g_champ_action_count;
+    out->thing = g_champ_action_thing;
+}
+
+void champ_action_list_restore(const ChampActionList *in)
+{
+    memcpy(g_champ_actions, in->actions, sizeof in->actions);
+    g_champ_action_count = in->count;
+    g_champ_action_thing = in->thing;
+}
+
 /* Party */
 
 int champ_get_index_in_cell(int16_t cell)
@@ -304,14 +321,26 @@ int champ_get_index_in_cell(int16_t cell)
 
 void champ_set_leader(int champ)
 {
-    int16_t leader = (int16_t)g_game.leader;
+    int16_t leader = champ_leader();
     if (champ == leader || (champ != -1 && !champion(champ)->health))
         return;
-    if (leader != -1)
+    if (g_game.leader != LEADER_NONE)
         champion(leader)->redraw |= REDRAW_LOAD | REDRAW_NAME;
     g_game.leader = (uint16_t)champ;
     if (champ != -1 && champ + 1 != g_ui.candidate)
         champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
+}
+
+int16_t champ_leader(void)
+{
+    return (int16_t)g_game.leader;
+}
+
+void champ_set_name(int16_t champion_index, const char name[CHAMPION_NAME_SIZE], const char title[CHAMPION_TITLE_SIZE])
+{
+    Champion *c = champion(champion_index);
+    memcpy(c->name, name, sizeof c->name);
+    memcpy(c->title, title, sizeof c->title);
 }
 
 void champ_set_party_direction(int16_t dir)
@@ -347,6 +376,8 @@ void champ_wake_party(void)
     g_hooks.clear_viewport();
     g_hooks.set_input_mode(INPUT_MODE_MOVE);
 }
+
+/* Party state that the interface sets */
 
 void champ_set_party_sleeping(bool on)
 {

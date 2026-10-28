@@ -122,7 +122,9 @@ typedef struct __attribute__((packed)) {
 
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
-/* Champion.wounds bits: 0x01 and 0x02 the hands, then the head, the torso, the legs, the feet. */
+/* Champion.wounds bits: the hands, the head, the torso, the legs, the feet. */
+#define WOUND_READY_HAND      0x01
+#define WOUND_ACTION_HAND     0x02
 #define WOUND_HEAD            0x04
 #define WOUND_TORSO           0x08
 #define WOUND_LEGS            0x10
@@ -192,9 +194,8 @@ enum EffectMode {
 #define HAND_ICON_KEY     12
 /* The icon entry of no leader hand icon. */
 #define HAND_ICON_NONE    0xff
-/* The mouth picture of the inventory: GDAT (9, 0x5b, 1, entry). */
-#define MOUTH_CATEGORY    0x09
-#define MOUTH_INDEX       0x5b
+/* The mouth picture of the inventory: GDAT (CAT_WALL_ORNAMENT, MOUTH_ORNAMENT, GDAT_TYPE_IMAGE, entry). */
+#define MOUTH_ORNAMENT    0x5b
 
 /* The leader hand object as the original keeps it beside g_game.leader_hand. */
 typedef struct {
@@ -207,15 +208,22 @@ typedef struct {
 
 extern LeaderHand g_leader_hand;
 
-/* One action of an item in a champion's hand: its GDAT text (category, index, 5, entry). */
+/* One action of an item in a champion's hand: its GDAT text (category, index, GDAT_TYPE_TEXT, entry). */
 typedef struct {
     uint8_t category, index, entry;
 } ChampionAction;
 /* The actions that the action menu of a hand shows at most. */
 #define CHAMPION_ACTION_MAX 3
+/* The open action menu: its actions, their count, and the hand thing. */
+typedef struct {
+    ChampionAction actions[CHAMPION_ACTION_MAX];
+    int count;
+    uint16_t thing;
+} ChampActionList;
 
 extern ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
 extern int g_champ_action_count;
+/* The hand thing of the open action menu; exported for the tests. */
 extern uint16_t g_champ_action_thing;
 /* The party sleeps. */
 extern bool g_party_sleeping;
@@ -240,13 +248,13 @@ void champ_init_party_state(void);
 /* Statistics and load */
 /* A statistic, current (which STAT_CURRENT, with the aura) or maximum (which STAT_MAXIMUM), with its bonus, 10 to
    220. */
-int champ_get_stat(Champion *c, int stat, int which);
+int champ_get_stat(const Champion *c, int stat, int which);
 /* The level of skill; with_bonus adds the skill bonus and the base skill's bonus. */
 int champ_get_skill_level(int champ, int skill, bool with_bonus);
 /* value reduced when the stamina is below half of its maximum. */
 int champ_scale_by_stamina(const Champion *c, int value);
 /* The load in 1/10 kg that the champion can carry. */
-int champ_get_max_load(Champion *c);
+int champ_get_max_load(const Champion *c);
 /* The load in 1/10 kg that the champion carries, with the leader hand object for the leader. */
 int champ_get_load(int champ);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
@@ -256,12 +264,20 @@ int champ_get_move_delay(int champ);
 /* Lists in g_champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
    true when the action area has something to show. */
 bool champ_list_actions(int champ, uint16_t thing, int hand);
+/* Copies the open action menu into out. */
+void champ_action_list_save(ChampActionList *out);
+/* Makes the saved list in the open action menu again. */
+void champ_action_list_restore(const ChampActionList *in);
 
 /* Party */
 /* The living champion in cell (0 to 3), -1 none. */
 int champ_get_index_in_cell(int16_t cell);
 /* Makes champ (-1: none) the leader. */
 void champ_set_leader(int champ);
+/* The index of the leader, -1 for none. */
+int16_t champ_leader(void);
+/* Gives champion_index a new name and title: the whole fields, the bytes after the end marks too. */
+void champ_set_name(int16_t champion_index, const char name[CHAMPION_NAME_SIZE], const char title[CHAMPION_TITLE_SIZE]);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int16_t dir);
 /* Turns one champion to dir; the party keeps its direction. */
@@ -278,7 +294,7 @@ extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and hea
    the program start. */
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
-int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
+int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);
 /* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
 int champ_get_strength(int champ, int hand, int skill);
 /* The dexterity of champ with its load, 1 to 100. */
@@ -286,15 +302,15 @@ int champ_get_dexterity(int champ);
 /* A luck test against chance; the luck changes by 2. True when the champion is lucky. */
 bool champ_test_luck(Champion *c, int chance);
 /* Wounds and damages champ (the damage shows at the end of the step); returns the damage, 0 when none. */
-int champ_take_damage(int16_t champ, int damage, int wound_mask, int attack_type);
+int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);
 /* Takes stamina from a champion. */
 void champ_decrease_stamina(int champ, int amount);
 /* Damages each champion by about damage; returns the mask of the champions that took damage. */
 int champ_damage_party(int damage, int wound_mask, int attack_type);
 /* Poisons champ: damage now, and a poison event that repeats with less. */
-void champ_poison(int16_t champ, int amount);
+void champ_poison(int champ, int amount);
 /* Takes amount away from the poison events of champ; exported for the tests. */
-void champ_cure_poison(int16_t champ, int amount);
+void champ_cure_poison(int champ, int amount);
 /* A click on the face of a champion in cell: the first click takes the face, the second swaps it with the champion
    of the second cell. */
 void champ_drag_click(int16_t cell);
@@ -312,8 +328,10 @@ void champ_revive(int champ);
 /* Champion actions (champion_action.c). */
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
 extern int16_t g_champ_action_result;
+/* Clears g_champ_action_result before a new action. */
+void champ_action_clear_result(void);
 /* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
-void champ_add_action_delay(int champ, uint16_t ticks, int16_t hand);
+void champ_add_action_delay(int champ, uint16_t ticks, int hand);
 /* Takes the charges of action from its item in the open hand of champ; true when the item has no charges left;
    exported for the tests. */
 bool champ_use_action_charge(int champ, ChampionAction action);
@@ -323,11 +341,11 @@ void champ_reload_hand(int champ, int hand);
 int champ_get_party_level(void);
 /* Adds experience in skill; each new level raises the statistics and prints a message. */
 void champ_add_experience(int champ, int skill, uint32_t experience);
-/* Champ performs action (an index in g_champ_actions) with the item in the open hand; a repeat (repeated) takes no
+/* Champ performs the action of g_champ_actions at index with the item in the open hand; a repeat (repeated) takes no
    delay, stamina, or experience. True when the action was done; exported for the tests. */
-bool champ_perform_action(int champ, int action, bool repeated);
-/* Runs action (0 to 2, -1: none) of the open action menu; true when the action was done. */
-bool champ_execute_selected_action(int action);
+bool champ_perform_action(int champ, int index, bool repeated);
+/* Runs the action at index (0 to 2, -1: none) of the open action menu; true when the action was done. */
+bool champ_execute_selected_action(int index);
 /* The repeats of the actions of all champions. */
 void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand to the left or the right side; true when it flies. */
@@ -340,8 +358,8 @@ void champ_compute_load(int champ);
 void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
-/* Puts thing into the hand of the leader; defer_cursor: the original changes the mouse cursor later. */
-void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor);
+/* Puts thing into the hand of the leader; the cursor shows it from the next frame on (inv_cursor_object). */
+void champ_put_in_leader_hand(uint16_t thing);
 /* Takes the object out of the hand of the leader; THING_NONE when the hand is empty. */
 uint16_t champ_take_from_leader_hand(void);
 /* Updates the cursor when the icon of the animated leader hand object changes. */

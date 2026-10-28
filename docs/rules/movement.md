@@ -45,13 +45,13 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 - A square event (type 4) holds x, y, cell, and effect: 0 set, 1 clear, 2 toggle, 3 hold. The priority is 1 for set, 3 for clear, 2 for toggle.
 - Floor sensors react when a thing (or the party) enters or leaves the square. Wall sensors react to clicks and to square events. A sensor with a target queues a square event at the target after its delay.
-- The script variables (`dun_get_global_var`): [skull-map.md](../reference/skull-map.md#global-variables-script-variables).
+- The script variables (`game_global_var`): [skull-map.md](../reference/skull-map.md#global-variables-script-variables).
 - Door events: type 1 opens or closes a door one step per event, type 2 breaks it.
 
 ## Deviations from the original
 
 - Uninitialized data of the original: some events keep 2 to 4 data bytes or the high bits of a word from the stack (hold square events, sensor timers, item and wall events). The port sets them to 0. The reverse of a hold effect and the priority of a hold square event are uninitialized too: the port keeps the hold effect and uses priority 3.
-- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
+- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones; a teleporter square without things has no teleporter link and is not a closed teleporter (`link_side`, `is_closed_teleporter`; the original reads the record of the end mark); a teleporter link to a map outside the dungeon is no link; `dungeon_unlink_thing_from_square` on a square without things does nothing (the original reads before the first-thing table); `dungeon_link_thing_to_square` returns false for a full first-thing table (the original stops with a system error). A create item sensor (`0x3c`) whose item index has no thing type creates nothing; the original asks for a free record of type `0xffff`. When the party falls from a trap teleport text (`fall_risk`) and the random champion is dead, the hurt sound takes the portrait of the leader; without a leader the port plays no hurt sound (the original reads the portrait of champion index `0xffff`, before the champion table).
 - System errors of the timeline: when an event is not in the queue (`find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.
 - `creature_cell_mask` reads kinds 5 to 15 past its table: [creatures.md](creatures.md#deviations-from-the-original).
@@ -59,8 +59,12 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The push arrow under the mouse stays pressed in the arrow panel while the mouse selects it in push mode (`input_release_move_arrow`). The original draws it pressed on the screen and waits for a vertical blank, then releases it in the same game step. The port presents the screen only after the step, so the original order shows no pressed arrow.
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified (manual check B7).
 - The advanced mode takes the autorepeat of a held key only when no key, event, or command waits (`input_key_repeat`). In the original, the repeats of a held key fill the event ring, and the party walks on after the key goes up. The vanilla mode keeps that.
+- A move without a destination (a removal) leaves a stale register in the destination map of the original (`g_party.dest_map`). The port writes the current map; the scenario tests skip `dest_map` after a removal.
 - Kept quirks of the original:
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
   - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
+  - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or else at the coordinates of the pit square
+  - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
+  - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.

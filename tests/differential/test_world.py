@@ -17,7 +17,7 @@ from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from dm2test.save import Game, Timeline
-from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
+from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
 from dm2test.lib import load_lib
 
 
@@ -32,6 +32,7 @@ EVENT_WEATHER, CHAMPION_HANDS = C.EVENT_WEATHER, 0xC3
 OUTDOOR_MAPS = (1, 14, 15, 16, 17, 25, 27, 29, 30, 33, 39, 41, 42)  # sky state 1 or 4: the weather shows
 MAP_LIGHTNING_TARGET = 1  # its graphics set gives a fixed square that lightning hits
 INDOOR_MAPS = (2, 5, 11, 20, 38)  # no weather: the hour does not update the light
+WHEN = {0: C.SOUND_NOW, 1: C.SOUND_STEP_END, -1: C.SOUND_DEFERRED}  # the delay of the original as SoundWhen
 
 
 @pytest.fixture
@@ -66,7 +67,7 @@ def set_weather(sc, **values):
 
 
 def set_global(sc, var, value):
-    sc.lib.dun_modify_global_var(var, value, 6)
+    sc.lib.game_modify_global_var(var, value, 6)
     sc.emu.write(G_GLOBAL_BYTES + var - 0x40, bytes([value]))
 
 
@@ -77,7 +78,7 @@ def assert_world(sc, where):
     sc.sounds_seen = getattr(sc, "sounds_seen", []) + sc.sounds
     sc.assert_same_sounds(where)
     for var in (0x40, 0x41):
-        assert sc.lib.dun_get_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
+        assert sc.lib.game_global_var(var) == sc.emu.read(G_GLOBAL_BYTES + var - 0x40, 1)[0], (where, var)
     assert ctypes.c_uint32.in_dll(sc.lib, "g_random_seed").value == sc.emu.read_u32(VIEW_SEED_ADDR), where
     assert sc.differences() == [], where
 
@@ -125,6 +126,27 @@ def test_storm_steps_match_original(world):
         assert_world(world, n)
         delete_weather_events(world)
     world.assert_equal("end")
+
+
+def test_storm_above_a_byte_matches_original(world, lib):
+    # A damaged save with a storm intensity of 0x8000 or more: the storm tests compare it as a signed word, as in the
+    # original (the Ghidra output of SKULL.EXE reads like an unsigned compare).
+    rng = random.Random(185)
+    sc = world
+    for n in range(60):
+        map_ = rng.choice(OUTDOOR_MAPS)
+        _, x, y, _ = rng.choice([s for s in squares(lib, (C.SQUARE_FLOOR,)) if s[0] == map_])
+        sc.place(map_, x, y, rng.randrange(C.DIR_COUNT))
+        sc.set_time(12000 + rng.randrange(1 << 20))
+        weather = random_weather(rng)
+        weather["storm_intensity"] = rng.choice((0x8000, 0x80B6, 0x80CD, 0xFF00, 0xFFFF))
+        weather["next_hour_time"] = sc.time() + 100
+        set_weather(sc, strike_threshold=rng.randrange(4, 8), light_level=0, **weather)
+        for i in range(5):
+            lib.world_update_day_night(0)
+            sc.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
+            assert_world(sc, (n, map_, i))
+    sc.assert_equal("end")
 
 
 @pytest.mark.parametrize("part", range(3))
@@ -264,20 +286,20 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     # The offset between two layout zones at a percent: the place of a lightning bolt in the sky.
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
-    dx, dy = ctypes.c_int16(), ctypes.c_int16()
+    offset = ScreenPoint()
     lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
         if rng.random() < 0.5:
             a = rng.choice((6001, 6002, 6003, 3100, 5000))
             b = a + 1
-        dx.value, dy.value = 7, 7
+        offset.x, offset.y = 7, 7
         sc = world
         sc.emu.write(SCRATCH + 0xF8300, struct.pack("<hh", 7, 7))
-        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(dx), ctypes.byref(dy))
+        mine = lib.zone_interpolate_offset(a, b, p, ctypes.byref(offset))
         theirs = sc.emu.call(ZONE_INTERPOLATE_OFFSET, a, b, p, SCRATCH + 0xF8300, SCRATCH + 0xF8302)
         assert (mine is False) == (theirs & 0xFFFFFFFF == 0xFFFFFFFF), (a, b, p)
-        assert (dx.value, dy.value) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
+        assert (offset.x, offset.y) == struct.unpack("<hh", sc.emu.read(SCRATCH + 0xF8300, 4)), (a, b, p)
 
 
 def transfer_sensors(lib):
@@ -420,13 +442,13 @@ def test_lightning_strikes_match_original(world, lib):
         value = lightning_seed(lib, rng, storm, 0x28 if storm >= 0xCD else 7, target)
         ctypes.c_uint32.in_dll(lib, "g_random_seed").value = value
         sc.emu.write_u32(VIEW_SEED_ADDR, value)
-        before = lib.dun_get_global_var(0x41)
+        before = lib.game_global_var(0x41)
         lib.world_update_day_night(0)
         sc.emu.call(WORLD_UPDATE_DAY_NIGHT, 0)
         hit = [e for e in sc.explosions if (e[2], e[3]) == target]
         party_hits += case == 0 and bool(hit)
         creature_hits += case == 1 and bool(hit)
-        seen += lib.dun_get_global_var(0x41) != before
+        seen += lib.game_global_var(0x41) != before
         assert_world(sc, (n, map_, target, party))
     set_party_state(sc, 0, 0)
     assert party_hits > 5 and creature_hits > 5 and seen > 5, (party_hits, creature_hits, seen)
@@ -610,12 +632,15 @@ def test_sound_requests_match_original(world, lib, gdat):
                 step = rng.choice(((0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)))
                 args = last[:5] + (last[5] + step[0], last[6] + step[1], last[7])
             last = args
-            lib.sndreq_request(SoundCue(*args[:5]), *args[5:])
+            if args[7] > 1:
+                lib.sndreq_request_after(SoundCue(*args[:5]), *args[5:])
+            else:
+                lib.sndreq_request(SoundCue(*args[:5]), *args[5:7], WHEN[args[7]])
             sc.emu.call(SOUND_REQUEST, *args)
         lib.dun_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
-            lib.sndreq_flush_requests(1)
+            lib.sndreq_flush_requests(True)
             sc.emu.call(0x1616D, 1)
         if passage:
             sc.party.alt_view_map = -1
@@ -646,7 +671,7 @@ def ambient_wall_sensors(lib, gdat):
                 t = lib.dungeon_square_first_thing(map_, x, y)
                 while t != C.THING_ENDOFLIST and t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_SENSOR:
                     data, flags = lib.thing_word(t, 2), lib.thing_word(t, 4)
-                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATED and flags & 0x40 and flags >> 12:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATION and flags & 0x40 and flags >> 12:
                         ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
                         frames = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x0D)
                         if frames:

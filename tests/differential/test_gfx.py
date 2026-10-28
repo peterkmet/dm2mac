@@ -248,7 +248,7 @@ def test_dim_remap_matches_original(lib, emu):
     emu.stub(IMAGE_CACHE_LOOKUP_OR_ADD, lambda *_: 0)
     emu.stub(IMAGE_CACHE_ALLOC, lambda *_: CACHE)
     emu.stub(IMAGE_CACHE_RELEASE, lambda *_: 0)
-    lib.pal_apply_dim_remap.argtypes = [u8_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    lib.pal_apply_dim_remap.argtypes = [u8_p, ctypes.c_uint8, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
     rng = random.Random(4)
     for case in range(200):
         n = rng.choice([0, -1, 16, 256])
@@ -261,3 +261,29 @@ def test_dim_remap_matches_original(lib, emu):
         lib.pal_apply_dim_remap(c_table, dim, key1, key2, ctypes.byref(c_count))
         assert bytes(c_table) == emu.read(TABLE, 256), case
         assert c_count.value & 0xFFFF == int.from_bytes(emu.read(COUNT, 2), "little"), case
+
+
+def test_ramp_lengths_past_the_item(lib, tmp_path):
+    # A damaged GRAPHICS.DAT whose ramp lengths reach past the ramp item is rejected.
+    from dm2test.gdat import GDAT
+    if not GDAT.exists():
+        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    data = bytearray(GDAT.read_bytes())
+    gdat = ctypes.c_void_p()
+    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+    lib.gdat_free.argtypes = [ctypes.c_void_p]
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    lib.pal_load_color_ramps.argtypes = [ctypes.c_void_p]
+    lib.pal_load_color_ramps.restype = ctypes.c_bool
+    assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(gdat)) == 0
+    item = lib.gdat_find(gdat, C.CAT_INTERFACE, 0, C.GDAT_TYPE_REMAP, 2)
+    lib.gdat_free(gdat)
+    count = int.from_bytes(data[2:4], "little")
+    sizes = [int.from_bytes(data[8 + 2 * (i - 1):10 + 2 * (i - 1)], "little") for i in range(1, item)]
+    at = 8 + 2 * (count - 1) + int.from_bytes(data[4:8], "little") + sum(sizes)
+    data[at + 1:at + 1 + data[at]] = b"\xff" * data[at]
+    path = tmp_path / "GRAPHICS.DAT"
+    path.write_bytes(data)
+    assert lib.gdat_load(str(path).encode(), ctypes.byref(gdat)) == 0
+    assert not lib.pal_load_color_ramps(gdat)
+    lib.gdat_free(gdat)

@@ -1,3 +1,5 @@
 e4bf6dae0422d1fd9f0d263999468bc4e39316e9
 # style: one include order for headers and sources
 ec87db5ab7cf514d566bdc8add0734ddd9543b5e
+# style: the own header first in part files
+92067e27b329439e34fb159c1f7aeeb230fe6ed5

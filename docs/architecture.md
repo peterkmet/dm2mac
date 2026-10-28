@@ -38,7 +38,7 @@ the layers before it, so the compiler rejects an include of a later layer:
 
 ## Modules
 
-A module is one `.c` file with one public header. Each header states its prefixes and has one purpose
+A module is one public header, the files `<module>.c` and `<module>_<part>.c`, and an optional `<module>_internal.h`. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
 `data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), `engine/champion`
 (`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
@@ -108,8 +108,8 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/play.h` | `play_` | The main loop: timer ticks, game steps, the view of the party, and sleep. |
 | `ui/rows.h` | `rows_` | The rows of text of the viewport screens of the advanced mode (not in the original game). |
 | `ui/session.h` | `session_` `args_` `menu_` | The start menu, new games, loads and saves through the slot dialogs, and the end of the game. |
-| `ui/sound.h` | `sound_mix` `sound_play` `sound_set_` `sound_stop_` | Sound output: the sample mixer, the voices, and the volume settings. |
-| `ui/text.h` | `text_clear_` `text_draw` `text_init` `text_measure` `text_message_` `text_print_` `text_set_message_` `text_wrap_` | Text: the font, message wrapping, and printing into the screen. |
+| `ui/sound.h` | `sound_` | Sound output: the sample mixer, the voices, and the volume settings. |
+| `ui/text.h` | `text_` | Text: the font, message wrapping, and printing into the screen. |
 | `ui/ui.h` | `ui_` `offscreen_` | The offscreen bitmaps shared by the panels and the drawing of the interface pictures. |
 | `ui/video.h` | `video_` | The frame buffer and the palette of the 320 × 200 screen. |
 | `ui/view.h` | `view_` | The dungeon view: the squares in sight and their drawing. |

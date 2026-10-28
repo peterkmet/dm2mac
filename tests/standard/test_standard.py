@@ -20,10 +20,11 @@ TESTS = ROOT / "tests"
 ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 MAX_FUNCTION_LINES = 60
-EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "4.8", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
+EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
-DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[25-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;")
+DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[5-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
+                     r"|(?<=[=,(+\-*/%<>&|?:]\s)[3-9](?![\w.\]])")
 BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
 MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"
 MASK_OPERAND = re.compile(rf"{BIT_OPERATOR}\s*\(?\s*{MASK}|\b{MASK}\s*\)?\s*{BIT_OPERATOR}")
@@ -100,7 +101,8 @@ TABLE_START = re.compile(r"\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{")
 
 
 def tables(path):
-    """Each table name of the file and the 1-based lines of its initializer, from the name to the closing brace."""
+    """Each 1-based line of a table initializer of the file, from the = to the closing brace: (table name, column
+    where the initializer starts on the line); the declaration before the = stays outside."""
     text = strip(path.read_text(errors="replace"))
     found, end = {}, 0
     for m in TABLE_START.finditer(text):
@@ -110,9 +112,11 @@ def tables(path):
         while depth and i < len(text):
             depth += {"{": 1, "}": -1}.get(text[i], 0)
             i += 1
-        first = text.count("\n", 0, m.start()) + 1
+        equals = text.rindex("=", m.start(), m.end())
+        first = text.count("\n", 0, equals) + 1
         end = i
-        found.setdefault(m.group(1), set()).update(range(first, text.count("\n", 0, i) + 2))
+        for n in range(first, text.count("\n", 0, i) + 2):
+            found.setdefault(n, (m.group(1), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
     return found
 
 
@@ -132,13 +136,12 @@ def line_check(check, pattern, owners=(), ignore=None):
     for path in sources():
         if (check, rel(path)) in ok or path.name in owners:
             continue
-        table_lines = {n: name for name, lines in tables(path).items() for n in lines}
+        table_lines = tables(path)
         for n, line in code_lines(path):
-            if not pattern.search(ignore.sub("", line) if ignore else line):
-                continue
-            target = f"{rel(path)}:{table_lines[n]}" if n in table_lines else rel(path)
-            if (check, target) not in ok:
-                found.append(f"{check} {target}  | {n}: {line.strip()}")
+            name, column = table_lines.get(n, (None, len(line)))
+            for target, part in ((rel(path), line[:column]), (f"{rel(path)}:{name}", line[column:])):
+                if part and pattern.search(ignore.sub("", part) if ignore else part) and (check, target) not in ok:
+                    found.append(f"{check} {target}  | {n}: {line.strip()}")
     report(check, found)
 
 
@@ -268,6 +271,24 @@ def test_constant_blocks_have_a_comment():
     ok = allowed()
     report("block", [f"block {rel(path)}  | {line}: {items[0][0]}" for path in sources() if ("block", rel(path)) not in ok
                      for line, commented, items in constant_blocks(path) if not commented])
+
+
+LVALUE = r"\w+(?:\s*(?:\.|->)\s*\w+|\s*\[[^\]=;]*\])*"
+ASSIGN = r"(?:[-+*/%&|^]|<<|>>)?=(?!=)"
+STATEMENT = re.compile(rf"(?<![=!<>])=(?!=)\s*{LVALUE}\s*{ASSIGN}"  # a chained assignment
+                       # a second initializer in one declaration
+                       rf"|^\s*(?!return\b|else\b|case\b)(?:\w+\s+)*\w+[\s*]+{LVALUE}\s*=(?!=)[^;]*?,\s*\**{LVALUE}\s*=(?!=)"
+                       rf"|^\s*{LVALUE}\s*(?:{ASSIGN}[^;,(){{}}]*|\+\+|--)\s*,")  # a comma statement
+FOR_HEADER = re.compile(r"\bfor\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)")
+
+
+def test_one_statement_per_line():
+    """No chained assignment, no second initializer in one declaration, no comma statement; a for header is skipped."""
+    line_check("statement", STATEMENT, ignore=FOR_HEADER)
+
+
+def test_no_long_type():
+    line_check("long-type", re.compile(r"\blong\b"))
 
 
 def test_no_decompiler_names():
@@ -507,10 +528,13 @@ def test_no_packed_fields_at_call_sites():
 BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32", "read_u32")
 BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32|read_u32)\w*)", re.M)
 BYTE_SHIFT = re.compile(r"\]\s*\)?\s*<<\s*(?:8|16|24)\b|>>\s*(?:8|16|24)\s*\)?\s*&\s*0x[fF]{2}\b")
+BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?uint8_t\s*\*\s*\)")
 
 
 def test_byte_order_helpers_only_in_le_header():
-    """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h."""
+    """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h; a cast to
+    (uint8_t *) or (const uint8_t *) stands only in data/."""
+    ok = allowed()
     found = []
     for path in sources():
         if rel(path) == "data/include/le.h":
@@ -519,6 +543,8 @@ def test_byte_order_helpers_only_in_le_header():
         found += [f"byteorder {rel(path)}  | {name}" for _, name in declarations(path) if name.startswith(BYTE_ORDER_HELPERS)]
         found += [f"byteorder {rel(path)}  | #define {name}" for name in BYTE_ORDER_MACRO.findall(text)]
         found += [f"byteorder {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path) if BYTE_SHIFT.search(line)]
+        if layer_of(path) != "data" and ("byteorder", rel(path)) not in ok:
+            found += [f"byteorder {rel(path)}  | {n}: {line.strip()}" for n, line in code_lines(path) if BYTE_CAST.search(line)]
     report("byteorder", found)
 
 
@@ -630,10 +656,12 @@ def test_tables_are_const():
 PLATFORM_CODE = re.compile(r"^\s*#\s*if.*\b_WIN32\b|^\s*#\s*include\s*<(?:unistd|dirent|strings|execinfo|fcntl|poll"
                            r"|windows|direct|io)\.h>|^\s*#\s*include\s*<(?:sys|arpa|netinet)/", re.M)
 STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\bexit\s*\(")
+NONDETERMINISM = re.compile(r"\b(?:s?rand|time|clock)\s*\(")
 
 
 def test_platform_code_only_in_platform():
-    """Operating system headers only in platform/; stderr and exit only in platform/ and data/os.c."""
+    """Operating system headers, rand, srand, time and clock only in platform/; stderr and exit only in platform/
+    and data/os.c."""
     ok = allowed()
     found = []
     for path in sources():
@@ -641,9 +669,9 @@ def test_platform_code_only_in_platform():
             continue
         text = path.read_text(errors="replace")
         found += [f"platform {rel(path)}  | {m.group().strip()}" for m in PLATFORM_CODE.finditer(text)]
-        if rel(path) != "data/os.c":
-            found += [f"platform {rel(path)}  | {n}: {line.strip()}" for n, line in enumerate(strip(text).splitlines(), 1)
-                      if STDERR_OR_EXIT.search(line)]
+        for n, line in enumerate(strip(text).splitlines(), 1):
+            if NONDETERMINISM.search(line) or rel(path) != "data/os.c" and STDERR_OR_EXIT.search(line):
+                found.append(f"platform {rel(path)}  | {n}: {line.strip()}")
     report("platform", found)
 
 
@@ -660,13 +688,23 @@ def engine_globals():
 
 
 def test_ui_does_not_write_engine_variables():
+    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function)."""
     alt = "|".join(sorted(engine_globals(), key=len, reverse=True)) or "(?!)"
     target = rf"\b(?:{alt})\b(?:\s*\[[^\]]*\]|\s*(?:\.|->)\s*\w+)*"
     write = re.compile(rf"(?:\+\+|--)\s*{target}|{target}\s*(?:\+\+|--|(?:[-+*/|&^]|<<|>>)?=(?!=))")
     ok = allowed()
-    report("engine-write", [f"engine-write {rel(path)}  | {n}: {line.strip()}" for path in sorted((SRC / "ui").glob("*.c"))
-                            if ("engine-write", rel(path)) not in ok
-                            for n, line in code_lines(path) if write.search(line) and not REDRAW_FLAG_WRITE.search(line)])
+    found = []
+    for path in sorted([*(SRC / "ui").glob("*.c"), *(SRC / "control").glob("*.c")]):
+        if ("engine-write", rel(path)) in ok:
+            continue
+        owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
+        for n, line in code_lines(path):
+            if not write.search(line) or REDRAW_FLAG_WRITE.search(line):
+                continue
+            key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
+            if ("engine-write", key) not in ok:
+                found.append(f"engine-write {key}  | {n}: {line.strip()}")
+    report("engine-write", found)
 
 
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
@@ -896,15 +934,39 @@ def test_function_comments():
 
 
 FORWARD_STATIC = re.compile(r"^static\b[^=;{]*?\b(\w+)\s*\([^;{]*\)\s*;", re.M)
+SECTIONS = ["constant", "type", "state", "function"]
+SECTION_START = [("constant", re.compile(r"^\s*#\s*define\b|^(?:typedef\s+)?enum\b[^=;(]*(?:\{|$)")),
+                 ("type", re.compile(r"^typedef\b|^(?:struct|union)\s+\w+\s*\{")),
+                 ("state", re.compile(r"^(?!extern\b)[A-Za-z_][^(]*?(?:=|;|\{)\s*$|^(?!extern\b)[A-Za-z_][^(;]*?="))]
+
+
+def first_sections(path):
+    """The 1-based line of the first #define or enum, type, file-scope variable and function definition of a .c file;
+    a static const table counts as a variable."""
+    starts = {start for _, start, _, _ in definitions(path)}
+    first, depth = {}, 0
+    for number, line in enumerate(strip(path.read_text(errors="replace")).splitlines(), 1):
+        if depth == 0:
+            kind = "function" if number in starts else next((k for k, p in SECTION_START if p.search(line)), None)
+            first.setdefault(kind, number)
+        if not line.lstrip().startswith("#"):
+            depth += line.count("{") - line.count("}")
+    return {kind: line for kind, line in first.items() if kind}
 
 
 def test_file_order():
-    """Public definitions follow the header order; a static forward declaration names its recursion."""
+    """Public definitions follow the header order; a static forward declaration names its recursion; the first
+    constant, type, file-scope variable and function stand in that order (target <file>:sections)."""
     ok = allowed()
     found = []
     for path in sources():
         if path.suffix != ".c" or ("order", rel(path)) in ok:
             continue
+        if ("order", f"{rel(path)}:sections") not in ok:
+            first = first_sections(path)
+            present = sorted(first, key=SECTIONS.index)
+            found += [f"order {rel(path)}:sections  | {first[b]}: the first {b} stands before the first {a} ({first[a]})"
+                      for a, b in zip(present, present[1:]) if first[b] < first[a]]
         header = base_header(path)
         if header:
             order = [f.name for f in functions(header) if not f.static]
@@ -939,9 +1001,22 @@ def parameter(text):
 
 
 def test_one_type_per_parameter_name():
-    """A reserved parameter name of a game value kind has the type of the table in the headers of a layer."""
+    """A reserved parameter name of a game value kind has the type of the table in the headers of a layer and in
+    the static functions of each .c file."""
     ok = allowed()
     found = []
+    for path in sources():
+        if path.suffix != ".c":
+            continue
+        for f in functions(path):
+            key = f"{rel(path)}:{f.name}"
+            if not f.static or ("type", key) in ok:
+                continue
+            for text in f.params:
+                kind, name = parameter(text)
+                if (expected := TYPE_TABLE.get(name)) and kind not in (expected, f"{expected}*"):
+                    found.append(f"type {key}  | {name}: {kind}; the table says {expected}")
+    found = sorted(set(found))
     for layer in LAYERS:
         types = defaultdict(set)
         for header in (SRC / layer).rglob("*.h"):
@@ -954,7 +1029,7 @@ def test_one_type_per_parameter_name():
             key, expected = f"{layer}:{name}", TYPE_TABLE.get(name)
             if ("type", key) in ok:
                 continue
-            if expected and kinds != {expected}:
+            if expected and not kinds <= {expected, f"{expected}*"}:
                 found.append(f"type {key}  | {sorted(kinds)}; the table says {expected}")
     report("type", found)
 
@@ -983,14 +1058,21 @@ def test_at_most_five_parameters():
 TEST_MARKER = "exported for the tests"
 
 
+def defines(path, name):
+    """True when the .c file defines the function or the variable name at column 0."""
+    text = strip(path.read_text(errors="replace"))
+    return (any(f.name == name and f.definition for f in functions(path))
+            or re.search(rf"^(?!extern\b)\w[^\n;(=]*\b{name}\s*(?:\[[^\n;=]*\])*\s*[=;]", text, re.M) is not None)
+
+
 def test_exports_have_users():
-    """An exported function or global has a use outside its module, or the test marker on its declaration."""
+    """An exported function or global has a use outside its module, or the test marker on its declaration; a name of
+    an _internal.h header has a use outside the file that defines it."""
     used_in = {path: set(IDENTIFIER.findall(strip(path.read_text(errors="replace")))) for path in sources()}
     ok = allowed()
     found = []
     for header in headers():
-        if header.stem.endswith("_internal"):
-            continue
+        internal = header.stem.endswith("_internal")
         own = module_files(header)
         lines = header.read_text(errors="replace").splitlines()
         text = strip("\n".join(lines))
@@ -998,10 +1080,13 @@ def test_exports_have_users():
         names += [(n, text.count("\n", 0, m.start()) + 1) for m in EXTERN_VARIABLE.finditer(text) for n in extern_names(m.group(1))]
         for name, line in names:
             key = f"{rel(header)}:{name}"
+            if internal:
+                own = {header} | {p for p in module_files(header) if p.suffix == ".c" and defines(p, name)}
             if ("dead-api", key) in ok or any(name in ids for p, ids in used_in.items() if p not in own):
                 continue
             if TEST_MARKER not in lines[line - 1] + comment_above(lines, line):
-                found.append(f"dead-api {key}  | no use outside {header.stem} and no test marker")
+                where = "the file that defines it" if internal else header.stem
+                found.append(f"dead-api {key}  | no use outside {where} and no test marker")
     report("dead-api", found)
 
 

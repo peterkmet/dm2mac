@@ -18,6 +18,16 @@
 #include "sound_request.h"
 #include "weather.h"
 
+/* A flag variable: its byte (var >> GLOBAL_BIT_SHIFT), and its bit in the byte. */
+#define GLOBAL_BIT_SHIFT 3
+/* The bit of a flag variable in its byte. */
+#define GLOBAL_BIT_MASK  0x07
+
+/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
+#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
+#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
+
 MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = true};
 UiState g_ui;
 bool g_input_command_stop;
@@ -29,21 +39,16 @@ static uint8_t cheats;
 enum GameMode g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
 
-/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
-#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
-#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
-#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
-
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
-        sensor_process_map_entry(0);
-    dun_set_party_location(x, y, map);
+        sensor_process_map_entry(false);
+    dun_set_party_position((Position){map, x, y});
     g_hooks.enter_map_view(map);
-    world_update_day_night(0);
-    sensor_process_map_entry(1);
+    world_update_day_night(false);
+    sensor_process_map_entry(true);
     creature_activate_groups_on_map();
-    g_party.redraw |= REDRAW_SQUARES;
+    g_party.redraw |= PARTY_REDRAW_SQUARES;
     ai_refresh_party_maps();
     g_hooks.flush_input();
 }
@@ -95,14 +100,14 @@ static bool process_world_event(TimelineEvent *e)
         break;
     case EVENT_CREATURE_ANIMATION:
     case EVENT_CREATURE_THINK:
-        creature_process_event(e->data[EVENT_X], e->data[EVENT_Y], e->type);
+        creature_process_event((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->type);
         break;
     case EVENT_MOVE_GROUP:
     case EVENT_MOVE_GROUP_2:
         timeline_event_move_group(e);
         break;
     case EVENT_WEATHER:
-        world_update_day_night(1);
+        world_update_day_night(true);
         break;
     case EVENT_SENSOR_ANIMATION_STEP:
     case EVENT_SENSOR_TIMER:
@@ -118,8 +123,8 @@ static bool process_world_event(TimelineEvent *e)
         int dir = rand_2bits()
                       ? dun_get_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
                       : rand_2bits();
-        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir, e->data[EVENT_X],
-                              e->data[EVENT_Y]);
+        creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir,
+                              (Location){e->data[EVENT_X], e->data[EVENT_Y]});
         break;
     }
     default:
@@ -177,7 +182,7 @@ void game_process_timeline(void)
         g_hooks.poll_input();
         TimelineEvent e;
         timeline_pop_first_event(&e);
-        dun_set_current_map((int8_t)timeline_event_map(&e));
+        dun_set_current_map(timeline_event_map(&e));
         uint16_t word = le16(e.data);
         if (!process_world_event(&e))
             process_party_event(&e, word);
@@ -187,9 +192,9 @@ void game_process_timeline(void)
 
 void game_enter_new_map(void)
 {
-    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, 1);
+    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
-    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
 }
 
@@ -221,9 +226,62 @@ void game_global_byte_add(int index)
         ++*value;
 }
 
+int game_global_var(int var)
+{
+    if (var < GLOBAL_BYTE_FIRST)
+        return g_game.global_flags[var >> GLOBAL_BIT_SHIFT] >> (var & GLOBAL_BIT_MASK) & 1;
+    if (var < GLOBAL_WORD_FIRST)
+        return g_game.global_bytes[var - GLOBAL_BYTE_FIRST];
+    if (var < GLOBAL_VAR_END)
+        return g_game.global_words[var - GLOBAL_WORD_FIRST];
+    return 0;
+}
+
+int game_modify_global_var(int var, int value, int op)
+{
+    int old = game_global_var(var);
+    int v = old;
+    switch (op) {
+    case GLOBAL_VAR_SET:
+        v = 1;
+        break;
+    case GLOBAL_VAR_CLEAR:
+        v = 0;
+        break;
+    case GLOBAL_VAR_TOGGLE:
+        v = !old;
+        break;
+    case GLOBAL_VAR_ADD:
+        v = old + value;
+        break;
+    case GLOBAL_VAR_SUBTRACT:
+        v = old - value;
+        break;
+    case GLOBAL_VAR_ASSIGN:
+        v = value;
+        break;
+    }
+    if (var < GLOBAL_BYTE_FIRST) {
+        uint8_t bit = (uint8_t)(1 << (var & GLOBAL_BIT_MASK));
+        if ((int16_t)v)
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] |= bit;
+        else
+            g_game.global_flags[var >> GLOBAL_BIT_SHIFT] &= (uint8_t)~bit;
+        return (int16_t)v != 0;
+    }
+    v = (int16_t)v;
+    if (var < GLOBAL_WORD_FIRST) {
+        v = v < 0 ? 0 : v > GLOBAL_BYTE_MAX ? GLOBAL_BYTE_MAX : v;
+        g_game.global_bytes[var - GLOBAL_BYTE_FIRST] = (uint8_t)v;
+    } else if (var < GLOBAL_VAR_END) {
+        g_game.global_words[var - GLOBAL_WORD_FIRST] = (uint16_t)v;
+    }
+    return v;
+}
+
 void game_start_play(void)
 {
-    g_party_sleeping = 0;
+    g_party_sleeping = false;
     g_party.push_mode = 0;
     g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;
@@ -263,6 +321,16 @@ void game_reset_step_ticks(void)
 void game_clear_end(void)
 {
     g_main_loop.end = false;
+}
+
+void game_set_end(bool on)
+{
+    g_main_loop.end = on;
+}
+
+void game_set_closed(bool on)
+{
+    g_main_loop.closed = on;
 }
 
 void game_request_quit(void)

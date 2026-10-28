@@ -41,14 +41,15 @@
 /* The most significant bit of a byte: the bit stream stores it first. */
 #define BYTE_TOP_BIT (BYTE_BIT_COUNT - 1)
 
-/* Byte offsets in a champion record. */
-#define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
-#define CHAMPION_DAMAGE_EVENT 0x2e /* the timeline event that ends the damage display */
+/* Byte offsets in a stored timeline event. */
+#define EVENT_TIME_MAP_AT 0
+#define EVENT_TYPE_AT     4
+#define EVENT_PRIORITY_AT 5
+#define EVENT_DATA_AT     6
 
 /* Bit widths of the values between the records, as masks. */
 #define MORE_MASK        0x0001
 #define TYPE_MASK        0x000f
-#define CELL_MASK        0x0003
 #define CREATURE_MASK    0x007f
 #define SPELL_MASK       0x007f
 #define INDEX_MASK       0x03ff
@@ -76,7 +77,7 @@
 #define REC_PARTY_Y           0x0c
 #define REC_PARTY_DIR         0x0e
 #define REC_PARTY_MAP         0x10
-#define REC_LEADER            0x12
+#define REC_LEADER            0x12 /* two bits: LEADER_NONE loads as 3, as in the original */
 #define REC_TIMELINE_EVENTS   0x14
 #define REC_UNKNOWN_TIME_A    0x16
 #define REC_UNKNOWN_TIME_B    0x1a
@@ -102,12 +103,11 @@
 /* The bit position of the music volume in the volume byte. */
 #define MUSIC_VOLUME_SHIFT 4
 
-/* The powers of a magic light event (its event data is the power, negative for darkness). */
-#define LIGHT_POWER_COUNT 16
-
-/* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
-   animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
-static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
+/* Sensors whose data word changes during play; they store 9 bits of it besides their record mask. */
+static const uint8_t sensors_with_data[] = {
+    SENSOR_TELEPORTER_LINK, WALL_CLICK_COUNTED_ITEM, SENSOR_COUNTER, SENSOR_FRAME_STEP,
+    SENSOR_ANIMATION,       SENSOR_ACTIVATION,       SENSOR_SHOP,    SENSOR_COUNTDOWN,
+};
 
 /* Mask tables of SKULL.EXE: one mask byte per record byte. */
 static const uint8_t all_bits[PACKED_WORD_BYTES] = {0xff, 0xff};
@@ -137,8 +137,9 @@ static const uint8_t event_mask[TIMELINE_EVENT_SIZE] = {0xff, 0xff, 0xff, 0x3f, 
 static const uint8_t door_mask[] = {0x00, 0x00, 0x00, 0x3e};
 static const uint8_t text_mask[] = {0x00, 0x00, 0x01, 0x00};
 static const uint8_t sensor_mask[] = {0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00};
-static const uint8_t group_mask[] = {0, 0, 0, 0, 0, 0, 0xff, 0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x80, 0x07};
-static const uint8_t static_group_mask[] = {0,    0,    0,    0,    0,    0,    0xff, 0x3f,
+static const uint8_t group_mask[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x3f,
+                                     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x80, 0x07};
+static const uint8_t static_group_mask[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x3f,
                                             0xff, 0x07, 0xff, 0xff, 0x3f, 0x00, 0x00, 0x07};
 static const uint8_t weapon_mask[] = {0x00, 0x00, 0xff, 0x3d};
 static const uint8_t armour_mask[] = {0x00, 0x00, 0xff, 0x1f};
@@ -150,9 +151,6 @@ static const uint8_t moneybox_misc_mask[] = {0x00, 0x00, 0x7f, 0xff};
 static const uint8_t projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x03};
 static const uint8_t carried_projectile_mask[] = {0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00};
 
-/* The light of a magic light event by its power (event data), from SKULL.EXE. */
-static const int8_t light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
-
 /* The mask of each thing type; teleporters and the unused types are not stored. */
 static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
     door_mask, NULL,           text_mask, sensor_mask, group_mask, weapon_mask, armour_mask,     word_mask,
@@ -162,8 +160,7 @@ static const uint8_t *const thing_masks[THING_TYPE_COUNT] = {
 /* What follows the AMAP block. */
 enum SaveTail { TAIL_END, TAIL_CHEATS, TAIL_OTHER };
 
-Game g_game = {
-    .leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START}; /* no leader */
+Game g_game = {.leader = LEADER_NONE, .sound_volume = VOLUME_SETTING_START, .music_volume = VOLUME_SETTING_START};
 
 /* State of one load or write. */
 static struct {
@@ -270,17 +267,6 @@ static bool flush_bits(void)
     return ok;
 }
 
-/* The thing in a slot of a champion record. */
-static uint16_t held_thing(int champion, int slot)
-{
-    return le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot);
-}
-
-static void set_held_thing(int champion, int slot, uint16_t thing)
-{
-    put_le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot, thing);
-}
-
 /* A sensor of a type in sensors_with_data stores 9 bits of its data word. */
 static bool has_sensor_data(uint16_t sensor)
 {
@@ -324,13 +310,13 @@ static bool defer_thing(uint16_t thing)
 static void relink_events(void)
 {
     for (int c = 0; c < CHAMPION_MAX; c++)
-        put_le16(g_game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
+        champion(c)->damage_event = THING_NONE;
     for (int i = 0; i < g_timeline.count; i++) {
         const TimelineEvent *e = &g_timeline.events[i];
         uint16_t thing = le16(e->data + EVENT_THING);
         if (e->type == EVENT_HIDE_DAMAGE &&
             e->priority < CHAMPION_MAX) /* fix: the original does not check the champion */
-            put_le16(g_game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
+            champion(e->priority)->damage_event = (uint16_t)i;
         if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_2) &&
             thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
             thing_set_word(thing, PROJECTILE_EVENT, i);
@@ -455,11 +441,11 @@ static bool write_thing_list(uint16_t thing, bool with_cell, bool follow)
     return write_value(0, MORE_MASK);
 }
 
-/* The mask of the stored square bits; *skip when a linked teleporter of a lower map stores the things. */
-static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
+/* The mask of the stored bits of the square at; *skip when a linked teleporter of a lower map stores the things. */
+static uint8_t saved_bits_mask(Position at, bool *skip)
 {
     *skip = false;
-    switch (square_type(dungeon_square(map, x, y))) {
+    switch (square_type(dungeon_square(at.map, at.x, at.y))) {
     case SQUARE_PIT:
         return PIT_SAVED_BITS;
     case SQUARE_DOOR:
@@ -467,10 +453,10 @@ static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
     case SQUARE_FAKE_WALL:
         return FAKE_WALL_SAVED_BITS;
     case SQUARE_TELEPORTER: {
-        int target = dungeon_teleporter_link_map(map, x, y);
+        int target = dungeon_teleporter_link_map(at.map, at.x, at.y);
         if (target < 0)
             return TELEPORTER_SAVED_BITS;
-        *skip = target < map;
+        *skip = target < at.map;
         return 0;
     }
     default:
@@ -481,11 +467,11 @@ static uint8_t saved_bits_mask(int map, int x, int y, bool *skip)
 /* Writes the saved bits and the thing list of each square, column by column. */
 static bool write_squares(void)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++) {
+    for (int16_t map = 0; map < dungeon_map_count(); map++)
+        for (int16_t x = 0; x < dungeon_map_width(map); x++)
+            for (int16_t y = 0; y < dungeon_map_height(map); y++) {
                 bool skip;
-                uint8_t mask = saved_bits_mask(map, x, y, &skip);
+                uint8_t mask = saved_bits_mask((Position){map, x, y}, &skip);
                 if (mask && !write_packed(dungeon_square_byte(map, x, y), &mask, 1, 1))
                     return false;
                 if (!skip && !write_thing_list(dungeon_square_first_thing(map, x, y), true, true))
@@ -582,7 +568,63 @@ static void unpack_game_record(const uint8_t *r)
     g_game.next_hour_time = le32(r + REC_NEXT_HOUR_TIME);
 }
 
-/* The global words and the timeline events are stored in host order; the host is little-endian like the save file. */
+/* Writes the global words as little-endian words. */
+static bool write_global_words(void)
+{
+    uint8_t word[PACKED_WORD_BYTES];
+    for (int i = 0; i < GLOBAL_WORD_COUNT; i++) {
+        put_le16(word, g_game.global_words[i]);
+        if (!write_packed(word, all_bits, PACKED_WORD_BYTES, 1))
+            return false;
+    }
+    return true;
+}
+
+/* Reads the global words as little-endian words. */
+static bool read_global_words(void)
+{
+    uint8_t word[PACKED_WORD_BYTES];
+    for (int i = 0; i < GLOBAL_WORD_COUNT; i++) {
+        if (!read_packed(word, all_bits, PACKED_WORD_BYTES, 1, false))
+            return false;
+        g_game.global_words[i] = le16(word);
+    }
+    return true;
+}
+
+/* Writes the first count timeline events in the 12-byte little-endian layout of SKULL.EXE. */
+static bool write_events(int count)
+{
+    uint8_t record[TIMELINE_EVENT_SIZE];
+    for (int i = 0; i < count; i++) {
+        const TimelineEvent *e = &g_timeline.events[i];
+        put_le32(record + EVENT_TIME_MAP_AT, e->time_map);
+        record[EVENT_TYPE_AT] = e->type;
+        record[EVENT_PRIORITY_AT] = e->priority;
+        memcpy(record + EVENT_DATA_AT, e->data, TIMELINE_EVENT_DATA_SIZE);
+        if (!write_packed(record, event_mask, TIMELINE_EVENT_SIZE, 1))
+            return false;
+    }
+    return true;
+}
+
+/* Reads the first count timeline events from the 12-byte little-endian layout of SKULL.EXE. */
+static bool read_events(int count)
+{
+    uint8_t record[TIMELINE_EVENT_SIZE];
+    for (int i = 0; i < count; i++) {
+        TimelineEvent *e = &g_timeline.events[i];
+        if (!read_packed(record, event_mask, TIMELINE_EVENT_SIZE, 1, false))
+            return false;
+        e->time_map = le32(record + EVENT_TIME_MAP_AT);
+        e->type = record[EVENT_TYPE_AT];
+        e->priority = record[EVENT_PRIORITY_AT];
+        memcpy(e->data, record + EVENT_DATA_AT, TIMELINE_EVENT_DATA_SIZE);
+    }
+    return true;
+}
+
+/* Writes the game record, the global variables, the champions, the timeline, and the things. */
 static bool write_state(void)
 {
     uint8_t record[GAME_RECORD_SIZE];
@@ -591,15 +633,13 @@ static bool write_state(void)
     pack_game_record(record);
     if (!write_packed(record, game_record_mask, GAME_RECORD_SIZE, 1) ||
         !write_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES) ||
-        !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) ||
-        !write_packed((const uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT) ||
+        !write_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT) || !write_global_words() ||
         !write_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count) ||
-        !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) ||
-        !write_packed((const uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count))
+        !write_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1) || !write_events(g_timeline.count))
         return false;
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
-            if (!write_thing_list(held_thing(c, s), false, false))
+            if (!write_thing_list(champion(c)->slots[s], false, false))
                 return false;
     if (!write_thing_list(g_game.leader_hand, false, false))
         return false;
@@ -611,7 +651,7 @@ static bool write_state(void)
 }
 
 /* Recursion: read_thing_list reads the things that a thing holds through read_held_things. */
-static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow);
+static bool read_thing_list(const Position *at, uint16_t *list, bool with_cell, bool follow);
 
 /* Puts thing into the data of a timeline event at offset. */
 static bool set_event_thing(uint16_t event, int offset, uint16_t thing)
@@ -717,8 +757,8 @@ static bool read_thing(uint16_t thing)
            read_held_things(thing, mask, carried);
 }
 
-/* Reads a thing list into new records: with list onto the end of *list, else onto square. */
-static bool read_thing_list(const Position *square, uint16_t *list, bool with_cell, bool follow)
+/* Reads a thing list into new records: with list onto the end of *list, else onto the square at. */
+static bool read_thing_list(const Position *at, uint16_t *list, bool with_cell, bool follow)
 {
     do {
         uint16_t more;
@@ -746,7 +786,7 @@ static bool read_thing_list(const Position *square, uint16_t *list, bool with_ce
         thing = thing_with_cell(thing, cell);
         if (list)
             dungeon_append_thing(thing, list);
-        else if (!dungeon_link_thing_to_square(thing, square->map, square->x, square->y))
+        else if (!dungeon_link_thing_to_square(thing, at->map, at->x, at->y))
             return false;
         if (thing_masks[type] && !read_thing(thing))
             return false;
@@ -757,9 +797,9 @@ static bool read_thing_list(const Position *square, uint16_t *list, bool with_ce
 /* Removes the creature groups and items from the squares and frees their records; the bit stream creates them again. */
 static void free_movable_things(void)
 {
-    for (int map = 0; map < dungeon_map_count(); map++)
-        for (int x = 0; x < dungeon_map_width(map); x++)
-            for (int y = 0; y < dungeon_map_height(map); y++)
+    for (int16_t map = 0; map < dungeon_map_count(); map++)
+        for (int16_t x = 0; x < dungeon_map_width(map); x++)
+            for (int16_t y = 0; y < dungeon_map_height(map); y++)
                 for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST;
                      t = dungeon_next_thing(t))
                     if (thing_type(t) > THING_SENSOR) {
@@ -778,8 +818,9 @@ static bool read_squares(void)
     for (int16_t map = 0; map < dungeon_map_count(); map++)
         for (int16_t x = 0; x < dungeon_map_width(map); x++)
             for (int16_t y = 0; y < dungeon_map_height(map); y++) {
+                Position at = {map, x, y};
                 bool skip;
-                uint8_t mask = saved_bits_mask(map, x, y, &skip);
+                uint8_t mask = saved_bits_mask(at, &skip);
                 if (mask && !read_packed(dungeon_square_byte(map, x, y), &mask, 1, 1, true))
                     return false;
                 if (skip)
@@ -798,8 +839,7 @@ static bool read_squares(void)
                     if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, true))
                         return false;
                 }
-                Position square = {map, x, y};
-                if (!read_thing_list(&square, NULL, true, true))
+                if (!read_thing_list(&at, NULL, true, true))
                     return false;
             }
     return true;
@@ -832,7 +872,7 @@ static bool read_things(void)
             uint16_t slot = THING_ENDOFLIST;
             if (!read_thing_list(NULL, &slot, false, false))
                 return false;
-            set_held_thing(c, s, slot == THING_ENDOFLIST ? THING_NONE : slot);
+            champion(c)->slots[s] = slot == THING_ENDOFLIST ? THING_NONE : slot;
         }
     g_game.leader_hand = THING_ENDOFLIST;
     if (!read_thing_list(NULL, &g_game.leader_hand, false, false))
@@ -842,7 +882,7 @@ static bool read_things(void)
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
             champ_apply_item_effects(c, champion(c)->slots[s], s, EFFECT_MODE_LOAD);
-    champ_apply_item_effects((int16_t)g_game.leader, g_game.leader_hand, -1, EFFECT_MODE_LOAD);
+    champ_apply_item_effects(champ_leader(), g_game.leader_hand, -1, EFFECT_MODE_LOAD);
     for (int i = 0; i < g_timeline.count; i++) {
         TimelineEvent *e = &g_timeline.events[i];
         if (!is_move_group_event(e))
@@ -869,7 +909,8 @@ static void restore_timed_effects(void)
             break;
         case EVENT_MAGIC_LIGHT:
             if (v && v > -LIGHT_POWER_COUNT && v < LIGHT_POWER_COUNT) {
-                save_set_magic_light((int16_t)(save_magic_light() + (v < 0 ? light_power[-v] : light_power[v] * -2)));
+                save_set_magic_light(
+                    (int16_t)(save_magic_light() + (v < 0 ? g_light_power[-v] : g_light_power[v] * -2)));
             }
             break;
         case EVENT_INVISIBILITY:
@@ -907,11 +948,10 @@ static bool read_state(void)
         return false;
     memset(g_game.champions, 0, sizeof g_game.champions);
     if (!read_packed(g_game.global_flags, all_bits, 1, GLOBAL_FLAG_BYTES, false) ||
-        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, false) ||
-        !read_packed((uint8_t *)g_game.global_words, all_bits, PACKED_WORD_BYTES, GLOBAL_WORD_COUNT, false) ||
+        !read_packed(g_game.global_bytes, all_bits, 1, GLOBAL_BYTE_COUNT, false) || !read_global_words() ||
         !read_packed(g_game.champions[0], champion_mask, CHAMPION_SIZE, g_game.champion_count, false) ||
         !read_packed(g_game.magic_light, magic_light_mask, MAGIC_LIGHT_SIZE, 1, false) ||
-        !read_packed((uint8_t *)g_timeline.events, event_mask, TIMELINE_EVENT_SIZE, g_timeline.count, false))
+        !read_events(g_timeline.count))
         return false;
     for (int i = g_timeline.count; i < g_timeline.capacity; i++)
         g_timeline.events[i].type = EVENT_NONE;

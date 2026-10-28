@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dungeon.h"
+#include "move.h"
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
@@ -75,6 +76,15 @@ static inline void explosion_set_power(uint16_t explosion, int power)
 #define EXPLOSION_STORM_LIGHTNING 0xffb0
 #define EXPLOSION_STORM_BLAST     0xffb1
 #define EXPLOSION_SMOKE           0xffe4
+/* Explosion types (EXPLOSION_DATA bits 0-6): the explosion payload - SPELL_THING_FIRST. */
+#define BLAST_FIREBALL            (SPELL_FIREBALL - SPELL_THING_FIRST)
+#define BLAST_LIGHTNING           (SPELL_LIGHTNING - SPELL_THING_FIRST)
+#define BLAST_HARM_NON_MATERIAL   (SPELL_HARM_NON_MATERIAL - SPELL_THING_FIRST)
+#define BLAST_POISON_CLOUD        (SPELL_POISON_CLOUD - SPELL_THING_FIRST)
+#define BLAST_MISSILE_WALL        (SPELL_MISSILE_WALL - SPELL_THING_FIRST)
+#define BLAST_DEATH_CLOUD         (EXPLOSION_DEATH_CLOUD - SPELL_THING_FIRST)
+#define BLAST_STORM_LIGHTNING     (EXPLOSION_STORM_LIGHTNING - SPELL_THING_FIRST)
+#define BLAST_SMOKE               (EXPLOSION_SMOKE - SPELL_THING_FIRST)
 /* The cell of an explosion in the middle of its square. */
 #define EXPLOSION_AT_CENTER       0xff
 /* The power of a missile or an explosion is a byte. */
@@ -108,14 +118,15 @@ typedef struct {
 int projectile_dir(uint16_t projectile);
 /* Launches a projectile and queues its first move event. */
 void projectile_create(const ProjectileLaunch *launch);
-/* Sets the square and the flight direction of a projectile move event; the energy step stays. */
-void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16_t dir);
+/* Moves the queued move event of projectile to dest: its square, flight direction, map, and cell. */
+void projectile_move_event(uint16_t projectile, MoveDest dest);
 
 /* ---- Explosions ---- */
 
-/* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle); an x
-   above 0xff packs the square of a hit (low bytes) and the square of the explosion (high bytes, x + 1). */
-void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell);
+/* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle). */
+void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t cell);
+/* Moves the events of explosion to dest: their square, map, and cell. */
+void explosion_move_events(uint16_t explosion, MoveDest dest);
 
 /* ---- Projectile hits ---- */
 

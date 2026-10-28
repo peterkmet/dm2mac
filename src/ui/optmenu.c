@@ -25,13 +25,13 @@ static struct {
 } menu = {.filter = SETTINGS_FILTER_NONE, .saved = SETTINGS_FILTER_NONE};
 
 /* The folder of SETTINGS.TXT: the --saves folder, else the DATA folder of the game (as QUICK.DAT). */
-static char *find_folder(char *dir, size_t size)
+static char *find_folder(char *folder, size_t size)
 {
     if (g_session.save_dir[0])
-        snprintf(dir, size, "%s", g_session.save_dir);
+        snprintf(folder, size, "%s", g_session.save_dir);
     else
-        snprintf(dir, size, "%s/DATA", g_session.data_dir);
-    return dir;
+        snprintf(folder, size, "%s/DATA", g_session.data_dir);
+    return folder;
 }
 
 /* Draws the menu with the current filter. */
@@ -55,7 +55,7 @@ void optmenu_start(int filter)
         menu.saved = filter;
         return;
     }
-    char dir[SAVE_DIR_SIZE + sizeof "/DATA"];
+    char dir[OS_DIR_SIZE + sizeof "/DATA"];
     menu.filter = SETTINGS_FILTER_NONE;
     if (g_game_mode == GAME_MODE_ADVANCED) {
         menu.filter = settings_load(find_folder(dir, sizeof dir)).filter;
@@ -88,7 +88,7 @@ void optmenu_open(void)
 /* Writes SETTINGS.TXT when the filter differs from the file; a failed write says so once per failure run. */
 static void write_change(void)
 {
-    char dir[SAVE_DIR_SIZE + sizeof "/DATA"];
+    char dir[OS_DIR_SIZE + sizeof "/DATA"];
     if (menu.filter == menu.saved)
         return;
     if (settings_save(find_folder(dir, sizeof dir), &(Settings){menu.filter})) {
@@ -115,7 +115,7 @@ bool optmenu_process_key(uint16_t key)
     switch (key) {
     case SCAN_ESCAPE:
         return true;
-    case SCAN_RETURN:
+    case KEY_ENTER:
         if (menu.row == OPTMENU_ROW_CONTINUE)
             return true;
         change_filter(1);

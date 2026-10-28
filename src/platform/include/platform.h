@@ -10,14 +10,10 @@
 #include "movie.h"
 
 /* Types of a platform event. */
-#define PLAT_QUIT     0
-#define PLAT_KEY      1
-#define PLAT_MOUSE    2
-#define PLAT_MOUSE_UP 3
+typedef enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP } PlatEventType;
 
 typedef struct {
-    int type;
-    int key;           /* SDL keycode for PLAT_KEY */
+    PlatEventType type;
     int scancode, mod; /* SDL scancode and modifier keys for PLAT_KEY */
     bool repeat;       /* PLAT_KEY: an autorepeat of a held key */
     int button, x, y;  /* PLAT_MOUSE and PLAT_MOUSE_UP, x and y in game screen pixels */

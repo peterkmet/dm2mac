@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include "creature.h"
 #include "dungeon.h"
-#include "money.h"
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
@@ -31,6 +30,11 @@ static inline uint16_t ai_marker_level(uint16_t text)
 /* The flags of the AI classes (ai_data.c). */
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
+
+/* The cells of the possessions of a static creature by display kind and side (ai_data.c; creature_cell_mask reads
+   it). */
+#define AI_POSSESSION_KINDS 16 /* the display kinds, with the data after the table */
+extern const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT];
 
 /* A candidate destination of a plan: a 22-byte record with the layout of the original. */
 typedef struct __attribute__((packed)) {
@@ -93,7 +97,7 @@ typedef struct {
     ActiveGroup *active;
     const uint8_t *anim_step; /* the current animation step (4 bytes) */
     uint16_t *anim;           /* the animation sequence and state words */
-    TimelineEvent event;      /* the next update event: x in data[0], y in data[1] */
+    TimelineEvent event;      /* the next update event: x in data[EVENT_X], y in data[EVENT_Y] */
     uint8_t previous_action;
     uint8_t command_result; /* AI_RESULT_* */
     bool removed;           /* the group left the dungeon */
@@ -149,6 +153,13 @@ typedef struct {
 #define DISTANCE_FAR     127
 extern DistanceMap g_party_distance, g_alt_distance;
 
+/* Where an item of a filter is inside a chest or a group: the cell (-1 none), and whether the cell is a cell of the
+   possessions of a group (else the cell of the chest). */
+typedef struct {
+    int16_t cell;
+    bool in_possessions;
+} AiInsideItem;
+
 /* Setup */
 
 /* Forgets the AI data of all groups (a load). */
@@ -173,6 +184,12 @@ void ai_prepare(void);
 uint8_t *ai_store_path(int path_size);
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int action);
+/* Flags of ai_action_flag. */
+#define AI_ACTION_FLAG_MELEE     0x01 /* a melee attack or a theft */
+#define AI_ACTION_FLAG_RANGED    0x02 /* a throw or a shot; a mood alert of a waking class stops it */
+#define AI_ACTION_FLAG_ATTACK    (AI_ACTION_FLAG_MELEE | AI_ACTION_FLAG_RANGED) /* it sets the last action time */
+#define AI_ACTION_FLAG_PATH      0x04 /* the action moves the creature along its path and drops the cached path */
+#define AI_ACTION_FLAG_INTERRUPT 0x10 /* a new action waits for the end of the animation step */
 
 /* Plan commands that the merchant commands use */
 
@@ -186,36 +203,44 @@ int ai_cmd_seek_with_carried(void);
 /* The update of a creature that acts: the next action and its animation, then the next update event. */
 void ai_update_group(void);
 
+/* Squares (ai_move.c) */
+
 /* True when a square stops a line of sight or of fire: walls, doors, clouds, and creatures that hide.
    It is exported for the tests. */
-bool ai_square_blocks_line(int16_t x, int16_t y);
+bool ai_square_blocks_line(Location at);
 /* A line toward the party: the party square blocks it (the line ends there); exported for the tests. */
-bool ai_blocks_line_to_target(int16_t x, int16_t y);
+bool ai_blocks_line_to_target(Location at);
 /* A line test that ignores the square of the group in the AI context; exported for the tests. */
-bool ai_blocks_line_except_self(int16_t x, int16_t y);
+bool ai_blocks_line_except_self(Location at);
 /* The first object of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_object(void);
 /* The first creature group of the square in the AI cache, read once; exported for the tests. */
 uint16_t ai_cached_first_group(void);
-/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the chest
-   cell (0 to 3), POSSESSION_CELL_BASE plus the cell of the possession, -1 none; exported for the tests. */
-int ai_find_matching_item_inside(uint16_t thing, int filter, int side);
+
+/* Items (ai_move.c) */
+
+/* An item of filter inside a chest or in the possessions of a group that the creature may take from: the cell of the
+   chest or of the possession, cell -1 for none; exported for the tests. */
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t side);
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none; exported for the tests. */
-uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int mode, int filter);
+uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter);
 /* True when the wall actuator reacts to the creature in mode (ACTUATOR_MODE_*) with an item of filter; state: the
    state bits of the creature slot; exported for the tests. */
-bool ai_wall_actuator_accepts(uint16_t actuator, int mode, int filter, uint16_t state);
+bool ai_wall_actuator_accepts(uint16_t actuator, int16_t mode, int16_t filter, uint16_t state);
 
 /* True when thing belongs to the item filter of the group in the AI context: classes of items, creatures, and wall
    actuators that the creature text lists, or money boxes. */
-bool ai_thing_matches_filter(uint16_t thing, int filter);
+bool ai_thing_matches_filter(uint16_t thing, int16_t filter);
 /* The first item of filter in a thing list (cell CELL_ANY: any cell), THING_ENDOFLIST for none. */
-uint16_t ai_find_matching_item(int filter, uint16_t first_thing, int16_t cell);
+uint16_t ai_find_matching_item(int16_t filter, uint16_t first_thing, int16_t cell);
 
 /* The AI marker text on the square in the AI cache for the level delta (1: also the markers of level 2 with bit 0)
    whose kind is in id_mask: its id (0 to 31), -1 none; exported for the tests. */
-int ai_find_marker(int level_delta, uint16_t id_mask);
+int16_t ai_find_marker(int16_t level_delta, uint16_t id_mask);
+
+/* Paths (ai_move.c) */
+
 /* Points g_ai.cached_path to the stored path of the group; a lost path clears the path state.
    It is exported for the tests. */
 void ai_load_cached_path(void);
@@ -223,9 +248,7 @@ void ai_load_cached_path(void);
    and on the map of the alternate view; after a view change also the light sums of the light sources near the party. */
 void ai_refresh_party_maps(void);
 
-/* Creature perception and movement (ai_move.c): squares, lines of sight, item filters, the tests of the AI
-   commands, and the path search. The functions work on the AI context; the command tests set g_ai.command_result and
-   return it. */
+/* The flags, modes, kinds and targets of the AI command tests. */
 /* Bits of a packed move command byte (ai_move_test) and the mode mask of the other command tests (AiTest). */
 #define AI_EXECUTE               0x80 /* set the action when the test passes */
 #define AI_MODE_MASK             0x7f
@@ -311,8 +334,8 @@ void ai_refresh_party_maps(void);
 #define MOVE_DOOR                0x4000
 #define MOVE_FALLS               0x8000
 #define MOVE_LEVEL_FLAGS         0x0118
-#define MOVE_DIR4_FLAGS          0x0110 /* the moves of a level change up (dir 4) */
-#define MOVE_DIR5_FLAGS          0x0108 /* ... down (dir 5) */
+#define MOVE_LEVEL_UP_FLAGS      0x0110 /* the moves of a level change up (DIR_LEVEL_UP) */
+#define MOVE_LEVEL_DOWN_FLAGS    0x0108 /* ... down (DIR_LEVEL_DOWN) */
 #define MOVE_FLAGS_LIGHT         0x0227
 #define MOVE_FLAGS_PARTY_MAP     0x36e7
 #define MOVE_FLAGS_NO_FALL       0x7db7
@@ -324,9 +347,8 @@ void ai_refresh_party_maps(void);
 #define DOOR_SKILL_PRESS_BUTTON  0x0002
 #define DOOR_SKILL_SPELL         0x0004 /* breaks a door that magic breaks with a fireball or lightning */
 #define DOOR_SKILL_BASH          0x0008 /* breaks a breakable door with hits */
-#define DOOR_SKILL_MARK          0x0020
+#define DOOR_SKILL_CLOSE_BEHIND  0x0020 /* marks a door that it opens; closes a door beside or behind it */
 #define DOOR_SKILL_HANDLE        0x0040
-#define DOOR_SKILL_ANY_SIDE      0x0020
 /* AI actions (ActiveGroup.action). A pair or range of codes runs the same act with a variant. */
 #define ACTION_NONE              0x00
 #define ACTION_MOVE              0x01
@@ -354,7 +376,8 @@ void ai_refresh_party_maps(void);
 #define ACTION_TAKE_FROM_WALL    0x1a
 #define ACTION_CHECK_AHEAD       0x1d
 #define ACTION_PLACE_WAIT        0x1e
-#define ACTION_STAND             0x23
+#define ACTION_STAND             0x23 /* 0x23 to 0x25: the three stands of the wander mood */
+#define ACTION_STAND_LAST        0x25
 #define ACTION_MELEE_2           0x26
 #define ACTION_SHOOT             0x27
 #define ACTION_SHOOT_2           0x28
@@ -385,9 +408,5 @@ void ai_refresh_party_maps(void);
 extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
 /* The shift register that picks the first search direction; exported for the tests. */
 extern uint16_t g_search_direction_bits;
-
-/* The bit set of the item indexes of an item class (GDAT text entry of a creature type, money.h). */
-#define ITEM_CLASS_SET_SIZE SHOP_CLASS_SET_SIZE
-#define FILTER_BITMAP_SIZE  ITEM_CLASS_SET_SIZE /* the item class bitmap of an item filter */
 
 #endif /* DM2_ENGINE_AI_H */

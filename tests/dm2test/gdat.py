@@ -16,6 +16,18 @@ class GdatKey(ctypes.Structure):
     _fields_ = [("category", ctypes.c_int), ("index", ctypes.c_int), ("entry", ctypes.c_int)]
 
 
+class ImageInfo(ctypes.Structure):
+    """The ImageInfo of gdat.h: width, height, bits per pixel, decoded byte size."""
+
+    _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int), ("bpp", ctypes.c_int), ("size", ctypes.c_size_t)]
+
+
+def image_info(lib, gdat, item):
+    """The result of gdat_image_info and the ImageInfo it fills."""
+    info = ImageInfo()
+    return lib.gdat_image_info(gdat, item, ctypes.byref(info)), info
+
+
 c_int_p = ctypes.POINTER(ctypes.c_int)
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
@@ -30,7 +42,7 @@ def gd(lib):
     lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
     lib.gdat_item.restype = u8_p
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int, c_int_p, c_int_p, c_int_p]
+    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
     lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.gdat_image_colormap.restype = u8_p

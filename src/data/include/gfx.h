@@ -16,6 +16,11 @@
 #define RECT_H    3
 #define RECT_SIZE 4
 
+/* A point or an offset on the screen, in pixels. */
+typedef struct {
+    int16_t x, y;
+} ScreenPoint;
+
 /* Blit mirror modes, as flags. */
 #define MIRROR_NONE 0x0
 #define MIRROR_H    0x1
@@ -26,8 +31,9 @@
 #define GFX_OPAQUE (-1)
 
 /* Scale factor of 100 % in 1/64, and the colors of a remap table. */
-#define SCALE_FULL   64
-#define REMAP_COLORS 256
+#define SCALE_FULL       64
+#define SCALE_FULL_SHIFT 6 /* SCALE_FULL = 1 << SCALE_FULL_SHIFT */
+#define REMAP_COLORS     256
 
 /* A bitmap of palette indices: 8 bpp, or 4 bpp with two pixels per byte, high nibble first, and rows of an even pixel count. */
 typedef struct {
@@ -65,7 +71,7 @@ typedef struct {
    key colors that stay mapped to themselves. */
 typedef struct {
     int category, index, entry;
-    int dim;
+    uint8_t dim;
     int key1, key2;
 } DimmedRemap;
 
@@ -100,7 +106,7 @@ int16_t gfx_scale_64(int16_t value, int16_t scale);
 bool pal_load_color_ramps(const Gdat *gdat);
 /* Dims a color remap table: each color becomes the color of its ramp nearest to its brightness * (64 - dim) / 64,
    never key1 or key2 (they stay mapped to themselves). *count <= 0 starts from the identity table of 256 colors. */
-uint8_t *pal_apply_dim_remap(uint8_t *table, int dim, int key1, int key2, int16_t *count);
+uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, int16_t *count);
 /* Remaps table through the GDAT color table of remap, then dims it. */
 uint8_t *pal_get_dimmed_remap(const Gdat *gdat, uint8_t *table, const DimmedRemap *remap, int16_t *count);
 

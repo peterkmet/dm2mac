@@ -16,7 +16,17 @@ def ghidra_installed():
     return Path(prefix, "libexec/support/analyzeHeadless").exists()
 
 
+def java_installed():
+    """The JDK that tools/ghidra/decompile.sh uses: JAVA_HOME, or openjdk@21 of Homebrew."""
+    home = os.environ.get("JAVA_HOME")
+    if not home:
+        prefix = subprocess.run(["brew", "--prefix", "openjdk@21"], capture_output=True, text=True).stdout.strip()
+        home = str(Path(prefix, "libexec/openjdk.jdk/Contents/Home"))
+    return Path(home, "bin/java").exists()
+
+
 @pytest.mark.skipif(not ghidra_installed(), reason="Ghidra not installed")
+@pytest.mark.skipif(not java_installed(), reason="Java not installed")
 @pytest.mark.timeout(900)
 def test_decompile_skull(game_dir, tmp_path):
     image = load_image(game_dir / "SKULL.EXE")

@@ -5,10 +5,11 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey
+from dm2test.gdat import GdatKey, ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
+from dm2test.scenario import Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
@@ -137,7 +138,7 @@ def original_view(lib, gdat, start):
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.gdat_image_colormap.restype = u8_p
     lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
+    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lib.gdat_exists.restype = ctypes.c_bool
@@ -158,7 +159,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     party = PartyHead.in_dll(lib, "g_party")
     party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
-    lib.dun_set_party_location(x, y, map_)
+    lib.dun_set_party_position(Position(map_, x, y))
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
         lib.weather_sky_objects.restype = ctypes.c_void_p
@@ -277,7 +278,7 @@ i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
 class AnchoredZone(ctypes.Structure):
-    _fields_ = [("zone", ctypes.c_int), ("anchor", ctypes.c_int)]
+    _fields_ = [("zone", ctypes.c_uint16), ("anchor", ctypes.c_int16)]
 
 
 class GridPoint(ctypes.Structure):
@@ -453,9 +454,8 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     assert changed
     # cell 16 of the square at depth 1: row 1, scale THING_SCALE[1 * 4 + 1 + 2]; offset of ordinal 0 is (2, -3)
     scale = THING_SCALE[7]
-    w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-    lib.gdat_image_size(g, lib.gdat_find(g, CAT_WEAPON, index, C.GDAT_TYPE_IMAGE, 0), ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
-    picture = Bitmap(None, lib.gfx_scale_64(w.value, scale), lib.gfx_scale_64(h.value, scale), bpp.value)
+    info = image_info(lib, g, lib.gdat_find(g, CAT_WEAPON, index, C.GDAT_TYPE_IMAGE, 0))[1]
+    picture = Bitmap(None, lib.gfx_scale_64(info.width, scale), lib.gfx_scale_64(info.height, scale), info.bpp)
     dx, dy = 2, -3
     for packed in (lib.gdat_entry_index(g, CAT_WEAPON, index, C.GDAT_TYPE_VALUE2, 0xFE), lib.gdat_image_offset(g, CAT_WEAPON, index, 0),
                    lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, C.GDAT_TYPE_VALUE2, 0)):
@@ -606,7 +606,7 @@ class DrawCtx(ctypes.Structure):
                 ("item", ctypes.c_int16), ("zone", ctypes.c_int16), ("anchor", ctypes.c_int16), ("dx", ctypes.c_int16),
                 ("dy", ctypes.c_int16), ("src_x", ctypes.c_int16), ("src_y", ctypes.c_int16),
                 ("rect", ctypes.c_int16 * 4), ("dst", ctypes.POINTER(Bitmap)), ("transparent", ctypes.c_int16),
-                ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
+                ("mode", ctypes.c_int), ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
                 ("palette_count", ctypes.c_int16), ("palette", ctypes.c_uint8 * 256)]
 
 

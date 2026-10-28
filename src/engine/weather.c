@@ -12,6 +12,7 @@
 #include "ids.h"
 #include "item.h"
 #include "move.h"
+#include "num.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
@@ -30,8 +31,8 @@
 #define HOURS_PER_DAY 24
 #define LAST_HOUR     23
 
-/* Map graphics value keys (CAT_WALLSET, graphics set, 0x0b, key). x is in the high byte of the lightning target, y in
-   the low byte. */
+/* Map graphics value keys (CAT_WALLSET, graphics set, GDAT_TYPE_VALUE, key). x is in the high byte of the lightning
+   target, y in the low byte. */
 #define MAP_KEY_LIGHT             0x67
 #define MAP_KEY_LEAST_LIGHT_LEVEL 0x68
 #define MAP_KEY_LIGHTNING_TARGET  0x6c
@@ -44,19 +45,12 @@
 #define LIGHT_ANIMATED_ONLY 0x8000
 #define LIGHT_AMOUNT_MASK   0x7fff
 
-/* Masks of the random draws and of the packed lightning target, and the ornament index in a side word (0xff: none). */
+/* Masks of the random draws. */
 #define LIGHTNING_STRIKES_MASK 0x07
 #define CLOUD_SLOW_MASK        0x03
 #define STORM_SPAN_JITTER      0x0f
-#define TARGET_Y_MASK          0xff
-#define ORNAMENT_MASK          0xff
 
-/* The explosion type of a lightning strike, and the projectile payload of a spell. */
-#define LIGHTNING_EXPLOSION 0xffb0
-#define MISSILE_SPELL       0xff80
-
-/* The explosion cell that means any cell, and a creature info byte that lightning does not strike. */
-#define EXPLOSION_ANY_CELL       0xff
+/* A creature info byte that lightning does not strike. */
 #define CREATURE_LIGHTNING_PROOF 0xff
 
 /* Script variables of the weather: the storms counted (cleared by each lightning of a weak storm), the lightning
@@ -64,20 +58,13 @@
 #define VAR_STORMS       0x40
 #define VAR_STRIKES_SEEN 0x41
 
-/* Explosion types that give light. */
-#define EXPLOSION_FIRE  0x00
-#define EXPLOSION_LIGHT 0x02
-#define EXPLOSION_GLOW  0x30
-
-/* The shifts: the lightning target x in the high byte; the first hand light counts fully, each next one half as much. */
-#define TARGET_X_SHIFT   8
+/* The shift of the hand lights: the first counts fully, each next one half as much. */
 #define HAND_LIGHT_SHIFT 6
 
 /* Sizes of the sky, the storm curves, and the light tables. */
 #define SKY_LIGHTNING_KINDS 3 /* the number of lightning pictures from GFX_SKY_LIGHTNING */
 #define SKY_OBJECT_MAX      5 /* sky objects of the weather, with the end mark */
 #define STORM_STEPS         32
-#define TORCH_CHARGE_COUNT  16
 #define LIGHT_LEVEL_MAX     5
 #define FALLOFF_WEATHER_MAX 8
 #define FALLOFF_MAX         5
@@ -124,7 +111,11 @@
 #define WINDOW_LIGHT_MIN 3
 #define SQUARE_LIGHT_MIN 2
 #define MISSILE_FALLOFF  3
-#define SIDE_LIGHT       2 /* the view square side of the front wall ornament or of the floor ornament */
+
+/* The light that one square gives: window light by the hour, other light, and the light of missiles and explosions. */
+typedef struct {
+    int16_t window, light, missiles;
+} SquareLight;
 
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
 static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
@@ -139,8 +130,8 @@ static const int8_t storm_curves[][STORM_STEPS] = {
      -2,                                                                 -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2,  -2,  -2,  -2 },
     {2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  4,  -26, -22, -18, -10},
 };
-/* The light of a torch by its charges. */
-static const int8_t light_power[TORCH_CHARGE_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
+/* The light of a torch by its charges, of a magic light by its level or power. */
+const int8_t g_light_power[LIGHT_POWER_COUNT] = {0, 5, 12, 24, 33, 40, 46, 51, 59, 68, 76, 82, 89, 94, 97, 100};
 /* The light that each light level needs (level 0 above 99), and the daylight in % by the darkness of the hour. */
 static const int8_t light_levels[LIGHT_LEVEL_MAX + 1] = {99, 75, 50, 25, 1, 0};
 /* What a square light loses by its distance to the party: window light, other light. */
@@ -155,11 +146,9 @@ static const uint8_t creature_lightning[CREATURE_INFO_COUNT] = {
 
 Weather g_weather = {.first_init = true};
 int16_t g_light_source_sum, g_explosion_light_sum;
-
-static int clamp(int lo, int v, int hi)
-{
-    return v < lo ? lo : v > hi ? hi : v;
-}
+int g_view_light_level;
+/* The sky objects of the weather, ended by SKY_OBJECT_END. */
+static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
 
 static uint16_t map_value(int key)
 {
@@ -170,9 +159,6 @@ static bool sky_has(int entry)
 {
     return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_IMAGE, entry);
 }
-
-/* The sky objects of the weather, ended by SKY_OBJECT_END. */
-static SkyObject sky_objects[SKY_OBJECT_MAX] = {{.entry = SKY_OBJECT_END}};
 
 SkyObject *weather_sky_objects(void)
 {
@@ -208,7 +194,7 @@ static bool load_sky_object(SkyObject *object)
 /* The daylight in % that a window lets in now. */
 static int daylight(void)
 {
-    return light_levels[clamp(0, (int16_t)(g_game.heavy_rain + g_weather.hour_light), LIGHT_LEVEL_MAX)];
+    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
@@ -230,7 +216,7 @@ void weather_init(bool keep_state)
         if (!g_game.storm_multiplier)
             g_game.storm_multiplier = 1;
     } else {
-        dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
+        game_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
         g_game.next_hour_time = g_game.game_time + HOUR_TICKS;
         g_game.heavy_rain = 0;
         g_game.weather_visible = 0;
@@ -260,8 +246,8 @@ void weather_init(bool keep_state)
 
 void weather_load(const Gdat *g)
 {
-    /* (CAT_DUNGEON, 0, 0x0b, 0): the hour of the day at the start of the dungeon */
-    int hour = clamp(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
+    /* (CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), a signed word: the hour of the day at the start of the dungeon */
+    int hour = clamp_int(0, (int16_t)gdat_entry_index(g, CAT_DUNGEON, 0, GDAT_TYPE_VALUE, 0), LAST_HOUR);
     g_weather.day_time_offset = (uint32_t)hour * HOUR_TICKS;
     weather_init(g_weather.dungeon_loaded);
     g_weather.dungeon_loaded = true;
@@ -278,7 +264,8 @@ static void step_storm(void)
     g_weather.storm_previous = g_game.storm_intensity;
     g_game.storm_intensity = (uint16_t)(g_game.storm_intensity +
                                         g_game.storm_multiplier * storm_curves[g_game.storm_curve][g_game.storm_step]);
-    g_game.storm_intensity = (uint16_t)clamp(0, (int16_t)g_game.storm_intensity, STORM_MAX);
+    /* the sum wraps below 0 as a signed word, which clamps to 0 */
+    g_game.storm_intensity = (uint16_t)clamp_int(0, (int16_t)g_game.storm_intensity, STORM_MAX);
     schedule_storm_step(rand_below(STORM_RANDOM_SPAN) + STORM_STEP_DELAY);
 }
 
@@ -309,15 +296,6 @@ static bool update_rain(void)
     return sky_has(GFX_SKY_LIGHTNING) && rand_below(span) <= chance;
 }
 
-static int abs16(int v)
-{
-    return (int16_t)v < 0 ? -(int16_t)v : (int16_t)v;
-}
-static int max16(int lo, int v)
-{
-    return (int16_t)v > lo ? (int16_t)v : lo;
-}
-
 /* Lightning hits a random floor square of the current map; returns true when it struck. Creatures far from the party
    or not in front of it are spared; the party square only in a strong storm, late, and after enough storms. */
 static bool lightning_strike(void)
@@ -329,14 +307,14 @@ static bool lightning_strike(void)
     ViewSquare s;
     aspect_get(&s, g_party.cur_map, DIR_NORTH, x, y);
     PassageEnd end;
-    if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, x, y))
+    if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, (Location){x, y}))
         return false;
     bool weak = (int16_t)g_game.storm_intensity < STORM_WEAK;
     if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
-        (weak || g_game.game_time < STRIKE_PARTY_TIME || dun_get_global_var(VAR_STORMS) <= g_weather.strike_threshold))
+        (weak || g_game.game_time < STRIKE_PARTY_TIME || game_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
-    int distance = (int16_t)(abs16(g_game.party_x - x) + abs16(g_game.party_y - y));
-    uint16_t group = creature_group_at(g_party.cur_map, x, y);
+    int distance = (int16_t)(abs_int((int16_t)(g_game.party_x - x)) + abs_int((int16_t)(g_game.party_y - y)));
+    uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
             return false;
@@ -344,11 +322,17 @@ static bool lightning_strike(void)
             (distance > STRIKE_SEEN || dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) != g_game.party_dir))
             return false;
     }
-    explosion_create(LIGHTNING_EXPLOSION, g_game.storm_intensity, x, y, EXPLOSION_ANY_CELL);
+    explosion_create(EXPLOSION_STORM_LIGHTNING, g_game.storm_intensity, x, y, EXPLOSION_AT_CENTER);
     if ((g_ui.inventory || g_party_sleeping) && !weak && distance <= STRIKE_SEEN &&
         dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) == g_game.party_dir)
-        dun_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
+        game_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return true;
+}
+
+/* The fixed square of the lightning of a map: x in the high byte of the map value, y in the low byte. */
+static Location lightning_target(uint16_t packed)
+{
+    return (Location){packed >> BYTE_BIT_COUNT, packed & BYTE_MASK};
 }
 
 /* A lightning: it hits squares (or the fixed square of the map), or a bolt shows in the sky with thunder; then the
@@ -356,19 +340,18 @@ static bool lightning_strike(void)
 static SkyObject *show_lightning(SkyObject *o)
 {
     if ((int16_t)g_game.storm_intensity < STORM_WEAK)
-        dun_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
+        game_modify_global_var(VAR_STORMS, 0, GLOBAL_VAR_ASSIGN);
     uint16_t strikes = 0;
-    if (rand_below((uint16_t)(g_game.storm_intensity + 1)) >= STORM_LIGHTNING_HITS) {
+    if (rand_below(g_game.storm_intensity + 1) >= STORM_LIGHTNING_HITS) {
         strikes = (uint16_t)((rand_next() & LIGHTNING_STRIKES_MASK) + 1);
-        uint16_t target = map_value(MAP_KEY_LIGHTNING_TARGET);
-        if (target) {
-            int x = target >> TARGET_X_SHIFT;
-            int y = target & TARGET_Y_MASK;
-            sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
-            sndreq_request_with_fallback((SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE,
-                                                    SOUND_PRIORITY_EXPLODE,
-                                                    (int16_t)(rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL)},
-                                         SOUND_FALLBACK, x, y, 1); /* the volume: normal plus 0 to 31 */
+        uint16_t packed = map_value(MAP_KEY_LIGHTNING_TARGET);
+        if (packed) {
+            Location target = lightning_target(packed);
+            sensor_schedule_square_event(target.x, target.y, 0, EFFECT_SET, g_game.game_time + 1);
+            sndreq_request_with_fallback(
+                (SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE,
+                           rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL},
+                SOUND_FALLBACK, target.x, target.y, SOUND_STEP_END); /* the volume: normal plus 0 to 31 */
         } else {
             while (strikes && !lightning_strike())
                 strikes--;
@@ -379,8 +362,11 @@ static SkyObject *show_lightning(SkyObject *o)
         o->entry = (uint8_t)(GFX_SKY_LIGHTNING + rand_below(SKY_LIGHTNING_KINDS));
         if (load_sky_object(o)) {
             bolt = true;
-            int percent = (int16_t)rand_below(LIGHTNING_PERCENT);
-            g_hooks.zone_offset(o->zone, (int16_t)(o->zone + 1), percent, &o->dx, &o->dy);
+            int percent = rand_below(LIGHTNING_PERCENT);
+            ScreenPoint offset = {o->dx, o->dy};
+            g_hooks.zone_offset(o->zone, o->zone + 1, percent, &offset);
+            o->dx = offset.x;
+            o->dy = offset.y;
             o->flip = (uint8_t)rand_2bits();
             o++;
         }
@@ -394,8 +380,8 @@ static SkyObject *show_lightning(SkyObject *o)
                 delay = THUNDER_DELAY_BASE - (int16_t)g_game.storm_intensity /
                                                  (g_game.storm_multiplier ? g_game.storm_multiplier
                                                                           : 1); /* fix: the original divides by 0 */
-            delay = clamp(1, (int16_t)delay, THUNDER_DELAY_MAX);
-            sndreq_request(
+            delay = clamp_int(1, (int16_t)delay, THUNDER_DELAY_MAX);
+            sndreq_request_after(
                 (SoundCue){CAT_SKY, dungeon_map_wallset(g_game.party_map), 0, THUNDER_PRIORITY, THUNDER_VOLUME},
                 g_game.party_x, g_game.party_y, delay);
             g_weather.thunder_toggle = true;
@@ -414,7 +400,7 @@ static int sky_entry(int amount, int medium, int heavy, int first)
     return first + (amount >= medium) + (amount >= heavy);
 }
 
-void world_update_day_night(int storm_step)
+void world_update_day_night(bool storm_step)
 {
     uint16_t sky = map_value(MAP_KEY_SKY_STATE);
     g_game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
@@ -428,7 +414,7 @@ void world_update_day_night(int storm_step)
         if (g_game.weather_visible)
             light_update_party_light();
     }
-    int lightning = update_rain();
+    bool lightning = update_rain();
     if (!g_game.weather_visible)
         return;
     if (g_weather.lightning_flash) {
@@ -452,8 +438,6 @@ void world_update_day_night(int storm_step)
         o = show_lightning(o);
     o->entry = SKY_OBJECT_END;
 }
-
-int g_view_light_level;
 
 void light_update_party_light(void)
 {
@@ -481,7 +465,7 @@ void light_update_party_light(void)
         int16_t sum = 0;
         int shift = HAND_LIGHT_SHIFT;
         for (int i = 0; i < n; i++) {
-            sum = (int16_t)(sum + ((light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
+            sum = (int16_t)(sum + ((g_light_power[lights[i]] << shift) >> HAND_LIGHT_SHIFT));
             if (shift)
                 shift--;
         }
@@ -499,7 +483,7 @@ void light_update_party_light(void)
             level = 0;
     }
     level -= g_explosion_light_sum > EXPLOSION_GLARE;
-    g_view_light_level = clamp(0, (int16_t)level, LIGHT_LEVEL_MAX);
+    g_view_light_level = clamp_int(0, (int16_t)level, LIGHT_LEVEL_MAX);
 }
 
 /* The light value of an ornament (0: none); *animated_only: it shines only while it animates. */
@@ -510,30 +494,13 @@ static uint16_t ornament_light(int category, int ornament, bool *animated_only)
     return v & LIGHT_AMOUNT_MASK;
 }
 
-/* The light that one square gives: window light by the hour, other light, and the light of missiles and explosions. */
-typedef struct {
-    int16_t window, light, missiles;
-} SquareLight;
-
-/* The front wall ornament, or the floor ornament: index in the low byte of the side word, animation frame in the high
-   byte. */
-static int ornament_index(const ViewSquare *s)
-{
-    return s->side[SIDE_LIGHT] & ORNAMENT_MASK;
-}
-
-static bool ornament_animated(const ViewSquare *s)
-{
-    return s->side[SIDE_LIGHT] >> BYTE_BIT_COUNT != 0;
-}
-
 /* The light of a wall ornament: a window follows the hour; other light shines always or only while it animates. */
 static void add_wall_light(SquareLight *sum, const ViewSquare *s)
 {
-    int ornament = ornament_index(s);
-    bool animated = ornament_animated(s);
+    int ornament = aspect_word_ornament(s->side[SIDE_FRONT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FRONT]);
     bool animated_only;
-    if (ornament == ORNAMENT_MASK)
+    if (ornament == ORNAMENT_NONE)
         return;
     uint16_t v = ornament_light(CAT_WALL_ORNAMENT, ornament, &animated_only);
     if (!v && !animated_only)
@@ -544,15 +511,15 @@ static void add_wall_light(SquareLight *sum, const ViewSquare *s)
         sum->light = (int16_t)(sum->light + v);
 }
 
-/* The light of the things on a floor square: the explosions and the spell missiles. */
+/* The light of the things on a floor square: the explosions of fire and lightning, and the fireball missiles. */
 static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 {
     for (uint16_t t = first_thing; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_EXPLOSION) {
             int kind = explosion_type(t);
-            if (kind == EXPLOSION_LIGHT || kind == EXPLOSION_FIRE || kind == EXPLOSION_GLOW)
+            if (kind == BLAST_LIGHTNING || kind == BLAST_FIREBALL || kind == BLAST_STORM_LIGHTNING)
                 sum->missiles = (int16_t)(sum->missiles + (explosion_power(t) >> 1));
-        } else if (thing_type(t) == THING_PROJECTILE && thing_word(t, PROJECTILE_PAYLOAD) == MISSILE_SPELL) {
+        } else if (thing_type(t) == THING_PROJECTILE && thing_word(t, PROJECTILE_PAYLOAD) == SPELL_FIREBALL) {
             sum->missiles = (int16_t)(sum->missiles + (projectile_energy(t) >> 1) - light_falloff[MISSILE_FALLOFF]);
         }
     }
@@ -560,19 +527,19 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 
 /* The light of a floor ornament and of the things on the square; false when an ornament without light hides the
    other light of the square. */
-static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int x, int y)
+static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, int16_t y)
 {
-    int ornament = ornament_index(s);
-    bool animated = ornament_animated(s);
+    int ornament = aspect_word_ornament(s->side[SIDE_FLOOR_ORNAMENT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FLOOR_ORNAMENT]);
     bool floor = s->aspect == ASPECT_FLOOR || s->aspect == ASPECT_PIT || s->aspect == ASPECT_TELEPORTER;
-    if (floor && ornament != ORNAMENT_MASK) {
+    if (floor && ornament != ORNAMENT_NONE) {
         bool animated_only;
         uint16_t v = ornament_light(CAT_FLOOR_ORNAMENT, ornament, &animated_only);
         /* as in the original, a floor ornament without light also hides the other light of its square */
         if (!v && !animated_only)
             return false;
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, x, y))
+        if (dun_get_linked_teleporter_dest(&end, (Location){x, y}))
             sum->window = (int16_t)(sum->window + v * daylight() / PERCENT);
         else if (!animated_only || animated)
             sum->light = (int16_t)(sum->light + v);
@@ -601,22 +568,22 @@ void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, uns
         if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, x, y))
             break;
         if (flags & LIGHT_CREATURES) {
-            uint16_t group = creature_group_at(g_party.cur_map, x, y);
+            uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
             if (group != THING_NONE)
                 sum.light = (int16_t)(sum.light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }
         break;
     }
     if (distance <= FALLOFF_WEATHER_MAX && sum.window)
-        sum.window = (int16_t)max16(WINDOW_LIGHT_MIN, sum.window - window_falloff[distance]);
+        sum.window = (int16_t)max_int(WINDOW_LIGHT_MIN, (int16_t)(sum.window - window_falloff[distance]));
     else
         sum.window = 0;
     if (distance > FALLOFF_MAX)
         distance = FALLOFF_MAX;
     if (sum.light)
-        sum.light = (int16_t)max16(SQUARE_LIGHT_MIN, sum.light - light_falloff[distance]);
+        sum.light = (int16_t)max_int(SQUARE_LIGHT_MIN, (int16_t)(sum.light - light_falloff[distance]));
     g_light_source_sum = (int16_t)(g_light_source_sum + sum.light + sum.window);
     if (sum.missiles)
-        sum.missiles = (int16_t)max16(SQUARE_LIGHT_MIN, sum.missiles - light_falloff[distance]);
+        sum.missiles = (int16_t)max_int(SQUARE_LIGHT_MIN, (int16_t)(sum.missiles - light_falloff[distance]));
     g_explosion_light_sum = (int16_t)(g_explosion_light_sum + sum.missiles);
 }
