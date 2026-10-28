@@ -62,7 +62,7 @@
 #define DOOR_STATE_BROKEN        5
 #define square_flag(s, bit)      (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
-#define WALL_FACE(dir)           (8 >> (dir))
+#define WALL_FACE(dir)           (1 << (DIR_WEST - (dir)))
 
 /* Directions, clockwise from north, and the cells of a square, numbered like the directions. */
 #define DIR_NORTH               0
@@ -75,10 +75,11 @@
 #define DIR_MASK                (DIR_COUNT - 1)
 /* Quarter turns of dir_turn. */
 #define TURN_RIGHT              1 /* dir_turn: the direction to the right */
+#define TURN_BACK               2 /* dir_turn: the opposite direction */
 #define TURN_LEFT               3 /* dir_turn: the direction to the left */
 /* The direction or cell after a number of quarter turns clockwise. */
 #define dir_turn(d, turns)      (((d) + (turns)) & DIR_MASK)
-#define dir_opposite(d)         dir_turn(d, 2)
+#define dir_opposite(d)         dir_turn(d, TURN_BACK)
 /* The direction or cell d seen from a party or creature that looks to facing. */
 #define dir_relative(d, facing) dir_turn(d, -(facing))
 
@@ -812,9 +813,5 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, in
 uint16_t dungeon_unused_thing(int type);
 /* As dungeon_unused_thing; a miscellaneous item may also take the records that the dungeon keeps for the game. */
 uint16_t dungeon_unused_thing_any_record(int type);
-/* dun_get_discarded_thing (move.h): a thing of any kind. */
-#define DISCARD_ANY_KIND 0xff
-/* The map where the last search for each thing type ended; the next search starts there. */
-extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 #endif /* DM2_ENGINE_DUNGEON_H */

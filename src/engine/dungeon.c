@@ -1008,7 +1008,6 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, in
 /* Takes a free record of type; any_record: a miscellaneous item may take the records that the dungeon keeps. */
 static uint16_t take_unused_thing(int type, bool any_record)
 {
-    type &= THING_TYPE_MASK;
     int count = dun.thing_count[type] - (type == THING_MISC && !any_record ? MISC_RESERVED : 0);
     uint16_t thing = THING_NONE;
     for (int i = 0; i < count && thing == THING_NONE; i++)
