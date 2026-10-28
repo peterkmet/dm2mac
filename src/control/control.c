@@ -576,8 +576,8 @@ static bool refuse_in_modal_loop(Json *reply)
 /* After a load or a new game: the end of the last game is over. */
 static void forget_game_end(void)
 {
-    g_main_loop.end = 0;
-    g_session.completed = 0;
+    game_clear_end();
+    game_set_completed(false);
     control.game_lost = false;
 }
 
@@ -586,13 +586,13 @@ static void handle_load(Json *reply)
 {
     if (refuse_in_modal_loop(reply))
         return;
-    int end = g_main_loop.end;
-    g_main_loop.end = 0; /* the loaded game starts with a full game step, as after the load of a slot */
+    bool end = g_main_loop.end;
+    game_clear_end(); /* the loaded game starts with a full game step, as after the load of a slot */
     enum QuickLoadResult result = advanced_quick_load();
     if (result == QUICK_LOST)
         control.game_lost = true;
     if (result != QUICK_LOADED) {
-        g_main_loop.end = end;
+        game_set_end(end);
         put_error(reply, result == QUICK_MISSING   ? "no saved game (use save first)"
                          : result == QUICK_BLOCKED ? "cannot write QUICK.TMP: nothing loaded"
                                                    : "the saved game is damaged");
@@ -740,8 +740,8 @@ static void handle_request(const char *request, Json *reply)
         else
             screenshot(path, reply);
     } else if (!strcmp(cmd, "quit")) {
-        g_main_loop.quit = 1;
-        g_main_loop.closed = 1;
+        game_request_quit();
+        game_set_closed(true);
         put_ok(reply);
     } else {
         put_error(reply, "unknown cmd");

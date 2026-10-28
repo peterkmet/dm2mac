@@ -265,6 +265,16 @@ void game_clear_end(void)
     g_main_loop.end = false;
 }
 
+void game_set_end(bool on)
+{
+    g_main_loop.end = on;
+}
+
+void game_set_closed(bool on)
+{
+    g_main_loop.closed = on;
+}
+
 void game_request_quit(void)
 {
     g_main_loop.quit = true;

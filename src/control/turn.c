@@ -735,7 +735,7 @@ static const char *choose_action(const char *r)
         return "this hand cannot be clicked now";
     add_command(CMD_ACTION_CANCEL + 1 + (uint16_t)index);
     turn.has_damage = true;
-    g_champ_action_result = 0;
+    champ_action_clear_result();
     return NULL;
 }
 
