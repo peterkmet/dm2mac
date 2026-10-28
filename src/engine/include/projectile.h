@@ -113,9 +113,8 @@ void projectile_event_set_position(TimelineEvent *e, int16_t x, int16_t y, int16
 
 /* ---- Explosions ---- */
 
-/* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle); an x
-   above 0xff packs the square of a hit (low bytes) and the square of the explosion (high bytes, x + 1). */
-void explosion_create(int type, int power, int16_t x, int16_t y, int16_t cell);
+/* An explosion of type with power on (x, y) of the current map in cell (EXPLOSION_AT_CENTER: the middle). */
+void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t cell);
 
 /* ---- Projectile hits ---- */
 

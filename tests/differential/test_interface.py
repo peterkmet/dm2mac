@@ -400,7 +400,8 @@ class TextSize(ctypes.Structure):
 def test_measure_and_wrap_match_original(port, original):
     lib = port
     emu = original.emu
-    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
+    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int16]
+    lib.text_wrap_line.restype = ctypes.c_int16
     lib.text_measure.argtypes = [ctypes.c_char_p]
     lib.text_measure.restype = TextSize
     rng = random.Random(14)

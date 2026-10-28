@@ -140,7 +140,7 @@ static bool step_view(void)
         game_process_timeline();
         if (g_party.new_map != -1)
             continue;
-        world_update_day_night(0);
+        world_update_day_night(false);
         if (g_party_sleeping)
             return false;
         if (!g_ui.candidate)
@@ -177,7 +177,7 @@ static void step_before_input(void)
         input_poll();
     }
     input_release_move_arrow();
-    sndreq_flush_requests(0);
+    sndreq_flush_requests(false);
     champ_apply_pending_damage();
     game_run_party_clocks();
     inv_update_hand_cursor();
