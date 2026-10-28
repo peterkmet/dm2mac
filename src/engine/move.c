@@ -882,7 +882,7 @@ static void transit_pit(Transit *t)
         if (t->falls) {
             dun_set_party_location((Position){t->map, t->x, t->y});
             g_hooks.enter_map_view(t->map);
-            world_update_day_night(0);
+            world_update_day_night(false);
         }
         int steps = g_party.move_steps;
         g_party.move_steps = 0;
