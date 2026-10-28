@@ -47,10 +47,6 @@
 #define EVENT_PRIORITY_AT 5
 #define EVENT_DATA_AT     6
 
-/* Byte offsets in a champion record. */
-#define CHAMPION_SLOTS        0xc3 /* 30 thing words: hands, body, pouches, quiver, backpack */
-#define CHAMPION_DAMAGE_EVENT 0x2e /* the timeline event that ends the damage display */
-
 /* Bit widths of the values between the records, as masks. */
 #define MORE_MASK        0x0001
 #define TYPE_MASK        0x000f
@@ -270,17 +266,6 @@ static bool flush_bits(void)
     return ok;
 }
 
-/* The thing in a slot of a champion record. */
-static uint16_t held_thing(int champion, int slot)
-{
-    return le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot);
-}
-
-static void set_held_thing(int champion, int slot, uint16_t thing)
-{
-    put_le16(g_game.champions[champion] + CHAMPION_SLOTS + 2 * slot, thing);
-}
-
 /* A sensor of a type in sensors_with_data stores 9 bits of its data word. */
 static bool has_sensor_data(uint16_t sensor)
 {
@@ -324,13 +309,13 @@ static bool defer_thing(uint16_t thing)
 static void relink_events(void)
 {
     for (int c = 0; c < CHAMPION_MAX; c++)
-        put_le16(g_game.champions[c] + CHAMPION_DAMAGE_EVENT, THING_NONE);
+        champion(c)->damage_event = THING_NONE;
     for (int i = 0; i < g_timeline.count; i++) {
         const TimelineEvent *e = &g_timeline.events[i];
         uint16_t thing = le16(e->data + EVENT_THING);
         if (e->type == EVENT_HIDE_DAMAGE &&
             e->priority < CHAMPION_MAX) /* fix: the original does not check the champion */
-            put_le16(g_game.champions[e->priority] + CHAMPION_DAMAGE_EVENT, (uint16_t)i);
+            champion(e->priority)->damage_event = (uint16_t)i;
         if ((e->type == EVENT_PROJECTILE_MOVE || e->type == EVENT_PROJECTILE_MOVE_2) &&
             thing_type(thing) == THING_PROJECTILE && dungeon_thing_valid(thing))
             thing_set_word(thing, PROJECTILE_EVENT, i);
@@ -653,7 +638,7 @@ static bool write_state(void)
         return false;
     for (int c = 0; c < g_game.champion_count; c++)
         for (int s = 0; s < SLOT_COUNT; s++)
-            if (!write_thing_list(held_thing(c, s), false, false))
+            if (!write_thing_list(champion(c)->slots[s], false, false))
                 return false;
     if (!write_thing_list(g_game.leader_hand, false, false))
         return false;
@@ -886,7 +871,7 @@ static bool read_things(void)
             uint16_t slot = THING_ENDOFLIST;
             if (!read_thing_list(NULL, &slot, false, false))
                 return false;
-            set_held_thing(c, s, slot == THING_ENDOFLIST ? THING_NONE : slot);
+            champion(c)->slots[s] = slot == THING_ENDOFLIST ? THING_NONE : slot;
         }
     g_game.leader_hand = THING_ENDOFLIST;
     if (!read_thing_list(NULL, &g_game.leader_hand, false, false))
