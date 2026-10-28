@@ -106,6 +106,9 @@ void timeline_free(void);
 /* Queries */
 /* True when the next event is due at game_time. */
 bool timeline_is_event_due(uint32_t game_time);
+/* The index of the first event from index from on with type and priority, -1 none. all_slots reads all event slots;
+   otherwise only the first count slots, as in the original. */
+int timeline_find_event(int from, uint8_t type, uint8_t priority, bool all_slots);
 
 /* Commands */
 /* Queues a copy of event; returns its event index, or -1 for an event without a type. */

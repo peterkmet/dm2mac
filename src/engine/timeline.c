@@ -141,6 +141,14 @@ bool timeline_is_event_due(uint32_t game_time)
     return g_timeline.count != 0 && time_of_event(g_timeline.queue[0]) <= game_time;
 }
 
+int timeline_find_event(int from, uint8_t type, uint8_t priority, bool all_slots)
+{
+    for (int i = from; i < (all_slots ? g_timeline.capacity : g_timeline.count); i++)
+        if (g_timeline.events[i].type == type && g_timeline.events[i].priority == priority)
+            return i;
+    return -1;
+}
+
 /* Commands */
 
 int timeline_add_event(const TimelineEvent *event)
