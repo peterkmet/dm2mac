@@ -705,10 +705,6 @@ static const uint8_t sky_state_rain[SKY_STATE_COUNT] = {0, 1, 0, 0, 1};
 /* The projectiles of one view whose flight the views between game steps show. */
 #define FLIGHT_TRACK_MAX 32
 
-ViewSquare g_view_squares[VIEW_SQUARE_COUNT];
-static uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT];
-Bitmap g_view_viewport = {viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
-
 /* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
    colors of its color remap, and its draw mode. */
 typedef struct {
@@ -801,8 +797,21 @@ static struct {
         uint16_t group;
         uint32_t cells;
     } pending;
-} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST};
+    /* Smooth projectile flight of the advanced mode (no rule change): the projectiles of the last view of a game step
+       and of the view of the game step before, and the timer tick of a view between game steps. */
+    struct {
+        FlightTrack tracks[FLIGHT_TRACK_MAX], last[FLIGHT_TRACK_MAX];
+        int count, last_count;
+        int16_t map, x, y, dir; /* the party view of the tracks */
+        bool walking;
+        uint32_t time;        /* the game time of the tracks */
+        int tick, step_ticks; /* the timer tick of a view between game steps; 0 step_ticks: a view of a game step */
+    } flight;
+    uint8_t viewport_pixels[VIEWPORT_WIDTH * VIEWPORT_HEIGHT]; /* the pixels of g_view_viewport */
+} view = {.landmark_set = -1, .pending.first = THING_ENDOFLIST, .flight.map = -1};
 
+ViewSquare g_view_squares[VIEW_SQUARE_COUNT];
+Bitmap g_view_viewport = {view.viewport_pixels, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, IMAGE_8BPP};
 ViewClickZone g_view_click_zones[VIEW_CLICK_ZONE_MAX];
 int g_view_click_zone_count;
 uint8_t g_view_creature_grid[VIEW_GRID_SIZE];
@@ -810,17 +819,6 @@ bool g_view_arrows_enabled;
 uint8_t g_view_object_grid[VIEW_GRID_SIZE];
 uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT];
 uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];
-
-/* Smooth projectile flight of the advanced mode (no rule change): the projectiles of the last view of a game step and
-   of the view of the game step before, and the timer tick of a view between game steps. */
-static struct {
-    FlightTrack tracks[FLIGHT_TRACK_MAX], last[FLIGHT_TRACK_MAX];
-    int count, last_count;
-    int16_t map, x, y, dir; /* the party view of the tracks */
-    bool walking;
-    uint32_t time;        /* the game time of the tracks */
-    int tick, step_ticks; /* the timer tick of a view between game steps; 0 step_ticks: a view of a game step */
-} flight = {.map = -1};
 
 /* The square offset of a view position to the right of the view axis (negative to the left). */
 static int lateral_of(int pos)
@@ -854,7 +852,7 @@ static uint8_t map_door_type(uint16_t door)
 /* True for a view between game steps (advanced mode): such a view changes no game state. */
 static bool between_steps(void)
 {
-    return flight.step_ticks != 0;
+    return view.flight.step_ticks != 0;
 }
 
 /* The square forward squares ahead of at and right squares to the right, for the party looking to dir. */
@@ -1610,14 +1608,16 @@ static void flush_projectile(uint16_t thing, int pos)
 {
     ViewPoint corner;
     if (thing != THING_NONE && picture_corner(&corner)) {
-        if (flight.step_ticks) {
-            const FlightTrack *t = find_track(flight.tracks, flight.count, thing, pos);
-            ViewPoint shift = t ? view_flight_shift(t->from, t->to, flight.tick, flight.step_ticks) : (ViewPoint){0, 0};
+        if (view.flight.step_ticks) {
+            const FlightTrack *t = find_track(view.flight.tracks, view.flight.count, thing, pos);
+            ViewPoint shift =
+                t ? view_flight_shift(t->from, t->to, view.flight.tick, view.flight.step_ticks) : (ViewPoint){0, 0};
             view.ctx.src_x = (int16_t)(view.ctx.src_x + shift.x);
             view.ctx.src_y = (int16_t)(view.ctx.src_y + shift.y);
-        } else if (flight.count < FLIGHT_TRACK_MAX) {
-            const FlightTrack *last = find_track(flight.last, flight.last_count, thing, pos);
-            flight.tracks[flight.count++] = (FlightTrack){thing & THING_ID_MASK, pos, last ? last->to : corner, corner};
+        } else if (view.flight.count < FLIGHT_TRACK_MAX) {
+            const FlightTrack *last = find_track(view.flight.last, view.flight.last_count, thing, pos);
+            view.flight.tracks[view.flight.count++] =
+                (FlightTrack){thing & THING_ID_MASK, pos, last ? last->to : corner, corner};
         }
     }
     flush_picture();
@@ -3517,23 +3517,23 @@ bool view_shows_party(void)
    party view is the same. Another view in the same game step keeps them. */
 static void start_tracks(int16_t dir, int16_t x, int16_t y)
 {
-    if (flight.step_ticks)
+    if (view.flight.step_ticks)
         return;
-    bool same =
-        flight.map == view.map && flight.x == x && flight.y == y && flight.dir == dir && flight.walking == view.walking;
-    if (same && flight.time + 1 == g_game.game_time) {
-        memcpy(flight.last, flight.tracks, sizeof flight.tracks[0] * (size_t)flight.count);
-        flight.last_count = flight.count;
-    } else if (!same || flight.time != g_game.game_time) {
-        flight.last_count = 0;
+    bool same = view.flight.map == view.map && view.flight.x == x && view.flight.y == y && view.flight.dir == dir &&
+                view.flight.walking == view.walking;
+    if (same && view.flight.time + 1 == g_game.game_time) {
+        memcpy(view.flight.last, view.flight.tracks, sizeof view.flight.tracks[0] * (size_t)view.flight.count);
+        view.flight.last_count = view.flight.count;
+    } else if (!same || view.flight.time != g_game.game_time) {
+        view.flight.last_count = 0;
     }
-    flight.count = 0;
-    flight.map = view.map;
-    flight.x = x;
-    flight.y = y;
-    flight.dir = dir;
-    flight.walking = view.walking;
-    flight.time = g_game.game_time;
+    view.flight.count = 0;
+    view.flight.map = view.map;
+    view.flight.x = x;
+    view.flight.y = y;
+    view.flight.dir = dir;
+    view.flight.walking = view.walking;
+    view.flight.time = g_game.game_time;
 }
 
 void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)
@@ -3597,14 +3597,15 @@ ViewPoint view_flight_shift(ViewPoint old_corner, ViewPoint new_corner, int tick
 
 void view_set_flight_tick(int tick, int step_ticks)
 {
-    flight.tick = tick;
-    flight.step_ticks = step_ticks;
+    view.flight.tick = tick;
+    view.flight.step_ticks = step_ticks;
 }
 
 bool view_has_moving_projectiles(void)
 {
-    for (int i = 0; i < flight.count; i++)
-        if (flight.tracks[i].from.x != flight.tracks[i].to.x || flight.tracks[i].from.y != flight.tracks[i].to.y)
+    for (int i = 0; i < view.flight.count; i++)
+        if (view.flight.tracks[i].from.x != view.flight.tracks[i].to.x ||
+            view.flight.tracks[i].from.y != view.flight.tracks[i].to.y)
             return true;
     return false;
 }
