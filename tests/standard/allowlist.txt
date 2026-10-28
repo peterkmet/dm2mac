@@ -151,7 +151,6 @@ hex engine/save.c:misc_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/save.c:moneybox_misc_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/save.c:projectile_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/save.c:sensor_mask rule 3.12: a bit mask table of SKULL.EXE
-hex engine/save.c:sensors_with_data rule 3.12: sensor types of SKULL.EXE
 hex engine/save.c:static_group_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/save.c:text_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/save.c:weapon_mask rule 3.12: a bit mask table of SKULL.EXE

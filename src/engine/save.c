@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
@@ -104,9 +105,11 @@
 /* The bit position of the music volume in the volume byte. */
 #define MUSIC_VOLUME_SHIFT 4
 
-/* Sensors that store 9 bits of their data word besides their record mask: teleporter link (0x27),
-   animated ornament (0x2c), shop display (0x30), activation with sound (0x32), and four of unknown use. */
-static const uint8_t sensors_with_data[] = {0x27, 0x1b, 0x1d, 0x41, 0x2c, 0x32, 0x30, 0x2d};
+/* Sensors whose data word changes during play; they store 9 bits of it besides their record mask. */
+static const uint8_t sensors_with_data[] = {
+    SENSOR_TELEPORTER_LINK, WALL_CLICK_COUNTED_ITEM, SENSOR_COUNTER, SENSOR_FRAME_STEP,
+    SENSOR_ANIMATION,       SENSOR_ACTIVATION,       SENSOR_SHOP,    SENSOR_COUNTDOWN,
+};
 
 /* Mask tables of SKULL.EXE: one mask byte per record byte. */
 static const uint8_t all_bits[PACKED_WORD_BYTES] = {0xff, 0xff};
