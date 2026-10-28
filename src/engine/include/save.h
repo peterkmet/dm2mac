@@ -6,8 +6,9 @@
 /* The save game: its blocks, its layout, and reading and writing the file. */
 
 #include <stdint.h>
-#include "gdat.h"
 #include "le.h"
+
+typedef struct gdat Gdat;
 
 /* Sizes of the game state blocks of the save. */
 #define CHAMPION_MAX      4
@@ -37,8 +38,8 @@ typedef enum {
     SAVE_ERR_DATA = -3,   /* the bit-packed game state is damaged or ends too early */
 } SaveResult;
 
-/* Game state that the save file stores beside the dungeon, the timeline, and the random seed.
-   The modules of later steps take these fields over. */
+/* Game state that the save file stores beside the dungeon, the timeline, and the random seed: the party, the leader,
+   the cooldowns, the weather, the script variables, the champion records, and the magic light. */
 typedef struct {
     uint32_t game_time;
     uint16_t champion_count;
