@@ -297,8 +297,8 @@ int item_icon_index(uint16_t thing, int16_t slot, bool animated)
     case ICON_BY_CHARGES_AND_TIME: {
         int step = (attr & ICON_STEP_MASK) >> ICON_STEP_SHIFT;
         int charges = item_charges(thing);
-        if (!charges)
-            return icon;
+        if (!charges || !step)
+            return icon; /* fix: the original divides by a step of 0 */
         int frame = frames / step * charges / (item_max_charges(thing) + 1) * step + 1 + (uint16_t)(time % step);
         return (uint8_t)(icon + frame);
     }
