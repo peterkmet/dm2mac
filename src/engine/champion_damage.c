@@ -124,7 +124,7 @@ void champ_reset_step_state(void)
     g_ui.candidate = 0;
 }
 
-int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack)
+int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack)
 {
     int16_t left = (int16_t)(ADJUST_BASE - champ_get_stat(c, stat, STAT_CURRENT));
     if (left < ADJUST_MIN)
@@ -677,7 +677,7 @@ static void place_in_free_cell(int champ)
 {
     Champion *c = champion(champ);
     int16_t health = c->health;
-    c->health = 0;
+    c->health = 0; /* champ_get_index_in_cell skips a champion without health: the search skips champ itself */
     if (c->cell == NO_CHAMPION_CELL || champ_get_index_in_cell(c->cell) != -1) {
         int k = 0;
         while (champ_get_index_in_cell(dir_turn(g_game.party_dir, k)) != -1)

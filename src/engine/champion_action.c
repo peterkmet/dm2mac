@@ -49,8 +49,6 @@
 #define VAR_BLOCKED_ACTIONS    0x42
 #define VAR_NO_AMMO_ACTIONS    0x43
 #define VAR_CANT_ACTIONS       0x47
-/* g_action.result of a melee action when a champion stands in front. */
-#define RESULT_BLOCKED         (-1)
 /* The delays of the actions in game steps. */
 #define DELAY_BASE             2
 #define DELAY_EXTRA_SHIFT      2 /* an action delay grows by a quarter */
@@ -134,6 +132,8 @@ typedef struct {
 ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0). */
 int16_t g_champ_action_result;
+
+/* Champion actions */
 
 /* A field of the GDAT text of action. */
 static int16_t field_of(ChampionAction action, int field)
@@ -290,12 +290,13 @@ static void raise_level(int champ, int base, uint16_t level)
     static const uint8_t message_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
     Champion *c = champion(champ);
     uint32_t gain = level;
-    int bit_a = rand_bit();
-    int bit_b = rand_bit() + 1;
-    int bit_c = rand_bit();
+    int raise_one = rand_bit();
+    int raise_one_or_two = rand_bit() + 1;
+    int raise_vitality = rand_bit();
+    /* a random point of vitality only at an odd level (a priest at each level), of anti-fire only at an even level */
     if (base != SKILL_PRIEST)
-        bit_c &= (int)gain;
-    raise_maximum(c, STAT_VITALITY, bit_c);
+        raise_vitality &= (int)gain;
+    raise_maximum(c, STAT_VITALITY, raise_vitality);
     uint16_t stamina = (uint16_t)c->max_stamina;
     raise_maximum(c, STAT_ANTI_FIRE, rand_bit() & ~gain & BYTE_MASK);
     int text;
@@ -304,22 +305,22 @@ static void raise_level(int champ, int base, uint16_t level)
         text = TEXT_LEVEL_FIGHTER;
         stamina = (uint16_t)(stamina >> FIGHTER_STAMINA_SHIFT);
         gain *= FIGHTER_HEALTH_FACTOR;
-        raise_maximum(c, STAT_STRENGTH, bit_b);
-        raise_maximum(c, STAT_DEXTERITY, bit_a);
+        raise_maximum(c, STAT_STRENGTH, raise_one_or_two);
+        raise_maximum(c, STAT_DEXTERITY, raise_one);
         break;
     case SKILL_NINJA:
         text = TEXT_LEVEL_NINJA;
         stamina = (uint16_t)(stamina / NINJA_STAMINA_DIVISOR);
         gain *= 2;
-        raise_maximum(c, STAT_STRENGTH, bit_a);
-        raise_maximum(c, STAT_DEXTERITY, bit_b);
+        raise_maximum(c, STAT_STRENGTH, raise_one);
+        raise_maximum(c, STAT_DEXTERITY, raise_one_or_two);
         break;
     case SKILL_PRIEST:
         text = TEXT_LEVEL_PRIEST;
         stamina = (uint16_t)(stamina / PRIEST_STAMINA_DIVISOR);
         c->max_mana = (int16_t)(c->max_mana + gain);
         gain += (gain + 1) >> 1;
-        raise_maximum(c, STAT_WISDOM, bit_a);
+        raise_maximum(c, STAT_WISDOM, raise_one);
         raise_magic(c, level);
         break;
     case SKILL_WIZARD:
@@ -327,7 +328,7 @@ static void raise_level(int champ, int base, uint16_t level)
         text = TEXT_LEVEL_WIZARD;
         stamina = (uint16_t)(stamina >> WIZARD_STAMINA_SHIFT);
         c->max_mana = (int16_t)(c->max_mana + gain + (gain >> 1));
-        raise_maximum(c, STAT_WISDOM, bit_b);
+        raise_maximum(c, STAT_WISDOM, raise_one_or_two);
         raise_magic(c, level);
         break;
     }
@@ -437,7 +438,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
             hit = champ_test_luck(c, (uint16_t)(MELEE_LUCK_BASE - attack));
     }
     if (hit) {
-        damage = melee_hit_damage((int16_t)champ_get_strength(champ, g_action.hand, skill), factor, info, difficulty);
+        damage = melee_hit_damage((int16_t)champ_get_strength(champ, a->hand, skill), factor, info, difficulty);
         hit = damage != 0;
     }
     if (hit) {
@@ -450,7 +451,7 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
         unsigned roll = rand_next() & MELEE_CRITICAL_ROLL;
         if ((uint16_t)champ_get_skill_level(champ, skill, true) > roll)
             damage = (int16_t)(damage + damage + MELEE_CRITICAL_BONUS);
-        uint16_t extra = item_attr(c->slots[g_action.hand], ATTR_EXTRA_DAMAGE);
+        uint16_t extra = item_attr(c->slots[a->hand], ATTR_EXTRA_DAMAGE);
         if (extra && damage > (int16_t)(rand_next() & MELEE_RANDOM))
             damage = (int16_t)(damage + creature_roll_armor_factor(group, extra));
         int worth = creature_experience(info);
@@ -468,6 +469,14 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     return damage;
 }
 
+/* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
+static void show_failure(int result, int counter)
+{
+    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
+    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
+    g_action.result = (int16_t)result;
+}
+
 /* A melee attack of the champion of the action on the creature group in front; true when the attack happened. */
 static bool melee_attack_front(const ActionRun *a, int mode, int kind)
 {
@@ -482,9 +491,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
         int other = dir_turn(c->cell, rel == 2 ? TURN_LEFT : TURN_RIGHT);
         if (champ_get_index_in_cell(other) != -1) {
             /* a champion in front of the attacker: it cannot reach */
-            g_action.result = RESULT_BLOCKED;
-            g_action.redraw_delay = (int16_t)max_int(
-                1, (int16_t)(RESULT_DELAY_BASE - dun_modify_global_var(VAR_BLOCKED_ACTIONS, 1, GLOBAL_VAR_ADD)));
+            show_failure(RESULT_NOTHING, VAR_BLOCKED_ACTIONS);
             return false;
         }
     }
@@ -592,14 +599,6 @@ static bool run_minion_command(ActionRun *a, int command)
         break;
     }
     return send_minion(a, command);
-}
-
-/* A failure that shows a picture in the action area; counter counts the failures in a script variable. */
-static void show_failure(int result, int counter)
-{
-    int16_t count = (int16_t)dun_modify_global_var(counter, 1, GLOBAL_VAR_ADD);
-    g_action.redraw_delay = (int16_t)max_int(1, (int16_t)(RESULT_DELAY_BASE - count));
-    g_action.result = (int16_t)result;
 }
 
 /* The party becomes invisible for power game steps, at least POWER_MIN. */
@@ -1003,7 +1002,7 @@ bool champ_execute_selected_action(int index)
 
 void champ_process_repeated_actions(void)
 {
-    int16_t saved = -1;
+    bool ran = false;
     for (int champ = 0; champ < g_game.champion_count; champ++)
         for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
             ActionRepeat *r = &g_action_repeats[champ][hand];
@@ -1018,7 +1017,8 @@ void champ_process_repeated_actions(void)
                 continue;
             }
             r->left--;
-            saved = g_action.hand;
+            ran = true;
+            int16_t saved = g_action.hand;
             g_action.hand = (int16_t)hand;
             champ_list_actions(champ, r->thing, hand);
             ChampionAction action = g_champ_actions[r->action];
@@ -1030,7 +1030,7 @@ void champ_process_repeated_actions(void)
             }
             g_action.hand = saved;
         }
-    if (g_action.champion && saved >= 0 && g_action.hand <= SLOT_ACTION_HAND)
+    if (g_action.champion && ran && g_action.hand >= 0 && g_action.hand <= SLOT_ACTION_HAND)
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 

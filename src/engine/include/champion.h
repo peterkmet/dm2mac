@@ -246,13 +246,13 @@ void champ_init_party_state(void);
 /* Statistics and load */
 /* A statistic, current (which STAT_CURRENT, with the aura) or maximum (which STAT_MAXIMUM), with its bonus, 10 to
    220. */
-int champ_get_stat(Champion *c, int stat, int which);
+int champ_get_stat(const Champion *c, int stat, int which);
 /* The level of skill; with_bonus adds the skill bonus and the base skill's bonus. */
 int champ_get_skill_level(int champ, int skill, bool with_bonus);
 /* value reduced when the stamina is below half of its maximum. */
 int champ_scale_by_stamina(const Champion *c, int value);
 /* The load in 1/10 kg that the champion can carry. */
-int champ_get_max_load(Champion *c);
+int champ_get_max_load(const Champion *c);
 /* The load in 1/10 kg that the champion carries, with the leader hand object for the leader. */
 int champ_get_load(int champ);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
@@ -292,7 +292,7 @@ extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and hea
    the program start. */
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
-int champ_get_stat_adjusted_attack(Champion *c, int stat, int attack);
+int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);
 /* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
 int champ_get_strength(int champ, int hand, int skill);
 /* The dexterity of champ with its load, 1 to 100. */
@@ -339,11 +339,11 @@ void champ_reload_hand(int champ, int hand);
 int champ_get_party_level(void);
 /* Adds experience in skill; each new level raises the statistics and prints a message. */
 void champ_add_experience(int champ, int skill, uint32_t experience);
-/* Champ performs action (an index in g_champ_actions) with the item in the open hand; a repeat (repeated) takes no
+/* Champ performs the action of g_champ_actions at index with the item in the open hand; a repeat (repeated) takes no
    delay, stamina, or experience. True when the action was done; exported for the tests. */
-bool champ_perform_action(int champ, int action, bool repeated);
-/* Runs action (0 to 2, -1: none) of the open action menu; true when the action was done. */
-bool champ_execute_selected_action(int action);
+bool champ_perform_action(int champ, int index, bool repeated);
+/* Runs the action at index (0 to 2, -1: none) of the open action menu; true when the action was done. */
+bool champ_execute_selected_action(int index);
 /* The repeats of the actions of all champions. */
 void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand to the left or the right side; true when it flies. */
