@@ -51,7 +51,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 ## Deviations from the original
 
 - Uninitialized data of the original: some events keep 2 to 4 data bytes or the high bits of a word from the stack (hold square events, sensor timers, item and wall events). The port sets them to 0. The reverse of a hold effect and the priority of a hold square event are uninitialized too: the port keeps the hold effect and uses priority 3.
-- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones.
+- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones. A create item sensor (`0x3c`) whose item index has no thing type creates nothing; the original asks for a free record of type `0xffff`.
 - System errors of the timeline: when an event is not in the queue (`find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.
 - `creature_cell_mask` reads kinds 5 to 15 past its table: [creatures.md](creatures.md#deviations-from-the-original).
