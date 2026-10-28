@@ -18,6 +18,11 @@
 #include "sound_request.h"
 #include "weather.h"
 
+/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
+#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
+#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
+#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
+
 MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = true};
 UiState g_ui;
 bool g_input_command_stop;
@@ -28,11 +33,6 @@ Session g_session = {.slot = SAVE_SLOT_NONE};
 static uint8_t cheats;
 enum GameMode g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
-
-/* The periods of the party clocks: a game step runs a clock when the game time has no bit of its mask. */
-#define TIME_EFFECTS_PERIOD_MASK       0x03f /* the champion clocks run each 64 game steps */
-#define SLEEP_TIME_EFFECTS_PERIOD_MASK 0x00f /* and each 16 game steps while the party sleeps */
-#define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
