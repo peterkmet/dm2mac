@@ -29,7 +29,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
 - The scratch blocks of the AI (LIFO allocations of the original memory layer) are ordinary buffers in the port.
 - No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
-- Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range reads 0 (the original reads any word of the active group).
+- Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the AI level table, and the candidate records
@@ -56,4 +56,5 @@ The rules of the creatures: the creature data, the updates of the creature group
   - an AI command test that sets no result keeps the result of the command before (`AiCommand` in `src/engine/ai_internal.h`)
   - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
+  - `ai_free_cached_data` frees the plan state of the group whose index is the OR of the freed group and the group of the update in progress, so during a creature update it can free the plan state of another group, which then plans again
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

@@ -49,6 +49,7 @@ static inline void item_set_kept(uint16_t item, bool kept)
 #define ATTR_FLAGS          0x00
 #define ATTR_WEIGHT         0x01
 #define ATTR_VALUE          0x02
+#define ATTR_FOOD           0x03 /* the food value */
 #define ATTR_SLOTS          0x04
 #define ATTR_AMMO           0x05
 #define ATTR_ICON_ANIMATION 0x06
