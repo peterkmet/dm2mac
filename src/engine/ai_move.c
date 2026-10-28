@@ -1257,7 +1257,8 @@ static int16_t level_change(Move *m)
         m->facing = group_dir(g_ai.group_thing);
     } else if (type == SQUARE_FLOOR || type == SQUARE_PIT || type == SQUARE_TELEPORTER || type == SQUARE_FAKE_WALL) {
         if (square & SQUARE_LEVEL_LINK) {
-            LevelLink found = dun_find_adjacent_level_link((Location){x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN);
+            LevelLink found =
+                dun_find_adjacent_level_link((Location){x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN);
             int16_t side = found.dir;
             link = found.sensor;
             m->facing = side;

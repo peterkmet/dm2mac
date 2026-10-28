@@ -2458,7 +2458,8 @@ static bool act_move_stairs(void)
             dun_find_adjacent_level_link((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
         if (link.sensor != THING_NONE) {
             int exit = sensor_effect(link.sensor);
-            dir = sensor_flag(link.sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, link.dir); /* inverted: a fixed exit */
+            /* inverted: a fixed exit */
+            dir = sensor_flag(link.sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, link.dir);
         } else {
             int saved = g_party.cur_map;
             Position to = dungeon_location_on_map(
