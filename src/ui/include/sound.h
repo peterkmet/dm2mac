@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_UI_SOUND_H
 #define DM2_UI_SOUND_H
-/* Prefixes: sound_mix sound_play sound_set_ sound_stop_ */
+/* Prefixes: sound_ */
 
 /* Sound output: the sample mixer, the voices and the volume settings. */
 

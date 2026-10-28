@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_UI_TEXT_H
 #define DM2_UI_TEXT_H
-/* Prefixes: text_clear_ text_draw text_init text_measure text_message_ text_print_ text_set_message_ text_wrap_ */
+/* Prefixes: text_ */
 
 /* Text: the font, message wrapping and printing into the screen. */
 

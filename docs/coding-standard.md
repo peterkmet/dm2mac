@@ -25,7 +25,8 @@ that this port cannot use keeps its number with "No rule in dm2".
 3. Only `platform/` includes SDL and operating system headers (`_WIN32`, POSIX, `<sys/...>`, `<unistd.h>`,
    `<dirent.h>`). The other layers reach the operating system through `data/os.h` (`os_log`, `os_fatal`,
    `os_get_full_path`) and its hooks, which `platform/` and the tests set. The socket is
-   `platform/transport.c`; the Windows build has no socket and links `platform/transport_none.c`. [platform]
+   `platform/transport.c`; the Windows build has no socket and links `platform/transport_none.c`. [layer for SDL;
+   platform for the rest]
 4. Game rules in `engine/` do not call the user interface. They set redraw flags (`Champion.redraw`,
    `REDRAW_*`), and they call a member of `g_hooks` (`engine/hooks.h`) for an event that must run the user
    interface inside the rule (`g_hooks.print_message`, `g_hooks.play_sound`). `ui/ui_hooks.c` sets every
@@ -35,7 +36,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    the order of the original, which mixes rules and drawing. It writes `g_action.mode` and `g_action.result`,
    closes the open hand, and opens a chest or a minion map when the panel redraws. `haste_jitter` takes
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its
-   allowlist lines give `rule 1.5`. [engine-write]
+   allowlist lines give `rule 1.5`. `ui/` and `control/` do not write through a pointer that an engine query
+   returns, except into the fields that this rule allows (review only). [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it
    calls `control/`, never the reverse. [platform]
 7. A module is one public header `<module>.h`, the files `<module>.c` and `<module>_<part>.c`, and an optional
@@ -73,7 +75,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    ```
 
 2. A header includes only what its declarations need; a struct that appears only behind a pointer is
-   forward-declared. [include]
+   forward-declared. [include for an unused header; the forward declaration review only]
 3. A `.c` file includes exactly the headers it uses. A `.h` and a `.c` file use one order: the own header (in a
    `.c`); C standard headers; third-party headers; project headers, alphabetical. `.clang-format` sorts them by the
    angle-bracket and quote forms. There is no umbrella header per layer. [format, include]
@@ -121,7 +123,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    ```
 
 5. Each constant has one definition, in the header of the module that owns it; other modules include that
-   header. They do not define the value again under the same or another name. [duplicate]
+   header. They do not define the value again under the same or another name. The check compares names; equal values under different names are review only. [duplicate]
 6. No rule in dm2: the port reads no engine image, so it has no image addresses (`KAOS_`) and no image
    tables.
 7. Graphic, zone, icon and string numbers live in `data/ids.h`, grouped by kind (`GFX_` for the graphic entry
@@ -157,7 +159,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    characters for the whole name. [name; `<verb>_<object>` review only]
 2. A static function has no module prefix. [static-prefix]
 3. Record accessors are nouns after the prefix of the thing type: `<type>_<field>` and `<type>_set_<field>`
-   (`sensor_type(t)`, `door_state(t)`, `group_set_dir(t, dir)`). [prefix]
+   (`sensor_type(t)`, `door_state(t)`, `group_set_dir(t, dir)`). [review only]
 4. Predicates (`is_`, `has_`, `can_`), also static ones, return `bool`. [bool]
 5. Globals have the prefix `g_`. File-static variables have no `g_` and a descriptive name. A short name is
    allowed only for a loop index and for a variable used in a few adjacent lines. [global]
@@ -234,14 +236,15 @@ that this port cannot use keeps its number with "No rule in dm2".
    interface live in `g_hooks` (`engine/hooks.h`). [review only]
 6. No mutable `static` variable inside a function, in all layers. A returned buffer moves into the module
    struct; the function keeps returning a pointer to it, and its comment says how long the pointer stays valid.
-   A `static const` table inside a function is allowed. [static-local]
+   A `static const` table inside a function is allowed. Each mutable file-static variable of `engine/` and `ui/`
+   is reset by its `*_reset` function or set before its first read (review only). [static-local]
 
 ## 8. File order
 
 1. A `.c` file has this order: includes; constants; types; file-static state; functions. [order]
 2. The public functions are in the order of the header. The header lists them by topic: setup and reset
    first, then queries, then commands; a one-line section comment names each topic in the header and in the
-   `.c` file. [order]
+   `.c` file. [order for the function order; the section comments review only]
 3. A static helper is above its first caller in the same section; a helper that callers in several sections
    use is at the top of the functions. A forward declaration of a static function is allowed only for mutual
    recursion, with a comment that names the pair. [order for the forward declarations; the place of a helper
@@ -250,8 +253,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    ```c
    /* SPDX-License-Identifier: GPL-3.0-or-later */
    #include "sensor.h"
-   #include "dungeon.h"
    #include <string.h>
+   #include "dungeon.h"
 
    /* Effects of a sensor on its target. */
    #define EFFECT_SET    0
@@ -281,7 +284,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 3. A kept quirk of the original and a fixed bug of the original (a stale register, an overflow) get a short
    comment at the place, and an entry in "Deviations from the original" of its page in `docs/formats/`,
    `docs/rules/`, or `docs/llm/llm-mode.md`. [review only]
-4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`); open work goes to `docs/todo.md`. [todo]
+4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`, `XXX`); open work goes to `docs/todo.md`. [todo]
 5. Keep existing comments. New comments only where needed, one line, about what the code does, never about
    its history. [review only]
 
@@ -316,7 +319,7 @@ enforces: [tests]
 
 1. A test module imports helpers from `tests/dm2test/` only, never from another test module or from
    `conftest`.
-2. A C constant comes from the headers through `dm2test.constants`; no hand-mirrored value.
+2. A C constant comes from the headers through `dm2test.constants`; no hand-mirrored value. [review only]
 3. A test calls the accessors of the port; it does not decode a record by bit shifts. [review only]
 4. No machine path in a test (`/Users/`, `/private/tmp/`).
 5. Each test module loads its own copy of the library (`dm2test.lib`); no test compiles the library.
