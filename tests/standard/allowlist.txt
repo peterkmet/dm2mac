@@ -359,4 +359,3 @@ type ui/view.c:show_cell_objects bridge: task 52
 type ui/view.c:show_centered_label bridge: task 52
 type ui/view.c:start_tracks bridge: task 52
 type ui/view.c:step_relative bridge: task 52
-type ui/zone.c:clip_to_parent bridge: task 53

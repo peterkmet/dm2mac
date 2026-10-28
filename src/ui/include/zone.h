@@ -40,6 +40,8 @@ extern int16_t g_zone_clip_rect[RECT_SIZE];
 
 /* Reads the layout zones from GRAPHICS.DAT; returns false when they are missing or damaged. */
 bool zone_load(const Gdat *gdat);
+/* Frees the zone records; the zones are unknown until the next zone_load. Safe to call twice. */
+void zone_free(void);
 /* Places an image of *out_w x *out_h pixels (0: the size of image) in zone and clips it. Returns rect, or NULL when
    nothing is visible; *out_w and *out_h then hold the clipped left and top pixel counts. */
 int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h);

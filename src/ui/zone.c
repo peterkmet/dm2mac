@@ -80,17 +80,15 @@ const int16_t g_zone_walk_view_rect[RECT_SIZE] = {WALK_VIEW_X, WALK_VIEW_Y, WALK
 static struct {
     int count;
     int16_t first[RANGE_MAX], last[RANGE_MAX];
-    int start[RANGE_MAX]; /* record index of the first zone of each range */
-    int16_t (*records)[ZONE_FIELDS];
+    int start[RANGE_MAX];            /* record index of the first zone of each range */
+    int16_t (*records)[ZONE_FIELDS]; /* owned: the zone records of all ranges */
 } layout;
 
 bool zone_load(const Gdat *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
-    free(layout.records);
-    layout.records = NULL;
-    layout.count = 0;
+    zone_free();
     if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
         return false;
     int count = le16(p + LAYOUT_RANGE_COUNT);
@@ -116,6 +114,13 @@ bool zone_load(const Gdat *gdat)
             layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
     layout.count = count;
     return true;
+}
+
+void zone_free(void)
+{
+    free(layout.records);
+    layout.records = NULL;
+    layout.count = 0;
 }
 
 /* The record of zone, NULL for zone 0 or an unknown zone; the first range that holds it wins. */
@@ -152,14 +157,14 @@ static int16_t *clip_rect(int16_t *rect, const int16_t *clip)
 }
 
 /* Limits clip to a parent of size w x h at (x, y). */
-static void clip_to_parent(int16_t *clip, int x, int y, int w, int h)
+static void clip_to_parent(int16_t *clip, int16_t x, int16_t y, int16_t w, int16_t h)
 {
     if (x > clip[RECT_X])
-        clip[RECT_X] = (int16_t)x;
+        clip[RECT_X] = x;
     if (x + w <= clip[RECT_X] + clip[RECT_W] - 1)
         clip[RECT_W] = (int16_t)(w - clip[RECT_X] + x);
     if (y > clip[RECT_Y])
-        clip[RECT_Y] = (int16_t)y;
+        clip[RECT_Y] = y;
     if (y + h <= clip[RECT_Y] + clip[RECT_H] - 1)
         clip[RECT_H] = (int16_t)(h - clip[RECT_Y] + y);
 }
