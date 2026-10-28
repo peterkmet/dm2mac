@@ -5,6 +5,7 @@
 
 /* What the party sees of a square: its aspect, and the cell grid of a square. */
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* The sides of a view square: the 4 faces of a wall. */
@@ -41,6 +42,11 @@ _Static_assert(sizeof(ViewSquare) == VIEW_SQUARE_RECORD_SIZE, "the original view
 static inline uint8_t aspect_word_ornament(uint16_t w)
 {
     return (uint8_t)w;
+}
+/* True when a wall face or floor word animates: its frame (the high byte) is not 0. */
+static inline bool aspect_word_animated(uint16_t w)
+{
+    return (w & ~ORNAMENT_INDEX_MASK) != 0;
 }
 /* The wall ornament of a text plate. */
 #define ORNAMENT_PLATE      0 /* a text plate instead of a wall ornament */

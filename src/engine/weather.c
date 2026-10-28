@@ -499,17 +499,11 @@ static uint16_t ornament_light(int category, int ornament, bool *animated_only)
     return v & LIGHT_AMOUNT_MASK;
 }
 
-/* An ornament word of a view square side animates: its frame (the high byte) is not 0. */
-static bool ornament_animated(uint16_t word)
-{
-    return word >> BYTE_BIT_COUNT != 0;
-}
-
 /* The light of a wall ornament: a window follows the hour; other light shines always or only while it animates. */
 static void add_wall_light(SquareLight *sum, const ViewSquare *s)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FRONT]);
-    bool animated = ornament_animated(s->side[SIDE_FRONT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FRONT]);
     bool animated_only;
     if (ornament == ORNAMENT_NONE)
         return;
@@ -542,7 +536,7 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, int16_t y)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FLOOR_ORNAMENT]);
-    bool animated = ornament_animated(s->side[SIDE_FLOOR_ORNAMENT]);
+    bool animated = aspect_word_animated(s->side[SIDE_FLOOR_ORNAMENT]);
     bool floor = s->aspect == ASPECT_FLOOR || s->aspect == ASPECT_PIT || s->aspect == ASPECT_TELEPORTER;
     if (floor && ornament != ORNAMENT_NONE) {
         bool animated_only;
