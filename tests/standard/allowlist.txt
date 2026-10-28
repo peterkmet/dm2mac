@@ -1,6 +1,5 @@
 # Accepted exceptions of tests/standard/test_standard.py. One per line: <check> <target> <reason>.
 # A reason is "rule <n.m>: <text>" for an exception that docs/coding-standard.md names. Targets are relative to src/.
-byteorder engine/ai.c bridge: task 20
 byteorder engine/dungeon.c bridge: task 25
 byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate record of SKULL.EXE that the differential tests compare
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare

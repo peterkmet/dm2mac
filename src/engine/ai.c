@@ -786,9 +786,8 @@ static bool cond_few_of_type(int16_t creature_type)
 static bool cond_at_counter(int x, int y, int16_t index)
 {
     uint16_t at = 0; /* fix: the original reads any word of the active group for an argument out of range */
-    int offset = (int)offsetof(ActiveGroup, counters) + (int)sizeof at * index;
-    if (offset >= 0 && offset + (int)sizeof at <= (int)sizeof(ActiveGroup))
-        memcpy(&at, (uint8_t *)g_ai.active + offset, sizeof at);
+    if (index >= 0 && index < PLAN_COUNTER_COUNT)
+        at = (uint16_t)g_ai.active->counters[index];
     return location_x(at) == x && location_y(at) == y && location_map(at) == g_ai.map;
 }
 
