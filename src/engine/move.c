@@ -323,7 +323,7 @@ static void bump_champion(int champ, int x, int y)
     if (champ_take_damage(champ, 1, BUMP_WOUNDS, ATTACK_TYPE_SELF))
         sndreq_request_with_fallback((SoundCue){CAT_CHAMPION, champion(champ)->portrait, SOUND_ENTRY_PUSHED,
                                                 SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-                                     SOUND_FALLBACK, x, y, 1);
+                                     SOUND_FALLBACK, x, y, SOUND_STEP_END);
 }
 
 BumpedChampions move_party_bump_damage(Location at, int16_t dir, int step)
@@ -368,11 +368,9 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
         return STEP_STAIRS_AHEAD;
     if (dun_square_blocks_movement(s->ahead) && !can_walk_through(s))
         return STEP_BLOCKED;
-    int16_t gx = s->x;
-    int16_t gy = s->y;
     *group = creature_group_at(g_party.cur_map, s->x, s->y);
     if (*group == THING_NONE || creature_group_info(*group)->flags & CREATURE_NOT_SOLID) {
-        uint16_t g = creature_find_group_near_point(&gx, &gy, CELL_ANY);
+        uint16_t g = creature_find_group_near_point((Location){s->x, s->y}, CELL_ANY).group;
         if (g == THING_NONE || creature_group_info(g)->flags & CREATURE_NOT_SOLID)
             return STEP_FREE;
     } else if (!is_side_blocked(*group, g_game.party_dir)) {
@@ -385,11 +383,10 @@ static StepResult get_step_result(const PartyStep *s, uint16_t *group)
 static void take_stairs(bool up)
 {
     move_thing(THING_NONE, g_game.party_x, g_game.party_y, -1, 0);
-    int16_t x = g_game.party_x;
-    int16_t y = g_game.party_y;
-    g_party.new_map = (int16_t)dungeon_location_on_map(g_game.party_map, up ? -1 : 1, &x, &y);
-    g_game.party_x = (uint16_t)x;
-    g_game.party_y = (uint16_t)y;
+    Position to = dungeon_location_on_map((Position){g_game.party_map, g_game.party_x, g_game.party_y}, up ? -1 : 1);
+    g_party.new_map = to.map;
+    g_game.party_x = (uint16_t)to.x;
+    g_game.party_y = (uint16_t)to.y;
     dun_set_current_map(g_party.new_map);
     champ_set_party_direction(dun_get_stairs_exit_direction((Location){g_game.party_x, g_game.party_y}));
     dun_set_current_map(g_game.party_map);
@@ -791,7 +788,7 @@ static bool transit_teleporter(Transit *t, uint8_t square)
         if (audible)
             sndreq_request(
                 (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
-                g_game.party_x, g_game.party_y, -1);
+                g_game.party_x, g_game.party_y, SOUND_DEFERRED);
         if (t->start_map != t->map)
             t->draw_fall = false; /* the original keeps it only with its debug flag */
         int base = absolute ? 0 : g_game.party_dir;
@@ -803,12 +800,12 @@ static bool transit_teleporter(Transit *t, uint8_t square)
                 dun_set_current_map(t->start_map);
                 sndreq_request(
                     (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL},
-                    t->src_x, t->src_y, 1);
+                    t->src_x, t->src_y, SOUND_STEP_END);
                 dun_set_current_map(saved);
             }
             sndreq_request(
                 (SoundCue){CAT_TELEPORTER, 0, SOUND_ENTRY_TELEPORT, SOUND_PRIORITY_MOVE, SOUND_VOLUME_NORMAL}, t->x,
-                t->y, 1);
+                t->y, SOUND_STEP_END);
         }
         creature_turn_group(t->thing, absolute, rotation);
     } else if (t->type == THING_PROJECTILE) {
@@ -836,7 +833,7 @@ static void transit_party_lands(Transit *t)
             champ_take_damage(i, (int16_t)((rand_2bits() + base) * t->falls), FALL_WOUNDS, ATTACK_TYPE_SELF);
             sndreq_request_with_fallback(
                 (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SCREAM, SOUND_PRIORITY_FALL, SOUND_VOLUME_FULL},
-                SOUND_FALLBACK, g_game.party_x, g_game.party_y, -1);
+                SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_DEFERRED);
         }
         t->fell_hurt = true;
     }
@@ -896,7 +893,10 @@ static void transit_pit(Transit *t)
         transit_pit_marker(t);
     } else {
         t->falls++;
-        t->map = dungeon_location_on_map(t->map, 1, &t->x, &t->y);
+        Position below = dungeon_location_on_map((Position){t->map, t->x, t->y}, LEVEL_DOWN);
+        t->map = below.map;
+        t->x = below.x;
+        t->y = below.y;
     }
     dun_set_current_map(t->map);
     if (t->thing == THING_NONE) {
@@ -917,7 +917,10 @@ static void transit_pit(Transit *t)
 static void transit_stairs(Transit *t, uint8_t square)
 {
     if (!(square & SQUARE_STAIRS_UP)) {
-        t->map = dungeon_location_on_map(t->map, 1, &t->x, &t->y);
+        Position below = dungeon_location_on_map((Position){t->map, t->x, t->y}, LEVEL_DOWN);
+        t->map = below.map;
+        t->x = below.x;
+        t->y = below.y;
         dun_set_current_map(t->map);
     }
     int dir = dun_get_stairs_exit_direction((Location){t->x, t->y});
@@ -939,7 +942,7 @@ static MoveDest transit_finish(const Transit *t)
     if (t->falls && t->creature_sound && t->thing != THING_NONE)
         sndreq_request_with_fallback((SoundCue){item_gdat_category(t->thing), item_gdat_index(t->thing),
                                                 SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, t->x, t->y, 1);
+                                     SOUND_FALLBACK, t->x, t->y, SOUND_STEP_END);
     if (!t->fell_hurt)
         return dest;
     int saved_map = g_party.cur_map;
@@ -950,9 +953,10 @@ static MoveDest transit_finish(const Transit *t)
     dun_set_party_location((Position){t->map, t->x, t->y});
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
-            sndreq_request_with_fallback(
-                (SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
-                SOUND_FALLBACK, t->x, t->y, 2);
+            sndreq_request_after(sndreq_cue_with_fallback((SoundCue){CAT_CHAMPION, champion(i)->portrait, SOUND_HURT,
+                                                                     SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
+                                                          SOUND_FALLBACK),
+                                 t->x, t->y, 2);
     dun_set_party_location((Position){(int16_t)pmap, (int16_t)px, (int16_t)py});
     dun_set_current_map(saved_map);
     return dest;
@@ -1005,7 +1009,7 @@ Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool c
     }
     MoveDest dest = transit_finish(&t);
     dun_set_current_map(t.start_map);
-    sndreq_flush_requests(1);
+    sndreq_flush_requests(true);
     return (Transition){dest, t.flying};
 }
 
@@ -1049,7 +1053,7 @@ static bool push_party_aside(uint16_t thing, int x, int y)
     champ_damage_party((uint16_t)damage, WOUND_HEAD, ATTACK_TYPE_SELF);
     sndreq_request_with_fallback(
         (SoundCue){CAT_CHAMPION, SOUND_FALLBACK, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-        SOUND_FALLBACK, x, y, 1);
+        SOUND_FALLBACK, x, y, SOUND_STEP_END);
     move_thing(THING_NONE, x, y, nx, ny);
     return true;
 }
@@ -1663,7 +1667,7 @@ bool move_party_warp_to_marker(void)
         move_party_to(s.at, g_game.party_dir);
         sndreq_request_with_fallback(
             (SoundCue){CAT_FLOOR_ORNAMENT, marker, SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 1);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_STEP_END);
         if (once)
             textrec_set_visible(t, true);
         return true;

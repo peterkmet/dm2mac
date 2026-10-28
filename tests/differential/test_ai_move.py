@@ -11,7 +11,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Position, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -166,6 +166,7 @@ class Ai:
         lib.ai_turn_toward.restype = AiCommand
         lib.ai_thing_matches_filter.restype = ctypes.c_bool
         lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int16]
+        lib.ai_count_matching_items.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0
@@ -410,9 +411,9 @@ def set_creature_type(ai, group, kind):
 
 def native_type(lib, m, x, y, delta):
     """A creature type of the map above (delta -1) or below (1) the square, or None."""
-    nx, ny = ctypes.c_int16(x), ctypes.c_int16(y)
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
+    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
+    lib.dungeon_location_on_map.restype = Position
+    target = lib.dungeon_location_on_map(Position(m, x, y), delta).map
     if target < 0:
         return None
     count = lib.dungeon_map_object_counts(target) >> C.MAP_CREATURE_TYPES_SHIFT & C.MAP_NIBBLE_MASK
@@ -1113,3 +1114,22 @@ def test_merchant_commands(ai):
             t = lib.dungeon_next_thing(t)
     assert all(len(r) >= 2 for r in results.values()) and len(results) == 4 and boxes > 80 and change_in_box > 5, (
         results, boxes, change_in_box)
+
+
+# The AI tables of ai_data.c in the data object of SKULL.EXE: (name, address, first byte, size).
+AI_TABLES = (
+    ("g_ai_scripts", 0x73020, 0, 8030), ("g_ai_plans", 0x74F7E, 0, 252), ("g_ai_class_flags", 0x7507A, 0, 188),
+    ("g_ai_action_flags", 0x75136, 0, 86), ("g_ai_behaviors", 0x7518C, 0, 188), ("g_ai_command_enabled", 0x7528C, 0, 20),
+    ("g_ai_command_enabled_overrun", 0x752AC, 0, 60), ("g_ai_kind_flags", 0x752EA, 0, 28),
+    ("g_ai_possession_cells", 0x71658, 4, 64),  # kind 0 is another global of SKULL.EXE; the original never reads it
+)
+
+
+def test_tables_match_the_original(lib):
+    # The copies of the AI tables against the bytes of SKULL.EXE as it loads.
+    from dm2test.markers import ROOT
+    from dm2tools.le import load_image
+    image = load_image(ROOT / "game" / "SKULL.EXE")
+    for name, address, first, size in AI_TABLES:
+        mine = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, name)), size)
+        assert mine[first:] == image.data[address + first - image.base:address + size - image.base], name

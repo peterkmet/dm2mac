@@ -50,7 +50,9 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define CREATURE_FACES_PARTY     0x0004 /* the creature always shows its front */
 #define CREATURE_ATTACKS_ALL     0x0008 /* a melee attack hits several champions */
 #define CREATURE_ATTACKS_RANDOM  0x0010 /* ... random champions */
-#define CREATURE_NOT_DOOR_HIT    0x0020 /* a closing door does not hit the creature */
+/* CREATURE_NON_MATERIAL: a closing door does not hit the creature, a melee hit reaches it only when the hit pierces, a
+   MELEE_MODE_REACH attack of the champions reaches only it, and a missile hits it only as harm non-material. */
+#define CREATURE_NON_MATERIAL    0x0020
 #define CREATURE_CATCHES_OBJECTS 0x0200 /* the creature takes a thrown object with ITEM_FLAG_CAUGHT that hits it */
 #define CREATURE_SEES_INVISIBLE  0x0400 /* flags: the party spell of invisibility does not hide the party */
 #define CREATURE_SEES_IN_DARK    0x0800 /* flags: the light does not limit its sight */
@@ -389,8 +391,13 @@ void creature_push_creature(int arrow);
 void creature_continue_push(int command);
 
 /* Creature groups near a point. */
-/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*out_x, *out_y) of the current
-   map or of a square next to it; moves *out_x, *out_y to that square. THING_NONE when there is none. */
-uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell);
+/* A creature group and its square. */
+typedef struct {
+    uint16_t group;
+    Location at;
+} GroupNear;
+/* The creature group whose body covers the point of cell (0xff: any cell) of the square at of the current map or of a
+   square next to it, and that square; group THING_NONE (with at) when there is none. */
+GroupNear creature_find_group_near_point(Location at, int16_t cell);
 
 #endif /* DM2_ENGINE_CREATURE_H */

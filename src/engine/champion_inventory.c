@@ -6,6 +6,7 @@
 #include "champion_internal.h"
 #include "dungeon.h"
 #include "game.h"
+#include "game_text.h"
 #include "hooks.h"
 #include "item.h"
 #include "magic.h"
@@ -18,7 +19,6 @@
 /* ATTR_FLAGS bits of the effects. */
 #define ATTR_HAS_EFFECTS       0x2000 /* ATTR_FLAGS bit: the item changes the champion */
 /* Item attributes of the effects. */
-#define ATTR_FOOD              0x03 /* item attribute: the food value */
 #define ATTR_EFFECT_TIME       0x13 /* game steps until the effect of a consumed item ends */
 #define ATTR_MANA_MAXIMUM      0x14
 #define ATTR_STAT_FIRST        0x15
@@ -35,8 +35,6 @@
 /* Limits of the mana and the statistic changes. */
 #define MANA_MAX               999
 #define STAT_STEP              20 /* a statistic change shrinks by a quarter for each step away from the maximum */
-/* The message color of an object name. */
-#define MESSAGE_OBJECT_NAME    13
 /* inv_click_slot slots 0 to 7: the hands of the status boxes. */
 #define CLICK_STATUS_HANDS     8
 /* Eating and drinking. */
@@ -64,6 +62,12 @@ static void add_magic_light(int delta)
     save_set_magic_light((int16_t)(save_magic_light() + delta));
 }
 
+/* True when mode takes the effect back: the item leaves, or its timed effect ends. */
+static bool is_reverse_effect(enum EffectMode mode)
+{
+    return mode == EFFECT_MODE_REMOVE || mode == EFFECT_MODE_CONSUME_END;
+}
+
 /* The modifier of attribute attr of thing for mode; equipped: the item is in a slot that fits it. */
 static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMode mode)
 {
@@ -77,19 +81,19 @@ static int stat_modifier(uint16_t thing, int attr, bool equipped, enum EffectMod
         return 0;
     }
     int r = (int8_t)v;
-    return mode < 0 ? -r : r;
+    return is_reverse_effect(mode) ? -r : r;
 }
 
 /* Changes a statistic of the champion by delta; big changes away from the maximum shrink. */
 static void adjust_stat(uint8_t *stat_values, int delta)
 {
     int16_t d = (int16_t)delta;
-    int16_t diff = (int16_t)(stat_values[0] + d - stat_values[1]);
+    int16_t diff = (int16_t)(stat_values[STAT_CURRENT] + d - stat_values[STAT_MAXIMUM]);
     if ((diff < 0) == (d < 0)) {
         for (int16_t left = (int16_t)(diff < 0 ? -diff : diff); left > STAT_STEP; left = (int16_t)(left - STAT_STEP))
             d = (int16_t)(d - (d >> 2));
     }
-    stat_values[0] = (uint8_t)clamp_int(STAT_MIN, (int16_t)(stat_values[0] + d), STAT_MAX);
+    stat_values[STAT_CURRENT] = (uint8_t)clamp_int(STAT_MIN, (int16_t)(stat_values[STAT_CURRENT] + d), STAT_MAX);
 }
 
 void champ_compute_load(int champ)
@@ -148,7 +152,7 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
         return;
     if (slot < SLOT_COUNT) {
         uint16_t flags = item_attr(thing, ATTR_FLAGS);
-        if (mode && flags & ITEM_FLAG_LIGHT)
+        if (mode != EFFECT_MODE_LOAD && flags & ITEM_FLAG_LIGHT)
             light_update_party_light();
         if (flags & ATTR_HAS_EFFECTS) {
             Champion *c = champion(champ);
@@ -171,14 +175,14 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
             if (mode != EFFECT_MODE_CONSUME && mode != EFFECT_MODE_CONSUME_END && mode != EFFECT_MODE_RESTORE &&
                 (m = stat_modifier(thing, ATTR_LIGHT, equipped, mode))) {
                 add_magic_light(m);
-                if (mode)
+                if (mode != EFFECT_MODE_LOAD)
                     light_update_party_light();
             }
             if (timed && mode == EFFECT_MODE_CONSUME)
                 add_effect_end_event(champ, thing);
         }
     }
-    if (mode)
+    if (mode != EFFECT_MODE_LOAD)
         champ_compute_load(champ);
 }
 
@@ -190,10 +194,10 @@ uint16_t inv_cursor_object(void)
 void inv_show_object_name(uint16_t thing)
 {
     g_hooks.print_newline();
-    g_hooks.print_message(MESSAGE_OBJECT_NAME, item_name(thing));
+    g_hooks.print_message(UI_LIGHT_GRAY, item_name(thing));
 }
 
-void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
+void champ_put_in_leader_hand(uint16_t thing)
 {
     if (thing == THING_NONE)
         return;
@@ -203,7 +207,6 @@ void champ_put_in_leader_hand(uint16_t thing, bool defer_cursor)
     g_game.leader_hand = thing;
     g_hooks.render_hand_icon();
     inv_show_object_name(thing);
-    (void)defer_cursor; /* the port draws the cursor each frame (inv_cursor_object) */
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_ADD);
     sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
 }
@@ -234,13 +237,13 @@ void inv_update_hand_cursor(void)
 }
 
 /* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static uint16_t slot_thing(int champ, int slot)
+static uint16_t slot_thing(int champ, int16_t slot)
 {
     return slot < SLOT_COUNT ? champion(champ)->slots[slot] : g_action.open_items[slot - SLOT_CONTAINER_FIRST];
 }
 
 /* Puts thing into the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static void set_slot_thing(int champ, int slot, uint16_t thing)
+static void set_slot_thing(int champ, int16_t slot, uint16_t thing)
 {
     if (slot < SLOT_COUNT)
         champion(champ)->slots[slot] = thing;
@@ -293,7 +296,7 @@ void inv_click_slot(int16_t slot)
         champ_take_from_leader_hand();
     if (thing != THING_NONE) {
         champ_remove_object_from_slot(champ, slot);
-        champ_put_in_leader_hand(thing, 1);
+        champ_put_in_leader_hand(thing);
     }
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
@@ -301,7 +304,7 @@ void inv_click_slot(int16_t slot)
     if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
         slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
         g_action.redraw_delay = 1;
-        g_hooks.update_action_area(0);
+        g_hooks.update_action_area(false);
     }
 }
 
@@ -335,7 +338,7 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
     for (size_t r = 0; r < sizeof ranges / sizeof *ranges; r++)
         for (int slot = ranges[r].first; slot <= ranges[r].last; slot++)
             if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, false) &&
-                (ranges[r].type < 0 || ranges[r].type == (int)thing_type(thing))) {
+                (ranges[r].type < 0 || ranges[r].type == thing_type(thing))) {
                 champ_add_object_to_slot(champ, thing, slot);
                 return;
             }
@@ -392,8 +395,8 @@ static bool drink_potion(int champ, uint16_t thing)
         adjust_stat(c->stats[STAT_VITALITY], value);
         break;
     case POTION_ANTIDOTE: {
-        unsigned square = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));
-        champ_cure_poison(champ, (int16_t)(value + power + square));
+        unsigned power_squared = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));
+        champ_cure_poison(champ, (int16_t)(value + power + power_squared));
         break;
     }
     case POTION_STAMINA:
@@ -458,7 +461,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
             return;
         item_set_gdat_index(flask, EMPTY_FLASK);
         if (slot == -1)
-            champ_put_in_leader_hand(flask, 0);
+            champ_put_in_leader_hand(flask);
         else
             c->slots[slot] = flask;
     }
@@ -468,7 +471,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
         c->health = c->max_health;
     sndreq_request_with_fallback(
         (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
-        SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+        SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_NOW);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {
         c->redraw |= REDRAW_STATUS_BOX;

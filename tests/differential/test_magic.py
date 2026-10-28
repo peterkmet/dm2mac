@@ -181,8 +181,18 @@ SPELL_TABLE_BYTES = load_image(ROOT / "game" / "SKULL.EXE").data[G_SPELL_TABLE -
     if (ROOT / "game" / "SKULL.EXE").exists() else bytes(SPELL_COUNT * SPELL_SIZE)
 
 
+CAST_KIND_MASK, SPELL_SKILL = 0xF0, 5  # the original packs the failure kind above the base skill
+CAST_KINDS = {0x00: C.CAST_OK, 0x10: C.CAST_FAILED, 0x20: C.CAST_UNKNOWN_SPELL, 0x30: C.CAST_NEEDS_FLASK}
+
+
+def base_skill(skill):
+    """The base skill of a skill: the skill itself, or the base skill of a sub-skill."""
+    return skill if skill < C.SKILL_BASE_COUNT else (skill - C.SKILL_BASE_COUNT) // C.SUB_SKILL_COUNT
+
+
 def cast(scenario, champ, index, power):
-    """Casts spell index with power in both; returns the two results."""
+    """Casts spell index with power in both; returns the two results as CastResult values. The base skill that the
+    original packs into a failure result must be the base skill of the spell."""
     lib = scenario.lib
     lib.magic_find_spell.restype = ctypes.c_void_p
     lib.magic_find_spell.argtypes = [ctypes.c_char_p]
@@ -191,7 +201,9 @@ def cast(scenario, champ, index, power):
     assert spell and ctypes.string_at(spell, SPELL_SIZE) == SPELL_TABLE_BYTES[index * SPELL_SIZE:(index + 1) * SPELL_SIZE]
     mine = lib.magic_cast_spell(champ, spell, power)
     theirs = scenario.emu.call(MAGIC_CAST_SPELL, champ, G_SPELL_TABLE + index * SPELL_SIZE, power) & 0xFFFF
-    return mine, theirs
+    skill = SPELL_TABLE_BYTES[index * SPELL_SIZE + SPELL_SKILL]
+    assert theirs & ~CAST_KIND_MASK == (base_skill(skill) if theirs else 0), (index, hex(theirs))
+    return mine, CAST_KINDS[theirs & CAST_KIND_MASK]
 
 
 @pytest.mark.parametrize("part", range(4))
@@ -214,12 +226,12 @@ def test_every_spell_cast_matches_original(magic, part):
             sync_champions(lib, magic)
         mine, theirs = cast(magic, champ, index, power)
         assert mine == theirs, (n, index, power)
-        results.add(theirs & 0xF0)
+        results.add(theirs)
         magic.assert_magic_state((n, index, power))
         for _ in range(rng.randrange(1, 30)):
             magic.step()
         magic.assert_magic_state((n, index, power, "steps"))
-    assert results >= {0, 0x10}
+    assert results >= {C.CAST_OK, C.CAST_FAILED}
     for _ in range(300):
         magic.step()
     magic.assert_magic_state("end")
@@ -649,9 +661,11 @@ def static_groups(lib):
 
 def leads(lib, m, x, y, delta):
     """True when the dungeon has a map at delta levels from map m at the position of (x, y)."""
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int16)] * 2
-    cx, cy = ctypes.c_int16(x), ctypes.c_int16(y)
-    return lib.dungeon_location_on_map(m, delta, ctypes.byref(cx), ctypes.byref(cy)) >= 0
+    from dm2test.scenario import Position
+
+    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
+    lib.dungeon_location_on_map.restype = Position
+    return lib.dungeon_location_on_map(Position(m, x, y), delta).map >= 0
 
 
 def set_time(lib, emu, t):

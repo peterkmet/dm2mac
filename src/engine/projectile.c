@@ -74,7 +74,6 @@
 #define POTION_FIRE_BOMB 0x13
 
 /* Creature info bits that projectiles test. */
-#define CREATURE_NON_MATERIAL     CREATURE_NOT_DOOR_HIT
 #define STATIC_SPELLS_ONLY        0x0100 /* possessions of a static creature: objects fly through it */
 #define POSSESSIONS_DIRECTION     0x0001 /* possessions bits 0-3: a dropped object lies in the flight direction cell */
 /* Creature info values that projectiles and melee attacks test. */
@@ -222,7 +221,7 @@ void projectile_create(const ProjectileLaunch *launch)
     }
     sndreq_request_with_fallback((SoundCue){item_gdat_category(payload), item_gdat_index(payload), SOUND_LAUNCH,
                                             SOUND_PRIORITY_LAUNCH, SOUND_VOLUME_NORMAL},
-                                 SOUND_FALLBACK, launch->x, launch->y, 1);
+                                 SOUND_FALLBACK, launch->x, launch->y, SOUND_STEP_END);
     t = thing_with_cell(t, launch->cell);
     thing_set_word(t, PROJECTILE_PAYLOAD, payload);
     projectile_set_energy(t, launch->energy);
@@ -302,7 +301,10 @@ static void blast_square(uint16_t type, int power, int16_t x, int16_t y, int16_t
         }
         if (!first)
             return;
-        g = creature_find_group_near_point(&nx, &ny, (uint16_t)cell);
+        GroupNear near = creature_find_group_near_point((Location){nx, ny}, (uint16_t)cell);
+        g = near.group;
+        nx = near.at.x;
+        ny = near.at.y;
         if (g == THING_NONE || (nx == x && ny == y))
             return;
         hx = nx;
@@ -328,7 +330,7 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
                      ? SOUND_VOLUME_FULL
                      : min_int(SOUND_VOLUME_FULL, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
     SoundCue cue = {CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, volume};
-    sndreq_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, 1);
+    sndreq_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, SOUND_STEP_END);
     dungeon_link_thing_to_square(t, g_party.cur_map, ex, ey);
     int16_t delay = type == EXPLOSION_SMOKE      ? SMOKE_DURATION
                     : type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1)
@@ -394,7 +396,7 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
         }
         sndreq_request_with_fallback((SoundCue){item_gdat_category(projectile), item_gdat_index(projectile),
                                                 SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, (int16_t)x, (int16_t)y, 1);
+                                     SOUND_FALLBACK, (int16_t)x, (int16_t)y, SOUND_STEP_END);
     }
     thing_set_word(projectile, THING_NEXT, THING_NONE);
 }
@@ -510,9 +512,8 @@ static bool hit_wall_sensors(int16_t x, int16_t y, int16_t dir, uint16_t project
 /* The projectile meets the creature near the cell of its hit square; true when it hits. */
 static bool hit_creature(Hit *h, int16_t cell)
 {
-    int16_t x = h->x;
-    int16_t y = h->y;
-    uint16_t g = creature_find_group_near_point(&x, &y, (uint16_t)cell);
+    GroupNear near = creature_find_group_near_point((Location){h->x, h->y}, (uint16_t)cell);
+    uint16_t g = near.group;
     if (g == THING_NONE || creature_current_step_acts(g))
         return false;
     const CreatureInfo *info = creature_group_info(g);
@@ -541,7 +542,7 @@ static bool hit_creature(Hit *h, int16_t cell)
         uint16_t damage = (uint16_t)(creature_roll_armor_factor(g, a.extra_damage) + h->damage);
         if (info->door_flags & CREATURE_RESISTS_NON_FIRE && a.type != ATTACK_TYPE_FIRE)
             damage = (uint16_t)((int16_t)damage >> 2);
-        creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, damage);
+        creature_alert(g, near.at, ALERT_HIT, ALERT_ALWAYS, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS &&
             item_attr(payload, ATTR_FLAGS) & ITEM_FLAG_CAUGHT)
             h->holder = group_possessions(g);
@@ -549,7 +550,7 @@ static bool hit_creature(Hit *h, int16_t cell)
     if (h->potion_bomb || h->payload_type == THING_WEAPON ||
         (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE &&
          (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
-        creature_alert(g, (Location){x, y}, ALERT_ATTACKED,
+        creature_alert(g, near.at, ALERT_ATTACKED,
                        h->damage < ALERT_WEAK_DAMAGE && payload != SPELL_POISON_CLOUD ? ALERT_CHANCE_WEAK
                                                                                       : ALERT_CHANCE_STRONG,
                        0);
@@ -937,7 +938,7 @@ void explosion_process_event(TimelineEvent *e)
         case BLAST_SMOKE:
             sndreq_request_with_fallback(
                 (SoundCue){CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, SOUND_VOLUME_LOUD},
-                SOUND_FALLBACK, x, y, 1);
+                SOUND_FALLBACK, x, y, SOUND_STEP_END);
             explosion_set_type(t, explosion_type(t) + 1);
             break;
         default:
@@ -1066,9 +1067,10 @@ int projectile_attack_champion(uint16_t group, int champ)
                 power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
             damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
             if (damage) {
-                sndreq_request_with_fallback(
-                    (SoundCue){CAT_CHAMPION, c->portrait, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
-                    SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_DELAY_HURT);
+                sndreq_request_after(sndreq_cue_with_fallback((SoundCue){CAT_CHAMPION, c->portrait, SOUND_HURT,
+                                                                         SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
+                                                              SOUND_FALLBACK),
+                                     g_game.party_x, g_game.party_y, SOUND_DELAY_HURT);
                 int16_t poison;
                 if (info->poison && rand_bit() &&
                     (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) !=

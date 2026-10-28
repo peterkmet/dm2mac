@@ -880,7 +880,7 @@ uint32_t creature_animate_step(void)
     if ((step[STEP_SOUND] & STEP_SOUND_MASK) != STEP_NO_SOUND)
         sndreq_request((SoundCue){CAT_CREATURE, type, step[STEP_SOUND] & STEP_SOUND_MASK, SOUND_PRIORITY_CREATURE,
                                   SOUND_VOLUME_NORMAL},
-                       g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 1);
+                       g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], SOUND_STEP_END);
     int16_t delay = anim_step_delay(step);
     if (own_step)
         g_ai.anim_step = NULL;
@@ -980,7 +980,7 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
                 if ((int16_t)sound_map >= 0)
                     sndreq_request_with_fallback((SoundCue){item_gdat_category(item), item_gdat_index(item),
                                                             SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                                 SOUND_FALLBACK, x, y, (int16_t)sound_map);
+                                                 SOUND_FALLBACK, x, y, SOUND_STEP_END);
             }
         }
     }
@@ -996,7 +996,7 @@ void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, i
             if ((int16_t)sound_map >= 0)
                 sndreq_request_with_fallback((SoundCue){item_gdat_category(t), item_gdat_index(t), SOUND_ENTRY_DROP,
                                                         SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                             SOUND_FALLBACK, x, y, (int16_t)sound_map);
+                                             SOUND_FALLBACK, x, y, SOUND_STEP_END);
         }
         t = next;
     }
@@ -1086,7 +1086,7 @@ bool creature_damage_current_group(int damage)
             sndreq_request((SoundCue){CAT_CREATURE, group_creature(g_ai.group_thing),
                                       SOUND_ENTRY_HURT + (rand_bit() != 0), SOUND_PRIORITY_CREATURE,
                                       SOUND_VOLUME_NORMAL},
-                           g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], 1);
+                           g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], SOUND_STEP_END);
     }
     thing_set_word(g_ai.group_thing, GROUP_HEALTH, (uint16_t)(health - damage));
     return false;
@@ -1449,7 +1449,7 @@ void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength)
             continue;
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_PUSHED, SOUND_PRIORITY_PUSHED, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, x, y, 1);
+            SOUND_FALLBACK, x, y, SOUND_STEP_END);
         load = (int16_t)(load + (uint16_t)champ_get_load(i) / LOAD_PUSH_DIVISOR);
         alive++;
     }
@@ -1479,7 +1479,7 @@ void creature_push_creature(int arrow)
             if (champion(i)->health && (i == g_game.leader || !rand_2bits()))
                 sndreq_request_with_fallback(
                     (SoundCue){CAT_CHAMPION, i, SOUND_HURT, SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD}, SOUND_FALLBACK,
-                    g_game.party_x, g_game.party_y, 1);
+                    g_game.party_x, g_game.party_y, SOUND_STEP_END);
         return;
     }
     push.x = x;
@@ -1516,7 +1516,7 @@ void creature_continue_push(int command)
 
 /* Creature groups near a point. */
 
-uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell)
+GroupNear creature_find_group_near_point(Location at, int16_t cell)
 {
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */
@@ -1542,8 +1542,8 @@ uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t 
     /* the centers of the four cells of the square in the 5 x 5 grid */
     static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3),
                                                   cell_grid_index(3, 1)};
-    int16_t sx = *out_x;
-    int16_t sy = *out_y;
+    int16_t sx = at.x;
+    int16_t sy = at.y;
     GridPoint p = aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
@@ -1554,20 +1554,19 @@ uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t 
             int16_t cx = (int16_t)(z.x - p.x);
             int16_t cy = (int16_t)(z.y - p.y);
             if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
-                *out_x = sx;
-                *out_y = sy;
-                return g;
+                Location found = {sx, sy};
+                return (GroupNear){.group = g, .at = found};
             }
         }
         if (i == HIT_OFFSETS_READ)
             break;
         if (cell == CELL_ANY) {
-            sx = (int16_t)(*out_x + hit_offsets_any_cell[i].dx);
-            sy = (int16_t)(*out_y + hit_offsets_any_cell[i].dy);
+            sx = (int16_t)(at.x + hit_offsets_any_cell[i].dx);
+            sy = (int16_t)(at.y + hit_offsets_any_cell[i].dy);
         } else {
-            sx = (int16_t)(*out_x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
-            sy = (int16_t)(*out_y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
+            sx = (int16_t)(at.x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
+            sy = (int16_t)(at.y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
         }
     }
-    return THING_NONE;
+    return (GroupNear){.group = THING_NONE, .at = at};
 }

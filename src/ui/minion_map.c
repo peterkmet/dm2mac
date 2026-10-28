@@ -497,12 +497,10 @@ static void show_party_and_marker(const MapSquare *at)
 /* An open pit in the level above the square (sx, sy) of the current map shows as a hole in the ceiling. */
 static void show_pit_above(const Strip *base, const MapSquare *at)
 {
-    int16_t ax = at->sx;
-    int16_t ay = at->sy;
-    int m = dungeon_location_on_map(g_party.cur_map, LEVEL_UP, &ax, &ay);
-    if (m < 0 || !inside_map(m, ax, ay))
+    Position above = dungeon_location_on_map((Position){g_party.cur_map, at->sx, at->sy}, LEVEL_UP);
+    if (above.map < 0 || !inside_map(above.map, above.x, above.y))
         return; /* fix: as above, no read outside the map */
-    uint8_t square = dungeon_square(m, ax, ay);
+    uint8_t square = dungeon_square(above.map, above.x, above.y);
     if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN)
         show_icon(base, ICON_PIT_ABOVE, at->x, at->y, 0);
 }
@@ -536,8 +534,12 @@ static void show_square(const MapSquare *at, int icon_set)
            (sx, sy) on the map that it found */
         int next = 0;
         int m = g_party.cur_map;
-        while (m == g_party.cur_map)
-            m = dungeon_location_on_map_from(g_party.cur_map, 0, &sq.sx, &sq.sy, &next);
+        while (m == g_party.cur_map) {
+            Position p = dungeon_location_on_map_from((Position){g_party.cur_map, sq.sx, sq.sy}, 0, &next);
+            sq.sx = p.x;
+            sq.sy = p.y;
+            m = p.map;
+        }
         /* fix: the original reads the square byte also outside the map (out of its column table) */
         if (m < 0 || !inside_map(m, sq.sx, sq.sy) || square_type(dungeon_square(m, sq.sx, sq.sy)) != SQUARE_WALL)
             break;
@@ -593,26 +595,28 @@ int mmap_party_icons_item(void)
 static void set_marker(int x, int y, int map)
 {
     MinionMap *m = &g_minion_map;
-    m->marker_x = (int16_t)x;
-    m->below_x = (int16_t)x;
-    m->above_x = (int16_t)x;
-    m->marker_y = (int16_t)y;
-    m->below_y = (int16_t)y;
-    m->above_y = (int16_t)y;
-    m->marker_map = (int16_t)map;
-    m->above_map = (int16_t)dungeon_find_level_transfer(&m->above_x, &m->above_y, map, LEVEL_UP,
-                                                        TRANSFER_STAIRS | TRANSFER_FALL_INTO);
-    m->below_map = (int16_t)dungeon_find_level_transfer(&m->below_x, &m->below_y, m->marker_map, LEVEL_DOWN,
-                                                        TRANSFER_STAIRS | TRANSFER_PIT);
+    Position marker = {(int16_t)map, (int16_t)x, (int16_t)y};
+    m->marker_x = marker.x;
+    m->marker_y = marker.y;
+    m->marker_map = marker.map;
+    Position above = dungeon_find_level_transfer(marker, LEVEL_UP, TRANSFER_STAIRS | TRANSFER_FALL_INTO);
+    Position below = dungeon_find_level_transfer(marker, LEVEL_DOWN, TRANSFER_STAIRS | TRANSFER_PIT);
+    m->above_map = above.map;
+    m->above_x = above.x;
+    m->above_y = above.y;
+    m->below_map = below.map;
+    m->below_x = below.x;
+    m->below_y = below.y;
 }
 
 /* The minion squares of the map item thing (MAP_MINION) and its marker (MAP_MARKER). */
 static void find_minion_and_marker(uint16_t thing, int flags, MinionSquares *ms)
 {
     *ms = (MinionSquares){.linked_map = -1};
-    if (flags & MAP_MINION) {
-        uint16_t w =
-            thing_word(item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing), PROJECTILE_LOCATION);
+    uint16_t link =
+        flags & MAP_MINION ? item_find_link_projectile(thing_word(thing, MINION_MAP_GROUP), thing) : THING_NONE;
+    if (link != THING_NONE) {
+        uint16_t w = thing_word(link, PROJECTILE_LOCATION);
         ms->x = location_x(w);
         ms->y = location_y(w);
         ms->map = location_map(w);
@@ -635,11 +639,10 @@ static GridSquare grid_square(const GridView *view, int row, int col)
 {
     GridSquare g;
     Location at = dun_move_relative((Location){(int16_t)view->x, (int16_t)view->y}, (int16_t)view->dir, row, col);
-    int16_t sx = at.x;
-    int16_t sy = at.y;
-    int square_map = dungeon_location_on_map(view->map, 0, &sx, &sy);
-    g.x = sx;
-    g.y = sy;
+    Position found = dungeon_location_on_map((Position){(int16_t)view->map, at.x, at.y}, 0);
+    int square_map = found.map;
+    g.x = found.x;
+    g.y = found.y;
     if (square_map < 0) {
         dun_set_current_map(view->map);
         g.icon_set = square_type(dun_get_square((Location){g.x, g.y})) == SQUARE_UNKNOWN
@@ -774,12 +777,12 @@ void mmap_draw(uint16_t thing)
     action_set_map_flags(MAP_STATIC_CREATURES | MAP_PARTY, true);
     int kind = container_type(thing);
     uint16_t group = thing_word(thing, MINION_MAP_GROUP);
-    uint16_t link = 0;
+    uint16_t link = THING_NONE;
     if (kind != MAP_KIND_NO_OPTIONS) {
         action_set_map_flags(MAP_HAS_OPTIONS, true);
         if (kind != MAP_KIND_PLAIN) {
             link = item_find_link_projectile(group, thing);
-            if (link)
+            if (link != THING_NONE)
                 action_set_map_flags(MAP_MINION, true);
             else if (g_action.flags & MAP_MINION)
                 action_set_map_flags(MAP_MINION | MAP_PANEL_DRAWN, false);
@@ -790,7 +793,7 @@ void mmap_draw(uint16_t thing)
         offscreen_draw_gdat_image(area, (GdatKey){CAT_CONTAINER, g_action.map_item, GFX_CONTAINER_PICTURE}, ZONE_PANEL,
                                   GFX_OPAQUE);
         for (int i = 0; i < g_champ_action_count; i++)
-            area_draw_name(i, 0);
+            area_draw_name(i, false);
         mmap_draw_option_buttons(0);
         action_set_map_flags(MAP_PANEL_DRAWN, true);
     }
@@ -799,7 +802,7 @@ void mmap_draw(uint16_t thing)
         if (location_map(thing_word(thing, MINION_MAP_LOCATION)) != MAP_LOCATION_NONE)
             action_set_map_flags(MAP_MARKER, true);
         if (kind == MAP_KIND_MINION) {
-            if (!link)
+            if (link == THING_NONE)
                 action_set_map_flags(MAP_MARKER, false);
             else
                 follow_minion(link, group, &view);

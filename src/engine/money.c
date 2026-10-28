@@ -24,11 +24,42 @@
 /* The miscellaneous items that the coin table scans. */
 #define COIN_SCAN_COUNT        128
 
+/* An item index range of a GDAT text ("3-7", or "5" alone), read so far. */
+typedef struct {
+    int16_t low; /* -1: no '-' yet */
+    int16_t number;
+    bool digits; /* a digit was read */
+} ItemRange;
+
 static struct {
-    int ready, count;
+    bool ready;
+    int count;
     uint16_t items[COIN_TYPE_MAX];
     int16_t values[COIN_TYPE_MAX];
 } coins;
+
+/* Reads the digits and '-' of an item index range from *p into r; *p stops at the first other character. */
+static void scan_range(const char **p, ItemRange *r)
+{
+    for (;; (*p)++) {
+        char c = **p;
+        if (c >= '0' && c <= '9') {
+            r->number = (int16_t)(r->number * DECIMAL_BASE + (c - '0'));
+            r->digits = true;
+        } else if (c == '-') {
+            r->low = r->number;
+            r->number = 0;
+        } else {
+            return;
+        }
+    }
+}
+
+/* The first item index of a range: low, or the number alone. */
+static int16_t range_first(const ItemRange *r)
+{
+    return r->low < 0 ? r->number : r->low;
+}
 
 /* True when the thing is a coin. */
 static bool is_coin(uint16_t thing)
@@ -42,7 +73,7 @@ void money_init_coin_table(void)
 {
     if (coins.ready)
         return;
-    coins.ready = 1;
+    coins.ready = true;
     for (int index = 0; index < COIN_SCAN_COUNT; index++) {
         if (!(gdat_entry_index(gdat_current(), CAT_MISC, index, GDAT_TYPE_VALUE, ATTR_FLAGS) & ITEM_FLAG_COIN))
             continue;
@@ -97,48 +128,35 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     if (!*p)
         return -1;
     /* the text lists item index ranges ("3-7", "J" = miscellaneous items); each index in order is the next slot */
-    int16_t number = 0;
     int16_t counter = 0;
-    for (int done = 0; !done;) {
-        int16_t low = -1;
+    while (*p) {
+        ItemRange r = {-1, 0, false};
         int16_t base = -1;
-        for (;;) {
-            char c = *p++;
-            if (c >= '0' && c <= '9') {
-                number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            } else if (c == '-') {
-                low = number;
-                number = 0;
-            } else if (c == 'J' && number == 0) {
-                base = ITEM_FIRST_MISC;
-            } else {
-                if (c == 'J')
-                    p--;
-                if (c == '\0')
-                    done = 1;
-                break;
-            }
+        scan_range(&p, &r);
+        while (*p == 'J' && r.number == 0) {
+            base = ITEM_FIRST_MISC;
+            p++;
+            scan_range(&p, &r);
         }
-        if (low < 0)
-            low = number;
-        for (; low <= number; low++, counter++)
+        /* a 'J' after a number starts the next range; another character ends this one */
+        if (*p && *p != 'J')
+            p++;
+        for (int16_t low = range_first(&r); low <= r.number; low++, counter++)
             if (counter == slot)
                 for (int t = 0; t < coins.count; t++)
                     if ((int16_t)coins.items[t] == base + low)
                         return t;
-        number = 0;
     }
     return -1;
 }
 
-int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *coin_count)
+int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)
 {
-    int16_t left = (int16_t)amount;
-    int16_t n = 0;
+    int16_t left = amount;
     int type = money_coin_type_count() - 1;
-    int total = 0;
+    int16_t total = 0;
     *coin_count = 0;
-    while (n < (int16_t)max_coins && left > 0 && type >= 0) {
+    while (*coin_count < max_coins && left > 0 && type >= 0) {
         int16_t value = money_coin_value(type);
         if (value < 1)
             break;
@@ -146,10 +164,9 @@ int money_split_amount(int amount, int max_coins, uint8_t *coin_types, int16_t *
             type--;
             continue;
         }
-        coin_types[n++] = (uint8_t)type;
+        coin_types[(*coin_count)++] = (uint8_t)type;
         left = (int16_t)(left - value);
-        total += value;
-        (*coin_count)++;
+        total = (int16_t)(total + value);
     }
     return total;
 }
@@ -210,7 +227,7 @@ void money_box_click_coin(int16_t slot)
             champ_compute_load(champ);
             return;
         }
-        champ_put_in_leader_hand(coin, 0);
+        champ_put_in_leader_hand(coin);
     } else {
         if (!money_add_coin_to_box(box, g_game.leader_hand)) {
             champ_compute_load(champ);
@@ -219,7 +236,7 @@ void money_box_click_coin(int16_t slot)
         champ_take_from_leader_hand();
     }
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     champ_compute_load(champ);
 }
 
@@ -259,46 +276,31 @@ bool money_normalize_coins(bool check_only, uint16_t box)
 /* Sets the bits of the item numbers low to number of the item kind that starts at base in the class set. */
 static void set_class_range(uint8_t *bitset, int16_t low, int16_t number, int16_t base)
 {
-    for (; low <= number && low < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT; low++) {
+    for (; low <= number && low < ITEM_CLASS_SET_SIZE * BYTE_BIT_COUNT; low++) {
         int16_t bit = (int16_t)(low + base);
         /* fix: the original writes outside the set for bad numbers */
-        if (bit >= 0 && bit < SHOP_CLASS_SET_SIZE * BYTE_BIT_COUNT)
+        if (bit >= 0 && bit < ITEM_CLASS_SET_SIZE * BYTE_BIT_COUNT)
             bitset[bit / BYTE_BIT_COUNT] |= (uint8_t)(1 << bit % BYTE_BIT_COUNT);
     }
 }
 
-int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, int skip_containers)
+bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, bool skip_containers)
 {
     char text[TEXT_SIZE];
-    memset(bitset, 0, SHOP_CLASS_SET_SIZE);
+    memset(bitset, 0, ITEM_CLASS_SET_SIZE);
     const char *p = gtext_gdat(CAT_CREATURE, creature, (uint8_t)(class_list + GFX_CREATURE_CLASS_TEXT), text);
     if (!*p)
-        return 0;
-    int16_t number = 0;
-    int16_t low = -1;
+        return false;
+    ItemRange r = {-1, 0, false};
     int16_t base = -1;
-    int digits = 0;
     char c;
     do {
+        scan_range(&p, &r);
         c = *p++;
-        if (c >= '0' && c <= '9') {
-            number = (int16_t)(number * DECIMAL_BASE + (c - '0'));
-            digits = 1;
-            continue;
-        }
-        if (c == '-') {
-            low = number;
-            number = 0;
-            continue;
-        }
-        if (digits) {
-            if (low < 0)
-                low = number;
-            set_class_range(bitset, low, number, base);
-            number = 0;
-            low = -1;
+        if (r.digits) {
+            set_class_range(bitset, range_first(&r), r.number, base);
+            r = (ItemRange){-1, 0, false};
             base = -1;
-            digits = 0;
         }
         /* the letters choose the item kind of the next numbers */
         switch (c) {
@@ -322,7 +324,7 @@ int money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, in
             break;
         }
     } while (c);
-    return 1;
+    return true;
 }
 
 /* True when the item class set holds item index item. */
@@ -334,16 +336,16 @@ static bool class_set_has(const uint8_t *set, int item)
 /* A price factor of a merchant: when the item is in the class set, the price changes by factor percent. */
 static uint16_t apply_factor(uint16_t price, uint16_t item, int creature, int attr, int list)
 {
-    uint8_t set[SHOP_CLASS_SET_SIZE];
+    uint8_t set[ITEM_CLASS_SET_SIZE];
     uint16_t factor = gdat_entry_index(gdat_current(), CAT_CREATURE, creature, GDAT_TYPE_VALUE, (uint8_t)attr);
-    if (!factor || !money_parse_item_class_set(creature, (int16_t)list, set, 0))
+    if (!factor || !money_parse_item_class_set(creature, list, set, false))
         return price;
     if (!class_set_has(set, item & ITEM_INDEX_NONE))
         return price;
     return (uint16_t)((uint32_t)factor * price / PERCENT);
 }
 
-int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges)
+uint16_t money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges)
 {
     int creature = terms->creature;
     int list = terms->list;
@@ -369,5 +371,5 @@ int money_get_item_value(uint16_t item, const PriceTerms *terms, int16_t charges
         else if ((uint16_t)value > 1)
             value -= part > 1 ? part : 1;
     }
-    return value;
+    return (uint16_t)value;
 }

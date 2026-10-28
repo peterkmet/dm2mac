@@ -179,7 +179,7 @@ def experience_and_mana(lib, champ):
 def test_cheat_cast_has_no_failure_and_no_experience(lib, screen):
     before = experience_and_mana(lib, 0)
     for _ in range(10):
-        assert lib.magic_cast_cheat_spell(0, lib.magic_get_spell(LIGHT)) == 0
+        assert lib.magic_cast_cheat_spell(0, lib.magic_get_spell(LIGHT)) == C.CAST_OK
     assert experience_and_mana(lib, 0) == before
 
 
@@ -215,11 +215,11 @@ def test_cheat_potion_needs_an_empty_flask(lib, screen):
     for slot in range(C.SLOT_HAND_COUNT):
         lib.champ_remove_object_from_slot(0, slot)
     potion = lib.magic_get_spell(HEALTH_POTION)
-    assert lib.magic_cast_cheat_spell(0, potion) & C.CAST_KIND_MASK == C.CAST_NEEDS_FLASK
+    assert lib.magic_cast_cheat_spell(0, potion) == C.CAST_NEEDS_FLASK
     flask = empty_flask(lib)
     lib.champ_add_object_to_slot(0, flask, hand)
     before = experience_and_mana(lib, 0)
-    assert lib.magic_cast_cheat_spell(0, potion) == 0
+    assert lib.magic_cast_cheat_spell(0, potion) == C.CAST_OK
     assert lib.item_gdat_index(flask) == C.POTION_HEALTH and experience_and_mana(lib, 0) == before
 
 

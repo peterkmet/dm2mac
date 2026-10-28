@@ -153,6 +153,10 @@ MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int
 
 /* ---- Discarded things ---- */
 
+/* The subtype of dun_get_discarded_thing for a thing of any kind. */
+#define DISCARD_ANY_KIND 0xff
+/* The map where the last search for each thing type ended; the next search starts there; exported for the tests. */
+extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 /* Frees a record of type for reuse when the table is full: removes a thing of kind subtype (DISCARD_ANY_KIND:
    any) that may go, away from the party; THING_NONE when there is none. */
 uint16_t dun_get_discarded_thing(int type, int subtype);

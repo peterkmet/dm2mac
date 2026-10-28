@@ -6,8 +6,9 @@
 /* The save game: its blocks, its layout, and reading and writing the file. */
 
 #include <stdint.h>
-#include "gdat.h"
 #include "le.h"
+
+typedef struct gdat Gdat;
 
 /* Sizes of the game state blocks of the save. */
 #define CHAMPION_MAX      4
@@ -37,8 +38,8 @@ typedef enum {
     SAVE_ERR_DATA = -3,   /* the bit-packed game state is damaged or ends too early */
 } SaveResult;
 
-/* Game state that the save file stores beside the dungeon, the timeline, and the random seed.
-   The modules of later steps take these fields over. */
+/* Game state that the save file stores beside the dungeon, the timeline, and the random seed: the party, the leader,
+   the cooldowns, the weather, the script variables, the champion records, and the magic light. */
 typedef struct {
     uint32_t game_time;
     uint16_t champion_count;
@@ -77,7 +78,7 @@ static inline void save_set_magic_light(int16_t light)
 /* Loads a save file (SKSAVEn.DAT or .BAK) into the dungeon, the timeline, the random seed, and g_game.
    gdat answers the creature and container questions of the format. On an error the dungeon is empty. */
 SaveResult save_load(const char *path, const Gdat *gdat);
-/* Writes the game to path. Like the original, it first renames an old file at path to bak_path and
+/* Writes the game to path. As in the original, it first renames an old file at path to bak_path and
    keeps the header bytes after the name from it; name goes into the header. */
 SaveResult save_write(const char *path, const char *bak_path, const char *name, const Gdat *gdat);
 

@@ -56,7 +56,7 @@
 #define EXPLOSION_THING_BASE    0xff80
 
 /* The creature flag 0x20: a creature that hides the squares behind it. */
-#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NOT_DOOR_HIT
+#define CREATURE_NOT_SEEN_THROUGH   CREATURE_NON_MATERIAL
 /* The AI class flags (g_ai_class_flags). */
 #define AI_CLASS_SEES_ALL_SIDES     0x0100
 #define AI_CLASS_SEES_BEHIND        0x0400
@@ -268,7 +268,7 @@ int16_t g_cached_explosion_light_sum = -1;
 int16_t g_last_party_map = -1;
 uint16_t g_search_direction_bits = 1;
 /* The item class bitmap of a filter that the AI does not cache. */
-static uint8_t uncached_bitmap[FILTER_BITMAP_SIZE];
+static uint8_t uncached_bitmap[ITEM_CLASS_SET_SIZE];
 
 /* The outcome of a command test that passed or not, with the command result that the AI context holds. */
 static AiCommand test_outcome(bool passed)
@@ -382,8 +382,8 @@ static int enabled_byte(int command)
                                  g_cached_explosion_light_sum, g_last_party_map,   -1};
         return (uint8_t)(words[(command - COMMAND_PAST_TABLE) / 2] >> ((command & 1) * BYTE_BIT_COUNT));
     }
-    if (command < COMMAND_AFTER_GLOBALS + (int)sizeof g_ai_after_command_table)
-        return g_ai_after_command_table[command - COMMAND_AFTER_GLOBALS];
+    if (command < COMMAND_AFTER_GLOBALS + (int)sizeof g_ai_command_enabled_overrun)
+        return g_ai_command_enabled_overrun[command - COMMAND_AFTER_GLOBALS];
     return 0; /* fix: further bytes are other globals of SKULL.EXE */
 }
 
@@ -428,7 +428,10 @@ bool ai_square_blocks_line(int16_t x, int16_t y)
         if (ttype != THING_GROUP)
             continue;
         /* the original passes the square variables: a group found next to it moves them */
-        uint16_t g = creature_find_group_near_point(&sx, &sy, CELL_ANY);
+        GroupNear near = creature_find_group_near_point((Location){sx, sy}, CELL_ANY);
+        sx = near.at.x;
+        sy = near.at.y;
+        uint16_t g = near.group;
         if (g == THING_NONE)
             continue;
         uint16_t flags = creature_group_info(g)->flags;
@@ -931,8 +934,8 @@ static bool skills_reach_door(const DoorAction *a)
 static AiCommand start_door_action(const DoorAction *a)
 {
     uint16_t flags = a->flags;
-    if (flags & DOOR_SKILL_MARK) {
-        flags &= (uint16_t)~DOOR_SKILL_MARK;
+    if (flags & DOOR_SKILL_CLOSE_BEHIND) {
+        flags &= (uint16_t)~DOOR_SKILL_CLOSE_BEHIND;
         if (a->mode == DOOR_MODE_OPEN)
             door_set_flag(a->door, DOOR_MARKED, true);
     }
@@ -1232,31 +1235,27 @@ static int16_t level_change(Move *m)
     }
     if (!(g_ai.move_flags & need))
         return -1;
-    int16_t map;
-    int16_t nx = x;
-    int16_t ny = y;
+    Position to;
     if (link != THING_NONE && (m->action == ACTION_LINK_UP || m->action == ACTION_LINK_DOWN)) {
-        nx = sensor_target_x(link);
-        ny = sensor_target_y(link);
-        map = sensor_data(link);
+        to = (Position){(int16_t)sensor_data(link), sensor_target_x(link), sensor_target_y(link)};
     } else {
-        map = dungeon_location_on_map(g_party.cur_map, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &nx, &ny);
-        if (map < 0)
+        to = dungeon_location_on_map((Position){g_party.cur_map, x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN);
+        if (to.map < 0)
             return -1;
         if (m->action == ACTION_FALL_IN_PIT) {
             /* fix: the original reads the square without a bounds test; a square at the map edge is not a pit */
-            if (nx < 0 || nx >= dungeon_map_width(map) || ny < 0 || ny >= dungeon_map_height(map))
+            if (to.x < 0 || to.x >= dungeon_map_width(to.map) || to.y < 0 || to.y >= dungeon_map_height(to.map))
                 return -1;
-            uint8_t below = dungeon_square(map, nx, ny);
+            uint8_t below = dungeon_square(to.map, to.x, to.y);
             if (square_type(below) != SQUARE_PIT || !(below & SQUARE_PIT_OPEN))
                 return -1;
         }
     }
-    if (!creature_is_native_to_map(g_ai.group_thing, map))
+    if (!creature_is_native_to_map(g_ai.group_thing, to.map))
         return -1;
-    m->tx = nx;
-    m->ty = ny;
-    return map;
+    m->tx = to.x;
+    m->ty = to.y;
+    return to.map;
 }
 
 /* Sets the target square and facing of the move, a level change included; false when the move cannot start. */
@@ -1468,7 +1467,7 @@ static void execute_move(Move *m)
         ai_try_attack((AiTest){ATTACK_MODE_GROUP, true}, ai_location(m->sx, m->sy), ai_location(m->tx, m->ty), -1)
             .passed)
         return;
-    if (g_ai.door_flags & DOOR_SKILL_ANY_SIDE)
+    if (g_ai.door_flags & DOOR_SKILL_CLOSE_BEHIND)
         for (int16_t i = 0; i < DIR_COUNT; i++) {
             if (i == m->facing)
                 continue;
@@ -1892,7 +1891,7 @@ static uint8_t *filter_bitmap(int filter, int creature_type, bool is_group)
     g_ai.filter_free--;
     uint8_t *bitmap = g_ai.scratch + g_ai.scratch_used;
     g_ai.filters[filter] = bitmap;
-    g_ai.scratch_used += FILTER_BITMAP_SIZE;
+    g_ai.scratch_used += ITEM_CLASS_SET_SIZE;
     return money_parse_item_class_set(creature_type, filter, bitmap, is_group) ? bitmap : NULL;
 }
 
@@ -1939,7 +1938,7 @@ bool ai_thing_matches_filter(uint16_t thing, int filter)
         return false;
     }
     /* fix: the original reads outside the bitmap for a negative or large value */
-    if (value < 0 || value >= FILTER_BITMAP_SIZE * BYTE_BIT_COUNT)
+    if (value < 0 || value >= ITEM_CLASS_SET_SIZE * BYTE_BIT_COUNT)
         return invert;
     return bitmap[value / BYTE_BIT_COUNT] >> (value % BYTE_BIT_COUNT) & 1 ? !invert : invert;
 }
@@ -1989,7 +1988,7 @@ void ai_remove_matching_items(uint16_t *list_head, int filter, int16_t cell)
     }
 }
 
-int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, int into_groups, int into_containers)
+int ai_count_matching_items(int filter, uint16_t first_thing, int16_t cell, bool into_groups, bool into_containers)
 {
     int count = 0;
     cell = (uint8_t)cell;
@@ -2808,8 +2807,8 @@ static void search_start(Search *s, Location start, int command, int count, AiCa
     search_setup(s);
     if (g_ai.move_flags & MOVE_LEVELS && g_ai.move_flags & MOVE_LEVEL_FLAGS) {
         s->levels = true;
-        s->up_ok = g_ai.move_flags & MOVE_DIR4_FLAGS;
-        s->down_ok = g_ai.move_flags & MOVE_DIR5_FLAGS;
+        s->up_ok = g_ai.move_flags & MOVE_LEVEL_UP_FLAGS;
+        s->down_ok = g_ai.move_flags & MOVE_LEVEL_DOWN_FLAGS;
     }
     /* fix: the original clears the first search map only for line targets or a cost; the port always clears it */
     s->map = calloc(MAP_SIDE_MAX, SEARCH_COLUMN_SIZE);

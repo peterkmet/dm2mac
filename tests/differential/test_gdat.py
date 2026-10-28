@@ -4,7 +4,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, gd  # noqa: F401 (gd is a fixture)
+from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, gd, image_info  # noqa: F401 (gd is a fixture)
 from dm2test.markers import ROOT
 from dm2tools.emu import Emu
 from dm2tools.le import load_image
@@ -61,8 +61,9 @@ def poisoned(size):
 
 
 def image_size(lib, gd, item):
-    w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-    return lib.gdat_image_size(gd, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp)), w.value, h.value, bpp.value
+    """The decoded byte size of an image item, or the error of gdat_image_info."""
+    result, info = image_info(lib, gd, item)
+    return info.size if result == OK else result
 
 
 def original_decode(emu, raw, size, base=None):
@@ -116,7 +117,7 @@ def test_every_image_matches_original(lib, gd, emu):
     counts = {FORMAT_4BPP: 0, FORMAT_8BPP: 0, FORMAT_RAW: 0}
     for item in image_items(lib, gd):
         raw = item_bytes(lib, gd, item)
-        size, w, h, bpp = image_size(lib, gd, item)
+        size = image_size(lib, gd, item)
         assert size >= 0, item
         dst = poisoned(size + MARGIN)
         assert lib.gdat_decode_image(gd, item, dst, size) == OK, item
@@ -136,7 +137,7 @@ def test_delta_decoder_matches_original(lib, gd, emu):
         raw = item_bytes(lib, gd, item)
         if raw[3] >> 2 != FORMAT_4BPP:
             continue
-        size = image_size(lib, gd, item)[0]
+        size = image_size(lib, gd, item)
         base = bytes((i * 7 + 3) & 0xFF for i in range(size))
         dst = poisoned(size + MARGIN)
         src = (ctypes.c_uint8 * len(raw)).from_buffer_copy(raw)
@@ -150,7 +151,7 @@ def test_delta_decoder_matches_original(lib, gd, emu):
 def test_no_item_crashes(lib, gd):
     # Sounds, texts, and tables go through the image decoder too; they decode or give an error.
     for item in range(1, lib.gdat_item_count(gd)):
-        size = image_size(lib, gd, item)[0]
+        size = image_size(lib, gd, item)
         if size >= 0:
             assert lib.gdat_decode_image(gd, item, poisoned(size), size) in (OK, ERR_DATA)
         else:
@@ -163,7 +164,7 @@ def test_truncated_streams(lib, gd, cut):
     for fmt, decode in ((FORMAT_4BPP, lib.image_decode_4bpp), (FORMAT_8BPP, lib.image_decode_8bpp)):
         item = next(i for i in items if item_bytes(lib, gd, i)[3] >> 2 == fmt)
         raw = item_bytes(lib, gd, item)[:cut + (0 if cut < 8 else 100)]
-        size = image_size(lib, gd, item)[0]
+        size = image_size(lib, gd, item)
         src = (ctypes.c_uint8 * max(len(raw), 1)).from_buffer_copy(raw.ljust(1, b"\0"))
         args = (src, len(raw), None, poisoned(size), size) if fmt == FORMAT_4BPP else (src, len(raw), poisoned(size), size)
         assert decode(*args) == ERR_DATA
@@ -171,7 +172,7 @@ def test_truncated_streams(lib, gd, cut):
 
 def test_small_destination(lib, gd):
     item = image_items(lib, gd)[0]
-    size = image_size(lib, gd, item)[0]
+    size = image_size(lib, gd, item)
     assert lib.gdat_decode_image(gd, item, poisoned(size), size - 1) == ERR_SPACE
 
 

@@ -6,6 +6,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.gdat import ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
@@ -20,7 +21,7 @@ def original_view_of(lib, gdat, start):
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.gdat_image_colormap.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
+    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lib.gdat_exists.restype = ctypes.c_bool
@@ -355,7 +356,7 @@ class Scenario(CreatureOracle):
 
     def flush_sounds(self):
         """The end of a game step: the sound requests of the step play in both."""
-        self.lib.sndreq_flush_requests(0)
+        self.lib.sndreq_flush_requests(False)
         self.emu.call(SOUND_FLUSH_REQUESTS, 0)
 
     def assert_same_sounds(self, where):
@@ -402,12 +403,11 @@ class Scenario(CreatureOracle):
         its size; 0 when the pictures fill the viewport."""
         sizes = []
         for entry in (0, 1):  # floor, ceiling
-            w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
             item = self.lib.gdat_find(self.gdat, 8, gfx_set, 1, entry)
             if item < 0:
                 return 0
-            self.lib.gdat_image_size(self.gdat, item, ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
-            sizes.append((w.value, h.value))
+            info = image_info(self.lib, self.gdat, item)[1]
+            sizes.append((info.width, info.height))
         (fw, fh), (cw, ch) = sizes
         floor, rest = fw * fh & 0xFFFF, (C.VIEWPORT_WIDTH * C.VIEWPORT_HEIGHT - cw * ch) & 0xFFFF
         if floor >= rest:

@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey
+from dm2test.gdat import GdatKey, ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
@@ -138,7 +138,7 @@ def original_view(lib, gdat, start):
     lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.gdat_image_colormap.restype = u8_p
     lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_size.argtypes = [ctypes.c_void_p, ctypes.c_int] + [ctypes.POINTER(ctypes.c_int)] * 3
+    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
     lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
     lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lib.gdat_exists.restype = ctypes.c_bool
@@ -454,9 +454,8 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     assert changed
     # cell 16 of the square at depth 1: row 1, scale THING_SCALE[1 * 4 + 1 + 2]; offset of ordinal 0 is (2, -3)
     scale = THING_SCALE[7]
-    w, h, bpp = ctypes.c_int(), ctypes.c_int(), ctypes.c_int()
-    lib.gdat_image_size(g, lib.gdat_find(g, CAT_WEAPON, index, C.GDAT_TYPE_IMAGE, 0), ctypes.byref(w), ctypes.byref(h), ctypes.byref(bpp))
-    picture = Bitmap(None, lib.gfx_scale_64(w.value, scale), lib.gfx_scale_64(h.value, scale), bpp.value)
+    info = image_info(lib, g, lib.gdat_find(g, CAT_WEAPON, index, C.GDAT_TYPE_IMAGE, 0))[1]
+    picture = Bitmap(None, lib.gfx_scale_64(info.width, scale), lib.gfx_scale_64(info.height, scale), info.bpp)
     dx, dy = 2, -3
     for packed in (lib.gdat_entry_index(g, CAT_WEAPON, index, C.GDAT_TYPE_VALUE2, 0xFE), lib.gdat_image_offset(g, CAT_WEAPON, index, 0),
                    lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, C.GDAT_TYPE_VALUE2, 0)):

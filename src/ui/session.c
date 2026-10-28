@@ -496,7 +496,7 @@ void session_save(void)
     bool quit = false;
     game_set_restart(false);
     action_area_close();
-    area_update(0);
+    area_update(false);
     play_hide_view();
     timeline_rebuild_free_list();
     int slot = run_save_menu(&quit);
@@ -609,7 +609,7 @@ void session_end(bool party_dead)
         int portrait = g_game.champion_count ? champion(0)->portrait : SOUND_FALLBACK;
         sndreq_request_with_fallback(
             (SoundCue){CAT_CHAMPION, portrait, SOUND_ENTRY_SCREAM, END_SOUND_PRIORITY, SOUND_VOLUME_FULL},
-            SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+            SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_NOW);
         play_wait_frames(END_SOUND_VBLANKS);
     }
     g_dialog.screen_mode = 1;
