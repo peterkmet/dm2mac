@@ -122,7 +122,9 @@ typedef struct __attribute__((packed)) {
 
 _Static_assert(sizeof(Champion) == CHAMPION_SIZE, "the original champion record has 263 bytes");
 
-/* Champion.wounds bits: 0x01 and 0x02 the hands, then the head, the torso, the legs, the feet. */
+/* Champion.wounds bits: the hands, the head, the torso, the legs, the feet. */
+#define WOUND_READY_HAND      0x01
+#define WOUND_ACTION_HAND     0x02
 #define WOUND_HEAD            0x04
 #define WOUND_TORSO           0x08
 #define WOUND_LEGS            0x10
@@ -274,8 +276,8 @@ int champ_get_index_in_cell(int16_t cell);
 void champ_set_leader(int champ);
 /* The index of the leader, -1 for none. */
 int16_t champ_leader(void);
-/* Gives champion_index a new name and title; each is cut to the size of its field. */
-void champ_set_name(int16_t champion_index, const char *name, const char *title);
+/* Gives champion_index a new name and title: the whole fields, the bytes after the end marks too. */
+void champ_set_name(int16_t champion_index, const char name[CHAMPION_NAME_SIZE], const char title[CHAMPION_TITLE_SIZE]);
 /* Turns the party to dir; the champions turn with it. */
 void champ_set_party_direction(int16_t dir);
 /* Turns one champion to dir; the party keeps its direction. */

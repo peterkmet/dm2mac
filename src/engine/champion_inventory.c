@@ -300,11 +300,11 @@ void inv_click_slot(int16_t slot)
     }
     if (hand != THING_NONE)
         champ_add_object_to_slot(champ, hand, slot);
-    g_hooks.draw_all_champion_states(0);
+    g_hooks.draw_all_champion_states(false);
     if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
         slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
         g_action.redraw_delay = 1;
-        g_hooks.update_action_area(0);
+        g_hooks.update_action_area(false);
     }
 }
 
@@ -471,7 +471,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
         c->health = c->max_health;
     sndreq_request_with_fallback(
         (SoundCue){CAT_CHAMPION, c->portrait, SOUND_ENTRY_SWALLOW, SOUND_PRIORITY_SWALLOW, SOUND_VOLUME_NORMAL},
-        SOUND_FALLBACK, g_game.party_x, g_game.party_y, 0);
+        SOUND_FALLBACK, g_game.party_x, g_game.party_y, SOUND_NOW);
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {
         c->redraw |= REDRAW_STATUS_BOX;

@@ -80,17 +80,15 @@ const int16_t g_zone_walk_view_rect[RECT_SIZE] = {WALK_VIEW_X, WALK_VIEW_Y, WALK
 static struct {
     int count;
     int16_t first[RANGE_MAX], last[RANGE_MAX];
-    int start[RANGE_MAX]; /* record index of the first zone of each range */
-    int16_t (*records)[ZONE_FIELDS];
+    int start[RANGE_MAX];            /* record index of the first zone of each range */
+    int16_t (*records)[ZONE_FIELDS]; /* owned: the zone records of all ranges */
 } layout;
 
 bool zone_load(const Gdat *gdat)
 {
     uint32_t size;
     const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
-    free(layout.records);
-    layout.records = NULL;
-    layout.count = 0;
+    zone_free();
     if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
         return false;
     int count = le16(p + LAYOUT_RANGE_COUNT);
@@ -116,6 +114,13 @@ bool zone_load(const Gdat *gdat)
             layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
     layout.count = count;
     return true;
+}
+
+void zone_free(void)
+{
+    free(layout.records);
+    layout.records = NULL;
+    layout.count = 0;
 }
 
 /* The record of zone, NULL for zone 0 or an unknown zone; the first range that holds it wins. */
@@ -152,14 +157,14 @@ static int16_t *clip_rect(int16_t *rect, const int16_t *clip)
 }
 
 /* Limits clip to a parent of size w x h at (x, y). */
-static void clip_to_parent(int16_t *clip, int x, int y, int w, int h)
+static void clip_to_parent(int16_t *clip, int16_t x, int16_t y, int16_t w, int16_t h)
 {
     if (x > clip[RECT_X])
-        clip[RECT_X] = (int16_t)x;
+        clip[RECT_X] = x;
     if (x + w <= clip[RECT_X] + clip[RECT_W] - 1)
         clip[RECT_W] = (int16_t)(w - clip[RECT_X] + x);
     if (y > clip[RECT_Y])
-        clip[RECT_Y] = (int16_t)y;
+        clip[RECT_Y] = y;
     if (y + h <= clip[RECT_Y] + clip[RECT_H] - 1)
         clip[RECT_H] = (int16_t)(h - clip[RECT_Y] + y);
 }
@@ -390,15 +395,15 @@ int16_t *zone_get_viewport_rect(int16_t *rect)
     return result;
 }
 
-bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, int16_t *out_dx, int16_t *out_dy)
+bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPoint *out)
 {
     const int16_t *a = find_zone(from);
     const int16_t *b = find_zone(to);
     if (!a || !b)
         return false;
     percent = percent < 0 ? 0 : percent > PERCENT ? PERCENT : percent;
-    *out_dx = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
-    *out_dy = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
+    out->x = (int16_t)((b[ZONE_X] - a[ZONE_X]) * percent / PERCENT);
+    out->y = (int16_t)((b[ZONE_Y] - a[ZONE_Y]) * percent / PERCENT);
     return true;
 }
 
@@ -424,14 +429,13 @@ int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect)
     return rect;
 }
 
-void zone_get_position(int16_t zone, int16_t *out_x, int16_t *out_y)
+ScreenPoint zone_get_position(int16_t zone)
 {
     int16_t r[RECT_SIZE] = {0};
     int16_t w = 1;
     int16_t h = 1;
     zone_compute_rect(NULL, r, zone, &w, &h);
-    *out_x = r[RECT_X];
-    *out_y = r[RECT_Y];
+    return (ScreenPoint){r[RECT_X], r[RECT_Y]};
 }
 
 int zone_id_for_view_cell(int16_t base, int16_t grid_cell, int16_t dir)

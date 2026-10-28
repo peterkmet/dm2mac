@@ -159,7 +159,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     party = PartyHead.in_dll(lib, "g_party")
     party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
-    lib.dun_set_party_location(Position(map_, x, y))
+    lib.dun_set_party_position(Position(map_, x, y))
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
         lib.weather_sky_objects.restype = ctypes.c_void_p
@@ -606,7 +606,7 @@ class DrawCtx(ctypes.Structure):
                 ("item", ctypes.c_int16), ("zone", ctypes.c_int16), ("anchor", ctypes.c_int16), ("dx", ctypes.c_int16),
                 ("dy", ctypes.c_int16), ("src_x", ctypes.c_int16), ("src_y", ctypes.c_int16),
                 ("rect", ctypes.c_int16 * 4), ("dst", ctypes.POINTER(Bitmap)), ("transparent", ctypes.c_int16),
-                ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
+                ("mode", ctypes.c_int), ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),
                 ("palette_count", ctypes.c_int16), ("palette", ctypes.c_uint8 * 256)]
 
 

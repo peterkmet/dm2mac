@@ -455,8 +455,8 @@ static void cast_summon(int type, int skill, int power)
                 group_active(group) == GROUP_NOT_ACTIVE)
                 continue;
             ActiveGroup *a = &g_active_groups[group_active(group)];
-            if (a->action != CREATURE_ACTION_VANISH) {
-                a->next_action = CREATURE_ACTION_VANISH;
+            if (a->action != ACTION_VANISH) {
+                a->next_action = ACTION_VANISH;
                 return;
             }
         }
@@ -464,14 +464,14 @@ static void cast_summon(int type, int skill, int power)
     int dir = g_game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
     CreatureSummon summon = {.creature_type = type,
-                             .level = level,
+                             .count = (uint16_t)level,
                              .dir = dir_opposite(dir),
                              .x = g_game.party_x,
                              .y = g_game.party_y,
                              .map = g_game.party_map,
                              .link = SUMMON_NO_LINK,
                              .search_dir = (int8_t)dir};
-    if (creature_summon_group(summon) == THING_NONE)
+    if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, g_game.party_x, g_game.party_y, EXPLOSION_ON_SQUARE);
 }
 
@@ -487,7 +487,7 @@ static void cast_create_item(void)
     int cell = dir_turn(g_game.party_dir, rand_bit());
     if (thing == THING_NONE)
         return; /* fix: the original moves an invalid thing when no record is free */
-    move_thing(thing_with_cell(thing, cell), -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(thing_with_cell(thing, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */
@@ -710,7 +710,7 @@ void magic_add_rune(int rune)
         runes[n + 1] = 0;
     }
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
     if (added)
         g_hooks.draw_champion_state(g_action.champion - 1);
@@ -722,6 +722,6 @@ void magic_remove_last_rune(void)
     c->rune_count--;
     runes_of(c)[c->rune_count] = 0;
     g_action.redraw_delay = 1;
-    g_hooks.update_action_area(0);
+    g_hooks.update_action_area(false);
     g_hooks.refresh_input_mode();
 }

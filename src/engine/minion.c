@@ -134,7 +134,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         }
         minion_map_set_location(thing, (Position){map, sx, sy});
         ai_free_cached_data(group);
-        g_hooks.update_action_area(0);
+        g_hooks.update_action_area(false);
     }
     dun_set_current_map(saved);
 }
@@ -148,6 +148,6 @@ void minion_dismiss(uint16_t group)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
     dun_set_current_map(location_map(at));
-    creature_set_next_action(group, location_x(at), location_y(at), CREATURE_ACTION_VANISH, 1);
+    creature_set_next_action(group, (Location){location_x(at), location_y(at)}, ACTION_VANISH, true);
     dun_set_current_map(saved);
 }

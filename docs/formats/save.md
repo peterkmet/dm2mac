@@ -116,3 +116,4 @@ The original game loads a save with the blocks: its loader stops at the last bit
 - A creature group whose creature info index lies past the table stores the bits of a group that is not static (the original reads past the table).
 - A deferred minion map or carried projectile whose link lies past the records of its target type writes the record position 0 (the original reads past its table).
 - Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`game_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, else the party stays without a leader.
+- On save, the compaction of the timeline stops at the last event when the event count is higher than the number of events in use, for example after the load of an event without a type (the original reads past the events).
