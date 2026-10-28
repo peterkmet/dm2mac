@@ -651,7 +651,7 @@ AiLineTarget ai_find_target_in_lines(int filter, uint8_t *distance_map, Location
                     if (found)
                         break;
                 } else if (!ranged && !at_group(tx, ty)) {
-                    uint16_t g = creature_get_group_at((uint16_t)tx, (uint16_t)ty);
+                    uint16_t g = creature_get_group_at((Location){tx, ty});
                     if (g != THING_NONE && ai_thing_matches_filter(g, filter)) {
                         found = true;
                         break;
@@ -2318,7 +2318,7 @@ static bool damage_group_at(const AiCandidate *c, int16_t x, int16_t y)
     uint16_t g = ai_cached_first_group();
     if (g == THING_ENDOFLIST || !ai_thing_matches_filter(g, c->item))
         return false;
-    creature_apply_damage_kind(g, x, y, (int16_t)c->mask);
+    creature_apply_damage_kind(g, (Location){x, y}, (int16_t)c->mask);
     return true;
 }
 
@@ -2445,7 +2445,7 @@ static bool blocked_group_in_front(Search *s, const AiCandidate *c, int16_t x, i
     int16_t nx = (int16_t)(x + g_dir_dx[s->dir]);
     int16_t ny = (int16_t)(y + g_dir_dy[s->dir]);
     uint16_t other;
-    bool r = at_party(nx, ny) || ((other = creature_get_group_at((uint16_t)nx, (uint16_t)ny)) != THING_NONE &&
+    bool r = at_party(nx, ny) || ((other = creature_get_group_at((Location){nx, ny})) != THING_NONE &&
                                   !(creature_group_info(other)->flags & CREATURE_STATIC));
     if (!r)
         s->visit = VISIT_BLOCKED;

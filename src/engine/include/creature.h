@@ -252,9 +252,7 @@ typedef struct {
 #define ALERT_ALWAYS 100
 
 /* What a creature that leaves the dungeon drops: its drop items and possessions, its possessions, or nothing. */
-#define DROP_ALL         0
-#define DROP_POSSESSIONS 1
-#define DROP_NOTHING     2
+typedef enum { DROP_ALL, DROP_POSSESSIONS, DROP_NOTHING } DropMode;
 
 /* creature_create_group count: the group starts with full health. */
 #define GROUP_COUNT_FULL_HEALTH 7
@@ -262,11 +260,11 @@ typedef struct {
 /* A group that appears on a square of a map, or on a free square beside it. */
 typedef struct {
     int creature_type;
-    int level; /* the creature_create_group count */
-    int dir;
-    int x, y, map;
-    int link;       /* the item that controls a minion, -1 none */
-    int search_dir; /* the first direction of the search for a free square, -1 no search */
+    uint16_t count; /* the creature_create_group count */
+    int16_t dir;
+    int16_t x, y, map;
+    uint16_t link;     /* the item that controls a minion, THING_NONE none */
+    int8_t search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;
 
 /* The active groups; NULL before the first game. */
@@ -280,7 +278,7 @@ extern int g_active_group_count;
 /* The info record at index; NULL past the table. */
 const CreatureInfo *creature_info_at(int index);
 /* A GDAT value (0x0f, creature type, 0x0b, attr) of a creature type. */
-int creature_gdat_attr(int creature_type, int attr);
+uint16_t creature_gdat_attr(int creature_type, int attr);
 /* The info record of a creature type, read through GDAT (0x0f, type, 0x0b, 5). */
 const CreatureInfo *creature_info(const Gdat *g, int creature_type);
 /* The info record of the creature of a group thing. */
@@ -308,10 +306,10 @@ AnimStep creature_anim_start(int creature_type, int action, uint16_t start);
 bool creature_current_step_acts(uint16_t group);
 
 /* Groups on squares. */
-/* The creature group on (x, y) of the current map, THING_NONE for none. */
-uint16_t creature_get_group_at(int16_t x, int16_t y);
-/* The first creature group on the square (x, y) of map, THING_NONE for none. */
-uint16_t creature_group_at(int16_t map, int16_t x, int16_t y);
+/* The creature group on the square at of the current map, THING_NONE for none. */
+uint16_t creature_get_group_at(Location at);
+/* The first creature group on the square at, THING_NONE for none. */
+uint16_t creature_group_at(Position at);
 /* True when the creature of group may stay on map: a wanderer, or a creature type of the map. */
 bool creature_is_native_to_map(uint16_t group, int16_t map);
 /* True for a creature that flies over pits and does not press floor sensors. */
@@ -339,48 +337,49 @@ void creature_deactivate_all_groups(void);
 /* Deletes the next update event of a group. */
 void creature_cancel_update(uint16_t group);
 /* Gives a group an active group: its AI state, animation, and first update. */
-void creature_activate_group(uint16_t group, int16_t x, int16_t y);
+void creature_activate_group(uint16_t group, Location at);
 /* Frees an active group; a creature that vanished leaves the dungeon. */
 void creature_deactivate_group(int active_index);
 /* Sets the action of the next update of a group; now: the update comes at once, or the current action stops. */
-void creature_set_next_action(uint16_t group, int16_t x, int16_t y, int action, bool now);
-/* Schedules the next animation update of the static creature on (x, y); alt: at the end of its loop. */
-void creature_update_anim_at(int16_t x, int16_t y, bool alt);
+void creature_set_next_action(uint16_t group, Location at, int action, bool now);
+/* Schedules the next animation update of the static creature on at; alt: at the end of its loop. */
+void creature_update_anim_at(Location at, bool alt);
 /* Animates the creature in the AI context by one step (picture shift, mirror, sound); returns the time of its next
    update. */
 uint32_t creature_animate_step(void);
 /* The update event of a creature group: regeneration, damage, then the AI or the animation. */
-void creature_process_event(int16_t x, int16_t y, int type);
+void creature_process_event(Location at, int type);
 
 /* Group life: creation, damage, death, alerts. */
-/* A dead creature leaves its drop items and its possessions (mode DROP_*) on (x, y). */
-void creature_drop_possessions(uint16_t group, int16_t x, int16_t y, int mode, int sound_map);
-/* Removes the group on (x, y) from the dungeon; it drops what it carries. */
-void creature_delete_group_at(int16_t x, int16_t y, int mode, int sound_map);
+/* A dead creature leaves its drop items and its possessions (by mode) on at; audible: each item makes a sound. */
+void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool audible);
+/* Removes the group on at from the dungeon; it drops what it carries (by mode). */
+void creature_delete_group_at(Location at, DropMode mode, bool audible);
 /* Damages the group in the AI context; true when it was removed. */
 bool creature_damage_current_group(int damage);
-/* The creature in the AI context hits the group on (x, y): the damage, 0 for a miss, -1 for no group. */
-int creature_attack_group_at(int16_t x, int16_t y);
+/* The creature in the AI context hits the group on at; false when no group is there. *damage_out: 0 for a miss. */
+bool creature_attack_group_at(Location at, int16_t *damage_out);
 /* Alerts the group (or the group on at for THING_NONE) with the alert flags, chance and damage. */
 void creature_alert(uint16_t group, Location at, unsigned flags, int chance, int damage);
 /* An extra damage amount (poison) against the armor of the creature, with a random part; 0 for no amount. */
 int creature_roll_armor_factor(uint16_t group, int amount);
 /* A damage kind that sets or clears a mood bit of the group. */
-void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind);
-/* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
-uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y);
-/* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
+void creature_apply_damage_kind(uint16_t group, Location at, int kind);
+/* Creates a group of count + 1 creatures on at of the current map; THING_NONE when the dungeon is full. */
+uint16_t creature_create_group(int creature_type, int count, int16_t dir, Location at);
+/* Creates a group on the square (x, y) of map or on a free square beside it; link: the item that controls a minion. */
 uint16_t creature_summon_group(CreatureSummon summon);
-/* Turns a group, to dir or by dir; a static creature turns its possessions too. */
-void creature_turn_group(uint16_t group, int absolute, int16_t dir);
-/* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
-int creature_get_party_distance(int16_t x, int16_t y);
+/* Turns a group, to dir (absolute) or by dir; a static creature turns its possessions too. */
+void creature_turn_group(uint16_t group, bool absolute, int16_t dir);
+/* The distance from at to the party in the distance map of the current map; -1 when no map has it. */
+int creature_get_party_distance(Location at);
 
 /* Pushing creatures: the push arrows of the party and the pushes of creatures. */
-/* True when the group on (x, y) can be pushed one square in dir; *out_group gets it. */
-bool creature_can_be_pushed(int16_t x, int16_t y, int16_t dir, uint16_t *out_group);
-/* Pushes the group on (x, y) one square in dir; a push into the party moves the party. */
-void creature_push_group(int16_t x, int16_t y, int16_t dir, int strength);
+/* True when the group on at can be pushed one square in dir; *out_group (if not NULL) gets it. target_must_be_free:
+   a group on the target square stops the push (a real push); false only asks whether the push arrow shows. */
+bool creature_can_be_pushed(Location at, int16_t dir, bool target_must_be_free, uint16_t *out_group);
+/* Pushes the group on at one square in dir; a push into the party moves the party. */
+void creature_push_group(Location at, int16_t dir, int16_t strength);
 /* The party pushes the creature in front by a push arrow. */
 void creature_push_creature(int arrow);
 /* The party walks on after a push that waited for its slow move: the push ends now. */

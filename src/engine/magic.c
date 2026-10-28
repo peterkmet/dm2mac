@@ -467,7 +467,7 @@ static void cast_summon(int type, int skill, int power)
     int dir = g_game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
     CreatureSummon summon = {.creature_type = type,
-                             .level = level,
+                             .count = (uint16_t)level,
                              .dir = dir_opposite(dir),
                              .x = g_game.party_x,
                              .y = g_game.party_y,

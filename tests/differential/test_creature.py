@@ -9,7 +9,7 @@ from dm2test import constants as C
 from dm2test.creature import CreatureScenario, creatures, random_champions  # noqa: F401 (creatures is a fixture)
 from dm2test.lib import load_lib
 from dm2test.markers import ROOT
-from dm2test.scenario import ENDOFLIST, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import ENDOFLIST, Position, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
 
 
 @pytest.fixture(scope="module")
@@ -67,16 +67,17 @@ def test_creature_sensors(creatures, lib):
 def creature_fronts(lib):
     """(map, x, y, direction) of a free floor square in front of each creature group, the party looking at it."""
     lib.creature_group_at.restype = ctypes.c_uint16
+    lib.creature_group_at.argtypes = [Position]
     fronts = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
-                if lib.creature_group_at(map_, x, y) == C.THING_NONE:
+                if lib.creature_group_at(Position(map_, x, y)) == C.THING_NONE:
                     continue
                 for d, (dx, dy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0))):
                     px, py = x - dx, y - dy
                     if 0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_) \
-                            and lib.dungeon_square(map_, px, py) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR and lib.creature_group_at(map_, px, py) == C.THING_NONE:
+                            and lib.dungeon_square(map_, px, py) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR and lib.creature_group_at(Position(map_, px, py)) == C.THING_NONE:
                         fronts.append((map_, px, py, d))
                         break
     return fronts
