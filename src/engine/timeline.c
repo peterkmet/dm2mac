@@ -45,24 +45,13 @@ static bool runs_before(uint16_t a, uint16_t b)
     return a <= b;
 }
 
-/* Moves the event in a queue slot up, or else down, until the heap order holds again. */
-static void fix_queue_slot(int slot)
+/* Moves the event in a queue slot down, below each child that runs before it, until the heap order holds again. */
+static void sift_down(int16_t slot, int16_t last)
 {
     uint16_t *queue = g_timeline.queue;
     uint16_t moving = queue[slot];
-    int last = g_timeline.count - 1;
-    bool moved_up = false;
-
-    g_timeline.fix_slot = TIMELINE_NO_SLOT;
-    if (last == 0)
-        return;
-    while (slot > 0 && runs_before(moving, queue[(slot - 1) / 2])) {
-        queue[slot] = queue[(slot - 1) / 2];
-        slot = (slot - 1) / 2;
-        moved_up = true;
-    }
-    while (!moved_up && slot <= (last - 1) / 2) {
-        int child = 2 * slot + 1;
+    while (2 * slot + 1 <= last) {
+        int16_t child = (int16_t)(2 * slot + 1);
         if (child + 1 <= last && runs_before(queue[child + 1], queue[child]))
             child++;
         if (!runs_before(queue[child], moving))
@@ -73,6 +62,28 @@ static void fix_queue_slot(int slot)
     queue[slot] = moving;
 }
 
+/* Moves the event in a queue slot up, or else down, until the heap order holds again. */
+static void fix_queue_slot(int16_t slot)
+{
+    uint16_t *queue = g_timeline.queue;
+    uint16_t moving = queue[slot];
+    int16_t last = (int16_t)(g_timeline.count - 1);
+    bool moved_up = false;
+
+    g_timeline.fix_slot = TIMELINE_NO_SLOT;
+    if (last == 0)
+        return;
+    while (slot > 0 && runs_before(moving, queue[(slot - 1) / 2])) {
+        queue[slot] = queue[(slot - 1) / 2];
+        slot = (int16_t)((slot - 1) / 2);
+        moved_up = true;
+    }
+    if (moved_up)
+        queue[slot] = moving;
+    else
+        sift_down(slot, last);
+}
+
 static void fix_pending_slot(void)
 {
     if (g_timeline.fix_slot >= 0)
@@ -80,9 +91,9 @@ static void fix_pending_slot(void)
 }
 
 /* The queue slot of a queued event. */
-static int find_queue_slot(uint16_t index)
+static int16_t find_queue_slot(uint16_t index)
 {
-    int slot = 0;
+    int16_t slot = 0;
     while (slot < g_timeline.used_end && g_timeline.queue[slot] != index)
         slot++;
     if (slot == g_timeline.used_end)
@@ -131,7 +142,7 @@ int timeline_add_event(const TimelineEvent *event)
     if (index >= g_timeline.used_end)
         g_timeline.used_end = index + 1;
     /* A slot left open by a delete takes the new event, else the queue grows by one. */
-    int slot = g_timeline.fix_slot >= 0 ? g_timeline.fix_slot : g_timeline.count;
+    int16_t slot = g_timeline.fix_slot >= 0 ? g_timeline.fix_slot : (int16_t)g_timeline.count;
     g_timeline.count++;
     g_timeline.queue[slot] = index;
     fix_queue_slot(slot);
@@ -146,7 +157,7 @@ void timeline_delete_event(int index)
     g_timeline.first_free = index;
     if (--g_timeline.count == 0)
         return;
-    int slot = find_queue_slot(index);
+    int16_t slot = find_queue_slot(index);
     if (slot != g_timeline.count) {
         g_timeline.fix_slot = slot;
         g_timeline.queue[slot] = g_timeline.queue[g_timeline.count];
@@ -172,24 +183,8 @@ void timeline_build_queue(void)
     int count = g_timeline.count;
     for (int i = 0; i < count; i++)
         queue[i] = i;
-    for (int start = (count - 2) / 2; count > 1 && start >= 0; start--) {
-        uint16_t moving = queue[start];
-        for (int slot = start; 2 * slot + 1 < count;) {
-            int child = 2 * slot + 1;
-            if (child + 1 < count) {
-                if (runs_before(moving, queue[child]) ? !runs_before(moving, queue[child + 1])
-                                                      : runs_before(queue[child + 1], queue[child]))
-                    child++;
-                else if (runs_before(moving, queue[child]))
-                    break;
-            } else if (runs_before(moving, queue[child])) {
-                break;
-            }
-            queue[slot] = queue[child];
-            queue[child] = moving;
-            slot = child;
-        }
-    }
+    for (int16_t start = (int16_t)((count - 2) / 2); count > 1 && start >= 0; start--)
+        sift_down(start, (int16_t)(count - 1));
     g_timeline.fix_slot = TIMELINE_NO_SLOT;
     timeline_rebuild_free_list();
 }
