@@ -474,7 +474,7 @@ static void cast_summon(int type, int skill, int power)
                              .map = g_game.party_map,
                              .link = SUMMON_NO_LINK,
                              .search_dir = (int8_t)dir};
-    if (creature_summon_group(summon) == THING_NONE)
+    if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, g_game.party_x, g_game.party_y, EXPLOSION_ON_SQUARE);
 }
 

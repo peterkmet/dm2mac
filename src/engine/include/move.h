@@ -56,7 +56,7 @@ typedef struct {
     int16_t alt_view_x, alt_view_y, alt_view_dir, alt_view_map; /* the party position on the other map */
     int16_t new_map;                                       /* the map that the party entered in this step, -1 none */
     int16_t fell;                                          /* the party falls without damage (a levitation action) */
-    int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* where move_thing put the last thing */
+    int16_t dest_x, dest_y, dest_map, dest_cell, dest_dir; /* the last end of a move, as in the original */
     int teleporter_flag;                                   /* the last teleporter had its bit 15 set */
     uint32_t redraw;                                       /* REDRAW_* */
     uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
@@ -142,13 +142,13 @@ void move_compute_map_arrival(Position at);
 
 /* ---- Moving things ---- */
 
-/* Follows pits, teleporters, and stairs from the destination of route; returns the end, also in g_party.dest_*.
-   creature_sound: the teleporter sounds, the fall alert, and the drop sound play. */
+/* Follows pits, teleporters, and stairs from the destination of route; returns the end (g_party.dest_* keep a copy, as
+   in the original). creature_sound: the teleporter sounds, the fall alert, and the drop sound play. */
 Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool creature_sound);
 /* Moves a thing (THING_NONE: the party) from (src_x, src_y) to (dst_x, dst_y) of the current map, through
    pits, teleporters, and stairs; a negative src_x adds it, a negative dst_x removes it. */
 MoveResult move_thing(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
-/* move_thing, with where the thing ends (also in g_party.dest_*). */
+/* move_thing, with where the thing ends (g_party.dest_* keep a copy, as in the original). */
 MoveOutcome move_thing_dest(uint16_t thing, int src_x, int src_y, int dst_x, int dst_y);
 
 /* ---- Discarded things ---- */

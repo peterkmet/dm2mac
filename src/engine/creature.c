@@ -1243,20 +1243,24 @@ void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind)
 }
 
 /* Creates a group of count + 1 creatures at a square of the current map; a minion group holds a projectile that links
-   its minion item. THING_NONE when no thing is free or the group leaves the dungeon. */
-static uint16_t create_group(int creature_type, int count, int16_t dir, Location at, bool minion)
+   its minion item, with the square where its move put it. THING_NONE when no thing is free or the group leaves the
+   dungeon. */
+static SummonedGroup create_group(int creature_type, int count, int16_t dir, Location at, bool minion)
 {
+    SummonedGroup none = {
+        THING_NONE, {-1, at.x, at.y}
+    };
     uint16_t projectile = THING_NONE;
     if (minion) {
         projectile = dungeon_unused_thing(THING_PROJECTILE);
         if (projectile == THING_NONE)
-            return THING_NONE;
+            return none;
     }
     uint16_t group = dungeon_unused_thing(THING_GROUP);
     if (group == THING_NONE || g_active_group_count >= g_active_group_max) {
         if (minion)
             thing_set_word(projectile, THING_NEXT, THING_NONE);
-        return THING_NONE;
+        return none;
     }
     group_set_creature(group, (uint8_t)creature_type);
     const CreatureInfo *info = creature_info(gdat_current(), creature_type);
@@ -1273,22 +1277,25 @@ static uint16_t create_group(int creature_type, int count, int16_t dir, Location
     group_set_mood(group, 0);
     thing_set_word(group, GROUP_HOME, (uint16_t)location_pack(at.x, at.y, g_party.cur_map));
     thing_set_word(group, GROUP_ITEM_CLASS, THING_NONE);
-    if (move_thing(group, MOVE_CREATED, 0, at.x, at.y) == MOVE_LEFT_DUNGEON) {
+    MoveOutcome moved = move_thing_dest(group, MOVE_CREATED, 0, at.x, at.y);
+    if (moved.result == MOVE_LEFT_DUNGEON) {
         /* the original frees a stale thing here when the group links no projectile */
         if (minion)
             thing_set_word(projectile, THING_NEXT, THING_NONE);
-        return THING_NONE;
+        return none;
     }
     thing_set_word(group, GROUP_ITEM_CLASS, 0);
-    return group;
+    return (SummonedGroup){
+        group, {moved.dest.map, moved.dest.x, moved.dest.y}
+    };
 }
 
 uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y)
 {
-    return create_group(creature_type, count, dir, (Location){x, y}, false);
+    return create_group(creature_type, count, dir, (Location){x, y}, false).group;
 }
 
-uint16_t creature_summon_group(CreatureSummon summon)
+SummonedGroup creature_summon_group(CreatureSummon summon)
 {
     int x = summon.x;
     int y = summon.y;
@@ -1296,7 +1303,9 @@ uint16_t creature_summon_group(CreatureSummon summon)
     int search_dir = summon.search_dir;
     int saved = g_party.cur_map;
     dun_set_current_map((int16_t)summon.map);
-    uint16_t group = THING_NONE;
+    SummonedGroup summoned = {
+        THING_NONE, {-1, (int16_t)x, (int16_t)y}
+    };
     int tries = (int8_t)search_dir < 0 ? 0 : DIR_COUNT;
     int turn = rand_bit() ? 1 : -1;
     int16_t sx = (int16_t)x;
@@ -1309,9 +1318,9 @@ uint16_t creature_summon_group(CreatureSummon summon)
             (type != SQUARE_DOOR || !(square & SQUARE_DOOR_STATE) ||
              (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) &&
             creature_get_group_at(sx, sy) == THING_NONE) {
-            group =
+            summoned =
                 create_group(summon.creature_type, summon.level, summon.dir, (Location){sx, sy}, (int16_t)link != -1);
-            if (group != THING_NONE)
+            if (summoned.group != THING_NONE)
                 break;
         }
         if (tries) {
@@ -1322,14 +1331,14 @@ uint16_t creature_summon_group(CreatureSummon summon)
         if (--tries == -1)
             break;
     }
-    if ((int16_t)link != -1 && group != THING_NONE) {
-        uint16_t t = thing_word(group, GROUP_POSSESSIONS);
+    if ((int16_t)link != -1 && summoned.group != THING_NONE) {
+        uint16_t t = thing_word(summoned.group, GROUP_POSSESSIONS);
         while (t != THING_ENDOFLIST && thing_type(t) != THING_PROJECTILE)
             t = dungeon_next_thing(t);
         thing_set_word(t, PROJECTILE_PAYLOAD, (uint16_t)link);
     }
     dun_set_current_map(saved);
-    return group;
+    return summoned;
 }
 
 void creature_turn_group(uint16_t group, int absolute, int16_t dir)

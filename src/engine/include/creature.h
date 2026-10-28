@@ -269,6 +269,12 @@ typedef struct {
     int search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;
 
+/* A new group and the square where its move put it (group THING_NONE: none). */
+typedef struct {
+    uint16_t group;
+    Position at;
+} SummonedGroup;
+
 /* The active groups; NULL before the first game. */
 extern ActiveGroup *g_active_groups;
 /* The size of g_active_groups; exported for the tests */
@@ -369,8 +375,9 @@ int creature_roll_armor_factor(uint16_t group, int amount);
 void creature_apply_damage_kind(uint16_t group, int16_t x, int16_t y, int kind);
 /* Creates a group of count + 1 creatures on (x, y) of the current map; THING_NONE when the dungeon is full. */
 uint16_t creature_create_group(int creature_type, int count, int16_t dir, int16_t x, int16_t y);
-/* Creates a group on (x, y) of map or on a free square beside it; link: the item that controls a minion. */
-uint16_t creature_summon_group(CreatureSummon summon);
+/* Creates a group on (x, y) of map or on a free square beside it, and returns where it ends; link: the item that
+   controls a minion. */
+SummonedGroup creature_summon_group(CreatureSummon summon);
 /* Turns a group, to dir or by dir; a static creature turns its possessions too. */
 void creature_turn_group(uint16_t group, int absolute, int16_t dir);
 /* The distance from (x, y) to the party in the distance map of the current map; -1 when no map has it. */
