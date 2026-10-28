@@ -32,6 +32,9 @@
 #define PUSH_ARROW_COUNT      6
 #define PUSH_ARROW_NONE       PUSH_ARROW_COUNT
 
+/* g_party.cur_map before a map is current; dun_set_current_map then reads the party position again. */
+#define CUR_MAP_NONE (-1)
+
 /* Special source and destination x of move_thing. */
 #define MOVE_NO_SQUARE          (-1) /* move_thing: as src_x the thing is new, as dst_x it leaves the squares */
 #define MOVE_DROPPED_PROJECTILE (-2) /* move_thing: the object of a projectile drops; teleporters keep its cell */
@@ -50,7 +53,7 @@ typedef enum { MOVE_DONE, MOVE_LEFT_DUNGEON, MOVE_WAIT } MoveResult;
 /* Movement state of the party and of the dungeon reads (the original globals). The int fields stay int:
    tests/dm2test/scenario.py mirrors the layout (alt_view_active has 32 bits in the original). */
 typedef struct {
-    int16_t cur_map;                        /* the map that the square reads of the original use, -1 none */
+    int16_t cur_map;                        /* the map that the square reads of the original use, CUR_MAP_NONE none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */
     int16_t ref_dir;                        /* the party direction as the current map sees it */
     int16_t move_steps;                     /* game steps until a slow party move ends */

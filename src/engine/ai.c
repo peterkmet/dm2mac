@@ -558,7 +558,7 @@ void ai_set_map(int16_t map)
 bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
 {
     int map = g_party.cur_map;
-    g_party.cur_map = -1;
+    g_party.cur_map = CUR_MAP_NONE; /* ai_set_map reads the party position again */
     ai_set_map(map);
     g_ai_square.x = -1;
     bool restored = false;
@@ -2470,7 +2470,7 @@ static bool act_move_stairs(void)
     bool closes = g_ai.info->traits & CREATURE_TRAIT_CLOSES_PITS;
     if (closes)
         dun_set_pit_teleporter_state((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, PIT_STATE_CLOSED);
-    move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], -1, 0);
+    move_thing(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], MOVE_NO_SQUARE, 0);
     ai_set_map(location_map(a->destination));
     if (a->action == ACTION_STAIRS_UP || a->action == ACTION_STAIRS_DOWN)
         dir = dun_get_stairs_exit_direction((Location){ai_state.dest_x, ai_state.dest_y});
@@ -2607,7 +2607,7 @@ static bool act_pick_up_items(void)
             continue;
         if (!ai_thing_matches_filter(t, g_ai.active->sub))
             continue;
-        move_thing(t, ai_state.dest_x, ai_state.dest_y, -1, 0);
+        move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, 0);
         dungeon_append_thing(t, group_possessions(g_ai.group_thing));
         n++;
         if (!(g_ai.active->sub & SUB_REPEAT))
@@ -2653,7 +2653,7 @@ static bool act_drop_items(void)
         n++;
         dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
         t = thing_with_cell(t, g_ai.active->cell);
-        move_thing(t, -1, 0, ai_state.dest_x, ai_state.dest_y);
+        move_thing(t, MOVE_NO_SQUARE, 0, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;
@@ -2714,7 +2714,7 @@ static bool act_give_items(void)
         t = thing_with_cell(t, cell);
         if (item_is_moneybox(t))
             moneybox_set_placed(t, true);
-        move_thing(t, -1, -1, ai_state.dest_x, ai_state.dest_y);
+        move_thing(t, MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS, ai_state.dest_x, ai_state.dest_y);
         drop_sound(t, n);
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;
@@ -2732,7 +2732,7 @@ static bool act_take_items(void)
         if (t == THING_ENDOFLIST)
             break;
         n++;
-        move_thing(t, ai_state.dest_x, ai_state.dest_y, -1, -1);
+        move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, MOVE_IN_POSSESSIONS);
         dungeon_append_thing(t & THING_ID_MASK, group_possessions(g_ai.group_thing));
     } while (g_ai.active->sub & SUB_REPEAT);
     return n == 0;

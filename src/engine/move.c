@@ -166,7 +166,7 @@ static const uint8_t sensor_blocks_discard[SENSOR_KIND_TABLE] = {
     0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
 };
 
-Party g_party = {.cur_map = -1, .new_map = -1, .push_pending_group = THING_NONE};
+Party g_party = {.cur_map = CUR_MAP_NONE, .new_map = -1, .push_pending_group = THING_NONE};
 uint8_t g_last_discarded_map[THING_TYPE_COUNT];
 
 /* Each living champion pays stamina by load for a step or a levitated fall: factor * load / max load + 1. */
@@ -204,7 +204,7 @@ void dun_set_current_map(int16_t map)
 /* Makes map current and reads the party position as seen from it again, also when map is current already. */
 static void reload_current_map(int16_t map)
 {
-    g_party.cur_map = -1;
+    g_party.cur_map = CUR_MAP_NONE;
     dun_set_current_map(map);
 }
 
@@ -936,7 +936,7 @@ static MoveDest transit_finish(const Transit *t)
     int px = g_game.party_x;
     int py = g_game.party_y;
     int pmap = g_game.party_map;
-    g_party.cur_map = -1; /* dun_set_party_position reads the party position again */
+    g_party.cur_map = CUR_MAP_NONE; /* dun_set_party_position reads the party position again */
     dun_set_party_position((Position){t->map, t->x, t->y});
     for (int i = 0; i < g_game.champion_count; i++)
         if (champion(i)->health)
