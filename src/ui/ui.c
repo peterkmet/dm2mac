@@ -149,6 +149,14 @@ typedef struct {
     bool box_drawn; /* the status box changed */
 } ChampionRedraw;
 
+/* The coins of a money box: the coin type of each used coin slot, the count of each coin type, and the total value. */
+typedef struct {
+    int type_count;
+    int types[COIN_TYPE_MAX];
+    int16_t counts[COIN_TYPE_MAX];
+    int total;
+} BoxCoins;
+
 /* The zone and the empty slot icon of each slot entry. */
 static const struct {
     uint16_t zone;
@@ -314,27 +322,38 @@ static int info_add_contents(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], in
     return *line ? info_add(lines, count, "%s", line) : count;
 }
 
-/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
-   total value. */
-static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+/* Counts the coins of a money box: the coin type of each used coin slot in slot order, and the total value. */
+static void box_coins(uint16_t box, BoxCoins *b)
 {
-    int16_t counts[COIN_TYPE_MAX];
-    money_count_coins_in_box(box, counts);
-    int total = 0;
-    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    money_count_coins_in_box(box, b->counts);
+    b->type_count = 0;
+    b->total = 0;
     for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
         int type = money_coin_type_for_slot(box, slot);
         if (type < 0)
             continue;
-        total += money_coin_value(type) * counts[type];
+        b->total += money_coin_value(type) * b->counts[type];
+        b->types[b->type_count++] = type;
+    }
+}
+
+/* Adds the coin count of each coin slot of a money box ("<coin name> <count>", as many to a line as fit) and the
+   total value. */
+static int info_add_coins(char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE], int count, uint16_t box)
+{
+    BoxCoins b;
+    box_coins(box, &b);
+    char raw[TEXT_SIZE], name[TEXT_SIZE], coin[COIN_TEXT_SIZE], line[OBJECT_INFO_SIZE] = "";
+    for (int i = 0; i < b.type_count; i++) {
+        int type = b.types[i];
         uint16_t item = money_coin_item(type);
         gtext_format(gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, raw), name);
-        snprintf(coin, sizeof coin, "%s %d", name, counts[type]);
+        snprintf(coin, sizeof coin, "%s %d", name, b.counts[type]);
         count = info_append(lines, count, line, coin);
     }
     if (*line)
         count = info_add(lines, count, "%s", line);
-    return info_add(lines, count, "total %d", total);
+    return info_add(lines, count, "total %d", b.total);
 }
 
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE])
@@ -716,9 +735,15 @@ void ui_draw_movement_arrows(void)
 
 /* ---- Status boxes and inventory ---- */
 
+/* The champion index of the open inventory, -1 for none (g_ui.inventory is an ordinal). */
+static int16_t inventory_champion(void)
+{
+    return (int16_t)(g_ui.inventory - 1);
+}
+
 static bool in_inventory(int champ)
 {
-    return champ + 1 == g_ui.inventory;
+    return champ == inventory_champion();
 }
 
 /* Opens the status box bitmap of champ with its background; clear: the whole box goes to the screen. */
@@ -995,11 +1020,13 @@ static void show_scroll(uint16_t scroll)
     for (size_t i = 0; i < n; i++)
         newlines += text[i] == '\n';
     int lines = newlines + 1;
+    /* a trailing new line adds no line; two trailing new lines drop one */
     if (n && text[n - 1] == '\n')
         lines = n > 1 && text[n - 2] == '\n' ? newlines - 1 : newlines;
     int16_t x, y, r[RECT_SIZE];
     zone_get_position(ZONE_SCROLL_TEXT, &x, &y);
     zone_get_rect(ZONE_INVENTORY_PANEL, r);
+    /* centers the text block on the scroll */
     y = (int16_t)(y - ((((int16_t)lines * TEXT_LINE_HEIGHT - FONT_BASELINE - 1) >> 1) - FONT_GLYPH_HEIGHT));
     for (int16_t pos = 0; text[pos];) {
         text_wrap_line(text, line, &pos, r[RECT_W]);
@@ -1067,20 +1094,14 @@ static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int 
 /* Draws the coin count of each coin slot of a money box and the total value. */
 static void show_coin_counts(uint16_t box)
 {
-    int16_t counts[COIN_TYPE_MAX];
-    money_count_coins_in_box(box, counts);
-    int total = 0;
-    int zone = ZONE_COINS_FIRST;
+    BoxCoins b;
+    box_coins(box, &b);
     char s[TEXT_SIZE];
-    for (int slot = 0; slot < COIN_TYPE_MAX; slot++) {
-        int type = money_coin_type_for_slot(box, slot);
-        if (type < 0)
-            continue;
-        total += money_coin_value(type) * counts[type];
-        snprintf(s, sizeof s, "%d", counts[type]);
-        text_draw_in_zone(zone++, g_ui_colors[UI_LIGHT_GRAY], s);
+    for (int i = 0; i < b.type_count; i++) {
+        snprintf(s, sizeof s, "%d", b.counts[b.types[i]]);
+        text_draw_in_zone(ZONE_COINS_FIRST + i, g_ui_colors[UI_LIGHT_GRAY], s);
     }
-    snprintf(s, sizeof s, "%d", total);
+    snprintf(s, sizeof s, "%d", b.total);
     text_draw_in_zone(ZONE_COIN_TOTAL, g_ui_colors[UI_LIGHT_GRAY], s);
 }
 
@@ -1152,7 +1173,7 @@ static bool show_object_info(uint16_t thing, bool full)
 /* Draws the food and water gauges (and the poison gauge) of the inventory panel. */
 static void show_food_water(void)
 {
-    const Champion *c = champion(g_ui.inventory - 1);
+    const Champion *c = champion(inventory_champion());
     game_set_panel_mode(PANEL_MODE_FOOD);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     show_gauge_bar(c->food, ZONE_FOOD_GAUGE, UI_BROWN, (GaugeRange){FOOD_MIN, FOOD_MAX}, GAUGE_NO_SPLIT);
@@ -1175,10 +1196,10 @@ static void show_closed_mouth(void)
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void show_skills_and_stats(void)
 {
-    int champ = g_ui.inventory - 1;
+    int16_t champ = inventory_champion();
     Champion *c = champion(champ);
     char text[TEXT_SIZE];
-    int16_t x, y, stat_x, unused;
+    int16_t x, y, stat_x;
     game_set_panel_mode(PANEL_MODE_SKILLS);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
     zone_get_position(ZONE_SKILLS, &x, &y);
@@ -1190,8 +1211,7 @@ static void show_skills_and_stats(void)
         cache.shown_raised[skill] = g_champ_skill_raised[champ][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
-    zone_get_position(ZONE_STATS, &stat_x, &unused);
-    y = unused;
+    zone_get_position(ZONE_STATS, &stat_x, &y);
     for (int stat = STAT_STRENGTH; stat < STAT_COUNT; stat++) { /* luck has no line */
         text_draw_in_viewport(x, y, g_ui_colors[UI_LIGHT_GRAY], gtext_gdat(CAT_PANEL, 0, TEXT_STAT_FIRST + stat, text));
         int current = champ_get_stat(c, stat, STAT_CURRENT);
@@ -1418,13 +1438,16 @@ void ui_draw_champion_state(int16_t champion_index)
 void ui_draw_all_champion_states(bool tick)
 {
     for (int i = 0; i < g_game.champion_count; i++)
-        if (i + 1 != g_ui.inventory)
+        if (i != inventory_champion())
             ui_draw_champion_state(i);
-    if (g_ui.inventory) {
-        Champion *c = champion(g_ui.inventory - 1);
-        if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST)
-            c->redraw |= !g_ui.eye || g_game.leader_hand != THING_NONE ? REDRAW_LOAD : REDRAW_LOAD | REDRAW_TITLE_ALL;
-        ui_draw_champion_state(g_ui.inventory - 1);
+    int16_t open = inventory_champion();
+    if (open >= 0) {
+        Champion *c = champion(open);
+        if (c->aura_value && c->aura >= AURA_STAT_FIRST && c->aura <= AURA_STAT_LAST) {
+            bool title_too = g_ui.eye && g_game.leader_hand == THING_NONE; /* the eye shows the stats */
+            c->redraw |= title_too ? REDRAW_LOAD | REDRAW_TITLE_ALL : REDRAW_LOAD;
+        }
+        ui_draw_champion_state(open);
     }
     area_update(tick);
 }
@@ -1437,18 +1460,18 @@ void ui_toggle_inventory(int16_t champion_index)
         g_ui.eye)
         return;
     game_set_command_stop(true);
-    int open = g_ui.inventory;
-    if (champion_index + 1 == open)
+    int16_t open = inventory_champion();
+    if (champion_index == open)
         champion_index = CHAMPION_MAX;
-    if (open) {
+    if (open >= 0) {
         game_set_open_inventory(0);
-        Champion *c = champion(open - 1);
+        Champion *c = champion(open);
         if (c->health && !g_ui.candidate) {
             c->redraw |= REDRAW_STATUS_BOX;
-            ui_draw_champion_state(open - 1);
+            ui_draw_champion_state(open);
         }
         /* the raised skills that the player saw no longer show green */
-        champ_forget_shown_raises(open - 1, cache.shown_raised);
+        champ_forget_shown_raises(open, cache.shown_raised);
         if (g_party_sleeping || champion_index == CHAMPION_MAX) {
             if (!g_party_sleeping) {
                 if (g_inv_arrows_on_close)
