@@ -477,6 +477,7 @@ Each line lists the names of one table of the protocol, in table order.
 - Minion map options (`option` of `minion_map_option`): `creatures`, `details`, `items`, `hold`.
 - Sky amounts (`weather`): `none`, `light`, `medium`, `heavy`.
 - View sides (`side` in `seen`): `left_3`, `left_2`, `left`, `center`, `right`, `right_2`, `right_3`.
+- Elements (`element` in `get_view`): `wall`, `floor`, `pit`, `stairs_up`, `stairs_down`, `door`, `teleporter`.
 - Explosions (in `get_view`): `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, `smoke`.
 - Runes (`runes`): the power runes `lo`, `um`, `on`, `ee`, `pal`, `mon`, then the three rune sets `ya`, `vi`, `oh`, `ful`, `des`, `zo`, `ven`, `ew`, `kath`, `ir`, `bro`, `gor`, `ku`, `ros`, `dain`, `neta`, `ra`, `sar`.
 - Actions (`act`): `move_forward`, `move_back`, `move_left`, `move_right`, `turn_left`, `turn_right`, `click_wall_ahead`, `take_object`, `drop_object`, `open_inventory`, `close_inventory`, `put_in_slot`, `take_from_slot`, `eat`, `drink`, `choose_action`, `pass`, `set_caster`, `add_rune`, `delete_rune`, `cast`, `recruit`, `set_leader`, `sleep`, `wake`, `swap_champions`, `look`, `take_coin`, `minion_map_option`, `click`, `key` (see [Actions](#actions)).

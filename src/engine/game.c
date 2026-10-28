@@ -38,9 +38,9 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_location((Position){map, x, y});
+    dun_set_party_position((Position){map, x, y});
     g_hooks.enter_map_view(map);
-    world_update_day_night(0);
+    world_update_day_night(false);
     sensor_process_map_entry(true);
     creature_activate_groups_on_map();
     g_party.redraw |= REDRAW_SQUARES;
@@ -102,7 +102,7 @@ static bool process_world_event(TimelineEvent *e)
         timeline_event_move_group(e);
         break;
     case EVENT_WEATHER:
-        world_update_day_night(1);
+        world_update_day_night(true);
         break;
     case EVENT_SENSOR_ANIMATION_STEP:
     case EVENT_SENSOR_TIMER:
@@ -189,7 +189,7 @@ void game_enter_new_map(void)
 {
     game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
-    move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
 }
 

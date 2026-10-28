@@ -471,7 +471,7 @@ static void cast_summon(int type, int skill, int power)
                              .map = g_game.party_map,
                              .link = SUMMON_NO_LINK,
                              .search_dir = (int8_t)dir};
-    if (creature_summon_group(summon) == THING_NONE)
+    if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, g_game.party_x, g_game.party_y, EXPLOSION_ON_SQUARE);
 }
 
@@ -487,7 +487,7 @@ static void cast_create_item(void)
     int cell = dir_turn(g_game.party_dir, rand_bit());
     if (thing == THING_NONE)
         return; /* fix: the original moves an invalid thing when no record is free */
-    move_thing(thing_with_cell(thing, cell), -1, 0, g_game.party_x, g_game.party_y);
+    move_thing(thing_with_cell(thing, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
 }
 
 /* The spells that are neither potions, missiles, nor summons. */

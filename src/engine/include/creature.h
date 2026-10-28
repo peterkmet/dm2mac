@@ -248,6 +248,7 @@ typedef struct {
 
 /* Group life. flags of an alert: bits 0-3 a mood bit that the alert sets (or clears, ALERT_CLEAR) with chance
    percent, 0x2000 loud (wakes the creature), 0x4000 may make it angry; damage adds to its damage. */
+#define ALERT_MOOD_BORED 0x0005 /* alert flags: mood bit 5, MOOD_BORED */
 #define ALERT_MOOD_QUICK 0x0006 /* alert flags: mood bit 6, MOOD_QUICK */
 #define ALERT_LOUD       0x2000 /* the alert wakes the creature */
 #define ALERT_ANGER      0x4000 /* alert flags: the creature may become angry */
@@ -272,6 +273,12 @@ typedef struct {
     uint16_t link;     /* the item that controls a minion, THING_NONE none */
     int8_t search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;
+
+/* A new group and the square where its move put it (group THING_NONE: none). */
+typedef struct {
+    uint16_t group;
+    Position at;
+} SummonedGroup;
 
 /* The active groups; NULL before the first game. */
 extern ActiveGroup *g_active_groups;
@@ -375,8 +382,9 @@ int creature_roll_armor_factor(uint16_t group, uint16_t amount);
 void creature_apply_damage_kind(uint16_t group, Location at, int kind);
 /* Creates a group of count + 1 creatures on at of the current map; THING_NONE when the dungeon is full. */
 uint16_t creature_create_group(int creature_type, int count, int16_t dir, Location at);
-/* Creates a group on the square (x, y) of map or on a free square beside it; link: the item that controls a minion. */
-uint16_t creature_summon_group(CreatureSummon summon);
+/* Creates a group on the square (x, y) of map or on a free square beside it, and returns where it ends; link: the
+   item that controls a minion. */
+SummonedGroup creature_summon_group(CreatureSummon summon);
 /* Turns a group, to dir (absolute) or by dir; a static creature turns its possessions too. */
 void creature_turn_group(uint16_t group, bool absolute, int16_t dir);
 /* The distance from at to the party in the distance map of the current map; -1 when no map has it. */

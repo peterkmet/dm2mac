@@ -27,7 +27,7 @@
 #include "weather.h"
 #include "zone.h"
 
-static int tick_elapsed;
+static bool tick_elapsed; /* a game step is due */
 void (*g_play_frame_hook)(void);
 
 /* Modal loops */
@@ -140,7 +140,7 @@ static bool step_view(void)
         game_process_timeline();
         if (g_party.new_map != -1)
             continue;
-        world_update_day_night(0);
+        world_update_day_night(false);
         if (g_party_sleeping)
             return false;
         if (!g_ui.candidate)
@@ -170,7 +170,7 @@ static bool step_view(void)
 /* The part of a game step before the input wait: events, the view, the party clocks. */
 static void step_before_input(void)
 {
-    tick_elapsed = 0;
+    tick_elapsed = false;
     game_reset_step_ticks();
     if (step_view()) {
         g_input_feedback_busy = false;
@@ -181,7 +181,7 @@ static void step_before_input(void)
     champ_apply_pending_damage();
     game_run_party_clocks();
     inv_update_hand_cursor();
-    ui_draw_all_champion_states(1);
+    ui_draw_all_champion_states(true);
     if (g_main_loop.end) {
         input_reset_states();
         return;
@@ -224,18 +224,26 @@ void play_start_session(void)
     ai_refresh_party_maps();
     creature_reset_active_groups();
     if (g_session.new_game)
-        move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
+        move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_dialog.screen_mode = 0;
     step_before_input();
+}
+
+/* Whether the advanced mode draws the flight of the projectiles: a running game shows the dungeon view of the
+   standing party with no redraw due, no screen over it, and a moving projectile in it. */
+static bool flight_view_shows(void)
+{
+    return g_game_mode == GAME_MODE_ADVANCED && g_main_loop.running && !g_main_loop.end && !g_advanced_screen &&
+           !g_main_loop.view_hidden && !g_ui.inventory && !g_ui.candidate && !g_dialog.screen_mode &&
+           !g_party_sleeping && !g_party.move_steps && !g_party.redraw && view_shows_party() &&
+           view_has_moving_projectiles();
 }
 
 /* Advanced mode: the view of a timer tick draws each projectile part of the way from its place of the game step before.
    No rule changes: the random seed stays. */
 static void show_projectile_flight(void)
 {
-    if (g_game_mode != GAME_MODE_ADVANCED || !g_main_loop.running || g_main_loop.end || g_advanced_screen ||
-        g_main_loop.view_hidden || g_ui.inventory || g_ui.candidate || g_dialog.screen_mode || g_party_sleeping ||
-        g_party.move_steps || g_party.redraw || !view_shows_party() || !view_has_moving_projectiles())
+    if (!flight_view_shows())
         return;
     uint32_t seed = g_random_seed;
     view_set_flight_tick(g_main_loop.tick_count, g_main_loop.tick_threshold);
@@ -251,7 +259,7 @@ void play_tick(void)
         return;
     game_count_timer_tick();
     if (game_count_step_tick())
-        tick_elapsed = 1;
+        tick_elapsed = true;
     command_process_queue();
     /* a viewport screen stops the game time; a quit (a lost game) ends all game work */
     if (!tick_elapsed || !g_main_loop.running || g_advanced_screen || g_main_loop.quit) {

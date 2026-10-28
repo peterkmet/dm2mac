@@ -518,7 +518,7 @@ static void summon_minions(const ActionRun *a, int command)
                              .map = g_game.party_map,
                              .link = a->item,
                              .search_dir = (int8_t)g_game.party_dir};
-    if (creature_summon_group(summon) == THING_NONE)
+    if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_DEATH_CLOUD, EXPLOSION_SUMMON_POWER, g_game.party_x, g_game.party_y,
                          EXPLOSION_AT_CENTER);
 }
@@ -554,16 +554,16 @@ static bool send_minion(ActionRun *a, int command)
                              .map = map,
                              .link = map_item,
                              .search_dir = search};
-    uint16_t summoned = creature_summon_group(summon);
-    if (summoned == THING_NONE) {
+    SummonedGroup summoned = creature_summon_group(summon);
+    if (summoned.group == THING_NONE) {
         a->experience = (int16_t)(a->experience >> 2);
         a->delay = (uint16_t)(a->delay >> 1);
         explosion_create(EXPLOSION_DEATH_CLOUD, EXPLOSION_SUMMON_POWER, x, y, EXPLOSION_AT_CENTER);
         return false;
     }
     if (command == COMMAND_MINION_ATTACK)
-        minion_map_set_location(map_item, (Position){g_party.dest_map, g_party.dest_x, g_party.dest_y});
-    thing_set_word(map_item, MINION_MAP_GROUP, summoned);
+        minion_map_set_location(map_item, summoned.at);
+    thing_set_word(map_item, MINION_MAP_GROUP, summoned.group);
     return true;
 }
 

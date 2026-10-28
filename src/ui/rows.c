@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "rows.h"
 #include "game_text.h"
+#include "ids.h"
 #include "text.h"
 #include "ui.h"
 #include "zone.h"
@@ -24,7 +25,7 @@ void rows_draw(const char *title, const char *const *rows, int16_t row_count, in
     Offscreen o;
     if (!zone_get_viewport_rect(o.rect))
         return;
-    offscreen_create(&o, -1, true);
+    offscreen_create(&o, ZONE_NONE, true);
     if (!o.bitmap)
         return;
     offscreen_fill_rect(&o, o.rect, g_ui_colors[UI_BLACK]);

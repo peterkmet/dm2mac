@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "champion.h"
-#include <stdio.h>
 #include <string.h>
 #include "action.h"
 #include "champion_internal.h"
@@ -337,11 +336,11 @@ int16_t champ_leader(void)
     return (int16_t)g_game.leader;
 }
 
-void champ_set_name(int16_t champion_index, const char *name, const char *title)
+void champ_set_name(int16_t champion_index, const char name[CHAMPION_NAME_SIZE], const char title[CHAMPION_TITLE_SIZE])
 {
     Champion *c = champion(champion_index);
-    snprintf(c->name, sizeof c->name, "%s", name);
-    snprintf(c->title, sizeof c->title, "%s", title);
+    memcpy(c->name, name, sizeof c->name);
+    memcpy(c->title, title, sizeof c->title);
 }
 
 void champ_set_party_direction(int16_t dir)
