@@ -37,11 +37,11 @@ const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
-        sensor_process_map_entry(0);
+        sensor_process_map_entry(false);
     dun_set_party_location((Position){map, x, y});
     g_hooks.enter_map_view(map);
     world_update_day_night(0);
-    sensor_process_map_entry(1);
+    sensor_process_map_entry(true);
     creature_activate_groups_on_map();
     g_party.redraw |= REDRAW_SQUARES;
     ai_refresh_party_maps();
@@ -187,7 +187,7 @@ void game_process_timeline(void)
 
 void game_enter_new_map(void)
 {
-    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, 1);
+    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
     g_party.move_steps = 0;
     move_thing(THING_NONE, -1, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
@@ -223,7 +223,7 @@ void game_global_byte_add(int index)
 
 void game_start_play(void)
 {
-    g_party_sleeping = 0;
+    g_party_sleeping = false;
     g_party.push_mode = 0;
     g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;
