@@ -563,6 +563,9 @@ bool creature_is_flying(uint16_t group)
 
 int creature_cell_mask(uint16_t possessions, int16_t side)
 {
+    /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
+    if ((uint16_t)side >= DIR_COUNT)
+        return CELLS_ALL;
     if (!(possessions & STATIC_POSSESSIONS_SHOWN) || possessions & STATIC_POSSESSIONS_ALL)
         return CELLS_ALL;
     return g_ai_possession_cells[possessions & POSSESSIONS_KIND_MASK][side];

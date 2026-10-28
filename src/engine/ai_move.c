@@ -1576,16 +1576,7 @@ AiCommand ai_try_move(AiMoveTest test, Location from, Location to, int16_t dir)
 
 /* ---- Items ---- */
 
-/* The cells of the possessions of a static creature seen from side. */
-static int possession_cell_mask(uint16_t possessions, int side)
-{
-    /* fix: for side -1 (the own square) the original reads 64 KB past the table; the port reaches all cells */
-    if ((uint16_t)side >= DIR_COUNT)
-        return CELLS_ALL;
-    return creature_cell_mask(possessions, (int16_t)side);
-}
-
-AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side)
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t side)
 {
     AiInsideItem none = {-1, false};
     AiInsideItem found;
@@ -1604,7 +1595,7 @@ AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int si
         found = (AiInsideItem){-1, true};
         list = thing_word(thing, GROUP_POSSESSIONS);
         if (is_static)
-            mask = possession_cell_mask(info->possessions, side);
+            mask = creature_cell_mask(info->possessions, side);
     }
     for (uint16_t t = list; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!(mask >> thing_cell(t) & 1))
@@ -1691,7 +1682,7 @@ static bool floor_item_in_reach(ItemTest *it)
 static int16_t give_cell(int16_t d)
 {
     uint16_t g = ai_cached_first_group();
-    int bits = (uint8_t)possession_cell_mask(creature_group_info(g)->possessions, d);
+    int bits = (uint8_t)creature_cell_mask(creature_group_info(g)->possessions, d);
     if (!bits)
         return -1;
     int16_t bit = (int16_t)random_set_bit((uint32_t)bits);

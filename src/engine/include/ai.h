@@ -219,7 +219,7 @@ uint16_t ai_cached_first_group(void);
 
 /* An item of filter inside a chest or in the possessions of a group that the creature may take from: the cell of the
    chest or of the possession, cell -1 for none; exported for the tests. */
-AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int side);
+AiInsideItem ai_find_matching_item_inside(uint16_t thing, int16_t filter, int16_t side);
 /* The wall actuator in cell of a square thing list for mode: the first slot that takes filter, else the last
    actuator of the cell; THING_NONE for none; exported for the tests. */
 uint16_t ai_find_wall_actuator(uint16_t first_thing, int16_t cell, int16_t mode, int16_t filter);
