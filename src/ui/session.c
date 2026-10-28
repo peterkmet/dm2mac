@@ -496,7 +496,7 @@ void session_save(void)
     bool quit = false;
     game_set_restart(false);
     action_area_close();
-    area_update(0);
+    area_update(false);
     play_hide_view();
     timeline_rebuild_free_list();
     int slot = run_save_menu(&quit);

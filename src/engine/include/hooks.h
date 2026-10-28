@@ -19,7 +19,7 @@ typedef struct {
     bool (*zone_offset)(int16_t from, int16_t to, int16_t percent, int16_t *dx,
                         int16_t *dy);                   /* the offset percent of the way between two layout zones */
     int16_t *(*zone_rect)(int16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
-    void (*update_action_area)(int tick);               /* redraws what changed in the action area */
+    void (*update_action_area)(bool tick);              /* redraws what changed in the action area */
     void (*reset_action_area)(void);                    /* clears the drawn state of the action area */
     void (*reset_action_champion)(int champ);           /* clears the drawn state of the action area for a champion */
     void (*render_hand_icon)(void);                     /* draws the leader hand object into the cursor */
