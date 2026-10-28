@@ -7,12 +7,11 @@
 
 #include <stdbool.h>
 #include "champion.h"
+#include "input.h"
 
-/* g_session.new_game while the start menu waits. */
+/* The values of g_session.new_game beside 0 and 1: the start menu waits, or shows its title again. */
 #define MENU_WAITING 99
-
-/* g_session.new_game when the start menu shows its title again: the command of the menu picture. */
-#define MENU_REDRAW 0xda
+#define MENU_REDRAW  CMD_MENU_PICTURE
 
 /* The save slots of the slot dialogs. */
 #define SAVE_SLOT_COUNT 10
