@@ -22,6 +22,13 @@
 #include "save.h"
 #include "sound_request.h"
 
+/* The reaction of a floor or wall sensor to a move: none, or a trigger that turns it off or on. */
+enum Trigger { TRIGGER_NONE, TRIGGER_OFF, TRIGGER_ON };
+
+/* What a click does to a wall sensor: nothing, a match (the target triggers; a hold sensor: set), or no match (a
+   hold sensor: clear). */
+enum ClickResult { CLICK_IGNORED, CLICK_MATCH, CLICK_MISMATCH };
+
 /* The sound category of a creature that a generator creates: sound (0, 0, 0x89). */
 #define CAT_CREATURE_APPEARS     0x00
 /* Values of the door and ornament GDAT entries. */
@@ -103,18 +110,18 @@ static int floor_ornament(uint16_t sensor)
     return index >= 0 ? dungeon_map_floor_ornaments(g_party.cur_map)[index] : GDAT_NO_INDEX;
 }
 
-static int ornament_category(int wall)
+static int ornament_category(bool wall)
 {
     return wall ? CAT_WALL_ORNAMENT : CAT_FLOOR_ORNAMENT;
 }
 
-static int wall_or_floor_ornament(uint16_t sensor, int wall)
+static int wall_or_floor_ornament(uint16_t sensor, bool wall)
 {
     return wall ? wall_ornament(sensor) : floor_ornament(sensor);
 }
 
 /* The sound of the ornament of a sensor at (x, y), with delay. */
-static void ornament_sound(uint16_t sensor, int wall, int x, int y, int delay)
+static void ornament_sound(uint16_t sensor, bool wall, int x, int y, int delay)
 {
     sndreq_request_with_fallback((SoundCue){ornament_category(wall), wall_or_floor_ornament(sensor, wall),
                                             SOUND_ENTRY_ACTIVATE, SOUND_PRIORITY_CLICK, SOUND_VOLUME_NORMAL},
@@ -143,7 +150,7 @@ static bool contains_item_type(uint16_t thing, int type)
     return false;
 }
 
-int sensor_party_possesses_type(int type)
+bool sensor_party_possesses_type(int type)
 {
     for (int i = 0; i < g_game.champion_count; i++) {
         Champion *c = champion(i);
@@ -151,12 +158,12 @@ int sensor_party_possesses_type(int type)
             continue;
         for (int s = 0; s < SLOT_COUNT; s++)
             if (item_get_index(c->slots[s]) == type || contains_item_type(c->slots[s], type))
-                return 1;
+                return true;
     }
     if (g_action.mode == ACTION_MODE_CONTAINER)
         for (int s = 0; s < CONTAINER_SLOTS; s++)
             if (g_action.open_items[s] != THING_NONE && item_get_index(g_action.open_items[s]) == type)
-                return 1;
+                return true;
     return item_get_index(g_game.leader_hand) == type || contains_item_type(g_game.leader_hand, type);
 }
 
@@ -223,14 +230,14 @@ bool sensor_door_try_destroy(int16_t x, int16_t y, int strength, bool magic, int
 
 /* ---- Floor sensors ---- */
 
-/* A sensor fires: the inverted flag, then the effect (hold follows the trigger), then its target. */
-static void fire_sensor(uint16_t sensor, int trigger, int floor, int x, int y)
+/* A sensor fires (on: the move turns it on): the inverted flag, then the effect (hold follows on), then its target. */
+static void fire_sensor(uint16_t sensor, bool on, bool floor, int x, int y)
 {
-    trigger ^= sensor_flag(sensor, SENSOR_INVERTED);
+    on = on != sensor_flag(sensor, SENSOR_INVERTED);
     int effect = sensor_effect(sensor);
     if (effect == EFFECT_HOLD)
-        effect = !trigger;
-    else if (!trigger)
+        effect = on ? EFFECT_SET : EFFECT_CLEAR;
+    else if (!on)
         return;
     if (sensor_flag(sensor, SENSOR_AUDIBLE))
         ornament_sound(sensor, !floor, x, y, 1);
@@ -238,7 +245,7 @@ static void fire_sensor(uint16_t sensor, int trigger, int floor, int x, int y)
 }
 
 /* The party leaves a square with a fall risk text: by the champion loads, it may fall to the next level. */
-static void fall_risk(uint16_t text, int x, int y, int on_square)
+static void fall_risk(uint16_t text, int x, int y, bool on_square)
 {
     int load = 0;
     for (int i = 0; i < g_game.champion_count; i++) {
@@ -318,7 +325,7 @@ static void floor_scan(FloorMove *m, int x, int y)
 }
 
 /* True when thing is the bones of a champion that the altar ornament t on its wall cell takes. */
-static int altar_takes_bones(uint16_t t, uint16_t thing)
+static bool altar_takes_bones(uint16_t t, uint16_t thing)
 {
     return item_gdat_index(t) != GDAT_NO_INDEX &&
            gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, item_gdat_index(t), GDAT_TYPE_VALUE,
@@ -341,49 +348,54 @@ static void altar_schedule_rebirth(uint16_t bones, int x, int y, int cell)
     timeline_add_event(&e);
 }
 
-/* The trigger of a floor sensor for the move, -1 when the sensor does not react. */
-static int floor_sensor_trigger(const FloorMove *m, int kind, int data)
+static enum Trigger trigger_of(bool on)
+{
+    return on ? TRIGGER_ON : TRIGGER_OFF;
+}
+
+/* The trigger of a floor sensor for the move. */
+static enum Trigger floor_sensor_trigger(const FloorMove *m, int kind, int data)
 {
     switch (kind) {
     case FLOOR_ANY:
-        return m->on_square || m->items || m->creature ? -1 : m->enter;
+        return m->on_square || m->items || m->creature ? TRIGGER_NONE : trigger_of(m->enter);
     case FLOOR_PARTY_OR_CREATURE:
-        return m->type > THING_GROUP || m->on_square || m->creature ? -1 : m->enter;
+        return m->type > THING_GROUP || m->on_square || m->creature ? TRIGGER_NONE : trigger_of(m->enter);
     case FLOOR_PARTY:
         if (m->type != -1 || !g_game.champion_count)
-            return -1;
+            return TRIGGER_NONE;
         if (data)
-            return m->enter ? data == g_game.party_dir + 1 : 0;
-        return m->on_square ? -1 : m->enter;
+            return trigger_of(m->enter && data == g_game.party_dir + 1);
+        return m->on_square ? TRIGGER_NONE : trigger_of(m->enter);
     case FLOOR_ITEM:
-        return data != m->item || m->same_item ? -1 : m->enter;
+        return data != m->item || m->same_item ? TRIGGER_NONE : trigger_of(m->enter);
     case FLOOR_CREATURE:
-        return m->type > THING_GROUP || m->type == -1 || m->creature ? -1 : m->enter;
+        return m->type > THING_GROUP || m->type == -1 || m->creature ? TRIGGER_NONE : trigger_of(m->enter);
     case FLOOR_PARTY_POSSESSES:
-        return m->type != -1 ? -1 : sensor_party_possesses_type(data);
+        return m->type != -1 ? TRIGGER_NONE : trigger_of(sensor_party_possesses_type(data));
     }
-    return -1;
+    return TRIGGER_NONE;
 }
 
-/* The trigger of a wall sensor t on the cell of the move, -1 when the sensor does not react. */
-static int wall_sensor_trigger(const FloorMove *m, uint16_t t, int kind, int data)
+/* The trigger of a wall sensor t on the cell of the move. */
+static enum Trigger wall_sensor_trigger(const FloorMove *m, uint16_t t, int kind, int data)
 {
     switch (kind) {
     case WALL_ANY_ITEM:
-        return m->items ? -1 : m->enter;
+        return m->items ? TRIGGER_NONE : trigger_of(m->enter);
     case WALL_ITEM:
-        return m->same_item || data != m->item ? -1 : m->enter;
+        return m->same_item || data != m->item ? TRIGGER_NONE : trigger_of(m->enter);
     case WALL_NOT_ITEM:
-        return m->other_item || data == m->item ? -1 : m->enter;
+        return m->other_item || data == m->item ? TRIGGER_NONE : trigger_of(m->enter);
     case WALL_ITEM_HOLDER:
         if (m->same_item || sensor_flag(t, SENSOR_STATE) == m->enter)
-            return -1;
+            return TRIGGER_NONE;
         if (m->item != holder_item(wall_ornament(t)))
-            return -1;
-        sensor_set_flag(t, SENSOR_STATE, m->enter & 1);
-        return m->enter;
+            return TRIGGER_NONE;
+        sensor_set_flag(t, SENSOR_STATE, m->enter);
+        return trigger_of(m->enter);
     }
-    return -1;
+    return TRIGGER_NONE;
 }
 
 /* An ornament text of the square reacts to the move: a random pit, a fall risk, an item holder on a wall. */
@@ -404,7 +416,7 @@ static void floor_text(const FloorMove *m, uint16_t t, int x, int y)
         }
     } else if (m->cell == thing_cell(t) && (sub == SUBTYPE_ITEM_HOLDER || sub == SUBTYPE_ITEM_HOLDER_MARKER) &&
                !m->same_item && textrec_is_visible(t) != m->enter && m->item == holder_item(textrec_value(t))) {
-        textrec_set_visible(t, m->enter & 1);
+        textrec_set_visible(t, m->enter);
     }
 }
 
@@ -453,10 +465,11 @@ static void process_floor(int x, int y, uint16_t thing, FloorMove m, bool posses
                 continue;
             if (m.cell != -1 && m.cell != thing_cell(t))
                 continue;
-            int trigger = m.cell == -1 ? floor_sensor_trigger(&m, kind, data) : wall_sensor_trigger(&m, t, kind, data);
-            if (trigger == -1)
+            enum Trigger trigger =
+                m.cell == -1 ? floor_sensor_trigger(&m, kind, data) : wall_sensor_trigger(&m, t, kind, data);
+            if (trigger == TRIGGER_NONE)
                 continue;
-            fire_sensor(t, trigger, m.cell == -1, x, y);
+            fire_sensor(t, trigger == TRIGGER_ON, m.cell == -1, x, y);
         } else if (tt == THING_TEXT) {
             floor_text(&m, t, x, y);
         }
@@ -475,14 +488,14 @@ void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, b
 
 /* ---- Sensor effects ---- */
 
-/* The new state of a two-state target: set 1, clear 0, toggle the state. */
-static int apply_effect(int effect, int state)
+/* The new state of a two-state target: set on, clear and hold off, toggle the state. */
+static bool apply_effect(int effect, bool state)
 {
     if (effect == EFFECT_SET)
-        return 1;
+        return true;
     if (effect == EFFECT_TOGGLE)
-        return state ^ 1;
-    return 0;
+        return !state;
+    return false;
 }
 
 /* True when an event effect activates a sensor: set, or clear for an inverted sensor. */
@@ -498,7 +511,7 @@ static int passed_effect(uint16_t sensor, int effect)
 }
 
 /* A relay: passes the event on to its target after the delay in its data (scaled: data << delay bits). */
-static void relay_delayed(const TimelineEvent *e, uint16_t sensor, int scaled)
+static void relay_delayed(const TimelineEvent *e, uint16_t sensor, bool scaled)
 {
     int effect = e->data[EVENT_EFFECT];
     if (sensor_flag(sensor, SENSOR_STATE) && !effect_activates(sensor, effect))
@@ -552,7 +565,7 @@ static void test_global_flag(const TimelineEvent *e, uint16_t sensor)
 }
 
 /* The frame count of the animation of the ornament of a sensor (wall or floor). */
-static unsigned ornament_cycle(uint16_t sensor, int wall)
+static unsigned ornament_cycle(uint16_t sensor, bool wall)
 {
     int category = ornament_category(wall);
     int ornament = wall_or_floor_ornament(sensor, wall);
@@ -595,7 +608,7 @@ static void start_ambient_sound(uint16_t sensor, int x, int y, unsigned cycle, b
 static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
 {
     bool old = sensor_flag(sensor, SENSOR_STATE);
-    int now = apply_effect(e->data[EVENT_EFFECT], old) & 1;
+    bool now = apply_effect(e->data[EVENT_EFFECT], old);
     sensor_set_flag(sensor, SENSOR_STATE, now);
     if (old != now) {
         unsigned cycle = (uint16_t)ornament_cycle(sensor, wall);
@@ -705,7 +718,7 @@ void sensor_start_timers(void)
 
 static void text_set_shown(uint16_t text, int effect)
 {
-    textrec_set_visible(text, effect == EFFECT_TOGGLE ? !textrec_is_visible(text) : effect == EFFECT_SET);
+    textrec_set_visible(text, apply_effect(effect, textrec_is_visible(text)));
 }
 
 /* Text subtypes of the square events: generators and sounds. */
@@ -908,50 +921,50 @@ static void set_creatures_facing(const TimelineEvent *e, uint16_t sensor)
         creature_turn_group(g, 1, sensor_turn_dir(sensor));
 }
 
-/* The sensor types that react the same way to a square event on a wall and on a floor; returns 0 for another type. */
-static int shared_event(TimelineEvent *e, uint16_t t, int wall)
+/* The sensor types that react the same way to a square event on a wall and on a floor; false for another type. */
+static bool shared_event(TimelineEvent *e, uint16_t t, bool wall)
 {
     int kind = sensor_type(t);
     switch (kind) {
     case SENSOR_RELAY:
     case SENSOR_RELAY_SCALED:
         relay_delayed(e, t, kind == SENSOR_RELAY_SCALED);
-        return 1;
+        return true;
     case SENSOR_FORWARD:
         forward_effect(e, t, sensor_data(t));
-        return 1;
+        return true;
     case SENSOR_ANIMATION:
         toggle_animation(e, t, wall);
-        return 1;
+        return true;
     case SENSOR_ACTIVATION:
         run_activation(e, t, wall);
-        return 1;
+        return true;
     case SENSOR_TRANSFER:
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .any_cell = !wall}, t, NULL);
-        return 1;
+        return true;
     case SENSOR_TRANSFER_CLASS:
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .any_cell = !wall, .use_filter = true}, t, NULL);
-        return 1;
+        return true;
     case SENSOR_TRANSFER_BACK:
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .reverse = true}, THING_NONE, NULL);
-        return 1;
+        return true;
     case SENSOR_TRANSFER_ONE:
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .first_only = true}, t, NULL);
-        return 1;
+        return true;
     case SENSOR_TRANSFER_BACK_ONE:
         transfer_objects((ObjectTransfer){.e = e, .sensor = t, .reverse = true, .first_only = true}, THING_NONE, NULL);
-        return 1;
+        return true;
     case SENSOR_TURN_CREATURES:
         set_creatures_facing(e, t);
-        return 1;
+        return true;
     case SENSOR_SET_GLOBAL:
         set_global_flag(e, t);
-        return 1;
+        return true;
     case SENSOR_TEST_GLOBAL:
         test_global_flag(e, t);
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 /* A relay that stays busy for data ticks. */
@@ -995,7 +1008,7 @@ static void counter_event(uint16_t t, int effect)
     if (after == before)
         return;
     if (sensor_effect(t) == EFFECT_HOLD)
-        sensor_trigger_target(t, after == sensor_flag(t, SENSOR_INVERTED), 0);
+        sensor_trigger_target(t, after == sensor_flag(t, SENSOR_INVERTED) ? EFFECT_CLEAR : EFFECT_SET, 0);
     else if (after)
         sensor_trigger_target(t, sensor_effect(t), 0);
 }
@@ -1008,9 +1021,9 @@ static void countdown_event(uint16_t t, int effect)
         sensor_set_data(t, data - 1);
         sensor_trigger_target(t, effect, 0);
     } else if (data > COUNTDOWN_MAX && data < CHANCE_END) {
-        int hit = rand_below(PERCENT) < (unsigned)(data - COUNTDOWN_MAX);
+        bool hit = rand_below(PERCENT) < (unsigned)(data - COUNTDOWN_MAX);
         if (sensor_effect(t) == EFFECT_HOLD)
-            sensor_trigger_target(t, !hit, 0);
+            sensor_trigger_target(t, hit ? EFFECT_SET : EFFECT_CLEAR, 0);
         else if (hit)
             sensor_trigger_target(t, effect, 0);
     }
@@ -1049,7 +1062,7 @@ static void switch_door(uint16_t t, int effect)
 /* A wall sensor reacts to a square event on its cell. */
 static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
 {
-    if (shared_event(e, t, 1))
+    if (shared_event(e, t, true))
         return;
     unsigned data = sensor_data(t);
     switch (sensor_type(t)) {
@@ -1072,7 +1085,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
     case SENSOR_TIMER_32:
     case SENSOR_TIMER_64:
     case SENSOR_TIMER_128:
-        sensor_set_flag(t, SENSOR_STATE, apply_effect(effect, sensor_flag(t, SENSOR_STATE)) & 1);
+        sensor_set_flag(t, SENSOR_STATE, apply_effect(effect, sensor_flag(t, SENSOR_STATE)));
         if (!sensor_flag(t, SENSOR_BUSY) && sensor_flag(t, SENSOR_STATE))
             schedule_timer(t, t);
         break;
@@ -1092,11 +1105,11 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
         break;
     case SENSOR_FRAME_STEP: { /* an ornament that steps its animation frame */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
-        sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, 1));
+        sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, true));
         break;
     }
     case SENSOR_WALL_STATE:
-        sensor_set_flag(t, SENSOR_STATE, apply_effect(effect, sensor_flag(t, SENSOR_STATE)) & 1);
+        sensor_set_flag(t, SENSOR_STATE, apply_effect(effect, sensor_flag(t, SENSOR_STATE)));
         break;
     case SENSOR_CREATE_ITEM:
         if (effect_activates(t, effect))
@@ -1219,12 +1232,12 @@ static void floor_square_event(TimelineEvent *e)
             floor_text_event(t, effect, x, y);
             continue;
         }
-        if (thing_type(t) != THING_SENSOR || shared_event(e, t, 0))
+        if (thing_type(t) != THING_SENSOR || shared_event(e, t, false))
             continue;
         int kind = sensor_type(t);
         switch (kind) {
         case SENSOR_TELEPORTER_LINK:
-            sensor_set_flag(t, SENSOR_BUSY, apply_effect(effect, sensor_flag(t, SENSOR_BUSY)) & 1);
+            sensor_set_flag(t, SENSOR_BUSY, apply_effect(effect, sensor_flag(t, SENSOR_BUSY)));
             break;
         case SENSOR_VANISH:
         case SENSOR_ALERT:
@@ -1274,26 +1287,26 @@ static void doorway_event(TimelineEvent *e)
     uint16_t door = first_thing(e->data[EVENT_X], e->data[EVENT_Y]);
     int effect = e->data[EVENT_EFFECT];
     if (door_flag(door, DOOR_MOVING)) {
-        int opening = apply_effect(effect, door_flag(door, DOOR_OPENING)) & 1;
+        bool opening = apply_effect(effect, door_flag(door, DOOR_OPENING));
         door_set_flag(door, DOOR_OPENING, opening);
         if (!opening)
             door_set_flag(door, DOOR_MARKED, false);
         return;
     }
-    int move = 0;
+    bool move = false;
     if (state == DOOR_STATE_OPEN) {
         if (effect == EFFECT_CLEAR || effect == EFFECT_TOGGLE) {
             door_set_flag(door, DOOR_OPENING, false);
-            move = 1;
+            move = true;
         }
     } else if (state == DOOR_STATE_CLOSED) {
         if (effect == EFFECT_SET || effect == EFFECT_TOGGLE) {
             door_set_flag(door, DOOR_OPENING, true);
-            move = 1;
+            move = true;
         }
     } else {
         door_set_flag(door, DOOR_OPENING, effect == EFFECT_SET);
-        move = 1;
+        move = true;
     }
     door_set_flag(door, DOOR_MOVING, move);
     if (move) {
@@ -1314,10 +1327,10 @@ static void fake_wall_event(TimelineEvent *e)
     if (effect == EFFECT_TOGGLE)
         effect = (*square & SQUARE_FAKE_WALL_OPEN) != 0;
     if (effect == EFFECT_CLEAR) {
-        int blocked = dun_on_party_square((Location){x, y});
+        bool blocked = dun_on_party_square((Location){x, y});
         uint16_t g = creature_group_at(g_party.cur_map, x, y);
         if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NON_MATERIAL))
-            blocked = 1;
+            blocked = true;
         if (blocked) {
             e->time_map++;
             timeline_add_event(e);
@@ -1426,14 +1439,14 @@ void sensor_event_door_animation(TimelineEvent *e)
         return;
     bool opening = door_flag(door, DOOR_OPENING);
     e->time_map++;
-    int again = 0;
+    bool again = false;
     if (!opening) {
         if (state == DOOR_STATE_CLOSED) {
             door_set_flag(door, DOOR_MOVING, false);
             return;
         }
         if (closing_door_hits(door, x, y, square, &state)) {
-            again = 1;
+            again = true;
             e->time_map++;
         }
     } else if (!state) {
@@ -1444,7 +1457,7 @@ void sensor_event_door_animation(TimelineEvent *e)
         state += opening ? -1 : 1;
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | (state & SQUARE_DOOR_STATE));
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED)
-            again = 1;
+            again = true;
         sndreq_request_with_fallback(
             (SoundCue){CAT_DOOR, dun_get_door_type(door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
@@ -1512,13 +1525,12 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
 /* A timer sensor ticks: it triggers its target and runs again while it is on (a hold timer alternates its effect). */
 static void timer_event(TimelineEvent *e, uint16_t thing)
 {
-    int running, effect;
+    bool running;
     if (sensor_effect(thing) == EFFECT_HOLD) {
         bool phase = !(e->data[SENSOR_EVENT_TIMER_PHASE] & 1);
         e->data[SENSOR_EVENT_TIMER_PHASE] = (uint8_t)((e->data[SENSOR_EVENT_TIMER_PHASE] & ~1) | phase);
-        running = phase | sensor_flag(thing, SENSOR_STATE);
-        effect = !(e->data[SENSOR_EVENT_TIMER_PHASE] & 1);
-        sensor_trigger_target(thing, effect, 0);
+        running = phase || sensor_flag(thing, SENSOR_STATE);
+        sensor_trigger_target(thing, phase ? EFFECT_SET : EFFECT_CLEAR, 0);
     } else {
         running = sensor_flag(thing, SENSOR_STATE);
         if (running)
@@ -1588,8 +1600,9 @@ void sensor_process_map_entry(bool entering)
                     int kind = sensor_type(t);
                     if (kind == SENSOR_MAP_ENTRY) {
                         if (sensor_effect(t) == EFFECT_HOLD) {
-                            sensor_trigger_target(t, sensor_flag(t, SENSOR_INVERTED) == entering, 0);
-                        } else if ((!sensor_flag(t, SENSOR_INVERTED)) == entering) {
+                            sensor_trigger_target(
+                                t, sensor_flag(t, SENSOR_INVERTED) == entering ? EFFECT_CLEAR : EFFECT_SET, 0);
+                        } else if (sensor_flag(t, SENSOR_INVERTED) != entering) {
                             sensor_trigger_target(t, sensor_effect(t), 0);
                         }
                     } else if (kind == SENSOR_ANIMATION && entering && sensor_flag(t, SENSOR_BUSY)) {
@@ -1616,8 +1629,6 @@ void sensor_process_map_entry(bool entering)
 /* The item index of an empty flask, and the GDAT index of a flask of water. */
 #define ITEM_EMPTY_FLASK          0x194
 #define FLASK_FULL_INDEX          0x00f
-/* A wall sensor that does not react to the click. */
-#define CLICK_IGNORED             (-1)
 
 /* A GDAT value of the wall ornament of thing, 0 for none. */
 static int ornament_value(uint16_t thing, int key)
@@ -1718,9 +1729,14 @@ static void wall_click_fountain(WallClick *c)
     }
 }
 
-/* A button: it turns idle after its data ticks; a hold button sets and clears its target itself. Returns the skip of
-   the trigger or CLICK_IGNORED; *extra gets the trigger delay of an inverted button. */
-static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
+static enum ClickResult click_match(bool match)
+{
+    return match ? CLICK_MATCH : CLICK_MISMATCH;
+}
+
+/* A button: it turns idle after its data ticks; a hold button sets and clears its target itself. *extra gets the
+   trigger delay of an inverted button. */
+static enum ClickResult wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
 {
     if (c->hand != THING_NONE || sensor_flag(t, SENSOR_BUSY))
         return CLICK_IGNORED;
@@ -1734,7 +1750,7 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
     if (sensor_flag(t, SENSOR_INVERTED))
         *extra = BUTTON_INVERTED_DELAY;
     if (sensor_effect(t) != EFFECT_HOLD)
-        return 0;
+        return CLICK_MATCH;
     c->stop = true;
     if (sensor_flag(t, SENSOR_AUDIBLE))
         sndreq_request_with_fallback(
@@ -1746,30 +1762,29 @@ static int wall_click_button(WallClick *c, uint16_t t, int ornament, int *extra)
 }
 
 /* An item holder sensor: when on, an empty hand takes its item; when off, the hand puts its item there. */
-static int wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
+static void wall_click_item_holder(WallClick *c, uint16_t t, int ornament)
 {
     int item = holder_item(ornament);
     if (sensor_flag(t, SENSOR_STATE)) {
         if (c->hand != THING_NONE) {
             c->done = true;
-            return CLICK_IGNORED;
+            return;
         }
         if (!wall_click_give(c, item))
-            return CLICK_IGNORED;
+            return;
     } else {
         if (c->hand == THING_NONE || item_get_index(c->hand) != item)
-            return CLICK_IGNORED;
+            return;
         wall_click_put(c);
     }
     c->hand = THING_NONE;
     g_party.redraw |= REDRAW_VIEW;
     c->done = true;
-    return CLICK_IGNORED;
 }
 
-/* A counted item sensor takes the item of its ornament from the hand until its count is 0; then it turns busy. Returns
-   the skip of the trigger or CLICK_IGNORED. */
-static int wall_click_counted_item(WallClick *c, uint16_t t, int ornament)
+/* A counted item sensor takes the item of its ornament from the hand until its count is 0; then it turns busy and
+   matches. */
+static enum ClickResult wall_click_counted_item(WallClick *c, uint16_t t, int ornament)
 {
     unsigned data = sensor_data(t);
     if (!data || item_get_index(c->hand) != holder_item(ornament))
@@ -1778,14 +1793,13 @@ static int wall_click_counted_item(WallClick *c, uint16_t t, int ornament)
     c->hand = THING_NONE;
     sensor_set_data(t, --data);
     if ((uint16_t)data)
-        return 1;
+        return CLICK_MISMATCH;
     sensor_set_flag(t, SENSOR_BUSY, true);
-    return 0;
+    return CLICK_MATCH;
 }
 
-/* A teleport button moves the party to the target of the sensor on the map of its data; returns the skip of the
-   trigger or CLICK_IGNORED. */
-static int wall_click_teleport(WallClick *c, uint16_t t)
+/* A teleport button moves the party to the target of the sensor on the map of its data; it does not trigger. */
+static enum ClickResult wall_click_teleport(WallClick *c, uint16_t t)
 {
     if (c->hand != THING_NONE || sensor_flag(t, SENSOR_STATE))
         return CLICK_IGNORED;
@@ -1793,34 +1807,34 @@ static int wall_click_teleport(WallClick *c, uint16_t t)
     int dir = sensor_flag(t, SENSOR_INVERTED) ? effect : dir_turn(effect, g_game.party_dir);
     move_party_to((Position){sensor_data_map(t), sensor_target_x(t), sensor_target_y(t)}, dir);
     g_hooks.flush_input();
-    return 1;
+    return CLICK_MISMATCH;
 }
 
-/* The skip of the trigger of a clicked wall sensor t on the clicked cell, or CLICK_IGNORED. */
-static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *extra)
+/* What a click does to a clicked wall sensor t on the clicked cell. */
+static enum ClickResult wall_click_result(WallClick *c, uint16_t t, int ornament, int *extra)
 {
     int effect = sensor_effect(t);
     unsigned data = sensor_data(t);
     switch (sensor_type(t)) {
     case WALL_CLICK_ANY:
-        return effect == EFFECT_HOLD ? CLICK_IGNORED : 0;
+        return effect == EFFECT_HOLD ? CLICK_IGNORED : CLICK_MATCH;
     case WALL_CLICK_EMPTY_HAND:
-        return (c->hand == THING_NONE) != sensor_flag(t, SENSOR_INVERTED);
+        return click_match((c->hand == THING_NONE) == sensor_flag(t, SENSOR_INVERTED));
     case WALL_CLICK_CHARGED_ITEM:
         if (!item_add_charges(c->hand, 0))
-            return 1;
+            return CLICK_MISMATCH;
         __attribute__((fallthrough));
     case WALL_CLICK_ITEM: {
         bool match = item_get_index(c->hand) == data;
         if (match && sensor_flag(t, SENSOR_STATE))
             thing_set_word(champ_take_from_leader_hand(), THING_NEXT, THING_NONE); /* frees it */
-        return match == sensor_flag(t, SENSOR_INVERTED);
+        return click_match(match != sensor_flag(t, SENSOR_INVERTED));
     }
     case WALL_CLICK_TOGGLE:
         if (c->hand != THING_NONE)
             return CLICK_IGNORED;
         sensor_set_flag(t, SENSOR_STATE, !sensor_flag(t, SENSOR_STATE));
-        return sensor_flag(t, SENSOR_INVERTED) == sensor_flag(t, SENSOR_STATE);
+        return click_match(sensor_flag(t, SENSOR_INVERTED) != sensor_flag(t, SENSOR_STATE));
     case WALL_CLICK_DOOR_BUTTON:
         if (!door_flag(first_thing(sensor_target_x(t), sensor_target_y(t)), DOOR_SWITCH_ON))
             return CLICK_IGNORED;
@@ -1830,12 +1844,13 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
         return wall_click_button(c, t, ornament, extra);
     case WALL_CLICK_PORTRAIT:
         if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(g_game.party_dir))
-            return 1;
+            return CLICK_MISMATCH;
         recruit_start(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map);
         c->done = true;
-        return 0;
+        return CLICK_MATCH;
     case WALL_ITEM_HOLDER:
-        return wall_click_item_holder(c, t, ornament);
+        wall_click_item_holder(c, t, ornament);
+        return CLICK_IGNORED;
     case WALL_CLICK_COUNTED_ITEM:
         return wall_click_counted_item(c, t, ornament);
     case WALL_CLICK_TELEPORT:
@@ -1843,12 +1858,12 @@ static int wall_click_sensor_skip(WallClick *c, uint16_t t, int ornament, int *e
     case WALL_CLICK_RESET:
         if (c->hand == THING_NONE)
             sensor_set_flag(t, SENSOR_BUSY, false);
-        return 1;
+        return CLICK_MISMATCH;
     }
     return CLICK_IGNORED;
 }
 
-/* A clicked wall sensor triggers its target (a hold sensor: set when it does not skip, else clear). */
+/* A clicked wall sensor triggers its target on a match (a hold sensor: set on a match, else clear). */
 static void wall_click_sensor(WallClick *c, uint16_t t)
 {
     int kind = sensor_type(t);
@@ -1859,14 +1874,12 @@ static void wall_click_sensor(WallClick *c, uint16_t t)
     if (!kind)
         return;
     int extra = 0;
-    int skip = wall_click_sensor_skip(c, t, ornament, &extra);
-    if (skip == CLICK_IGNORED)
+    enum ClickResult result = wall_click_result(c, t, ornament, &extra);
+    if (result == CLICK_IGNORED)
         return;
-    if (effect == EFFECT_HOLD) {
-        effect = skip != 0;
-        skip = 0;
-    }
-    if (skip)
+    if (effect == EFFECT_HOLD)
+        effect = result == CLICK_MATCH ? EFFECT_SET : EFFECT_CLEAR;
+    else if (result == CLICK_MISMATCH)
         return;
     c->stop = true;
     if (sensor_flag(t, SENSOR_AUDIBLE))

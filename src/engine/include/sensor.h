@@ -242,7 +242,7 @@ static inline uint16_t sensor_area_creature(uint16_t sensor)
 /* A GDAT value of the door type of a door thing. */
 uint16_t sensor_door_value(uint16_t door, int key);
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
-int sensor_party_possesses_type(int type);
+bool sensor_party_possesses_type(int type);
 /* Queues a square event for (x, y) of the current map at time. */
 void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time);
 /* Presses the button of door at the square: toggles the door next tick and queues the button release. */
