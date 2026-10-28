@@ -23,4 +23,5 @@
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
 - Check in `SKULL.EXE` whether the key table rows with language nibble 0 load for every language (`docs/reference/skull-map.md`, "GDAT database in memory").
 - `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.
+- Creature names in the control replies: `state_json_creature_name` writes the creature type number, because the game data has no creature names; a name table needs names from the manual.
 - Item handling (proposal): while the leader hand holds an item, a click on the name of a champion opens the inventory of that champion, and the item stays in the leader hand. Check first what the click does in the original and in the port, and decide if the change is an advanced-mode feature.
