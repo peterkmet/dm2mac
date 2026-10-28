@@ -33,9 +33,9 @@ decimal engine/minion.c:option_mana bridge: task 31
 decimal engine/move.c bridge: task 32
 decimal engine/move.c:free_square_order_party bridge: task 32
 decimal engine/move.c:free_square_order_thing bridge: task 32
-decimal engine/projectile.c:attack_cell_orders bridge: task 33
-decimal engine/projectile.c:attack_cell_orders_random bridge: task 33
-decimal engine/projectile.c:spell_reflection bridge: task 33
+decimal engine/projectile.c:attack_cell_orders rule 3.12: a table of SKULL.EXE
+decimal engine/projectile.c:attack_cell_orders_random rule 3.12: a table of SKULL.EXE
+decimal engine/projectile.c:spell_reflection rule 3.12: a table of SKULL.EXE
 decimal engine/save.c:light_power rule 3.12: magic light by power of SKULL.EXE
 decimal engine/seen.c:row_half_width bridge: task 36
 decimal engine/sensor.c:ambient_wall_dx rule 3.12: a table of SKULL.EXE
