@@ -747,7 +747,7 @@ static bool run_name_command(NameEditor *e, const NameEditor *before, bool *redr
         e->in_name = false;
         *redraw = true;
     } else if (command == CMD_EDIT_CANCEL) {
-        store_name_fields(before); /* the bytes after the end marks keep what the player typed there */
+        store_name_fields(before);
         return true;
     } else if (!command) {
         play_wait_frames(1);
