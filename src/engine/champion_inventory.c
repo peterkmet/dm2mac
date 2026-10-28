@@ -18,7 +18,6 @@
 /* ATTR_FLAGS bits of the effects. */
 #define ATTR_HAS_EFFECTS       0x2000 /* ATTR_FLAGS bit: the item changes the champion */
 /* Item attributes of the effects. */
-#define ATTR_FOOD              0x03 /* item attribute: the food value */
 #define ATTR_EFFECT_TIME       0x13 /* game steps until the effect of a consumed item ends */
 #define ATTR_MANA_MAXIMUM      0x14
 #define ATTR_STAT_FIRST        0x15

@@ -12,7 +12,6 @@ dead-api engine/include/champion.h:champ_action_list_save bridge: task 10
 dead-api engine/include/champion.h:champ_set_name bridge: task 48
 decimal control/control.c bridge: task 54
 decimal data/hmp.c:channel_event_length bridge: task 18
-decimal engine/ai.c bridge: task 20
 decimal engine/ai_data.c:g_ai_after_command_table bridge: task 19
 decimal engine/ai_data.c:g_ai_possession_cells bridge: task 19
 decimal engine/ai_move.c bridge: task 21
