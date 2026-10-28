@@ -357,9 +357,9 @@ int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_IN
     return count;
 }
 
-char *ui_skill_rank_text(int champ, int skill, char *text)
+char *ui_skill_rank_text(int16_t champion_index, int skill, char *text)
 {
-    int level = champ_get_skill_level(champ, skill, true);
+    int level = champ_get_skill_level(champion_index, skill, true);
     if (level > SKILL_LEVEL_MAX)
         level = SKILL_LEVEL_MAX;
     gtext_format_set_entry(skill);
@@ -639,17 +639,17 @@ void ui_fill_zone_screen(int zone, int color)
         gfx_fill_rect(g_draw_screen.pixels, r, color, g_draw_screen.width, IMAGE_8BPP);
 }
 
-void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *face_colors)
+void ui_draw_champion_face_icon(Bitmap *dst, int16_t champion_index, uint8_t *face_colors)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int frame =
         dir_relative(c->dir, g_game.party_dir) + (g_game.magic_light[MAGIC_INVISIBILITY] ? FACE_INVISIBLE_FRAMES : 0);
-    const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champ);
+    const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champion_index);
     if (colors)
         memcpy(face_colors, colors, FACE_ICON_COLORS);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
-    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champ),
+    ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champion_index),
                                  .x = FACE_SIZE * frame,
                                  .transparent = FACE_SKIP_COLOR},
                    dst, r);
@@ -1368,10 +1368,10 @@ static void show_living_champion(int champ, ChampionRedraw *d)
     }
 }
 
-void ui_draw_champion_state(int champ)
+void ui_draw_champion_state(int16_t champion_index)
 {
-    Champion *c = champion(champ);
-    ChampionRedraw d = {.flags = c->redraw, .inv = in_inventory(champ)};
+    Champion *c = champion(champion_index);
+    ChampionRedraw d = {.flags = c->redraw, .inv = in_inventory(champion_index)};
     if (d.inv) {
         if (g_ui.screen_needs_refresh)
             d.flags |= REDRAW_ALL_INVENTORY;
@@ -1382,20 +1382,20 @@ void ui_draw_champion_state(int champ)
     }
     show_inventory_frame(&d);
     if (d.flags & REDRAW_STATUS_BOX) {
-        status_box_begin(champ, true);
+        status_box_begin(champion_index, true);
         d.box_drawn = true;
         if (c->health) {
             if (d.inv)
-                show_portrait(champ);
+                show_portrait(champion_index);
             d.flags |= d.inv ? REDRAW_BARS : REDRAW_BARS | REDRAW_NAME;
             d.force_slots = true;
         } else {
-            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ, g_ui_colors[UI_WHITE],
+            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champion_index, g_ui_colors[UI_WHITE],
                                        g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
         }
     }
     if (c->health)
-        show_living_champion(champ, &d);
+        show_living_champion(champion_index, &d);
     if (d.box_drawn)
         offscreen_flush(&status_box, true);
     if (d.present) {
@@ -1420,16 +1420,17 @@ void ui_draw_all_champion_states(bool tick)
     area_update(tick);
 }
 
-void ui_toggle_inventory(int champ)
+void ui_toggle_inventory(int16_t champion_index)
 {
     game_set_panel_mode(PANEL_MODE_NONE);
     cache.shown_object = THING_NONE;
-    if ((champ < CHAMPION_MAX && !champion(champ)->health) || g_ui.push_mode || g_ui.mouth || g_ui.eye)
+    if ((champion_index < CHAMPION_MAX && !champion(champion_index)->health) || g_ui.push_mode || g_ui.mouth ||
+        g_ui.eye)
         return;
     game_set_command_stop(true);
     int open = g_ui.inventory;
-    if (champ + 1 == open)
-        champ = CHAMPION_MAX;
+    if (champion_index + 1 == open)
+        champion_index = CHAMPION_MAX;
     if (open) {
         game_set_open_inventory(0);
         Champion *c = champion(open - 1);
@@ -1439,7 +1440,7 @@ void ui_toggle_inventory(int champ)
         }
         /* the raised skills that the player saw no longer show green */
         champ_forget_shown_raises(open - 1, cache.shown_raised);
-        if (g_party_sleeping || champ == CHAMPION_MAX) {
+        if (g_party_sleeping || champion_index == CHAMPION_MAX) {
             if (!g_party_sleeping) {
                 if (g_inv_arrows_on_close)
                     ui_draw_movement_arrows();
@@ -1449,10 +1450,10 @@ void ui_toggle_inventory(int champ)
             return;
         }
     }
-    game_set_open_inventory(champ + 1);
+    game_set_open_inventory(champion_index + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);
-    champion(champ)->redraw |= REDRAW_ALL;
+    champion(champion_index)->redraw |= REDRAW_ALL;
     game_set_inventory_buttons(0);
-    ui_draw_champion_state(champ);
+    ui_draw_champion_state(champion_index);
     input_set_mode(INPUT_MODE_INVENTORY);
 }

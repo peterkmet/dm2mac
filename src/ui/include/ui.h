@@ -71,7 +71,7 @@ void ui_reset(void);
 int ui_object_info_lines(uint16_t thing, char lines[OBJECT_INFO_LINES][OBJECT_INFO_SIZE]);
 /* The rank text of a base skill as the skills panel shows it (for example "NOVICE FIGHTER"), in text (TEXT_SIZE bytes).
    The master ranks start with a power rune glyph of the font. */
-char *ui_skill_rank_text(int champ, int skill, char *text);
+char *ui_skill_rank_text(int16_t champion_index, int skill, char *text);
 
 /* ---- Offscreen bitmaps ---- */
 
@@ -105,7 +105,7 @@ void ui_draw_viewport_image(int category, int index, int entry, int zone, int tr
 /* Fills the screen rectangle of zone with palette color color. */
 void ui_fill_zone_screen(int zone, int color);
 /* A face icon (17 x 17, 4 bpp) of a champion, turned to the party direction, into dst; its 16 colors into palette. */
-void ui_draw_champion_face_icon(Bitmap *dst, int champ, uint8_t *palette);
+void ui_draw_champion_face_icon(Bitmap *dst, int16_t champion_index, uint8_t *palette);
 
 /* ---- Screen ---- */
 
@@ -116,11 +116,11 @@ void ui_draw_movement_arrows(void);
 
 /* ---- Status boxes and inventory ---- */
 
-/* Draws what changed of the status box (and of the inventory) of champ. */
-void ui_draw_champion_state(int champ);
+/* Draws what changed of the status box (and of the inventory) of a champion. */
+void ui_draw_champion_state(int16_t champion_index);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
 void ui_draw_all_champion_states(bool tick);
-/* Opens the inventory of champ, or closes it when it is open (champ 4: close). */
-void ui_toggle_inventory(int champ);
+/* Opens the inventory of a champion, or closes it when it is open (CHAMPION_MAX: close). */
+void ui_toggle_inventory(int16_t champion_index);
 
 #endif /* DM2_UI_UI_H */
