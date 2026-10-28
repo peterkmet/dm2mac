@@ -185,7 +185,9 @@ uint8_t *ai_store_path(int path_size);
 /* The flags of an action: how it moves, waits, or follows the path. */
 uint8_t ai_action_flag(int action);
 /* Flags of ai_action_flag. */
-#define AI_ACTION_FLAG_WAKES     0x02 /* a mood alert of a waking class stops the action */
+#define AI_ACTION_FLAG_MELEE     0x01 /* a melee attack or a theft */
+#define AI_ACTION_FLAG_RANGED    0x02 /* a throw or a shot; a mood alert of a waking class stops it */
+#define AI_ACTION_FLAG_ATTACK    (AI_ACTION_FLAG_MELEE | AI_ACTION_FLAG_RANGED) /* it sets the last action time */
 #define AI_ACTION_FLAG_PATH      0x04 /* the action moves the creature along its path and drops the cached path */
 #define AI_ACTION_FLAG_INTERRUPT 0x10 /* a new action waits for the end of the animation step */
 

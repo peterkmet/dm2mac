@@ -81,9 +81,6 @@
 #define ITEM_SKILL_CHESTS           0x0010
 #define ITEM_SKILL_GROUPS           0x0020
 #define ITEM_SKILL_OTHER_SQUARE     0x002a
-/* The flags of an action in the AI action table. */
-#define AI_ACTION_FLAG_MOVES        0x02
-#define AI_ACTION_FLAG_BUSY         0x03
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
 #define SHOT_STEAL                  0x0b
 /* The flags of the search target kinds (g_ai_kind_flags). */
@@ -1547,7 +1544,7 @@ static void execute_move(Move *m)
         }
     } else if (current != m->facing && m->action != ACTION_TURN_BACK) {
         m->action = dir_turn(current, TURN_RIGHT) == m->facing ? ACTION_STEP_LEFT : ACTION_STEP_RIGHT;
-    } else if (ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_MOVES && m->kind != MOVE_KIND_STEP_BACK &&
+    } else if (ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_RANGED && m->kind != MOVE_KIND_STEP_BACK &&
                !m->map_changed) {
         m->action = ACTION_NONE;
     }
@@ -2394,7 +2391,7 @@ static bool test_entered(Search *s, int i)
             return false;
         return line_target(s, c, ai_location(x, y), -1, true);
     case TARGET_STEAL:
-        if (!on_party_map || ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_BUSY)
+        if (!on_party_map || ai_action_flag((int8_t)g_ai.previous_action) & AI_ACTION_FLAG_ATTACK)
             return false;
         return candidate_attack(s, c, ATTACK_MODE_PARTY, AI_SQUARE_IN_DIR, group_dir(g_ai.group_thing));
     case TARGET_MARKER:

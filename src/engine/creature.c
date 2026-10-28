@@ -1175,7 +1175,7 @@ static bool alert_wakes(uint16_t group, const ActiveGroup *a)
     uint8_t f = ai_action_flag((int8_t)a->action);
     if (!(f & AI_ACTION_FLAG_INTERRUPT))
         return true;
-    return class_flags(group) & AI_CLASS_WAKES && f & AI_ACTION_FLAG_WAKES;
+    return class_flags(group) & AI_CLASS_WAKES && f & AI_ACTION_FLAG_RANGED;
 }
 
 void creature_alert(uint16_t group, Location at, unsigned flags, int16_t chance, int damage)

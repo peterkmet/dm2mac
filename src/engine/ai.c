@@ -55,9 +55,6 @@
 #define MOOD_AT_MASK_WORD       0
 #define MOOD_AT_CHOICES         2
 
-/* The flags of an action in the AI action table. */
-#define AI_ACTION_FLAG_TIMED 0x03 /* the action sets the time of the last action */
-
 /* The flags of an AI class (g_ai_class_flags). */
 #define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
 #define AI_CLASS_ONE_FEAR       0x0002
@@ -2902,7 +2899,7 @@ static int execute_action(void)
     ai_state.dest_y = (int16_t)dest_y();
     int r = run_act(a->action);
     if (!(int16_t)r) {
-        if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_TIMED)
+        if (ai_action_flag((int8_t)a->action) & AI_ACTION_FLAG_ATTACK)
             a->last_action_time = (uint8_t)g_game.game_time;
     } else {
         g_ai.cache.path_left = 0;
