@@ -43,4 +43,4 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `gtext_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `gtext_decode_raw` in `engine/game_text.c`. `gtext_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
-- Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types.
+- Fixes: the texts are bounded to 256 bytes; the coin table holds at most 10 coin types; the dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon).
