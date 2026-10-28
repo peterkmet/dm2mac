@@ -128,11 +128,12 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 #define SENSOR_TIMER              0x1e /* a timer sensor; 0x33 to 0x37 count in steps of 8 to 128 ticks */
 #define SENSOR_RELAY              0x20
 #define SENSOR_MAP_ENTRY          0x21
-#define SENSOR_WALL_STATE         0x26
+#define SENSOR_CREATURE_SLOT      0x26 /* a wall slot of a creature type; a square event sets its state */
 #define SENSOR_ANIMATION          0x2c
 #define SENSOR_COUNTDOWN          0x2d
 #define SENSOR_GENERATOR          0x2e
 #define SENSOR_PARTY_TELEPORT     0x2e
+#define SENSOR_SHOP               0x30 /* a floor spot that shows a shop item; a creature places an item there */
 #define SENSOR_BUSY_RELAY         0x31
 #define SENSOR_ACTIVATION         0x32
 #define SENSOR_TIMER_8            0x33

@@ -646,7 +646,7 @@ def ambient_wall_sensors(lib, gdat):
                 t = lib.dungeon_square_first_thing(map_, x, y)
                 while t != C.THING_ENDOFLIST and t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK <= C.THING_SENSOR:
                     data, flags = lib.thing_word(t, 2), lib.thing_word(t, 4)
-                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATED and flags & 0x40 and flags >> 12:
+                    if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR and data & C.SENSOR_TYPE_MASK == C.SENSOR_ANIMATION and flags & 0x40 and flags >> 12:
                         ornament = lib.dungeon_map_wall_ornaments(map_)[(flags >> 12) - 1]
                         frames = lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, 0x0D)
                         if frames:

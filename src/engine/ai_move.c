@@ -40,12 +40,10 @@
 #define LIGHT_RADIUS_MAX       8
 #define PARTY_MAP_SEARCH_COST  25 /* the cost of the search of the party distance maps */
 
-/* The wall sensor type of a creature slot (the other sensor types in sensor.h). */
-#define SENSOR_CREATURE_SLOT 0x26 /* a wall slot that a creature type uses */
 /* The state of a creature slot (its sensor effect bits) from which the slot is busy. */
-#define SLOT_STATE_BUSY      2
+#define SLOT_STATE_BUSY    2
 /* g_ai.actuator_flags. */
-#define ACTUATOR_SKILL_USE   0x0001 /* the creature uses wall actuators */
+#define ACTUATOR_SKILL_USE 0x0001 /* the creature uses wall actuators */
 
 /* The explosion types that the AI notices. */
 #define EXPLOSION_OPEN_DOOR     0x04

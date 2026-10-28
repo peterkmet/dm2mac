@@ -1108,7 +1108,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
         sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, true));
         break;
     }
-    case SENSOR_WALL_STATE:
+    case SENSOR_CREATURE_SLOT:
         sensor_set_flag(t, SENSOR_STATE, apply_effect(effect, sensor_flag(t, SENSOR_STATE)));
         break;
     case SENSOR_CREATE_ITEM:

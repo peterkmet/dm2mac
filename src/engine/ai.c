@@ -219,9 +219,6 @@
 #define COND_MASK                 0x7f
 #define COND_NOT                  0x80
 
-/* The sensor type of the special wall beside the party. */
-#define SENSOR_SPECIAL_WALL 0x3f
-
 /* The most groups of one creature type that the few-of-type condition allows. */
 #define FEW_OF_TYPE_MAX 4
 
@@ -277,9 +274,6 @@
 /* The item skill bits of the plan commands that take and place items. */
 #define ITEM_SKILL_TAKE_CARRIED 0x08
 #define ITEM_SKILL_PLACE        0x77
-
-/* The floor sensor type where a creature places an item. */
-#define SENSOR_ITEM_SPOT 0x30
 
 /* The ornament subtype of a transform marker. */
 #define TEXT_TRANSFORM 0x01
@@ -708,7 +702,7 @@ static bool party_beside_special_wall(void)
         for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t)) {
             int type = thing_type(t);
-            if (type == THING_SENSOR && sensor_type(t) == SENSOR_SPECIAL_WALL)
+            if (type == THING_SENSOR && sensor_type(t) == WALL_CLICK_RESET)
                 return true;
             if (type > THING_SENSOR)
                 break;
@@ -1719,7 +1713,7 @@ static int cmd_place_on_sensor(void)
         return AI_RESULT_DONE;
     int sx = g_ai.arg1 ? g_ai.event.data[EVENT_X] : dest_x();
     int sy = g_ai.arg1 ? g_ai.event.data[EVENT_Y] : dest_y();
-    uint16_t sensor = find_floor_sensor(sx, sy, CELL_ANY, SENSOR_ITEM_SPOT);
+    uint16_t sensor = find_floor_sensor(sx, sy, CELL_ANY, SENSOR_SHOP);
     if (sensor == THING_NONE)
         return AI_RESULT_FAIL;
     uint16_t item = sensor_data(sensor);

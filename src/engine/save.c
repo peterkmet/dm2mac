@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "aspect.h"
 #include "champion.h"
 #include "creature.h"
 #include "dungeon.h"
