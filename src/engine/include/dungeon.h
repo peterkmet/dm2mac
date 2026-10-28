@@ -756,12 +756,12 @@ uint16_t dungeon_square_first_object(int16_t map, int16_t x, int16_t y);
 int dungeon_square_thing_count(void);
 /* The square first-thing table; exported for the tests. */
 const uint16_t *dungeon_square_things(void);
-/* The map of the level at level_delta from the level of map that holds the dungeon position of (*out_x, *out_y) of map, and
-   its square there in *out_x, *out_y; -1 when no such map has an open square there. */
-int dungeon_location_on_map(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y);
+/* The map of the level at level_delta from the level of from.map that holds the dungeon position of from, and its
+   square there; map -1 (with the square of from) when no such map has an open square there. */
+Position dungeon_location_on_map(Position from, int level_delta);
 /* The same search from list position *next (0: the first map of the level); sets *next to the position after the
    map that it found, 0 when it found none. */
-int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, int16_t *out_y, int *next);
+Position dungeon_location_on_map_from(Position from, int level_delta, int *next);
 /* Level deltas: one level up, one level down. */
 #define LEVEL_UP           (-1)
 #define LEVEL_DOWN         1
@@ -769,9 +769,9 @@ int dungeon_location_on_map_from(int16_t map, int level_delta, int16_t *out_x, i
 #define TRANSFER_PIT       0x008
 #define TRANSFER_FALL_INTO 0x010
 #define TRANSFER_STAIRS    0x100
-/* The map one level up (level_delta -1) or down (1) that the square (*out_x, *out_y) of map leads to by its stairs, its open
-   pit (TRANSFER_PIT), or a level link; *out_x, *out_y become the square there. -1 none. Leaves map current. */
-int dungeon_find_level_transfer(int16_t *out_x, int16_t *out_y, int16_t map, int level_delta, unsigned flags);
+/* The square one level up (level_delta -1) or down (1) that the square from leads to by its stairs, its open pit
+   (TRANSFER_PIT), or a level link, with its map; map -1 none. Leaves from.map current. */
+Position dungeon_find_level_transfer(Position from, int level_delta, unsigned flags);
 /* A pair of teleporters with link sensors: a seamless passage to another map. */
 typedef struct {
     int side, target_side; /* side of the passage on the source and on the target square, 0 to 3 */

@@ -2438,11 +2438,11 @@ static int act_move_stairs(void)
             int exit = sensor_effect(sensor);
             dir = sensor_flag(sensor, SENSOR_LINK_FIXED) ? exit : dir_turn(exit, (int16_t)d);
         } else {
-            int16_t x = g_ai.event.data[0];
-            int16_t y = g_ai.event.data[1];
             int saved = g_party.cur_map;
-            dun_set_current_map(dungeon_location_on_map(saved, delta, &x, &y));
-            int d2 = dun_find_adjacent_level_link((Location){x, y}, -delta, &sensor);
+            Position to =
+                dungeon_location_on_map((Position){(int16_t)saved, g_ai.event.data[0], g_ai.event.data[1]}, delta);
+            dun_set_current_map(to.map);
+            int d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta, &sensor);
             dun_set_current_map(saved);
             dir = (int16_t)d2 == -1 ? rand_2bits() : d2;
         }

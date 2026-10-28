@@ -387,8 +387,13 @@ void creature_push_creature(int arrow);
 void creature_continue_push(int command);
 
 /* Creature groups near a point. */
-/* The creature group whose body covers the point of cell (0xff: any cell) of the square (*out_x, *out_y) of the current
-   map or of a square next to it; moves *out_x, *out_y to that square. THING_NONE when there is none. */
-uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell);
+/* A creature group and its square. */
+typedef struct {
+    uint16_t group;
+    Location at;
+} GroupNear;
+/* The creature group whose body covers the point of cell (0xff: any cell) of the square at of the current map or of a
+   square next to it, and that square; group THING_NONE (with at) when there is none. */
+GroupNear creature_find_group_near_point(Location at, int16_t cell);
 
 #endif /* DM2_ENGINE_CREATURE_H */

@@ -1516,7 +1516,7 @@ void creature_continue_push(int command)
 
 /* Creature groups near a point. */
 
-uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t cell)
+GroupNear creature_find_group_near_point(Location at, int16_t cell)
 {
     /* The squares to check after the first one: by cell, the original reads 4 pairs from an offset of 2 pairs per
        cell (its table has rows of 4 pairs), which this table keeps. */
@@ -1542,8 +1542,8 @@ uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t 
     /* the centers of the four cells of the square in the 5 x 5 grid */
     static const uint16_t cell_grid[DIR_COUNT] = {cell_grid_index(1, 1), cell_grid_index(1, 3), cell_grid_index(3, 3),
                                                   cell_grid_index(3, 1)};
-    int16_t sx = *out_x;
-    int16_t sy = *out_y;
+    int16_t sx = at.x;
+    int16_t sy = at.y;
     GridPoint p = aspect_cell_to_xy(sx, sy, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         uint16_t g = creature_group_at(g_party.cur_map, sx, sy);
@@ -1554,20 +1554,19 @@ uint16_t creature_find_group_near_point(int16_t *out_x, int16_t *out_y, int16_t 
             int16_t cx = (int16_t)(z.x - p.x);
             int16_t cy = (int16_t)(z.y - p.y);
             if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size]) {
-                *out_x = sx;
-                *out_y = sy;
-                return g;
+                Location found = {sx, sy};
+                return (GroupNear){.group = g, .at = found};
             }
         }
         if (i == HIT_OFFSETS_READ)
             break;
         if (cell == CELL_ANY) {
-            sx = (int16_t)(*out_x + hit_offsets_any_cell[i].dx);
-            sy = (int16_t)(*out_y + hit_offsets_any_cell[i].dy);
+            sx = (int16_t)(at.x + hit_offsets_any_cell[i].dx);
+            sy = (int16_t)(at.y + hit_offsets_any_cell[i].dy);
         } else {
-            sx = (int16_t)(*out_x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
-            sy = (int16_t)(*out_y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
+            sx = (int16_t)(at.x + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dx);
+            sy = (int16_t)(at.y + hit_offsets[cell * HIT_OFFSETS_PER_CELL + i].dy);
         }
     }
-    return THING_NONE;
+    return (GroupNear){.group = THING_NONE, .at = at};
 }

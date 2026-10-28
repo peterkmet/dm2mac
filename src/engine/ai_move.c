@@ -428,7 +428,10 @@ bool ai_square_blocks_line(int16_t x, int16_t y)
         if (ttype != THING_GROUP)
             continue;
         /* the original passes the square variables: a group found next to it moves them */
-        uint16_t g = creature_find_group_near_point(&sx, &sy, CELL_ANY);
+        GroupNear near = creature_find_group_near_point((Location){sx, sy}, CELL_ANY);
+        sx = near.at.x;
+        sy = near.at.y;
+        uint16_t g = near.group;
         if (g == THING_NONE)
             continue;
         uint16_t flags = creature_group_info(g)->flags;
@@ -1232,31 +1235,27 @@ static int16_t level_change(Move *m)
     }
     if (!(g_ai.move_flags & need))
         return -1;
-    int16_t map;
-    int16_t nx = x;
-    int16_t ny = y;
+    Position to;
     if (link != THING_NONE && (m->action == ACTION_LINK_UP || m->action == ACTION_LINK_DOWN)) {
-        nx = sensor_target_x(link);
-        ny = sensor_target_y(link);
-        map = sensor_data(link);
+        to = (Position){(int16_t)sensor_data(link), sensor_target_x(link), sensor_target_y(link)};
     } else {
-        map = dungeon_location_on_map(g_party.cur_map, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN, &nx, &ny);
-        if (map < 0)
+        to = dungeon_location_on_map((Position){g_party.cur_map, x, y}, dir == DIR_LEVEL_UP ? LEVEL_UP : LEVEL_DOWN);
+        if (to.map < 0)
             return -1;
         if (m->action == ACTION_FALL_IN_PIT) {
             /* fix: the original reads the square without a bounds test; a square at the map edge is not a pit */
-            if (nx < 0 || nx >= dungeon_map_width(map) || ny < 0 || ny >= dungeon_map_height(map))
+            if (to.x < 0 || to.x >= dungeon_map_width(to.map) || to.y < 0 || to.y >= dungeon_map_height(to.map))
                 return -1;
-            uint8_t below = dungeon_square(map, nx, ny);
+            uint8_t below = dungeon_square(to.map, to.x, to.y);
             if (square_type(below) != SQUARE_PIT || !(below & SQUARE_PIT_OPEN))
                 return -1;
         }
     }
-    if (!creature_is_native_to_map(g_ai.group_thing, map))
+    if (!creature_is_native_to_map(g_ai.group_thing, to.map))
         return -1;
-    m->tx = nx;
-    m->ty = ny;
-    return map;
+    m->tx = to.x;
+    m->ty = to.y;
+    return to.map;
 }
 
 /* Sets the target square and facing of the move, a level change included; false when the move cannot start. */

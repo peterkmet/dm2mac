@@ -11,7 +11,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Position, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -411,9 +411,9 @@ def set_creature_type(ai, group, kind):
 
 def native_type(lib, m, x, y, delta):
     """A creature type of the map above (delta -1) or below (1) the square, or None."""
-    nx, ny = ctypes.c_int16(x), ctypes.c_int16(y)
-    lib.dungeon_location_on_map.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    target = lib.dungeon_location_on_map(m, delta, ctypes.byref(nx), ctypes.byref(ny))
+    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
+    lib.dungeon_location_on_map.restype = Position
+    target = lib.dungeon_location_on_map(Position(m, x, y), delta).map
     if target < 0:
         return None
     count = lib.dungeon_map_object_counts(target) >> C.MAP_CREATURE_TYPES_SHIFT & C.MAP_NIBBLE_MASK

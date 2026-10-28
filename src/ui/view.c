@@ -1601,9 +1601,8 @@ static void show_cell_objects(uint16_t thing, int pos, int cell, uint16_t group)
             if (creature_cell_mask(info->possessions) >> cell & 1)
                 set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
-            int16_t x = g_view_squares[pos].x;
-            int16_t y = g_view_squares[pos].y;
-            uint16_t g = creature_find_group_near_point(&x, &y, thing_cell(thing));
+            Location at = {g_view_squares[pos].x, g_view_squares[pos].y};
+            uint16_t g = creature_find_group_near_point(at, thing_cell(thing)).group;
             if (g == THING_NONE || creature_is_flying(g) ||
                 creature_group_info(g)->possessions & POSSESSIONS_FLOOR_CLICKABLE)
                 set_click_zone(cell, thing, pos, CLICK_OBJECT);
@@ -2815,13 +2814,12 @@ static void show_ceiling_pit(int pos)
 {
     if (pos > POS_CEILING_PIT_LAST || !(view.flip_flags & FLIP_CEILING_PITS))
         return;
-    int16_t x = g_view_squares[pos].x;
-    int16_t y = g_view_squares[pos].y;
-    int map = dungeon_location_on_map(view.map, -1, &x, &y);
-    if (map < 0)
+    Position above =
+        dungeon_location_on_map((Position){view.map, g_view_squares[pos].x, g_view_squares[pos].y}, LEVEL_UP);
+    if (above.map < 0)
         return;
     /* fix: the original reads the square without a bounds check; outside the map it is a wall */
-    uint8_t square = dungeon_square_edge(map, x, y);
+    uint8_t square = dungeon_square_edge(above.map, above.x, above.y);
     if (square_type(square) != SQUARE_PIT || !square_flag(square, SQUARE_PIT_OPEN))
         return;
     int flip = pos == POS_PARTY ? get_flip_parity(PARITY_CEILING, view.party_dir, view.party_x, view.party_y) != 0

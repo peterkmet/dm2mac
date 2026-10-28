@@ -305,7 +305,10 @@ static void blast_square(int type, int power, int x, int y, int cell)
         }
         if (!first)
             return;
-        g = creature_find_group_near_point(&nx, &ny, (uint16_t)cell);
+        GroupNear near = creature_find_group_near_point((Location){nx, ny}, (uint16_t)cell);
+        g = near.group;
+        nx = near.at.x;
+        ny = near.at.y;
         if (g == THING_NONE || (nx == x && ny == y))
             return;
         hx = nx;
@@ -513,9 +516,8 @@ static bool hit_wall_sensors(int x, int y, int dir, uint16_t projectile)
 /* The projectile meets the creature near the cell of its hit square; true when it hits. */
 static bool hit_creature(Hit *h, int cell)
 {
-    int16_t x = h->x;
-    int16_t y = h->y;
-    uint16_t g = creature_find_group_near_point(&x, &y, (uint16_t)cell);
+    GroupNear near = creature_find_group_near_point((Location){h->x, h->y}, (uint16_t)cell);
+    uint16_t g = near.group;
     if (g == THING_NONE || creature_current_step_acts(g))
         return false;
     const CreatureInfo *info = creature_group_info(g);
@@ -545,14 +547,14 @@ static bool hit_creature(Hit *h, int cell)
         uint16_t damage = (uint16_t)(creature_roll_armor_factor(g, a.extra_damage) + h->damage);
         if (info->door_flags & CREATURE_RESISTS_NON_FIRE && a.type != ATTACK_TYPE_FIRE)
             damage = (uint16_t)((int16_t)damage >> 2);
-        creature_alert(g, (Location){x, y}, ALERT_HIT, ALERT_ALWAYS, damage);
+        creature_alert(g, near.at, ALERT_HIT, ALERT_ALWAYS, damage);
         if (!h->explosive && info->flags & CREATURE_CATCHES_OBJECTS && item_attr(payload, ATTR_FLAGS) & ITEM_CAUGHT)
             h->holder = group_possessions(g);
     }
     if (h->potion_bomb || h->payload_type == THING_WEAPON ||
         (h->payload_type == THING_EXPLOSION && payload != SPELL_DOOR_TOGGLE &&
          (payload < SPELL_PUSH || payload > SPELL_MISSILE_WALL)))
-        creature_alert(g, (Location){x, y}, ALERT_ATTACKED,
+        creature_alert(g, near.at, ALERT_ATTACKED,
                        h->damage < ALERT_WEAK_DAMAGE && payload != SPELL_POISON_CLOUD ? ALERT_CHANCE_WEAK
                                                                                       : ALERT_CHANCE_STRONG,
                        0);
