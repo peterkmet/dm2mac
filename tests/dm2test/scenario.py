@@ -169,7 +169,7 @@ class Party(ctypes.Structure):
         ("new_map", ctypes.c_int16), ("fell", ctypes.c_int16), ("dest_x", ctypes.c_int16), ("dest_y", ctypes.c_int16),
         ("dest_map", ctypes.c_int16), ("dest_cell", ctypes.c_int16), ("dest_dir", ctypes.c_int16),
         ("teleporter_flag", ctypes.c_int), ("redraw", ctypes.c_uint32), ("push_pending_group", ctypes.c_uint16),
-        ("push_mode", ctypes.c_int), ("push_arrow", ctypes.c_int16)]
+        ("push_mode", ctypes.c_bool), ("push_arrow", ctypes.c_int16)]
 
 
 class GameRecord(ctypes.Structure):

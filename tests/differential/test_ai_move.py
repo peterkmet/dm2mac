@@ -35,6 +35,10 @@ G_VIEW_REDRAW = 0x7F38C
 LIGHT_NAMES = ("g_light_source_sum", "g_explosion_light_sum", "g_cached_light_sum", "g_cached_explosion_light_sum", "g_last_party_map")
 DISTANCE_MAPS = (("g_party_distance", 0x7F8C8, 0x752A0, 0x7F8CE), ("g_alt_distance", 0x7F8C4, 0x752A2, 0x7F8CC))
 G_AI_SCRATCH, G_AI_CONTEXT_ACTIVE = 0x7F894, 0x7F7E6
+# g_ai_square_scan: blocking, passage, the passage end (side, target_side, x, y, map), unused, items_elsewhere,
+# facing_ornament, cells; the port holds the passage end in int16_t, the original in bytes at G_AI_SQUARE + 14.
+SCAN_C, SCAN_ORIGINAL = struct.Struct("<2B5h3B4Bx"), struct.Struct("<14B")
+SCAN_UNUSED = 7
 # Functions of later parts that both sides stub: (address, stack arguments).
 
 # Original functions of ai_move.c.
@@ -188,7 +192,9 @@ class Ai:
         ctypes.c_uint16.in_dll(lib, "g_search_direction_bits").value = struct.unpack("<H", emu.read(G_DIRECTION_BITS, 2))[0]
         theirs = emu.read(G_AI_SQUARE, 0x1E)
         ctypes.memmove(self.square, theirs[:7] + b"\0" + theirs[8:14] + theirs[0x1C:0x1E], 16)
-        ctypes.memmove(self.scan, theirs[14:21] + b"\0" + theirs[22:28], 14)
+        scan = list(SCAN_ORIGINAL.unpack(theirs[14:28]))
+        scan[SCAN_UNUSED] = 0
+        ctypes.memmove(self.scan, SCAN_C.pack(*scan), SCAN_C.size)
         for addr, name in zip(G_LIGHT_SUMS, LIGHT_NAMES):
             ctypes.c_int16.in_dll(lib, name).value = s16(struct.unpack("<H", emu.read(addr, 2))[0])
         for name, ptr, map_addr, width_addr in DISTANCE_MAPS:
@@ -281,8 +287,8 @@ class Ai:
         sq, theirs = ctypes.string_at(self.square, 16), self.emu.read(G_AI_SQUARE, 0x1E)
         assert sq[:6] + sq[6:7] + sq[8:14] == theirs[:7] + theirs[8:14], (where, "square")
         assert sq[14:16] == theirs[0x1C:0x1E], (where, "cost")
-        scan = ctypes.string_at(self.scan, 14)
-        assert scan[:7] + scan[8:] == theirs[14:21] + theirs[22:28], (where, "scan")
+        scan, their_scan = SCAN_C.unpack(ctypes.string_at(self.scan, SCAN_C.size)), SCAN_ORIGINAL.unpack(theirs[14:28])
+        assert scan[:SCAN_UNUSED] + scan[SCAN_UNUSED + 1:] == their_scan[:SCAN_UNUSED] + their_scan[SCAN_UNUSED + 1:], (where, "scan")
         party = ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(self.lib, "g_ai_party")), 8)
         mine_party = struct.unpack("<4h", party)
         x, y, m, d = (s16(struct.unpack("<H", self.emu.read(a, 2))[0]) for a in (0x7F8D4, 0x7F8D0, 0x7F8D2, 0x7F8D6))

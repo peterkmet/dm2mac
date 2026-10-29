@@ -288,7 +288,7 @@ int game_modify_global_var(int var, int value, int op)
 void game_start_play(void)
 {
     g_party_sleeping = false;
-    g_party.push_mode = 0;
+    g_party.push_mode = false;
     g_party.push_pending_group = THING_NONE; /* no push of the last game waits */
     g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;
