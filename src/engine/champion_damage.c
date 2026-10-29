@@ -187,7 +187,7 @@ int champ_get_dexterity(int champ)
         v = (int16_t)(v >> 1);
     int high = (int16_t)(PERCENT - (rand_next() & DEXTERITY_ROLL));
     int low = (int16_t)((rand_next() & DEXTERITY_ROLL) + 1);
-    return clamp_int((int16_t)low, (int16_t)(v >> 1), (int16_t)high);
+    return clamp_int(low, (int16_t)(v >> 1), high);
 }
 
 bool champ_test_luck(Champion *c, int chance)

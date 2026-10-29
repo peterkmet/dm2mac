@@ -66,5 +66,7 @@ extern ActionRepeat g_action_repeats[CHAMPION_MAX][SLOT_HAND_COUNT];
 #define CHARGES_USE_ALL          0x10 /* the action needs a charge and uses all charges */
 #define CHARGES_USE_NONE         0x11 /* the action needs a charge and uses none */
 #define CHARGES_EMPTY            0x12 /* the action needs an item without charges */
+/* Each doubling of the experience above this is one more level of a skill or of the party. */
+#define SKILL_LEVEL_EXPERIENCE   512
 
 #endif /* DM2_ENGINE_CHAMPION_INTERNAL_H */

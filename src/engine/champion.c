@@ -18,30 +18,31 @@
 #include "sensor.h"
 
 /* The aura that raises a statistic: its strength limit, and the random raise of the statistic. */
-#define AURA_MAX               100
-#define AURA_STAT_SHIFT        7
-#define AURA_BASE              4
+#define AURA_MAX              100
+#define AURA_STAT_SHIFT       7
+#define AURA_BASE             4
 /* The load that a champion can carry, in 1/10 kg: per strength point, the base, and the rounding. */
-#define LOAD_PER_STRENGTH      8
-#define LOAD_BASE              100
-#define LOAD_ROUND             10
+#define LOAD_PER_STRENGTH     8
+#define LOAD_BASE             100
+#define LOAD_ROUND            10
 /* A wounded champion carries 1/8 less, with wounded legs 1/4 less. */
-#define WOUND_LOAD_SHIFT       3
-#define WOUND_LEGS_LOAD_SHIFT  2
-/* Each doubling of the experience above this is one more level. */
-#define SKILL_LEVEL_EXPERIENCE 512
+#define WOUND_LOAD_SHIFT      3
+#define WOUND_LEGS_LOAD_SHIFT 2
 /* The move delay of a champion. */
-#define LOAD_HEAVY_PART        5 /* a load above 5/8 of the maximum load slows the champion */
-#define LOAD_HEAVY_EIGHTHS     8
-#define MOVE_DELAY_HEAVY       3
-#define MOVE_DELAY_LIGHT       2
-#define OVERLOAD_DELAY_FACTOR  4 /* an overloaded champion: (load - max) * 4 / max + 4 */
-#define OVERLOAD_DELAY_BASE    4
+#define LOAD_HEAVY_PART       5 /* a load above 5/8 of the maximum load slows the champion */
+#define LOAD_HEAVY_EIGHTHS    8
+#define MOVE_DELAY_HEAVY      3
+#define MOVE_DELAY_LIGHT      2
+#define OVERLOAD_DELAY_FACTOR 4 /* an overloaded champion: (load - max) * 4 / max + 4 */
+#define OVERLOAD_DELAY_BASE   4
+#define WOUND_FEET_DELAY      1 /* wounded feet add 1 step, 2 to an overloaded champion */
+#define WOUND_FEET_OVERLOAD   2
+#define MOVE_DELAY_EVEN_ABOVE 2 /* a delay above 2 rounds up to an even count */
 /* No slot that a hand loads from. */
-#define NO_SLOT                (-1)
+#define NO_SLOT               (-1)
 /* The container types of the minion maps. */
-#define MINION_MAP_FIRST_TYPE  1
-#define MINION_MAP_LAST_TYPE   2
+#define MINION_MAP_FIRST_TYPE 1
+#define MINION_MAP_LAST_TYPE  2
 
 ChampionAction g_champ_actions[CHAMPION_ACTION_MAX];
 int g_champ_action_count;
@@ -179,17 +180,17 @@ int champ_get_move_delay(int champ)
     int delay, wounded_extra;
     if (max > load) {
         delay = load * LOAD_HEAVY_EIGHTHS > max * LOAD_HEAVY_PART ? MOVE_DELAY_HEAVY : MOVE_DELAY_LIGHT;
-        wounded_extra = 1;
+        wounded_extra = WOUND_FEET_DELAY;
     } else {
         delay = (int)((load - max) * OVERLOAD_DELAY_FACTOR) / (int)max + OVERLOAD_DELAY_BASE;
-        wounded_extra = 2;
+        wounded_extra = WOUND_FEET_OVERLOAD;
     }
     if (c->wounds & WOUND_FEET)
         delay += wounded_extra;
     delay = (int16_t)(delay - (int8_t)c->move_speed);
     if (delay < 1)
         delay = 1;
-    if (delay > 2)
+    if (delay > MOVE_DELAY_EVEN_ABOVE)
         delay = (delay + 1) & ~1;
     return delay;
 }
