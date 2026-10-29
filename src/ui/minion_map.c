@@ -34,6 +34,9 @@
 #define ICON_KEY         10
 #define STRIP_DETAIL_KEY GFX_STRIP
 
+/* The fake wall of a seen square blinks on this bit of game_time. */
+#define FAKE_WALL_BLINK_BIT 0x02
+
 /* Offsets added to a door icon of the square strip, and the icons of a missile and an alcove item. */
 #define ICON_DOOR_NO_BUTTON 2
 #define ICON_DOOR_OPEN      4
@@ -112,6 +115,8 @@ static const int8_t cell_shift[VIEW_CELL_ROW] = {-2, -3, 0, -1, -2};
 /* The relative direction of a creature by the side it shows: front, right, back, left. */
 static const uint8_t creature_side_dir[DIR_COUNT] = {0, TURN_LEFT, TURN_BACK, TURN_RIGHT};
 
+/* ---- Icon strips ---- */
+
 /* The icon strip of a GDAT key; count 0 when it has none. */
 static Strip map_icon_strip(int category, int index)
 {
@@ -124,6 +129,13 @@ static Strip map_icon_strip(int category, int index)
     return s;
 }
 
+/* The map item icons of the container item. */
+static Strip party_item_icons(int item)
+{
+    return (Strip){draw_gdat_image(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS),
+                   draw_gdat_image_palette(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS), 0};
+}
+
 /* The party, minion, and marker icons of the map item; THING_NONE (the automap) takes the first map item image. */
 static Strip map_item_icons(uint16_t thing)
 {
@@ -131,8 +143,7 @@ static Strip map_item_icons(uint16_t thing)
         int item = mmap_party_icons_item();
         if (item < 0)
             return (Strip){0};
-        return (Strip){draw_gdat_image(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS),
-                       draw_gdat_image_palette(CAT_CONTAINER, item, GFX_MAP_ITEM_ICONS), 0};
+        return party_item_icons(item);
     }
     int category = item_gdat_category(thing);
     int index = item_gdat_index(thing);
@@ -201,6 +212,8 @@ static void show_icon(const MapSquare *at, const Strip *s, int icon, int mirror)
                    r);
 }
 
+/* ---- Square layers ---- */
+
 /* True for a square inside its map. */
 static bool inside_map(Position at)
 {
@@ -222,7 +235,7 @@ static int level_icon_set(void)
 /* The icons of a wall square: the wall and the ornaments of its 4 faces. */
 static void show_wall(const ViewSquare *s, const Strip *base, const MapSquare *at)
 {
-    if (at->flags & MAP_OPTION_DETAILS && at->fake_seen && g_game.game_time & 2) {
+    if (at->flags & MAP_OPTION_DETAILS && at->fake_seen && g_game.game_time & FAKE_WALL_BLINK_BIT) {
         show_icon(at, base, ICON_FAKE_WALL_BLINK, 0);
         return;
     }
@@ -358,7 +371,7 @@ static void show_things(const ViewSquare *s, const MapSquare *at)
         int type = thing_type(t);
         if (type == THING_GROUP) {
             uint16_t cflags = creature_group_info(t)->flags;
-            if (gdat_entry_index(gdat_current(), CAT_CREATURE, item_gdat_index(t), GDAT_TYPE_VALUE, STRIP_DETAIL_KEY) ||
+            if (detail_only(CAT_CREATURE, item_gdat_index(t)) ||
                 flags & (cflags & CREATURE_STATIC ? MAP_STATIC_CREATURES : MAP_OPTION_CREATURES | MAP_MINION))
                 group = t;
         } else if (flags & MAP_OPTION_ITEMS) {
@@ -395,6 +408,8 @@ static void show_things(const ViewSquare *s, const MapSquare *at)
             show_icon(at, &e, (g_game.game_time & 1) + 1, rand_2bits());
     }
 }
+
+/* ---- Party and marker ---- */
 
 /* The red frame around the party square at. */
 static void show_party_frame(const MapSquare *at)
@@ -560,6 +575,14 @@ static void show_square(const MapSquare *at, int icon_set)
     show_pit_above(&base, &sq);
 }
 
+int mmap_party_icons_item(void)
+{
+    for (int index = 0; index < GDAT_INDEX_COUNT; index++)
+        if (gdat_exists(gdat_current(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, GFX_MAP_ITEM_ICONS))
+            return index;
+    return -1;
+}
+
 void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareIcon *icon)
 {
     int16_t saved[RECT_SIZE];
@@ -579,20 +602,13 @@ void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareI
     }
     show_square(&sq, dungeon_map_wallset(g_party.cur_map));
     if (icon->party_item >= 0) {
-        Strip p = {draw_gdat_image(CAT_CONTAINER, icon->party_item, GFX_MAP_ITEM_ICONS),
-                   draw_gdat_image_palette(CAT_CONTAINER, icon->party_item, GFX_MAP_ITEM_ICONS), 0};
+        Strip p = party_item_icons(icon->party_item);
         show_party_icons(&sq, &p);
     }
     memcpy(g_minion_map.clip, saved, sizeof saved);
 }
 
-int mmap_party_icons_item(void)
-{
-    for (int index = 0; index < GDAT_INDEX_COUNT; index++)
-        if (gdat_exists(gdat_current(), CAT_CONTAINER, index, GDAT_TYPE_IMAGE, GFX_MAP_ITEM_ICONS))
-            return index;
-    return -1;
-}
+/* ---- Grid ---- */
 
 /* Sets the marker square and the squares that it leads to one level up and down. */
 static void set_marker(Position marker)

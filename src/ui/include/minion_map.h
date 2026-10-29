@@ -21,12 +21,17 @@ typedef struct {
     uint16_t flags;
 } SquareIcon;
 
+/* ---- Queries ---- */
+
 /* True when the map draws the floor ornament (an ornament index) without the details option. */
 bool mmap_shows_floor_ornament(int ornament);
-/* Draws the square icon in target, north up, clipped to clip, with the things of its flags. */
-void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareIcon *icon);
 /* The first map item index of GRAPHICS.DAT with the party icons; -1 none. */
 int mmap_party_icons_item(void);
+
+/* ---- Drawing ---- */
+
+/* Draws the square icon in target, north up, clipped to clip, with the things of its flags. */
+void mmap_draw_square_icon(Offscreen *target, const int16_t *clip, const SquareIcon *icon);
 /* Draws the option buttons; pressed: the buttons that show pressed (the click feedback). */
 void mmap_draw_option_buttons(int pressed);
 /* Draws the minion map panel of the map item thing. */

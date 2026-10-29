@@ -178,7 +178,7 @@ static void list_slots(void)
         FILE *f = fopen(slot_path(path, i, false), "rb");
         if (f) {
             size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
-            (void)n; /* a short file keeps its zeros after what it has */
+            (void)n;                                             /* a short file keeps its zeros after what it has */
             slots[i][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
             fclose(f);
             continue;
