@@ -7,8 +7,9 @@ and Windows (x86-64). It is built from its own Ghidra decompilation of `SKULL.EX
   <img src="docs/images/screenshot.png" alt="Dungeon Master II viewport with the party of four champions outside">
 </p>
 
-This repository contains no game data. You must provide your own files of Dungeon Master II (PC DOS, English) and
-copy them into `game/`. The [Player manual](docs/manual.md#run-the-game) lists the files.
+This repository contains no game data. You must provide your own copy of Dungeon Master II (PC DOS, English) as a
+folder, a ZIP archive, or a CD image; the game installs the 10 files it needs at the first start. See
+[Play](#play) and the [Player manual](docs/manual.md#run-the-game).
 
 ## Features
 
@@ -21,7 +22,26 @@ copy them into `game/`. The [Player manual](docs/manual.md#run-the-game) lists t
 
 ## Play
 
-Build the game (see [Build](#build)), copy the game files into `game/`, and start it:
+Download the latest release from the releases page of this repository (`DM2Mac-macos-arm64.zip` or
+`DM2Mac-windows-x64.zip`), extract it, and copy your own DOS files into the folder: the game folder, a ZIP archive,
+or a CD image (`.iso`, `.img`, `.bin`).
+
+- **macOS:** Remove the quarantine attribute and launch `Dungeon Master II.command` (or double-click it in
+  Finder):
+
+  ```sh
+  xattr -d com.apple.quarantine dm2 "Dungeon Master II.command" libSDL3.0.dylib
+  open "Dungeon Master II.command"
+  ```
+
+- **Windows 10+:** Run `dm2.exe`. If Windows SmartScreen warns about an unknown publisher, select "More info",
+  then "Run anyway".
+
+At the first start, the game checks the 10 files and installs them into `game/`. The saves go to `game/DATA`. The
+sources and the checks are in [Game files and install](docs/formats/game-files.md).
+
+To play from source, build the game (see [Build](#build)), put your own DOS files into the project folder, and
+start it:
 
 ```sh
 build/dm2                                   # New game (mode screen)
@@ -98,6 +118,7 @@ Game rules:
 
 - [SDL3](https://github.com/libsdl-org/SDL): windowing, input, and audio output.
 - [Nuked-OPL3](https://github.com/nukeykt/Nuked-OPL3) by Nuke.YKT: OPL3 emulation for the music.
+- [tinf](https://github.com/jibsen/tinf) by Jørgen Ibsen: the inflate of ZIP archives.
 - [Unicorn](https://www.unicorn-engine.org): CPU emulation for the differential tests.
 - [reDM2](https://codeberg.org/CyCl0ne/reDM2): an analysis of the same `SKULL.EXE`, read for names, formats, and
   logic.
@@ -105,6 +126,7 @@ Game rules:
 ## License
 
 GPL-3.0-or-later ([LICENSE](LICENSE)). Nuked-OPL3 in `src/third_party/opl3/` has its own license, LGPL-2.1-or-later
-([opl3-LICENSE](src/third_party/opl3/opl3-LICENSE)). Dungeon Master II is a property of its rights holders. This
+([opl3-LICENSE](src/third_party/opl3/opl3-LICENSE)). tinf in `src/third_party/tinf/` has the zlib license
+([tinf-LICENSE](src/third_party/tinf/tinf-LICENSE)). Dungeon Master II is a property of its rights holders. This
 project is not affiliated with or endorsed by them. Original game data is not included and is not covered by this
 license.
