@@ -37,7 +37,7 @@ Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAV
 
 3. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
 
-The Windows program has no control socket and no turn-based mode. It writes its messages to `dm2.log` in the game folder, because it has no console.
+The Windows program has no control socket and no turn-based mode. Its log: [manual.md](manual.md#run-the-game).
 
 Test the program with Wine:
 

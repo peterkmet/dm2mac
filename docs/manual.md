@@ -149,6 +149,8 @@ The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#qu
 - An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)).
 - A slot save and the quick save keep the seen squares and the cheats.
 
+The automap, the cheat screen, and the options menu open in the viewport and stop the game time. The title of the cheat screen and of the options menu is cyan, their rows are white, and the selected row is yellow.
+
 ### Automap
 
 The automap shows the seen squares of all maps of the party level, each at its place on the level. It covers the viewport. The party square is in the middle of the viewport, north is up.
@@ -160,7 +162,7 @@ The automap shows the seen squares of all maps of the party level, each at its p
 - A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
 - Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the level show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
-- The game time stops while the automap is open. Keys other than the automap keys do nothing.
+- Keys other than the automap keys do nothing.
 - Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays inside the level. The next automap opens on the party again.
 
 ### Seen squares
@@ -182,7 +184,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 ### Cheat screen
 
-`C` in the dungeon view opens the cheat screen in the viewport. The game time stops while it is open. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen. The title is cyan, the rows are white, the selected row is yellow.
+`C` in the dungeon view opens the cheat screen in the viewport. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen.
 
 - FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
 - QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
@@ -209,7 +211,7 @@ A projectile moves one cell (half a square) per game step, as in the original ga
 
 ### Options menu
 
-`Esc` in the dungeon view opens the options menu in the viewport. The game time stops while it is open. The title is cyan, the rows are white, the selected row is yellow. The volume stays in the volume dialog of the original game.
+`Esc` in the dungeon view opens the options menu in the viewport. The volume stays in the volume dialog of the original game.
 
 - FILTER: the upscale filter of the window, `NONE`, `SCALE2X`, or `SCALE3X`. A change shows immediately.
 - CONTINUE: closes the menu.
