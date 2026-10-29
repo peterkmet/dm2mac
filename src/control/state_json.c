@@ -1182,11 +1182,11 @@ static ZoneTop top_of_zone(const ViewClickZone *z)
 {
     Viewer v = viewer_place();
     ZoneTop found = {v.at, THING_NONE};
-    if (z->cell == POS_FRONT) {
+    if (z->pos == POS_FRONT) {
         found.at.x += g_dir_dx[v.dir];
         found.at.y += g_dir_dy[v.dir];
     }
-    if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(found.at))
+    if (z->thing == THING_NONE || (z->pos != POS_PARTY && z->pos != POS_FRONT) || !on_party_map(found.at))
         return found;
     for (uint16_t t = dungeon_square_first_thing(g_game.party_map, found.at.x, found.at.y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
@@ -1244,7 +1244,7 @@ static void piles_json(Json *j)
     if (shown)
         for (int i = VIEW_CLICK_ZONE_FIXED; i < g_view_click_zone_count; i++) {
             const ViewClickZone *z = &g_view_click_zones[i];
-            clickable |= z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
+            clickable |= z->pos == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
         }
     key_bool(j, "wall_ahead_clickable", clickable);
 }

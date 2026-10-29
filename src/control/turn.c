@@ -527,7 +527,7 @@ static const ViewClickZone *front_click_zone(void)
 {
     for (int i = VIEW_CLICK_ZONE_FIXED; i < g_view_click_zone_count; i++) {
         const ViewClickZone *z = &g_view_click_zones[i];
-        if (z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON))
+        if (z->pos == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON))
             return z;
     }
     const ViewClickZone *alcove = &g_view_click_zones[VIEW_CLICK_ZONE_ALCOVE];

@@ -1280,20 +1280,20 @@ static void flush_picture_or_measure(bool draw)
     flush_picture();
 }
 
-/* Adds a click zone at rect. */
-static void add_click_zone(const int16_t *rect, enum ClickKind kind, int16_t cell)
+/* Adds a click zone of kind at rect for the square at view position pos. */
+static void add_click_zone(const int16_t *rect, enum ClickKind kind, int pos)
 {
     if (g_view_click_zone_count >= VIEW_CLICK_ZONE_MAX)
         return; /* fix: the original has no limit */
     ViewClickZone *z = &g_view_click_zones[g_view_click_zone_count++];
     memcpy(z->rect, rect, sizeof z->rect);
     z->kind = (uint8_t)kind;
-    z->cell = (uint8_t)cell;
+    z->pos = (uint8_t)pos;
     z->thing = THING_NONE;
 }
 
 /* Sets click zone index to the rectangle of the last picture (at least 14 x 11 pixels), or widens it. */
-static void set_click_zone(int index, uint16_t thing, int16_t cell, enum ClickKind kind)
+static void set_click_zone(int index, uint16_t thing, enum ClickKind kind, int pos)
 {
     ViewClickZone *z = &g_view_click_zones[index];
     const int16_t *r = view.ctx.rect;
@@ -1322,7 +1322,7 @@ static void set_click_zone(int index, uint16_t thing, int16_t cell, enum ClickKi
     }
     z->kind = (uint8_t)kind;
     z->thing = thing;
-    z->cell = (uint8_t)cell;
+    z->pos = (uint8_t)pos;
 }
 
 /* The colors of a 4 bpp picture dimmed by the view shade, with key kept; NULL for an 8 bpp picture in full dark. The
@@ -1745,7 +1745,7 @@ static void show_cell_objects(uint16_t thing, int pos, int16_t cell, uint16_t gr
                     memset(z->rect, 0, sizeof z->rect);
                 z->kind = CLICK_POSSESSIONS;
                 z->thing = thing;
-                z->cell = (uint8_t)pos;
+                z->pos = (uint8_t)pos;
             }
             return;
         }
@@ -1754,13 +1754,13 @@ static void show_cell_objects(uint16_t thing, int pos, int16_t cell, uint16_t gr
         spot = next_spot(spot, false);
         if (info) {
             if (creature_cell_mask(info->possessions, DIR_NORTH) >> cell & 1)
-                set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, pos, CLICK_POSSESSIONS);
+                set_click_zone(CLICK_ZONE_POSSESSION_FIRST + cell, thing, CLICK_POSSESSIONS, pos);
         } else if (pos == POS_PARTY || (pos == POS_FRONT && cell > CELL_FRONT_RIGHT)) {
             Location at = {g_view_squares[pos].x, g_view_squares[pos].y};
             uint16_t g = creature_find_group_near_point(at, thing_cell(thing)).group;
             if (g == THING_NONE || creature_is_flying(g) ||
                 creature_group_info(g)->possessions & POSSESSIONS_FLOOR_CLICKABLE)
-                set_click_zone(cell, thing, pos, CLICK_OBJECT);
+                set_click_zone(cell, thing, CLICK_OBJECT, pos);
         }
     }
 }
@@ -2233,7 +2233,7 @@ static void show_alcove_contents(int pos)
                                       .projectile = THING_NONE});
             spot = next_spot(spot, true);
             if (pos == POS_FRONT)
-                set_click_zone(VIEW_CLICK_ZONE_ALCOVE, thing, POS_FRONT, CLICK_ALCOVE);
+                set_click_zone(VIEW_CLICK_ZONE_ALCOVE, thing, CLICK_ALCOVE, POS_FRONT);
             continue;
         }
         if (thing_type(thing) != THING_EXPLOSION || !(ALCOVE_EXPLOSION_POSITIONS & POS_BIT(pos)))

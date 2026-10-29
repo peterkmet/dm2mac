@@ -2049,13 +2049,13 @@ static void click_take_object(int16_t x, int16_t y, int index)
         return;
     const ViewClickZone *z = &g_view_click_zones[index];
     Location at = {(int16_t)g_game.party_x, (int16_t)g_game.party_y};
-    if (z->cell) {
-        if (z->cell != POS_FRONT)
+    if (z->pos) {
+        if (z->pos != POS_FRONT)
             return;
         at.x += g_dir_dx[g_game.party_dir];
         at.y += g_dir_dy[g_game.party_dir];
     }
-    ViewObjectClick click = {x, y, z->cell, at, z->kind};
+    ViewObjectClick click = {x, y, z->pos, at, z->kind};
     ObjectClickResult hit = view_hit_test_object(&click, z->thing, false);
     if (hit.kind == OBJECT_CLICK_HIT) {
         move_thing(hit.thing, at.x, at.y, MOVE_NO_SQUARE, z->kind == CLICK_POSSESSIONS ? MOVE_IN_POSSESSIONS : 0);
@@ -2138,7 +2138,7 @@ static void click_throw_object(int16_t x, int16_t y)
 /* A click on a door button zone: a door without a button passes the click to the wall beside it. */
 static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
 {
-    Location at = z->cell == POS_FRONT ? v->front : v->party;
+    Location at = z->pos == POS_FRONT ? v->front : v->party;
     uint16_t door = dungeon_square_first_thing(g_game.party_map, at.x, at.y);
     if (!door_flag(door, DOOR_BUTTON)) {
         int16_t side = dir_turn(v->dir, TURN_RIGHT);
@@ -2181,8 +2181,8 @@ static bool click_zones_hit(const ViewSquares *v, int16_t x, int16_t y, uint16_t
                 click_door_button_zone(v, z, hand);
             break;
         case CLICK_WALL_ORNAMENT:
-            if (view_hit_test_wall_ornament(z->cell, x, y)) {
-                click_wall_sensor(z->cell);
+            if (view_hit_test_wall_ornament(z->pos, x, y)) {
+                click_wall_sensor(z->pos);
                 return true;
             }
             break;

@@ -62,7 +62,7 @@ enum ClickKind {
 typedef struct {
     int16_t rect[RECT_SIZE];
     uint16_t thing; /* THING_NONE: the zone is not set */
-    uint8_t cell;   /* view position or cell, by kind */
+    uint8_t pos;    /* the view position of the square */
     uint8_t kind;   /* enum ClickKind */
 } ViewClickZone;
 
