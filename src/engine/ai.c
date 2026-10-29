@@ -3013,7 +3013,7 @@ void ai_update_group(void)
     ActiveGroup *a = g_ai.active;
     if (g_game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
         a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
-        g_ai.event.time_map += ACTION_DELAY_EFFECT;
+        timeline_delay_event(&g_ai.event, ACTION_DELAY_EFFECT);
     } else if (!run_next_action()) {
         return;
     }

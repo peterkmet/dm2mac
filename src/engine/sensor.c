@@ -1511,7 +1511,7 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
         return;
     }
     bool wall = square_type(dun_get_square((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
-    e->time_map += (uint16_t)ornament_cycle(thing, wall);
+    timeline_delay_event(e, (uint16_t)ornament_cycle(thing, wall));
     timeline_add_event(e);
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
@@ -1543,7 +1543,7 @@ static void timer_event(TimelineEvent *e, uint16_t thing)
     if (!running) {
         sensor_set_flag(thing, SENSOR_BUSY, false);
     } else {
-        e->time_map += e->data[SENSOR_EVENT_TIMER_FACTOR] * sensor_data(thing);
+        timeline_delay_event(e, e->data[SENSOR_EVENT_TIMER_FACTOR] * sensor_data(thing));
         timeline_add_event(e);
     }
 }

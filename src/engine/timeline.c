@@ -270,7 +270,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         return;
     case REBIRTH_SMOKE:
         explosion_create(EXPLOSION_SMOKE, 0, x, y, cell);
-        e->time_map += SMOKE_TIME;
+        timeline_delay_event(e, SMOKE_TIME);
         break;
     case REBIRTH_BONES: {
         uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
