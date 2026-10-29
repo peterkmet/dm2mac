@@ -8,7 +8,6 @@ The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md]
 - There are 292 sound items. Each item has a 6-byte header and raw pulse-code modulation (PCM) data.
 - Header: u16 LE sample rate `0x2b77` (11127 Hz), then the bytes `08 01 00 00` (8 bits, 1 channel; unverified, because no code reads these bytes). All 292 items have the same header.
 - Data: 8-bit signed PCM, mono, not compressed. Length = item size - 6 (245 to 61713 bytes).
-- At load time, `SKULL.EXE` converts the data in place to unsigned 8-bit (XOR `0x80`).
 - The SOS digital driver mixes at 11025 Hz. The game stores the 11127 Hz rate but does not pass it to the driver. The samples play at 11025 Hz (0.9 % slower).
 
 - GDAT flag item `(0,0,0x0b,0)` = `0x7b`. `FUN_0003d1c8` stores `0x7b & 0x20` in `DAT_00071698`.
@@ -17,7 +16,7 @@ The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md]
   - `+4` u16 length = item size - 6,
   - `+6` u16 rate = first item word (constant `0x157c` = 5500 Hz if the flag is clear),
   - `+8` link for the cache list.
-- `FUN_000104ea` XORs each byte with `0x80`. The descriptor field `+6` has no reader in the decompiled code.
+- `FUN_000104ea` converts the data in place to unsigned 8-bit (XOR `0x80`) at load time. The descriptor field `+6` has no reader in the decompiled code.
 - Driver init (`FUN_00010010`): `_DAT_00070482 = 0x2b11` (11025) in the SOS init structure at `0x70472` (buffer size word `0x1000`). Then `FUN_0005bc00` (`sosDIGIInitDriver`).
 - Categories that hold sounds: 15 (192 items), 9 (24), 22 (21), 13 (16), 10 (8), 3 (7), and others.
 

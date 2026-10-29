@@ -17,10 +17,10 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 ## Save and load
 
 - Saves are `<data>/DATA/SKSAVEn.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
-- The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (the program starts again: exit code 3), RESUME. A quit more than 100 game steps after the last load and the last save first asks dialog `0x0c`.
+- The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (exit code 3), RESUME. A quit more than 100 game steps after the last load and the last save first asks dialog `0x0c`.
 - A load restores the timed effects of the save (`restore_timed_effects`, [champions.md](champions.md#the-leader-hand)). The start of its session puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - The load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion.
-- A load of a missing slot file takes the `.BAK` file and renames it back; a damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
+- A load of a missing slot file takes the `.BAK` file and renames it back; when `.BAK` is also missing and no game is in memory, a new game starts from `DUNGEON.FTL` if that file exists; a damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
 - When the records of a thing type run out, `dun_get_discarded_thing` frees one. It searches the maps from the map after the last search, with the party map last. The party map gets a second search, in which a shop display near the party keeps one item of its kind and lets the other things of its square go. It takes a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, and not on a square with a protecting sensor or text ornament subtype 4. It removes the thing from its square (or from the possessions of a static creature).
 
 ## Dialogs
@@ -39,13 +39,20 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 
 ## End of game
 
-- The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with exit code 1 (the DOS launcher then plays the ending).
-- When the last champion dies, `kill_champion` sets the end flag (`g_game_end_flag`, `g_main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with exit code 2.
+- The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with [exit code 1](#exit-codes) (the DOS launcher then plays the ending).
+- When the last champion dies, `kill_champion` sets the end flag (`g_game_end_flag`, `g_main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with [exit code 2](#exit-codes).
+
+### Exit codes
+
+- 0: quit.
+- 1: the game is completed (end sensor). The launcher plays `END`, then `CREDITS` ([movies.md](../formats/movies.md#launcher-script-ibmiopexe)).
+- 2: QUIT GAME after the death of the party. The launcher plays `CREDITS`.
+- 3: RESTART. The launcher starts the game again.
 
 ## Deviations from the original
 
 - The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`play_wait_frames` in `src/ui/play.c` calls `g_play_frame_hook`, which `src/platform/main.c` sets); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`g_play_frame_hook`).
-- `session_quit` sets `g_main_loop.quit` and returns; the main loop then ends (the original exits the process immediately). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as in the original.
+- `session_quit` sets `g_main_loop.quit` and returns; the main loop then ends (the original exits the process immediately). After the end sensor the rest of that timeline step still runs. A RESTART (exit code 3) starts the program again with `execvp` and sets the environment variable `DM2_RESTARTED`, which turns off the start movies; a failed start prints an error. The restart drops `--save PATH`, so the program shows the start menu, as in the original.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
 - Fixes:
@@ -62,9 +69,8 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
   - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0; the link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).
 - The `--save PATH` option starts the game of PATH immediately, without the menu and without the dialog after a load.
-- The exit codes of the port program (`src/ui/include/session.h`, `EXIT_USAGE` in `src/platform/main.c`):
-  - 0: quit.
-  - 1: the game is completed, or the program cannot start, for example with a `--data` folder without `DATA/GRAPHICS.DAT`.
-  - 2: QUIT GAME after the death of the party, or a bad command-line option: an option without a value, an unknown argument that starts with `--`, an unknown mode, or an unknown filter.
-  - 3: RESTART.
+- The exit codes of the port program (`src/ui/include/session.h`, `EXIT_USAGE` in `src/platform/main.c`) add to the [exit codes](#exit-codes):
+  - 1: also when the program cannot start, for example with a `--data` folder without `DATA/GRAPHICS.DAT`.
+  - 2: also a bad command-line option: an option without a value, an unknown argument that starts with `--`, an unknown mode, or an unknown filter.
+  - 3: the restart by `execvp` (see above).
   - 4: a quick load of the advanced mode that loads neither `QUICK.DAT` nor the copy of the running game ([save.md](../formats/save.md#quick-save-files)).

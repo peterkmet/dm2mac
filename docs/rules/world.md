@@ -6,7 +6,7 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 - One hour is `0x555` game steps; a day has 24 hours. `dungeon_load` sets the day time offset: [GDAT](../formats/graphics.md#gdat-items) value `(3, 0, 0x0b, 0)` (clamped to 0 to 23) × `0x555`.
 - `g_light_by_hour` (`0x760ec`) gives the darkness of each hour: 5 at night, 1 by day. `world_update_day_night(false)` sets the hour light again when the game time reaches `g_next_hour_time` (saved, game record `+0x38`), and then the next hour time is 1 hour later.
-- `weather_init` also sets the hour light. A load calls it before the game record is read, so the hour light comes from the game time before the load until the next hour starts. The port keeps this.
+- `weather_init` also sets the hour light.
 
 ## Weather
 
@@ -47,6 +47,7 @@ The rules of the world: day and night, the weather, the party light, the object 
 - Bounds: the thunder delay divides by the storm multiplier; the port uses 1 for a multiplier of 0 (the original divides by 0). A sky state past the table shows no weather (`GRAPHICS.DAT` has states 0 to 4 only).
 - Fix: an ornament frames value of `0x8000` gives a cycle of 1; the original divides by 0.
 - Kept quirks of the original:
+  - The hour light after a load comes from the game time before the load until the next hour starts, because `weather_init` runs before the game record is read.
   - `light_update_party_light` makes one bubble pass over the hand lights, not a full sort, so the brightest torch moves up by one place only and the half-weight sum depends on the hand order.
   - A floor ornament without light (value key `0xf8` is 0 and not animated-only) hides all other light of its square: `light_add_square_light` adds no missile, explosion or creature light there.
   - An audible creature generator (`0x2e`) requests its sound from GDAT category 0 (`CAT_GENERAL`), which holds no sound, so the new group appears without a sound.

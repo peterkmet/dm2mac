@@ -89,11 +89,7 @@ Both files are absent from `game/DATA`. The CD release does not need them.
 - It is an optional second new-game dungeon. `dungeon_open_file` opens `.Z020DUNGENB.DAT` (`0x70082`) if `DAT_000803f8 != 0`. If the open fails, it opens `DUNGEON.DAT`.
 - Command `0xd8` sets `DAT_000803f8 = 1` and the new-game flag `DAT_0007f280 = 1`. Command `0xd7` sets only the new-game flag (normal new game). Command `0xd9` clears it (load a game). See `FUN_00021d6c` (`command_execute`).
 - The mouse table at `0x72388` binds `0x80d7` and `0x00d8` to the same zone `0x197` (the new-game button), with button masks `0x8002` and `0x4010`. The input that matches mask `0x4010` is unknown.
-- `DUNGEON.FTL` (`0x70071`) is a similar fallback. The code at `0x37259` opens it as a new game when no save file exists.
-
-### Compare with DUNGEON.DAT and GRAPHICS.DAT
-
-`GRAPHIC2.DAT` holds the bytes after the end of a short `GRAPHICS.DAT`. `DUNGENB.DAT` has the same role as `DUNGEON.DAT` but is a different start dungeon.
+- `DUNGEON.FTL` (`0x70071`) is a similar fallback. `session_load` (`0x37259`) opens it as a new game when no save file exists ([game-flow.md](../rules/game-flow.md#save-and-load)).
 
 The port keeps the `DUNGENB.DAT` fallback logic. It opens `DUNGENB.DAT` when it is chosen and present, otherwise `DUNGEON.DAT`. With the shipped files the result is the same as without command `0xd8`.
 

@@ -11,7 +11,7 @@ The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads
 | 3 | rest of file | Bit-packed game state |
 
 - Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The u32 at `+0x26` is `0xdeadbeef` in an empty slot. The meaning of `+0x22` to `+0x25` is unknown.
-- `session_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port keeps them byte for byte.
+- `session_save` (`0x3502b`) reads the old header from the `.BAK` file (the old `.DAT`, renamed just before), changes `+0x00` and the name, and writes it back. Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The port keeps the old bytes byte for byte.
 - `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
 - The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with `new_game` false, and the `DUNGEON.DAT` load calls it with `new_game` true.
 - The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
@@ -65,14 +65,14 @@ Game record (60 bytes, mask `0x75316`):
 - Creature groups whose creature info has flag bit 0 (static creatures, no active group) use the mask at `0x7548b` and store the cell of each possession. Minion maps (container kind 1) use the mask at `0x754b3`. A misc item inside a moneybox uses the mask at `0x754bf`. A projectile inside a creature group uses the mask at `0x754cf`. Minion maps and projectiles in groups are deferred: their link is stored after the squares as the position of the target group or container in the bit stream.
 - A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no square bits. When the target map is lower, the things of the square are stored with the target square, not here.
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
-- Header: `session_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`, so the bytes after the end mark keep the old header bytes.
+- Header: The name is copied with `str_copy`, so the bytes after the end mark keep the old header bytes.
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
 - A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again because the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
 
 ## Reader and writer of the port
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
-- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
+- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests are described in [Compatibility with the original](#compatibility-with-the-original).
 - A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original
