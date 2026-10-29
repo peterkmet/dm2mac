@@ -468,7 +468,7 @@ bool session_load(void)
         rename(path, bak);
     }
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
-    g_dialog.progress_enabled = 1;
+    g_dialog.progress_enabled = true;
     game_clear_end();
     arrive_on_party_map();
     return true;
