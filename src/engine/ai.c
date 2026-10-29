@@ -864,9 +864,12 @@ static bool test_condition(int condition, int arg, int plan)
     case COND_STATIC_AHEAD:
         r = cond_static_ahead(x, y);
         break;
-    case COND_HEALTH_BELOW:
-        r = thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / g_ai.info->max_health <= (unsigned)a;
+    case COND_HEALTH_BELOW: {
+        /* fix: the original divides by a maximum health of 0 */
+        unsigned max = g_ai.info->max_health ? g_ai.info->max_health : 1;
+        r = thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / max <= (unsigned)a;
         break;
+    }
     case COND_FEW_OF_TYPE:
         r = cond_few_of_type(a);
         break;
