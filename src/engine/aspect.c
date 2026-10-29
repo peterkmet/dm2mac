@@ -118,6 +118,8 @@ static int ornament_frame(int category, int ornament, uint32_t time, int offset)
     } else if (frames & FRAMES_FROM_ONE) {
         first = 1;
         frames &= ~FRAMES_FROM_ONE;
+        if (!frames) /* fix: a frames value of 0x8000; the original divides by 0 */
+            return first;
     }
     int frame = (int)((time + (uint32_t)offset) % frames) + first;
     if (!sequence)

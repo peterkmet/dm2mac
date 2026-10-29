@@ -872,3 +872,55 @@ def test_present_viewport_stretches_the_walking_view(lib, gdat, loaded):
 def test_present_viewport_copies_the_still_view(lib, gdat, loaded):
     view, shown, _ = present_viewport(lib, gdat, 0)
     assert b"".join(shown) == bytes(view)
+
+
+GDAT_KEYS, GDAT_KEY_ROWS, GDAT_ROW_SIZE, GDAT_ROW_VALUE = 0x2BF6, 20, 8, 6  # the key table of GRAPHICS.DAT
+ORN_KEY_FRAMES, FRAMES_FROM_ONE = 0x0D, 0x8000
+
+
+class ViewSquare(ctypes.Structure):
+    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
+    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
+                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
+
+
+def with_value(data, key, value):
+    """GRAPHICS.DAT with the value of key (category, index, type, entry) set to value."""
+    data = bytearray(data)
+    for row in range(struct.unpack_from(">H", data, GDAT_KEYS + 2)[0]):
+        at = GDAT_KEYS + GDAT_KEY_ROWS + row * GDAT_ROW_SIZE
+        if tuple(data[at:at + 4]) == key:
+            struct.pack_into(">H", data, at + GDAT_ROW_VALUE, value)
+            return bytes(data)
+    raise AssertionError(f"no key {key}")
+
+
+def test_an_ornament_frames_value_of_0x8000_shows_frame_1(lib, gdat, loaded, tmp_path):
+    # regression: a damaged GRAPHICS.DAT with the frames value 0x8000 (frames from 1, a count of 0) for an animated
+    # wall ornament divided by 0 in ornament_frame; the face shows frame 1, as a cycle of 1
+    lib.aspect_get.argtypes = [ctypes.c_void_p] + [ctypes.c_int16] * 4
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    s = ViewSquare()
+
+    def faces(map_, x, y, d):
+        lib.aspect_get(ctypes.byref(s), map_, d, x, y)
+        return [(w & 0xFF, ctypes.c_int16(w).value >> C.ORN_FRAME_SHIFT) for w in s.side]
+
+    found = next((m, x, y, d, k, ornament) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+                 for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
+                 for d in range(C.DIR_COUNT) for k, (ornament, frame) in enumerate(faces(m, x, y, d))
+                 if frame and lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, ORN_KEY_FRAMES) & FRAMES_FROM_ONE)
+    map_, x, y, d, k, ornament = found
+    assert loaded.game_time
+    path = tmp_path / "GRAPHICS.DAT"
+    path.write_bytes(with_value(GRAPHICS.read_bytes(), (C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, ORN_KEY_FRAMES),
+                                FRAMES_FROM_ONE))
+    damaged = ctypes.c_void_p()
+    assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
+    lib.gdat_select(damaged)
+    try:
+        assert faces(map_, x, y, d)[k] == (ornament, 1)
+    finally:
+        lib.gdat_select(gdat)
+        lib.gdat_free(damaged)
