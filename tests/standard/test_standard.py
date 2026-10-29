@@ -20,7 +20,9 @@ TESTS = ROOT / "tests"
 ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 MAX_FUNCTION_LINES = 60
-EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
+# the rules of docs/coding-standard.md that name an exception, and the checks whose allowlist lines may give them
+EXCEPTION_RULES = {"1.5": {"engine-write"}, "1.7": {"module"}, "3.11": {"record"}, "3.12": {"decimal", "hex"},
+                   "5.8": {"long"}, "10.7": {"byteorder"}}
 
 # removed by Task 24 of the Gemini follow-up
 BRIDGE_REASON = re.compile(r"^bridge: task \d+$")
@@ -772,17 +774,36 @@ def test_sources_are_formatted():
     assert result.returncode == 0, result.stderr[-4000:]
 
 
+def allowlist_lines():
+    """(line number, check, target, reason) of each allowlist line."""
+    return [(number, *line.split(maxsplit=2)) for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1)
+            if line.strip() and not line.startswith("#")]
+
+
 def test_allowlist_names_documented_reasons():
-    """Each allowlist line names an exception rule of the standard."""
+    """Each allowlist line names an exception rule of the standard that its check may give."""
     found = []
-    for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        check, target, reason = line.split(maxsplit=2)
+    for number, check, target, reason in allowlist_lines():
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and rule.group(1) in EXCEPTION_RULES) and not BRIDGE_REASON.match(reason):
+        if not (rule and check in EXCEPTION_RULES.get(rule.group(1), ())) and not BRIDGE_REASON.match(reason):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
+
+
+def test_allowlist_lines_match_violations(monkeypatch):
+    """Each allowlist line accepts at least one violation: its target or a <target>:<part> of a violation of its check."""
+    hits = []
+    skip = {"test_allowlist_lines_match_violations", "test_allowlist_names_documented_reasons", "test_sources_are_formatted"}
+    with monkeypatch.context() as patch:
+        patch.setenv("DM2_STANDARD_IGNORE_ALLOWLIST", "1")
+        patch.setattr(sys.modules[__name__], "report", lambda check, found: hits.extend(found))
+        for name, check_function in list(globals().items()):
+            if name.startswith("test_") and name not in skip:
+                check_function()
+    keys = {tuple(hit.split("  |")[0].split(" ", 1)) for hit in hits}
+    report("allowlist", [f"allowlist {check}:{target}  | {number}: matches no violation"
+                         for number, check, target, _ in allowlist_lines()
+                         if not any(c == check and (t == target or t.startswith(target + ":")) for c, t in keys)])
 
 
 def module_files(header):
