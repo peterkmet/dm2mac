@@ -39,6 +39,10 @@ class ScreenPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
+class ScreenSize(ctypes.Structure):
+    _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
+
+
 class WeatherGame(ctypes.Structure):
     _fields_ = Game._fields_ + [("leader", ctypes.c_uint16), ("cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
                                 ("time_b", ctypes.c_uint32), ("countdown", ctypes.c_uint16), ("unknown_dir", ctypes.c_uint16),

@@ -94,12 +94,11 @@ static void render_screen_picture(int category, int index, int entry)
 {
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE];
-    int16_t x = 0;
-    int16_t y = 0;
-    if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y))
+    ScreenSize size = {0, 0};
+    if (image && zone_compute_rect(image, r, ZONE_SCREEN, &size))
         ui_blit_bitmap(&(BlitSource){.bitmap = image,
-                                     .x = x,
-                                     .y = y,
+                                     .x = size.w,
+                                     .y = size.h,
                                      .transparent = GFX_OPAQUE,
                                      .colormap = draw_gdat_image_palette(category, index, entry)},
                        &g_draw_screen, r);

@@ -13,7 +13,7 @@ from dm2test.scenario import Location, Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
-    Bitmap, OriginalView, WeatherGame, u8_p,
+    Bitmap, OriginalView, ScreenSize, WeatherGame, u8_p,
 )
 from dm2test.lib import load_lib
 
@@ -274,7 +274,6 @@ def test_door_states_match_original(lib, loaded, original_view):
 VIEW_GRID5_CELL_TO_XY, VIEW_ROTATE_GRID5_CELL, VIEW_OFFSET_CREATURE = 0x18E7F, 0x19B0B, 0x52A88
 OUT_X, OUT_Y = SCRATCH, SCRATCH + 4
 GRID_SIZE, MASKS_SIZE = C.VIEW_GRID_SIZE, 4 * SQUARE_COUNT
-i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
 class AnchoredZone(ctypes.Structure):
@@ -420,7 +419,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     lib.gfx_scale_64.restype = ctypes.c_int16
     lib.gfx_scale_64.argtypes = [ctypes.c_int16, ctypes.c_int16]
     lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,
-                                               i16_p, i16_p]
+                                               ctypes.POINTER(ScreenSize)]
     lib.zone_compute_anchored_rect.restype = ctypes.c_void_p
     game = WeatherGame.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
@@ -461,10 +460,10 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
                    lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, C.GDAT_TYPE_VALUE2, 0)):
         dx += struct.unpack("b", bytes([packed >> 8 & 0xFF]))[0]
         dy += struct.unpack("b", bytes([packed & 0xFF]))[0]
-    sx, sy = ctypes.c_int16(lib.gfx_scale_64(dx, scale)), ctypes.c_int16(lib.gfx_scale_64(dy, scale))
+    offset = ScreenSize(lib.gfx_scale_64(dx, scale), lib.gfx_scale_64(dy, scale))
     rect = (ctypes.c_int16 * 4)()
     zone = 5000 + 3 * 25 + 16 | C.ZONE_RELATIVE
-    assert lib.zone_compute_anchored_rect(ctypes.byref(picture), rect, AnchoredZone(zone, 0), ctypes.byref(sx), ctypes.byref(sy))
+    assert lib.zone_compute_anchored_rect(ctypes.byref(picture), rect, AnchoredZone(zone, 0), ctypes.byref(offset))
     rx, ry, rw, rh = rect
     assert all(rx <= col < rx + rw and ry <= row < ry + rh for row, col in changed), (rect[:], changed[:5])
     game.party_x, game.party_y, game.party_dir, game.party_map = saved

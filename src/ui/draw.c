@@ -231,22 +231,20 @@ void draw_ctx_draw(DrawCtx *ctx)
         return;
     const Bitmap *image = ctx->image;
     int zone = (uint16_t)ctx->zone;
-    int16_t sx = ctx->src_x;
-    int16_t sy = ctx->src_y;
+    ScreenSize size = {ctx->src_x, ctx->src_y};
     if (zone != ZONE_NONE) {
         if (!(zone & ZONE_RELATIVE) && !ctx->dx && !ctx->dy) {
-            sx = ctx->w;
-            sy = ctx->h;
+            size = (ScreenSize){ctx->w, ctx->h};
         } else {
             zone |= ZONE_RELATIVE;
-            sx = (int16_t)(sx + ctx->dx);
-            sy = (int16_t)(sy + ctx->dy);
+            size.w = (int16_t)(size.w + ctx->dx);
+            size.h = (int16_t)(size.h + ctx->dy);
         }
-        if (!zone_compute_anchored_rect(image, ctx->rect, (AnchoredZone){zone, ctx->anchor}, &sx, &sy))
+        if (!zone_compute_anchored_rect(image, ctx->rect, (AnchoredZone){zone, ctx->anchor}, &size))
             return;
     }
-    sx = (int16_t)(sx + ctx->x);
-    sy = (int16_t)(sy + ctx->y);
+    int16_t sx = (int16_t)(size.w + ctx->x);
+    int16_t sy = (int16_t)(size.h + ctx->y);
     int16_t fx = mirrored_start(sx, ctx->rect[RECT_W], image->width, ctx->flip & MIRROR_H);
     if (ctx->flip & MIRROR_H)
         sx = 0;

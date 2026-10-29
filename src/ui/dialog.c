@@ -65,10 +65,9 @@ void dialog_present(void)
         return;
     }
     int16_t r[RECT_SIZE];
-    int16_t x = 0;
-    int16_t y = 0;
-    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y))
-        ui_blit_bitmap(&(BlitSource){.bitmap = &g_view_viewport, .x = x, .y = y, .transparent = GFX_OPAQUE},
+    ScreenSize size = {0, 0};
+    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &size))
+        ui_blit_bitmap(&(BlitSource){.bitmap = &g_view_viewport, .x = size.w, .y = size.h, .transparent = GFX_OPAQUE},
                        &g_draw_screen, r);
 }
 

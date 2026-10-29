@@ -337,15 +337,14 @@ static Bitmap *face_bitmap(void)
 static void put_face(Bitmap *face, int16_t champion_index, int zone)
 {
     int16_t r[RECT_SIZE];
-    int16_t sx = 0;
-    int16_t sy = 0;
-    if (!zone_compute_rect(face, r, zone, &sx, &sy))
+    ScreenSize size = {0, 0};
+    if (!zone_compute_rect(face, r, zone, &size))
         return;
     haste_jitter(r);
     uint8_t palette[IMAGE_COLORS];
     ui_draw_champion_face_icon(face, champion_index, palette);
-    offscreen_blit(&area, &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette},
-                   r);
+    offscreen_blit(
+        &area, &(BlitSource){.bitmap = face, .x = size.w, .y = size.h, .transparent = UI_KEY, .colormap = palette}, r);
     show_aura(champion_index, zone);
 }
 
@@ -470,10 +469,9 @@ static void show_money_box(uint16_t box)
         const Bitmap *image = draw_gdat_image(category, index, GFX_ITEM_ICON);
         const uint8_t *colors = draw_gdat_image_palette(category, index, GFX_ITEM_ICON);
         int16_t r[RECT_SIZE];
-        int16_t sx = 0;
-        int16_t sy = 0;
+        ScreenSize size = {0, 0};
         /* fix: skip a coin without an image or a pile zone; no read of an unset rectangle */
-        if (!image || !zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy))
+        if (!image || !zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &size))
             continue;
         /* the pile shows the last COIN_PILE_MAX coins */
         int at = slot * PILE_SLOT_STEP + max_int(counts[type] - COIN_PILE_MAX, 0);

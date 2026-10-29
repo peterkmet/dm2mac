@@ -16,7 +16,7 @@ from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixt
     sync_champions, things_of, update_action_area,
 )
 from dm2test.save import Game
-from dm2test.view import Bitmap, ScreenPoint, u8_p
+from dm2test.view import Bitmap, ScreenPoint, ScreenSize, u8_p
 from dm2test.lib import load_lib
 
 
@@ -408,10 +408,6 @@ def test_draw_text_matches_original(port, original):
         assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
 
 
-class ScreenSize(ctypes.Structure):
-    _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
-
-
 def test_measure_and_wrap_match_original(port, original):
     lib = port
     emu = original.emu
@@ -535,7 +531,7 @@ def test_message_area_scrolls(port):
     # in SKULL.EXE: the port moves the rows).
     lib = port
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
     r = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_MESSAGE_AREA, r)
     x, y, w, h = r
@@ -575,9 +571,9 @@ def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
     emu = original.emu
-    lib.zone_get_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_icon_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_position.argtypes = [ctypes.c_int16]
+    lib.zone_get_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_icon_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
+    lib.zone_get_position.argtypes = [ctypes.c_uint16]
     lib.zone_get_position.restype = ScreenPoint
     out = original.alloc(16)
     zones = 0

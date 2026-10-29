@@ -17,11 +17,11 @@ typedef struct {
     void (*print_newline)(void);                        /* the next message starts on a new row */
     bool (*play_sound)(const Sound *s, uint8_t volume, int8_t lateral,
                        int8_t forward); /* starts a sound in a free voice */
-    bool (*zone_offset)(int16_t from, int16_t to, int16_t percent,
-                        ScreenPoint *out);              /* the offset percent of the way between two layout zones */
-    int16_t *(*zone_rect)(int16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
-    void (*update_action_area)(bool tick);              /* redraws what changed in the action area */
-    void (*reset_action_area)(void);                    /* clears the drawn state of the action area */
+    bool (*zone_offset)(uint16_t from, uint16_t to, int16_t percent,
+                        ScreenPoint *out);               /* the offset percent of the way between two layout zones */
+    int16_t *(*zone_rect)(uint16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
+    void (*update_action_area)(bool tick);               /* redraws what changed in the action area */
+    void (*reset_action_area)(void);                     /* clears the drawn state of the action area */
     void (*reset_action_champion)(
         int16_t champion_index);    /* clears the drawn state of the action area for a champion */
     void (*render_hand_icon)(void); /* draws the leader hand object into the cursor */

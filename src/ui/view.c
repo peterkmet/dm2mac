@@ -1438,9 +1438,8 @@ static void show_rain(void)
     if (!view_shows_rain())
         return;
     int16_t rect[RECT_SIZE];
-    int16_t w = VIEWPORT_WIDTH;
-    int16_t h = VIEWPORT_HEIGHT;
-    if (!zone_compute_rect(NULL, rect, ZONE_WALL, &w, &h))
+    ScreenSize size = {VIEWPORT_WIDTH, VIEWPORT_HEIGHT};
+    if (!zone_compute_rect(NULL, rect, ZONE_WALL, &size))
         return;
     int side = rain_side();
     int entry = rain_picture(side);
@@ -1515,9 +1514,8 @@ static void show_sparkle_field(int pos, int category, int index)
         return;
     const uint8_t *field = sparkle_field[pos];
     int16_t rect[RECT_SIZE];
-    int16_t w = field[SPARKLE_WIDTH];
-    int16_t h = field[SPARKLE_HEIGHT];
-    if (!zone_compute_rect(NULL, rect, ZONE_WALL + pos, &w, &h))
+    ScreenSize size = {field[SPARKLE_WIDTH], field[SPARKLE_HEIGHT]};
+    if (!zone_compute_rect(NULL, rect, ZONE_WALL + pos, &size))
         return;
     const uint8_t *mask = NULL;
     if (field[SPARKLE_MASK_PICTURE] != SPARKLE_MASK_NONE) {
@@ -1640,13 +1638,12 @@ static bool picture_corner(ViewPoint *corner)
 {
     const DrawCtx *c = &view.ctx;
     int16_t rect[RECT_SIZE];
-    int16_t sx = (int16_t)(c->src_x + c->dx);
-    int16_t sy = (int16_t)(c->src_y + c->dy);
+    ScreenSize size = {(int16_t)(c->src_x + c->dx), (int16_t)(c->src_y + c->dy)};
     if (c->w <= 0 || c->h <= 0 || !c->image ||
-        !zone_compute_anchored_rect(c->image, rect, (AnchoredZone){c->zone | ZONE_RELATIVE, c->anchor}, &sx, &sy))
+        !zone_compute_anchored_rect(c->image, rect, (AnchoredZone){c->zone | ZONE_RELATIVE, c->anchor}, &size))
         return false;
-    corner->x = (int16_t)(rect[RECT_X] - sx);
-    corner->y = (int16_t)(rect[RECT_Y] - sy);
+    corner->x = (int16_t)(rect[RECT_X] - size.w);
+    corner->y = (int16_t)(rect[RECT_Y] - size.h);
     return true;
 }
 
@@ -2382,8 +2379,7 @@ static void choose_shop_item(uint16_t shop, uint16_t display, uint8_t ornament, 
 static void show_shop_price(int16_t amount, uint8_t ornament, const PicturePlace *p, int offset_key)
 {
     uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
-    int16_t x = gdat_offset_x(offset);
-    int16_t y = gdat_offset_y(offset);
+    ScreenSize size = {gdat_offset_x(offset), gdat_offset_y(offset)};
     uint8_t coins[SHOP_PRICE_COINS];
     if (!amount)
         return;
@@ -2407,7 +2403,7 @@ static void show_shop_price(int16_t amount, uint8_t ornament, const PicturePlace
     for (int i = 0; i < count; i++, rect[RECT_X] += COIN_WIDTH)
         ui_blit_bitmap(&(BlitSource){.bitmap = view.ctx.image, .x = coins[i] * COIN_WIDTH, .transparent = NO_KEY},
                        strip, rect);
-    if (zone_compute_anchored_rect(strip, rect, (AnchoredZone){p->zone | ZONE_RELATIVE, p->anchor}, &x, &y))
+    if (zone_compute_anchored_rect(strip, rect, (AnchoredZone){p->zone | ZONE_RELATIVE, p->anchor}, &size))
         ui_blit_bitmap(&(BlitSource){.bitmap = strip, .transparent = p->key, .colormap = view.ctx.palette},
                        &g_view_viewport, rect);
 }

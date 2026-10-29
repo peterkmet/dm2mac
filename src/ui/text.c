@@ -208,7 +208,7 @@ static Baseline baseline_in_zone(int zone, const char *text)
 {
     ScreenSize size = text_measure(text);
     int16_t r[RECT_SIZE];
-    if (!size.w || !zone_compute_rect(NULL, r, zone, &size.w, &size.h))
+    if (!size.w || !zone_compute_rect(NULL, r, zone, &size))
         return (Baseline){false, 0, 0};
     return (Baseline){true, r[RECT_X], (int16_t)(r[RECT_Y] + r[RECT_H] - 1)};
 }

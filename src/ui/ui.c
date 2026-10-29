@@ -545,15 +545,14 @@ void offscreen_draw_gdat_image(Offscreen *o, GdatKey picture, int zone, int tran
 {
     const Bitmap *image = draw_gdat_image(picture.category, picture.index, picture.entry);
     int16_t r[RECT_SIZE];
-    int16_t sx = 0;
-    int16_t sy = 0;
+    ScreenSize size = {0, 0};
     if (!image)
         return;
-    int16_t *rect = zone_compute_rect(image, r, zone, &sx, &sy);
+    int16_t *rect = zone_compute_rect(image, r, zone, &size);
     offscreen_blit(o,
                    &(BlitSource){.bitmap = image,
-                                 .x = sx,
-                                 .y = sy,
+                                 .x = size.w,
+                                 .y = size.h,
                                  .transparent = transparent,
                                  .colormap = draw_gdat_image_palette(picture.category, picture.index, picture.entry)},
                    rect);
@@ -566,13 +565,12 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
     if (zone == ZONE_NONE) {
         memcpy(r, ctx->rect, sizeof r);
     } else {
-        int16_t w = ctx->w;
-        int16_t h = ctx->h;
-        if (!ctx->image || !zone_compute_rect(ctx->image, r, zone, &w, &h))
+        ScreenSize size = {ctx->w, ctx->h};
+        if (!ctx->image || !zone_compute_rect(ctx->image, r, zone, &size))
             return;
         /* as in the original, the clipped part goes into the size of the picture part, not its position */
-        ctx->w = (int16_t)(ctx->w + w);
-        ctx->h = (int16_t)(ctx->h + h);
+        ctx->w = (int16_t)(ctx->w + size.w);
+        ctx->h = (int16_t)(ctx->h + size.h);
     }
     local_rect(o, r, ctx->rect);
     ctx->zone = (int16_t)ZONE_NONE;
@@ -599,7 +597,7 @@ static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
     ScreenSize size = text_measure(text);
     if (!size.w)
         return NULL;
-    return zone_compute_rect(NULL, r, zone, &size.w, &size.h);
+    return zone_compute_rect(NULL, r, zone, &size);
 }
 
 void offscreen_draw_text_in_zone(Offscreen *o, int zone, TextColors colors, const char *text)
