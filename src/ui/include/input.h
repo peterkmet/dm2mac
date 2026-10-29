@@ -191,6 +191,8 @@ void input_flush(void);
    in that cell: the hand action when the hand is ready and has actions; near the icon edges toward the party
    center the leader choice, else the icon command when the spell is ready; else no command (0). */
 void input_refine_champion_click(Command *c); /* exported for the tests */
+/* The script that shows a command being pressed (and queues it); NULL for no command. */
+const uint8_t *input_click_feedback_script(Command *c); /* exported for the tests */
 /* Sets rect to a w x h rect centered in src. */
 void rect_center_in(int16_t *rect, const int16_t *src, int16_t w, int16_t h);
 /* Turns the waiting events into commands and runs the click feedback. */

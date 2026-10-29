@@ -341,6 +341,76 @@ def test_pressed_buttons_match_original(ui, original):
                 assert_same(lib, original, (dialog, choice, entry), screen=False)
 
 
+G_DIALOG_BUTTON_COUNT, G_CLICK_FEEDBACK_SCRIPTS = 0x7F200, 0x72EF9
+INPUT_GET_CLICK_FEEDBACK_SCRIPT, COMMAND_RECORD_SIZE = 0x20EE0, 14
+
+
+def feedback_scripts(lib, original, command):
+    """The click feedback script of command in both: the port pointer and the offset of the original in its table."""
+    from dm2test.scenario import Command
+    lib.input_click_feedback_script.restype = ctypes.c_void_p
+    lib.input_click_feedback_script.argtypes = [ctypes.POINTER(Command)]
+    record = original.alloc(COMMAND_RECORD_SIZE)
+    original.emu.write(record, bytes(Command(0, 0, command)))
+    return lib.input_click_feedback_script(Command(0, 0, command)), original.emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, record) - G_CLICK_FEEDBACK_SCRIPTS
+
+
+def test_dialog_button_scripts_match_original(port, original):
+    # The click feedback script of each dialog button command for each button count 0 to 8: the offset in the
+    # scripts table equals the one of the original (0xe3, 0xdc, or the execute script).
+    lib, emu = port, original.emu
+    state = DialogState.in_dll(lib, "g_dialog")
+    base, queue = feedback_scripts(lib, original, C.CMD_PAUSE)  # the queue script: offset 0 in both
+    assert queue == 0
+    seen = set()
+    try:
+        for count in range(9):
+            state.button_count = count
+            emu.write(G_DIALOG_BUTTON_COUNT, struct.pack("<h", count))
+            for command in range(C.CMD_DIALOG_BUTTON_FIRST, C.CMD_DIALOG_BUTTON_LAST + 1):
+                mine, theirs = feedback_scripts(lib, original, command)
+                assert mine - base == theirs, (count, hex(command), hex(mine - base), hex(theirs))
+                seen.add(theirs)
+    finally:
+        state.button_count = 0
+        emu.write(G_DIALOG_BUTTON_COUNT, bytes(2))
+    assert seen == {1, 0xDC, 0xE3}
+
+
+def dialog_button_count(lib, gdat, dialog):
+    """The buttons of dialog: its text entries, as dialog_run counts them."""
+    text = ctypes.create_string_buffer(128)
+    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
+    return sum(1 for e in range(C.DIALOG_TEXT_COUNT) if lib.gdat_text(gdat, GdatKey(C.CAT_DIALOG, dialog, e), text, 128) and text.value)
+
+
+def test_pressed_button_feedback_matches_original(ui, original, gdat):
+    # A click on each button of each dialog with buttons: the click feedback script of the button count and the
+    # command draws the pressed button picture; the screens are equal after each tick of the script.
+    from dm2test.input import click_feedback, find_click
+    lib, emu = ui, original.emu
+    lib.input_init()
+    match = InputMatch.in_dll(lib, "g_input_match")
+    state = DialogState.in_dll(lib, "g_dialog")
+    counts = {}
+    try:
+        for dialog in dict.fromkeys(d for d, _ in DIALOGS):
+            count = counts[dialog] = dialog_button_count(lib, gdat, dialog)
+            for command in range(C.CMD_DIALOG_BUTTON_FIRST, C.CMD_DIALOG_BUTTON_FIRST + count):
+                set_screen_mode(lib, emu, 1)
+                lib.dialog_draw(dialog, 0)
+                emu.call(UI_DIALOG_DRAW, dialog, 0)
+                state.button_count = count
+                emu.write(G_DIALOG_BUTTON_COUNT, struct.pack("<h", count))
+                click = find_click(lib, C.INPUT_MODE_DIALOG, command)  # it leaves the match of the click
+                emu.write(G_MATCH_RECT, bytes(match.rect))
+                emu.write(G_MATCH_ORIGIN, struct.pack("<h", match.origin))
+                click_feedback(lib, original, command, (hex(dialog), count), C.INPUT_MODE_DIALOG, {command: click})
+    finally:
+        emu.write(G_DIALOG_BUTTON_COUNT, bytes(2))
+    assert {1, 2, 3, 4} <= set(counts.values()), counts
+
+
 KBD_READ_KEY, INPUT_SIMULATE_COMMAND_CLICK, G_DIALOG_CHOICE = 0x11413, 0x207F1, 0x7F51C
 
 

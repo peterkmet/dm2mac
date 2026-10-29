@@ -124,6 +124,8 @@
 #define SCRIPT_SLEEP            0xb6
 #define SCRIPT_SAVE             0xbb
 #define SCRIPT_MAP_OPTION_FIRST 0xc0
+#define SCRIPT_DIALOG_BUTTON    0xdc
+#define SCRIPT_DIALOG_BUTTON_2  0xe3
 #define SCRIPT_VIEWPORT         0xea
 
 /* A script of a command group is SIZE long per command. */
@@ -1506,8 +1508,28 @@ void input_refine_champion_click(Command *c)
         c->command = 0;
 }
 
-/* The script that shows a command being pressed (and queues it); NULL for no command. */
-static const uint8_t *click_feedback_script(Command *c)
+/* The script of a pressed dialog button: by the button count of the open dialog and the command, as in the
+   original. */
+static int pressed_button_script(uint16_t command)
+{
+    switch (g_dialog.button_count) {
+    case 1:
+    case 2:
+    case 7:
+        return SCRIPT_DIALOG_BUTTON_2;
+    case 3:
+        return command == CMD_DIALOG_BUTTON_FIRST ? SCRIPT_DIALOG_BUTTON_2 : SCRIPT_DIALOG_BUTTON;
+    case 4:
+        return SCRIPT_DIALOG_BUTTON;
+    case 5:
+    case 6:
+        return command <= CMD_DIALOG_BUTTON_FIRST + 1 ? SCRIPT_DIALOG_BUTTON : SCRIPT_EXECUTE;
+    default:
+        return SCRIPT_EXECUTE;
+    }
+}
+
+const uint8_t *input_click_feedback_script(Command *c)
 {
     input_refine_champion_click(c);
     uint16_t command = c->command;
@@ -1547,7 +1569,7 @@ static const uint8_t *click_feedback_script(Command *c)
     else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST)
         offset = (command - CMD_MAP_OPTION_FIRST) * SCRIPT_MAP_OPTION_SIZE + SCRIPT_MAP_OPTION_FIRST;
     else if (command >= CMD_DIALOG_BUTTON_FIRST && command <= CMD_DIALOG_BUTTON_LAST)
-        offset = SCRIPT_EXECUTE; /* dialog buttons */
+        offset = pressed_button_script(command);
     else
         offset = command == CMD_VIEWPORT ? SCRIPT_VIEWPORT : SCRIPT_QUEUE;
     return click_feedback_scripts + offset;
@@ -1860,7 +1882,7 @@ void input_poll(void)
             flush_deferred_click();
             if (!command)
                 break;
-            in.script = click_feedback_script(&in.current);
+            in.script = input_click_feedback_script(&in.current);
             elapsed = 0;
         }
     }
