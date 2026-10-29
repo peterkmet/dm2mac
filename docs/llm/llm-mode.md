@@ -107,7 +107,7 @@ uv run dm2-play new_game
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
 - String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the turn-based commands, a string value cannot contain a `"` character.
-- The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Do not nest other objects.
+- The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Nest only `args` and the items of `actions`.
 - Positions are game screen pixels: `x` 0 to 319, `y` 0 to 199.
 
 ## Commands
