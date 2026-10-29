@@ -114,8 +114,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    line, with the same digit width. A block of ids from the data files and from `SKULL.EXE` is hex too: GDAT
    categories and entries, sound entries, priorities and volumes, event types, command codes, key codes. A
    block of counts, sizes, ticks, percentages, coordinates, distances, divisors and thresholds is decimal in
-   every line. A block never mixes the two. A shift count is a count: it stands in its own decimal block next to its mask block (`GLOBAL_BIT_SHIFT` and `GLOBAL_BIT_MASK`). A table row uses one notation. [notation; the table row review
-   only]
+   every line. A block never mixes the two. A shift count is a count: it stands in its own decimal block next to its mask block (`GLOBAL_BIT_SHIFT` and `GLOBAL_BIT_MASK`). In a table of structs the notation is per field: a flag field is
+   hex and a count field is decimal in every row. [notation; the table fields review only]
 
    ```c
    /* Door flags of the door record. */
