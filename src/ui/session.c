@@ -89,21 +89,6 @@ static char *slot_path(char *path, int16_t slot, bool bak)
     return path;
 }
 
-static char *data_path(char *path, const char *name)
-{
-    snprintf(path, OS_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
-    return path;
-}
-
-/* Whether the file at path can be read. */
-static bool file_exists(const char *path)
-{
-    FILE *f = fopen(path, "rb");
-    if (f)
-        fclose(f);
-    return f != NULL;
-}
-
 /* Draws a GDAT picture placed in the screen zone, with its colors. */
 static void render_screen_picture(int category, int index, int entry)
 {
@@ -194,6 +179,7 @@ static void list_slots(void)
         if (f) {
             size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
             (void)n; /* a short file keeps its zeros after what it has */
+            slots[i][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
             fclose(f);
             continue;
         }
@@ -379,6 +365,22 @@ static int16_t choose_save_slot(void)
 }
 
 /* ---- Load and save ---- */
+
+/* The path of the file name in the data folder. */
+static char *data_path(char *path, const char *name)
+{
+    snprintf(path, OS_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
+    return path;
+}
+
+/* Whether the file at path can be read. */
+static bool file_exists(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (f)
+        fclose(f);
+    return f != NULL;
+}
 
 /* Reads DUNGEON.DAT (DUNGENB.DAT when chosen and present) for a new game; returns false on a read error. */
 static bool load_new_game(void)
