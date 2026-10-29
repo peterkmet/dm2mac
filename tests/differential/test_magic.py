@@ -15,6 +15,7 @@ from dm2test.creature import CreatureScenario
 from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, c_screen, champion_bytes, champion_records,
                                diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
 from dm2test.interface import gdat, original, port  # noqa: F401 (fixtures)
+from dm2test.input import click_feedback
 from dm2test.save import Game
 from dm2test.scenario import start  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
@@ -285,51 +286,9 @@ def command(lib, emu, cmd, x=0, y=0):
     return lib.command_execute(ctypes.byref(c)), emu.call(COMMAND_EXECUTE, COMMAND_RECORD)
 
 
-INPUT_GET_CLICK_FEEDBACK_SCRIPT, INPUT_RUN_CLICK_FEEDBACK = 0x20EE0, 0x21394
-G_CURRENT_COMMAND, G_CLICK_FEEDBACK_SCRIPT, G_CLICK_FEEDBACK_DELAY = 0x7F4CE, 0x7F47C, 0x7F52A
-G_INPUT_DISABLED, G_COMMAND_QUEUE_HEAD, G_COMMAND_QUEUE_TAIL = 0x7F50A, 0x7F50E, 0x7F516
-G_FEEDBACK_WAITING, G_FEEDBACK_BUSY = 0x7F474, 0x7F488
 INPUT_MODE_MOVE, INPUT_BUTTON_LEFT = C.INPUT_MODE_MOVE, C.INPUT_BUTTON_LEFT
 MAP_HAS_OPTIONS = C.MAP_HAS_OPTIONS
 button_clicks = {}  # command: a screen point of its button and the rect of its zone
-
-
-def click_feedback(lib, original, cmd, where):
-    """A left click on the button of command cmd in the port; the original starts the click feedback script of the
-    same command and rect. Both run the script tick by tick until it ends; the screens must be equal after each
-    tick. The queued commands and the disabled input are cleared after the script."""
-    from dm2test.input import MainLoop
-    emu = original.emu
-    if cmd not in button_clicks:
-        rect = (ctypes.c_int16 * 4)()
-        lib.input_click_command.restype = ctypes.c_uint16
-        x, y = next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
-                    if lib.input_click_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, rect) == cmd)
-        button_clicks[cmd] = x, y, tuple(rect)
-    x, y, rect = button_clicks[cmd]
-    loop = MainLoop.in_dll(lib, "g_main_loop")
-    lib.input_reset_states()
-    lib.input_flush()
-    emu.write(G_CLICK_FEEDBACK_DELAY, bytes(2))
-    emu.write_u32(G_FEEDBACK_WAITING, 0)
-    emu.write_u32(G_FEEDBACK_BUSY, 0)
-    lib.input_set_mode(INPUT_MODE_MOVE)
-    lib.input_mouse_click(x, y, INPUT_BUTTON_LEFT)
-    emu.write(G_CURRENT_COMMAND, struct.pack("<3H4h", x, y, cmd, *rect))
-    emu.write_u32(G_CLICK_FEEDBACK_SCRIPT, emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, G_CURRENT_COMMAND))
-    for tick in range(20):
-        loop.timer_ticks += 1
-        lib.input_poll()
-        emu.call(INPUT_RUN_CLICK_FEEDBACK, int(tick > 0))
-        mine, theirs = c_screen(lib), original.screen()
-        assert mine == theirs, (where, "feedback", hex(cmd), tick, diff(mine, theirs, C.SCREEN_W))
-        if not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT):
-            break
-    assert not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT), where
-    lib.input_flush()
-    emu.write(G_INPUT_DISABLED, bytes(2))
-    emu.write(G_COMMAND_QUEUE_HEAD, bytes(2))
-    emu.write(G_COMMAND_QUEUE_TAIL, bytes(2))
 
 
 def spell_kind(index):
@@ -380,7 +339,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
             rune = (plan[count] - RUNE_FIRST) % C.SPELL_RUNES_PER_SET
             if rng.random() < 0.5:
                 if clicks.random() < 0.5:
-                    click_feedback(lib, original, CMD_RUNE_FIRST + rune, n)
+                    click_feedback(lib, original, CMD_RUNE_FIRST + rune, n, clicks=button_clicks)
                 else:
                     assert command(lib, emu, CMD_RUNE_FIRST + rune) == (1, 1)
             else:
@@ -403,7 +362,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
                 mine, theirs = lib.magic_cast_entered_runes_failed(), emu.call(MAGIC_CAST_ENTERED_RUNES)
             else:
                 if clicks.random() < 0.5:
-                    click_feedback(lib, original, CMD_CAST_SPELL, n)  # it queues the command
+                    click_feedback(lib, original, CMD_CAST_SPELL, n, clicks=button_clicks)  # it queues the command
                 assert command(lib, emu, CMD_CAST_SPELL) == (1, 1)
                 mine = int(ctypes.c_bool.in_dll(lib, "g_input_command_stop").value)
                 theirs = struct.unpack("<H", emu.read(G_COMMAND_STOP, 2))[0]
@@ -470,15 +429,15 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
         x = rect[0] + rect[2] - 1 if icon in (1, 2) else rect[0]
         y = rect[1] + rect[3] - 1 if icon < 2 else rect[1]
         button_clicks[cmd] = x, y, tuple(rect)
-        click_feedback(lib, original, cmd, "party icon")
+        click_feedback(lib, original, cmd, "party icon", clicks=button_clicks)
     for cmd in range(CMD_HAND_FIRST, CMD_HAND_FIRST + 4):
         close()
-        click_feedback(lib, original, cmd, "hand, closed")
+        click_feedback(lib, original, cmd, "hand, closed", clicks=button_clicks)
     open_hand(lib, original, 0)
     actions = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
     assert actions
     for cmd in range(CMD_ACTION_FIRST, CMD_ACTION_FIRST + actions):
-        click_feedback(lib, original, cmd, "action")
+        click_feedback(lib, original, cmd, "action", clicks=button_clicks)
 
 
 TIMELINE_EVENT_MAGIC_LIGHT = 0x5917D
@@ -813,7 +772,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
         for option in range(4):
             if rng.random() < 0.6:
                 if ActionArea.in_dll(lib, "g_action").flags & MAP_HAS_OPTIONS and feedback.random() < 0.5:
-                    click_feedback(lib, original, C.CMD_MAP_OPTION_FIRST + option, (n, "option"))
+                    click_feedback(lib, original, C.CMD_MAP_OPTION_FIRST + option, (n, "option"), clicks=button_clicks)
                 else:
                     assert command(lib, emu, C.CMD_MAP_OPTION_FIRST + option) == (1, 1)
         mm = MinionMap.in_dll(lib, "g_minion_map")
