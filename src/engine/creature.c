@@ -348,6 +348,8 @@ static const uint8_t *read_creature_data(int creature_type, int type, int entry,
     const Gdat *g = gdat_current();
     uint32_t n = 0;
     const uint8_t *data = gdat_item(g, gdat_find(g, CAT_CREATURE, creature_type, type, entry), &n);
+    if (!data)
+        os_fatal("creature type %d has no GDAT data %d/%d", creature_type, type, entry);
     if (size)
         *size = n;
     return data;
@@ -638,7 +640,7 @@ void creature_activate_all_maps(void)
 
 void creature_deactivate_all_groups(void)
 {
-    for (int i = 0; g_active_group_count; i++)
+    for (int i = 0; g_active_group_count && i < g_active_group_max; i++)
         if (g_active_groups[i].group != ACTIVE_FREE)
             creature_deactivate_group(i);
 }
@@ -1350,7 +1352,7 @@ int creature_get_party_distance(Location at)
     } else {
         return -1;
     }
-    if (at.x >= width)
+    if (at.x < 0 || at.x >= width || at.y < 0 || at.y >= DISTANCE_MAP_SIDE)
         return -1;
     uint8_t d = map[at.x * DISTANCE_MAP_SIDE + at.y];
     if (d & DISTANCE_NEXT_TO) {

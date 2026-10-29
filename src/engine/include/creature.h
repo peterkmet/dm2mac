@@ -306,7 +306,7 @@ const CreatureInfo *creature_group_info(uint16_t group);
 ActiveGroup *creature_active(uint16_t group);
 
 /* Animation. */
-/* The animation sequence and state words of a group record: in the record of a static creature, else in its active group. */
+/* The animation sequence and state words of a group record: in the record of a static creature, else in its active group; a non-static creature needs an active group. */
 uint16_t *creature_anim_words(uint16_t group);
 /* The current animation frame of a creature group. */
 void creature_anim_frame(const Gdat *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE]);
