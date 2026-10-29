@@ -266,7 +266,7 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 | `failed` | An item cannot run. `error` gives the reason. The failed item is not in `ran`, and it changed nothing. |
 | `done` | All items ran. |
 
-After a batch, `action_damage` is a list with one value for each `choose_action`, `look` is in the response only when the last item was `look`.
+After a batch, `action_damage` is a list with one value for each `choose_action`; `look` is in the response only when the last item was `look`.
 
 `health_lost`: a list with one value for each champion (the health that the champion lost since the start of the request). It is only in the response when a champion lost health.
 
