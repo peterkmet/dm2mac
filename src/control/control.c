@@ -489,7 +489,8 @@ static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
     png_chunk(f, "IHDR", ihdr, sizeof ihdr);
     png_chunk(f, "IDAT", z, (uint32_t)(q - z));
     png_chunk(f, "IEND", NULL, 0);
-    return fclose(f) == 0;
+    bool ok = !ferror(f); /* fix: a failed fwrite (a full disk) fails the screenshot */
+    return fclose(f) == 0 && ok;
 }
 
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
