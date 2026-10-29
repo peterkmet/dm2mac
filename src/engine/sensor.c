@@ -174,13 +174,6 @@ static uint32_t current_map_time(uint32_t time)
     return timeline_time_map(time & EVENT_TIME_MASK, g_party.cur_map);
 }
 
-/* ---- Doors and square events ---- */
-
-uint16_t sensor_door_value(uint16_t door, int key)
-{
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
-}
-
 static int holder_item(int ornament)
 {
     return gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ITEM);
@@ -228,6 +221,13 @@ static void wall_sound_square(int16_t *x, int16_t *y, int side)
         *x = dx;
         *y = dy;
     }
+}
+
+/* ---- Doors and square events ---- */
+
+uint16_t sensor_door_value(uint16_t door, int key)
+{
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
 }
 
 /* True when the party carries an item of the item index type. */

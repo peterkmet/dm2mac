@@ -11,6 +11,7 @@
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
+/* The type and data word. */
 static inline uint16_t sensor_type(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK);
@@ -35,6 +36,7 @@ static inline bool sensor_sound_on(uint16_t sensor)
 {
     return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0;
 }
+/* The flags word. */
 /* Whether a flag bit of a sensor is set. */
 static inline bool sensor_flag(uint16_t sensor, uint16_t bit)
 {
@@ -61,6 +63,7 @@ static inline int16_t sensor_ornament_index(uint16_t sensor)
 {
     return (int16_t)(thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK) - 1);
 }
+/* The target word: the target square and cell, or the energy and step of a launched missile. */
 static inline uint16_t sensor_target_x(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
@@ -176,6 +179,7 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The positions of the wall cell and the group class in the sensor data. */
 #define SENSOR_CELL_SHIFT 6
 #define AREA_CLASS_SHIFT  4
+/* The sub-fields of the data word. */
 /* The map in the data word of a sensor. */
 static inline uint16_t sensor_data_map(uint16_t sensor)
 {

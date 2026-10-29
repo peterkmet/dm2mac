@@ -161,6 +161,8 @@ static bool sky_has(int entry)
     return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_IMAGE, entry);
 }
 
+/* Sky */
+
 SkyObject *weather_sky_objects(void)
 {
     return sky_objects;
@@ -174,6 +176,8 @@ bool weather_sky_has_clouds(void)
 {
     return sky_has(GFX_SKY_CLOUDS_LIGHT);
 }
+
+/* Weather and day */
 
 /* Reads the sky object entry of the map graphics into object; false when the map has none. */
 static bool load_sky_object(SkyObject *object)
@@ -190,12 +194,6 @@ static bool load_sky_object(SkyObject *object)
     object->scale_x = SCALE_FULL;
     object->scale_y = SCALE_FULL;
     return true;
-}
-
-/* The daylight in % that a window lets in now. */
-static int daylight(void)
-{
-    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
@@ -438,6 +436,14 @@ void world_update_day_night(bool storm_step)
     if (lightning)
         o = show_lightning(o);
     o->entry = SKY_OBJECT_END;
+}
+
+/* Light */
+
+/* The daylight in % that a window lets in now. */
+static int daylight(void)
+{
+    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 void light_update_party_light(void)
