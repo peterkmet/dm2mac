@@ -1,6 +1,6 @@
 # Player manual
 
-How to run DM2Mac and how to play it. The repository has no game files. You supply your own files of Dungeon Master II (PC DOS, English). The items and their values are in [items.md](reference/items.md).
+The repository has no game files. You supply your own files of Dungeon Master II (PC DOS, English). The items and their values are in [items.md](reference/items.md).
 
 ## Run the game
 
