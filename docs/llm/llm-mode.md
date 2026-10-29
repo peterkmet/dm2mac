@@ -386,7 +386,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 ### Game over and the modal loops
 
 - After a game over, the reply has `game_over` true. Use `load` or `new_game`.
-- A save, a load, or a new game of the game itself (the buttons of the save menu) runs a modal loop. Do not click the save button of the game; use `save`. A raw click on it opens the save menu.
+- A save, a load, or a new game of the game itself (the buttons of the save menu) runs a modal loop. A raw click on the save button of the game opens the save menu; `save` writes the file without it.
 - While a dialog shows, `act click` and `act key` are the way out. `state.dialog` has the id and the button texts.
 
 ## Actions
