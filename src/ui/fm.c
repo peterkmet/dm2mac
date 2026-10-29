@@ -269,7 +269,7 @@ static uint32_t note_freq(int note)
 }
 
 /* Picks a voice for a new note: a free voice, else a voice of the first channel without pitch bend. */
-static int voice_alloc(int channel)
+static int alloc_voice(int channel)
 {
     for (int v = 0; v < VOICES; v++)
         if (!fm.voices[v].note)
@@ -285,7 +285,7 @@ static int voice_alloc(int channel)
 }
 
 /* Sets the key of a playing voice off; the voice is free again. */
-static void voice_off(int v)
+static void stop_voice(int v)
 {
     Voice *voice = &fm.voices[v];
     if (!voice->note)
@@ -296,7 +296,7 @@ static void voice_off(int v)
 }
 
 /* Writes the instrument registers of a voice; keeps the level and sustain bytes for later changes. */
-static void voice_load(int v, const uint8_t *rec)
+static void load_voice(int v, const uint8_t *rec)
 {
     const uint8_t *mod = rec + REC_MODULATOR;
     const uint8_t *car = rec + REC_CARRIER;
@@ -377,8 +377,8 @@ static uint32_t bend_freq(int bend, int note, int v)
 /* Starts a note in a voice with the instrument of the channel, or the drum of the note on the drum channel. */
 static void note_on(int note, int velocity, int channel)
 {
-    int v = voice_alloc(channel);
-    voice_off(v);
+    int v = alloc_voice(channel);
+    stop_voice(v);
     fm.voices[v].channel = channel;
     /* Repeated writes give the old note time for a fast release before the new note starts. */
     for (int i = 0; i < RELEASE_WRITES; i++) {
@@ -386,7 +386,7 @@ static void note_on(int note, int velocity, int channel)
         opl_write(OPL_SUSTAIN + op_modulator[v], fm.op_sustain[op_modulator[v]] | OPL_RELEASE_FAST);
     }
     bool drum = channel == MIDI_DRUM_CHANNEL;
-    voice_load(v, drum ? instrument(FM_BANK_DRUM, note) : instrument(FM_BANK_MELODIC, fm.channels[channel].program));
+    load_voice(v, drum ? instrument(FM_BANK_DRUM, note) : instrument(FM_BANK_MELODIC, fm.channels[channel].program));
     fm.voices[v].velocity = velocity;
     voice_set_level(v);
     voice_set_freq(v, note_freq(drum ? drum_pitch(note) : note), true);
@@ -408,7 +408,7 @@ static void note_off(int note, int velocity, int channel)
     }
     for (int v = 0; v < VOICES; v++)
         if (fm.voices[v].note == note && fm.voices[v].channel == channel)
-            voice_off(v);
+            stop_voice(v);
 }
 
 /* Stops all voices of a channel. */
@@ -416,7 +416,7 @@ static void notes_off(int channel)
 {
     for (int v = 0; v < VOICES; v++)
         if (fm.voices[v].channel == channel)
-            voice_off(v);
+            stop_voice(v);
 }
 
 /* Sets the controllers of a channel back to their start values. */

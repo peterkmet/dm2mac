@@ -1210,7 +1210,7 @@ static void mark_active_zones(const InputNode *node, bool *active)
 }
 
 /* Shows the cursor zone c in front of the zones of the same or a lower priority. */
-static void cursor_zone_add(int c)
+static void add_cursor_zone(int c)
 {
     if (memchr(in.cursor_list, c, (size_t)in.cursor_count))
         return;
@@ -1223,7 +1223,7 @@ static void cursor_zone_add(int c)
 }
 
 /* Hides the cursor zone c. */
-static void cursor_zone_remove(int c)
+static void remove_cursor_zone(int c)
 {
     uint8_t *e = memchr(in.cursor_list, c, (size_t)in.cursor_count);
     if (!e)
@@ -1245,9 +1245,9 @@ static void update_active_zones(void)
         }
     for (int c = 1; c <= CURSOR_ZONE_COUNT; c++) {
         if (change[c] == CURSOR_ADD)
-            cursor_zone_add(c);
+            add_cursor_zone(c);
         if (change[c] == CURSOR_REMOVE)
-            cursor_zone_remove(c);
+            remove_cursor_zone(c);
     }
 }
 
