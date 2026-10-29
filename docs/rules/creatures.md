@@ -58,7 +58,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the AI condition "health below" (`test_condition` in `src/engine/ai.c`) of a creature info with a maximum health of 0 (no shipped creature info has one): the original divides by 0, the port divides by 1
   - the cells in reach of a floor item (`floor_item_in_reach` in `src/engine/ai_move.c`) for another square and direction -1 (no caller passes both): the original writes the cell byte before its table, the port starts at cell 0
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
-- `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
+- `magic_add_light` does nothing for a light kind other than the three that exist (the original adds a light event with an unset delay and reads past its light power table; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
   - a new group when the active group table is full (`create_group` in `src/engine/creature.c`): the group record that the creation took stays taken and is in no square, so no later creation or discard can use it
