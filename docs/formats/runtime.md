@@ -48,14 +48,12 @@ PIT programming in the HMI timer library, `FUN_00062efd` and `FUN_00062f43`:
 
 The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are probable ([Unknown values](#unknown-values)).
 
-reDM2 findings (`docs/memory.md`, "PART 1 — determinism audit", and the `IBMIOP.EXE` driver notes) agree and add these facts:
+More facts of the `IBMIOP.EXE` timer:
 
 - `IBMIOP.EXE` function `0x0f` ends with `mov ax,1; retf`. Thus `g_timer_step` (`0x7efac`) is 1: each callback adds 1 tick.
 - The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. `DM2.BAT` passes `+VS`, so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with the reading above.
 - Function `0x30` (shutdown) clears the flag that function `0x0f` sets. After it, no tick arrives.
 - Game code reads no clock: all `int 21h` calls are in the Watcom library, and there is no `int 1Ah`. `g_game_time` (`0x7f22c`) counts game steps. Timeline event times are game steps (24 bits).
-
-The port sets `PIT_DIVISOR` in `src/platform/platform.c` to `4971` (240.02 Hz) and drives the HMP player at 120 Hz. The timer tick and the game step of the port: [movement.md](../rules/movement.md#timing-and-the-game-step).
 
 ## Unknown values
 
@@ -69,4 +67,5 @@ Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` 
 
 ## Deviations from the original
 
+- The port sets `PIT_DIVISOR` in `src/platform/platform.c` to `4971` (240.02 Hz) and drives the HMP player at 120 Hz. The timer tick and the game step of the port: [movement.md](../rules/movement.md#timing-and-the-game-step).
 - The port plays the SVGA movie script only; the VGA script (`*.VGA`, `CREDITS.PCX`) is not used ([movies.md](movies.md#deviations-from-the-original)).

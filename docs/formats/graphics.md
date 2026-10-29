@@ -19,8 +19,6 @@ The key table is big-endian (first word `0x8001` is read byte-swapped). It holds
 
 The sum of all item sizes ends at byte `8639757`. This is the exact size of `game/DATA/GRAPHICS.DAT`.
 
-The reDM2 project (`docs/formats.md`, section "GRAPHICS.DAT") gives the same header, item count, key table size (`0x17284` = 94852), and row layout. Its census gives the same facts. The census is not repeated.
-
 ### Language filter (field `F`)
 
 Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". The names of the symbol table agree: `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).

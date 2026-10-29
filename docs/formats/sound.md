@@ -53,14 +53,11 @@ else {
 
 The SOS structure field names are probable.
 
-Disagreement with reDM2: reDM2 (`docs/formats.md`, "There is no audio in GRAPHICS.DAT") states that the archive holds no digital samples. It lists the 292 type-2 rows as "image?, inferred, no reader". The evidence for samples is the reader `FUN_0001623b`, which loads exactly these 292 items as sound descriptors, and the constant 6-byte sample header. This page keeps the sample reading. reDM2 names `FUN_000104ea` `hilite_node_add` and marks its role as not verified. The caller passes the sample descriptors, and an XOR of bit 7 is the signed to unsigned PCM conversion. The symbol table keeps `sound_prepare_sample`.
-
-The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sndreq_load`, `src/engine/sound_request.c`). `tests/differential/test_sound.py` compares the port of `FUN_00010877` and of the scaling in `FUN_00015ca9` with the original.
-
 ## Deviations from the original
 
 The sound output is `src/ui/sound.c`.
 
+- The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sndreq_load`, `src/engine/sound_request.c`).
 - Pan ratio overflow fixed. `FUN_00010877` divides `|lateral| << 11` by `|forward|` in 32 bits, but compares only the low 16 bits with `THRESH`. For `|lateral| >= 32` and a small `|forward|`, the ratio wraps and the sound pans near the center (example: lateral 32, forward 1 gives `0x8f00`, not `0xf800`). The port compares the full ratio. The differential test skips these inputs and checks the fix separately.
 - Mixing: the port mixes at 44100 Hz (4 × 11025) in interleaved signed 16-bit stereo. Each sample repeats 4 times. SDL3 converts to the device rate.
 - Pan law: the SOS pan curve is not known. The port uses a linear balance with the center at full volume on both sides: left gain = `min(0x8000, 0x10000 − pan) / 0x8000`, right gain = `min(0x8000, pan) / 0x8000`, times the SOS volume `vol8 << 7 | vol8 >> 1`.

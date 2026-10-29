@@ -37,7 +37,7 @@ The search runs in every mode, including the turn-based mode.
 A source holds all 10 files. The search runs in the working folder in this order:
 
 1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder counts as a source only when it holds at least one of the 10 files at its root. Other folders are searched into, but they get no log line and no message line.
-2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is the prefix of the first entry in name order whose name is `DATA/GRAPHICS.DAT` or ends with `/DATA/GRAPHICS.DAT` (see [zip.md](zip.md)).
+2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is found as in [zip.md](zip.md#names).
 3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image (see [cd-image.md](cd-image.md)).
 
 The extensions match without case. The first source with all 10 files that pass the check is the source of the install. A folder source with at least one game file, a ZIP archive, or a CD image that fails gets a line in the log and a line in the message, and the search goes on.
