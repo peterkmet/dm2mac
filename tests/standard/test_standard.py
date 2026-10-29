@@ -913,7 +913,7 @@ def test_function_comments():
             if c.suffix == ".c":
                 clines = c.read_text(errors="replace").splitlines()
                 bodies.update({name: (c, clines, start) for name, start, _, static in definitions(c) if not static})
-        prototypes = [f for f in functions(header) if not f.static]
+        prototypes = functions(header)
         grouped = grouped_accessors(hlines, prototypes)
         for f in prototypes:
             if ("comment", rel(header)) in ok:
