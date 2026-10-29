@@ -5,7 +5,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 ## Creature data
 
 - The creature info table has 36 bytes for each creature type (`creature_infos` in `src/engine/creature.c`, generated from `SKULL.EXE`): flags, defense, regeneration, maximum health, attack, poison, dexterity, traits, movement, skills of items, attacks, doors, and sensors, speed, door flags, push resistance, possessions, possession zone, size, and hit size.
-- An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the groups of the dungeon plus 100. A group is active while the party is on its map.
+- An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the walking groups of the dungeon plus 100, and for at most 255 groups. A group is active while the party is on its map.
 - The AI script data is at `0x73020` to `0x74f7e` of `SKULL.EXE`: plan tables, behavior tables, class flags, action flags, the enabled commands, and the plan steps. The links in the data are `SKULL.EXE` addresses. `src/engine/ai_data.c` holds a copy.
 - The AI context of the group that updates (`0x7f548`, 0x350 bytes) holds the group, its info, the scan results, the candidates (22 bytes each), the plan cache (14 bytes), and the move flags.
 
@@ -20,17 +20,20 @@ The rules of the creatures: the creature data, the updates of the creature group
 - A projectile record links its payload (an object or a spell), and its event (type `0x1d` or `0x1e`) holds the energy, the attack, and the step. Each event moves the projectile one cell. At a wall, a closed door, a creature, or a champion the projectile hits (`hit_impact`).
 - An explosion record holds its type and power. Its event (type `0x19`) applies the damage on its square and can trigger the wall sensors.
 - A spell is a sequence of up to 4 runes (power, element, form, class). `magic_find_spell` finds it in the spell table of `SKULL.EXE`. The kinds are potions, projectiles, party auras, summons, and others.
-- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes mana every 25 game steps, and a click on the grid sends the minion there.
+
+## Minion map
+
+- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes 1 mana from the champion who opened it every 25 game steps, and a click on the grid sends the minion there.
 
 ## Deviations from the original
 
-- The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`): a creature attack wakes the party, and the original then sets the input mode.
-- Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light, invisibility, and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
+- The scenario tests stub `mouse_area_add` and `mouse_area_remove` (the mouse areas of an input mode): when a creature attack wakes the party, the original sets the input mode, and the stub does nothing.
+- Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
 - The scratch blocks of the AI (last-in, first-out allocations of the original memory layer) are ordinary buffers in the port. The port has 4 blocks (`SCRATCH_BLOCKS`): a fifth nested creature update calls `os_fatal` (`ai_scratch_push`); the original has no such limit.
-- No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
+- No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
-- The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
+- The original tests the address of `rand_2bits` instead of calling it, so the extra wait before a group acts (the alert test of the creature update in `src/engine/ai.c`) always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
   - a creature type without its [GDAT](../formats/graphics.md#gdat-items) animation data (a damaged GRAPHICS.DAT): the original reads a null entry, the port calls `os_fatal` (`read_creature_data` in `src/engine/creature.c`)
@@ -62,7 +65,6 @@ The rules of the creatures: the creature data, the updates of the creature group
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
   - a new group when the active group table is full (`create_group` in `src/engine/creature.c`): the group record that the creation took stays taken and is in no square, so no later creation or discard can use it
-  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as in the original, with the random ornament count, the size and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
   - a projectile move also writes the direction into its freed event
@@ -77,7 +79,6 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the activation target of a search (`setup_target_kind`) compares the activation position with the party position in another order: its x with the party map, its y with the party x, its map with the party y
   - `ai_square_blocks_line` passes its square to `creature_find_group_near_point`: a group that the search finds next to the square moves the square that the next things of the list test
   - the party distance across maps (`far_party_distance`) wraps the dungeon positions to 16 bits
-  - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
   - the action "move two steps" in phase 2: when the fall of the group waits or the group leaves the dungeon, the AI position takes the destination of the last move inside that move (`g_party.dest_*`; for example a dropped possession or the removal of the group), not the square of the group
   - the back-off of a ranged attack along a line (`back_off_line` in `src/engine/ai_move.c`) has no map test: a step to y = -1 with x above 0 reads the last cell of the column before, and a step to x = map width on a map less than 32 wide reads a cell of the next column of the distance map, and a step to y = 32 on a map 32 high (x below 31) reads the first cell of the next column
