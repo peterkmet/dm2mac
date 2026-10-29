@@ -533,12 +533,12 @@ def test_no_packed_fields_at_call_sites():
 BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32")
 BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32)\w*)", re.M)
 BYTE_SHIFT = re.compile(r"\]\s*\)?\s*<<\s*(?:8|16|24)\b|>>\s*(?:8|16|24)\s*\)?\s*&\s*0x[fF]{2}\b")
-BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?uint8_t\s*\*\s*\)")
+BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?(?:u?int8_t|char)\s*\*\s*\)")
 
 
 def test_byte_order_helpers_only_in_le_header():
     """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h; a cast to
-    (uint8_t *) or (const uint8_t *) stands only in data/."""
+    (uint8_t *), (int8_t *) or (char *), also with const, stands only in data/."""
     ok = allowed()
     found = []
     for path in sources():

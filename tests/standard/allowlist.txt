@@ -4,6 +4,9 @@ byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate recor
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
 byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the champion record and the end mark after them
+byteorder engine/sound_request.c rule 10.7: sndreq_load reads the signed 8-bit samples after the sample header
+byteorder platform/main.c rule 10.7: restart passes the const mode name in the char * argument list of execvp
+byteorder ui/session.c rule 10.7: the save slot name is a byte string in the save header
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE

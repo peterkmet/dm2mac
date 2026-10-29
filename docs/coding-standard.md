@@ -318,7 +318,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
 7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
    between bytes and a struct variable: read and write the fields through the byte order helpers of rule 3.10.
-   Outside `data/`, no cast to `(uint8_t *)` or `(const uint8_t *)`.
+   Outside `data/`, no cast to `(uint8_t *)`, `(int8_t *)` or `(char *)`, also with `const`.
    Exception: a packed struct that mirrors a record or a memory layout of `SKULL.EXE` that the save or the
    differential tests use; its allowlist line names the struct as `<file>:<type>` and gives `rule 10.7`. A byte
    cast that reads no value of more than one byte; its allowlist line names the file and gives `rule 10.7`.
@@ -371,7 +371,7 @@ their allowlist key:
 | `duplicate` | a constant name defined in more than one header or `.c` file |
 | `numbered` | an event number, a byte offset or an address in a name |
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
-| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `be16`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)` or `(const uint8_t *)` cast outside `data/` |
+| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `be16`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)`, `(int8_t *)` or `(char *)` cast, also with `const`, outside `data/` |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
 | `name` | a function name above four words after the prefix or above 40 characters |
 | `static-prefix` | a static function with a module prefix |
