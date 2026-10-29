@@ -106,7 +106,7 @@ uv run dm2-play new_game
 - One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply does not get `busy`.
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
-- String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the turn-based commands, a string value cannot contain a `"` character.
+- String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the items of `act_many`, a string value cannot contain a `"` character.
 - The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Nest only `args` and the items of `actions`.
 - Positions are game screen pixels: `x` 0 to 319, `y` 0 to 199.
 
@@ -449,7 +449,7 @@ The errors of the real-time commands:
 | `button must be left or right` | A different button name. |
 | `missing id` | `command` without an `id`. |
 | `ticks must be 1-6000` | A wait out of range. |
-| `missing path` | `screenshot` without a `path`, or a `path` with a bad escape, a NUL character, or more than `PATH_MAX` bytes. |
+| `missing path` | `screenshot` without a `path`, or a `path` with a bad escape, a NUL character, or more than 1051 bytes (`OS_PATH_SIZE` minus 1). |
 | `cannot write the PNG file` | The game cannot write the file. |
 | `request line too long` | A line of more than 4095 bytes before its newline. |
 | `request line has a NUL byte` | The line has a byte 0. |

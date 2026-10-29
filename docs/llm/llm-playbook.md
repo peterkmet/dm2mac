@@ -40,7 +40,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## Food, water, sleep
 
 - The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Between -512 and -1, the stamina stays. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
-- Sleep doubles the use of food and water.
+- Sleep makes the champions use food and water four times as fast: the champion clock runs each 16 game steps instead of 64.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
@@ -53,7 +53,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - `party.darkness` is 0 (bright) to 5 (dark). In the dark the view shows less: creatures, pits, and wall features in the far rows stay hidden.
 - Torches and light spells give light. Both fade with time. A torch gives light from a hand of a champion or from the leader hand.
 - Outdoors, the daylight gives light by day; the night and heavy rain make it darker (see [Outside and weather](#outside-and-weather)).
-- Each champion can carry a limited weight (`load_kg`, `[current, maximum]`). Strength sets the maximum. A heavy load uses more stamina.
+- Each champion can carry a limited weight (`load_kg`, `[current, maximum]`). Strength sets the maximum; stamina below half of its maximum lowers it. A heavy load uses more stamina.
 
 ## Skills and training
 
@@ -266,7 +266,7 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 | `failed` | An item cannot run. `error` gives the reason. The failed item is not in `ran`, and it changed nothing. |
 | `done` | All items ran. |
 
-After a batch, `action_damage` is a list with one value for each `choose_action`, and `look` has the text of the last `look` only.
+After a batch, `action_damage` is a list with one value for each `choose_action`, `look` is in the response only when the last item was `look`.
 
 `health_lost`: a list with one value for each champion (the health that the champion lost since the start of the request). It is only in the response when a champion lost health.
 
