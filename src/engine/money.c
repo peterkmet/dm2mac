@@ -248,6 +248,8 @@ bool money_normalize_coins(bool check_only, uint16_t box)
         total = (int16_t)(total + money_coin_value(t) * counts[t]);
     bool differs = false;
     for (int t = money_coin_type_count() - 1; t >= 0 && total > 0; t--) {
+        if (money_coin_value(t) < 1) /* fix: the original loops forever on a coin value below 1 */
+            continue;
         while (total >= money_coin_value(t)) {
             wanted[t]++;
             total = (int16_t)(total - money_coin_value(t));
