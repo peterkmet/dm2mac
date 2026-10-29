@@ -609,7 +609,7 @@ void ai_end(bool restored, const AiContext *saved)
 
 uint8_t *ai_scratch_push(void)
 {
-    if (ai_state.scratch_depth >= SCRATCH_BLOCKS)
+    if (ai_state.scratch_depth >= SCRATCH_BLOCKS) /* fix: a port limit; the original has no fixed depth */
         os_fatal("creature updates nest deeper than %d scratch blocks", SCRATCH_BLOCKS);
     g_ai.scratch = ai_state.scratch_blocks[ai_state.scratch_depth++];
     g_ai.scratch_used = 0;

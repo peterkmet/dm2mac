@@ -27,12 +27,13 @@ The rules of the creatures: the creature data, the updates of the creature group
 - The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`): a creature attack wakes the party, and the original then sets the input mode.
 - Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light, invisibility, and aura events. The port sets them to 0. The oracle clears them with a hook on `timeline_add_event`.
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
-- The scratch blocks of the AI (LIFO allocations of the original memory layer) are ordinary buffers in the port.
+- The scratch blocks of the AI (LIFO allocations of the original memory layer) are ordinary buffers in the port. The port has 4 blocks (`SCRATCH_BLOCKS`): a fifth nested creature update calls `os_fatal` (`ai_scratch_push`); the original has no such limit.
 - No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
+  - a creature type without its GDAT animation data (a damaged GRAPHICS.DAT): the original reads a null entry, the port calls `os_fatal` (`read_creature_data` in `src/engine/creature.c`)
   - an AI class of the GDAT creature attribute at or above `AI_CLASS_COUNT` (a damaged GRAPHICS.DAT): the original reads past its class tables, the port calls `os_fatal` (`ai_group_class`)
   - a square read at the map edge (not a pit)
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
@@ -40,6 +41,8 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`, `creature_alert`); the port reads none (`creature_alert` returns)
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
+  - `creature_deactivate_all_groups` stops at the end of the active group table: the original loops while the active group count is not 0
+  - `creature_get_party_distance` with a square outside the distance map (x below 0, y outside 0 to 31): the original checks only x below the map width and reads outside the map, the port returns -1
   - `creature_current_step_acts`, `ai_begin`, and `creature_process_event` for a non-static group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group (`creature_process_event` ends the update)
   - a new group that leaves the dungeon at once (`create_group` in `src/engine/creature.c`): the original frees a stale thing when the group links no projectile, the port frees only the projectile of a minion group
   - the cells of the possessions seen from side -1 (the own square): the original reads 64 KB past its table, the port gives all cells (the oracle applies the same fix with a hook)
