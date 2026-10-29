@@ -16,7 +16,7 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 
 ## Save and load
 
-- Saves are `<data>/DATA/SKSAVEn.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
+- Saves are `<data>/DATA/SKSAVE<n>.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
 - The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (exit code 3), RESUME. A quit more than 100 game steps after the last load and the last save first asks dialog `0x0c`.
 - A load restores the timed effects of the save (`restore_timed_effects`, [champions.md](champions.md#the-leader-hand)). The start of the loaded game (`play_start_session`) puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - The load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion.

@@ -12,7 +12,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 ## Movie player
 
 - Each SVGA movie file is the same DOS player program with the MVE data after it. The last `Interplay MVE File` signature of the file starts the data.
-- Arguments (the 32-bit code of the player): a first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen). `wide` shows the video 4/3 wider (432 → 576 pixels). `noabort` turns off the stop by the player. The player centers the video on its screen.
+- Arguments (the 32-bit code of the player): a first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen). `wide` shows the video 4/3 wider (432 to 576 pixels). `noabort` turns off the stop by the player. The player centers the video on its screen.
 - `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`). The 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play on 640 × 350, 576 × 320 wide: about 90 %.
 
 ## MVE stream
