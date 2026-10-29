@@ -172,10 +172,15 @@
 /* The hit test of a wall ornament. */
 #define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
 
-/* States of a hit test on a chest. */
-#define CHEST_HIT_NONE          0
-#define CHEST_HIT_OPEN          2
-#define CHEST_HIT_INSIDE        3
+/* The open states of a chest picture: closed or open as its record says, and the two states of a hit test on a closed
+   lid and on an open chest. */
+enum ChestState {
+    CHEST_CLOSED = 0, /* an object look and a hit test: the chest as its record says */
+    CHEST_OPEN = 1,
+    CHEST_HIT_OPEN = 2,
+    CHEST_HIT_INSIDE = 3
+};
+
 /* The items a chest holds. */
 #define CHEST_CAPACITY          8
 /* ATTR_SLOTS: no container takes the item. */
@@ -390,7 +395,7 @@ typedef struct {
     int dy, spot;
     uint16_t group;
     bool record_click;
-    int open_state;
+    enum ChestState open_state;
     bool in_alcove;
     uint16_t projectile; /* the projectile that carries the object in flight, THING_NONE for none */
 } ObjectLook;
@@ -1585,13 +1590,14 @@ static bool shift_object_cell(SquareCell *at, int columns, int rows)
 
 /* The picture of an object in cell of the square at pos: the side or the front view, by the open state of a chest,
    mirrored by the side of the view axis. */
-static ThingPicture pick_object_picture(uint16_t thing, int pos, int16_t cell, int open_state, bool in_alcove)
+static ThingPicture pick_object_picture(uint16_t thing, int pos, int16_t cell, enum ChestState open_state,
+                                        bool in_alcove)
 {
     uint8_t category = item_gdat_category(thing);
     uint8_t index = item_gdat_index(thing);
     bool chest = category == CAT_CONTAINER && index < CHEST_KINDS;
-    if (chest && !open_state)
-        open_state = container_is_open(thing);
+    if (chest && open_state == CHEST_CLOSED && container_is_open(thing))
+        open_state = CHEST_OPEN;
     ThingPicture pic = {.entry = object_picture[open_state][0], .flip = 0};
     int lateral = lateral_of(pos);
     if (lateral != 0) {
@@ -3703,11 +3709,13 @@ bool view_hit_test_wall_ornament(int pos, int16_t x, int16_t y)
 
 /* A click on a chest in the view that hit_state tells: it opens or closes, takes thing (placing), or gives its last
    item to the leader hand. hit: the object that the click hits. */
-static ObjectClickResult chest_click(uint16_t chest, uint16_t hit, int hit_state, uint16_t thing, bool placing)
+static ObjectClickResult chest_click(uint16_t chest, uint16_t hit, enum ChestState hit_state, uint16_t thing,
+                                     bool placing)
 {
     const ObjectClickResult drop = {OBJECT_CLICK_DROP, THING_NONE};
     switch (hit_state) {
-    case CHEST_HIT_NONE:
+    case CHEST_CLOSED:
+    case CHEST_OPEN: /* not a state of a hit test */
         if (placing)
             return drop;
         if (!container_is_open(chest))
@@ -3754,11 +3762,11 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
     int spot = click->kind == CLICK_ALCOVE ? ALCOVE_FIRST_SPOT : 0;
     uint16_t hit = THING_NONE;
     uint16_t chest = THING_NONE;
-    int hit_state = CHEST_HIT_NONE;
+    enum ChestState hit_state = CHEST_CLOSED;
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (!is_item(t) || thing_cell(t) != thing_cell(thing))
             continue;
-        int state = CHEST_HIT_NONE;
+        enum ChestState state = CHEST_CLOSED;
         uint16_t this_chest = THING_NONE;
         if (item_is_chest(t) &&
             gdat_exists(gdat_current(), CAT_CONTAINER, item_gdat_index(t), GDAT_TYPE_IMAGE, GFX_CHEST_OPEN_PICTURE)) {
@@ -3781,9 +3789,9 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
                 hit_state = state;
                 break;
             }
-            if (!state)
+            if (state == CHEST_CLOSED)
                 break;
-            state = CHEST_HIT_NONE;
+            state = CHEST_CLOSED;
         }
         spot = next_spot(spot, click->kind == CLICK_ALCOVE); /* the spots of the drawing */
     }
