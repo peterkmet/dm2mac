@@ -53,7 +53,6 @@ The rules of the champions: the leader hand, damage and time effects, the action
 
 ## Deviations from the original
 
-- Kept quirk: `magic_add_party_aura` (`0x4565a`) loops over all four champion slots, also those that hold no champion; a slot without a champion counts for the "big aura" test with its stale `aura_value`.
 - Kept quirk: `money_normalize_coins` (`0x29598`) takes the coins out of the box one by one and creates each new coin item.
 - Kept quirk: the item ranges of a money box text (`money_coin_type_for_slot`) and of a merchant class set (`money_parse_item_class_set`) use base -1 for a range without a letter before it, so such a number gives the item index number - 1.
 - Kept quirk: `item_name` formats the item name twice: `gtext_gdat` formats it, then `gtext_format` formats the result again.
