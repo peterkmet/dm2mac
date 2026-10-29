@@ -52,6 +52,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the level counts of the cost search (`search_entered`): the original counts past its 51 levels into its own variables, the port counts in a table of 256 levels
   - the move command of the path check of `ai_plan_path`: the original reads a byte after the path buffer that nothing writes, the port uses 0 (`PATH_CHECK_COMMAND`)
   - the back-off of a ranged attack along a line out of the distance map (`back_off_line` in `src/engine/ai_move.c`): the original reads before or after the distance map, the port keeps the creature on its square and stops the line; any cell before the map (x below 0, and x = 0 with y = -1) or after it (x = 32 on a map 32 wide, and x = 31 with y = 32) stops it
+  - a melee attack of a creature info with random champions and two champions together (`melee_attack_party` in `src/engine/ai.c`; no shipped creature info has both): when no living champion is left to pick, the original attacks champion -1, the port skips the pick
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.

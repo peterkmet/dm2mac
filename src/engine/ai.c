@@ -2311,9 +2311,9 @@ static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
             cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
             if (c == -1)
                 c = move_nearest_champion_at((Location){x, y}, CELL_ANY);
-            if (c == -1)
-                continue;
         }
+        if (c == -1) /* fix: a random pick finds no champion left; the original attacks champion -1 */
+            continue;
         hit = true;
         int16_t damage = (int16_t)(projectile_attack_champion(g_ai.group_thing, c) + 1);
         Champion *ch = champion(c);
