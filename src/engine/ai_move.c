@@ -633,9 +633,10 @@ static Location back_off_line(uint8_t *distance_map, Location from, int16_t back
         int16_t py = sy;
         sx += g_dir_dx[back];
         sy += g_dir_dy[back];
-        /* fix: no read before the distance map; y = -1 with x > 0 and x = width read another cell, as in the
-           original */
-        if (sx * SEARCH_COLUMN_SIZE + sy * SEARCH_CELL_SIZE < 0) {
+        /* fix: no read outside the distance map; y = -1 with x > 0 and x = width below MAP_SIDE_MAX read another
+           cell, as in the original */
+        int offset = sx * SEARCH_COLUMN_SIZE + sy * SEARCH_CELL_SIZE;
+        if (offset < 0 || offset >= MAP_SIDE_MAX * SEARCH_COLUMN_SIZE) {
             sx = px;
             sy = py;
             break;

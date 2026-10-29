@@ -787,12 +787,14 @@ def test_back_off_stops_at_the_west_edge(ai):
     cells[column + y * 4] = 1
     cells[2 * column + y * 4] = 1  # (0, y): the limit
     buf = ctypes.create_string_buffer(bytes(cells), len(cells))
-    hit = lib.ai_find_target_in_lines(0x3F, ctypes.addressof(buf) + 2 * column, Location(0, y), DIRS.index((1, 0)), False)
-    assert hit.found and hit.location == 1 | y << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT
-    assert ctypes.string_at(ai.square, 4) == struct.pack("<hh", 0, y)  # the attack square
-    lib.ai_scratch_pop()
-    lib.ai_end(0, None)
-    ai.emu.call(AI_END, ai.begun)
+    try:
+        hit = lib.ai_find_target_in_lines(0x3F, ctypes.addressof(buf) + 2 * column, Location(0, y), DIRS.index((1, 0)), False)
+        assert hit.found and hit.location == 1 | y << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT
+        assert ctypes.string_at(ai.square, 4) == struct.pack("<hh", 0, y)  # the attack square
+    finally:
+        lib.ai_scratch_pop()
+        lib.ai_end(0, None)
+        ai.emu.call(AI_END, ai.begun)
 
 
 def random_candidate(rng, fs, x, y, m):
