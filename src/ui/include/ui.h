@@ -121,7 +121,7 @@ void ui_draw_champion_state(int16_t champion_index);
 void ui_draw_all_champion_states(bool tick);
 /* Closes the open inventory; draw_arrows redraws the movement arrows (false while the party falls asleep). */
 void ui_close_inventory(bool draw_arrows);
-/* Opens the inventory of a champion, or closes it when it is open. */
+/* Opens the inventory of a champion, or closes it when it is open; an index outside 0 to 3 changes nothing. */
 void ui_toggle_inventory(int16_t champion_index);
 
 #endif /* DM2_UI_UI_H */

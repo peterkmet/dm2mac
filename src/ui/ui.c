@@ -1506,6 +1506,8 @@ void ui_close_inventory(bool draw_arrows)
 
 void ui_toggle_inventory(int16_t champion_index)
 {
+    if (champion_index < 0 || champion_index >= CHAMPION_MAX)
+        return;
     if (!begin_inventory_change() || !champion(champion_index)->health)
         return;
     game_set_command_stop(true);
