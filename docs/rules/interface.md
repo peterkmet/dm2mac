@@ -50,3 +50,4 @@ The rules of the interface: the font and the text drawing, the UI colors and the
   - `offscreen_draw_ctx` adds the clipped part of a picture to its size, not to its position, and `offscreen_draw_text_at` marks the changed rectangle from the base line down (`src/ui/ui.c`)
   - a gauge bar scales the 16-bit difference of the value and the low end (`show_gauge_bar` in `src/ui/ui.c`, `ui_draw_gauge_bar`)
   - a wall square of the minion map shows also the wall ornaments and the things of the first other map of the level that has a wall on the same square; the search leaves the square on that map, and `show_square` (`src/ui/minion_map.c`) switches the current map to it and back
+  - `select_command_in_list` and `find_command_entry` (`src/ui/input.c`) walk an entry list until the first entry without a command, like `input_select_command_in_list` and `input_find_command_entry`; a list without that end entry is read past its end

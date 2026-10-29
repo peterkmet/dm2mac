@@ -351,7 +351,9 @@ static void voice_set_freq(int v, uint32_t freq, bool retrigger)
     opl_write(OPL_KEY_BLOCK + v, voice->key_block);
 }
 
-/* Block and F-number of a note bent by bend (0 to 127, center 64) over the bend range of the voice channel. */
+/* Block and F-number of a note bent by bend (0 to 127, center 64) over the bend range of the voice channel. As in the
+   original, a note below the first note takes the semitone as (note - 12) mod 12 (see "Deviations from the original"
+   of docs/formats/music.md). */
 static uint32_t bend_freq(int bend, int note, int v)
 {
     int range = fm.channels[fm.voices[v].channel].bend_range;
