@@ -141,7 +141,7 @@ static bool start_splash(void)
 }
 
 /* Loads the movie of step and decodes its first picture; false when it is missing, damaged, or not an SVGA movie. */
-static bool start_movie(int step)
+static bool start_movie(enum MovieStep step)
 {
     size_t size;
     mv.file = load_file(steps[step].file, &size);
@@ -173,7 +173,7 @@ static void next_step(uint64_t now_ns)
 
 /* Scripts */
 
-int movie_script_after(int exit_code)
+enum MovieScript movie_script_after(int exit_code)
 {
     if (exit_code == EXIT_COMPLETED)
         return MOVIE_SCRIPT_COMPLETED;
@@ -194,7 +194,7 @@ void movie_stop(void)
     memcpy(g_video_palette, mv.saved_palette, sizeof g_video_palette);
 }
 
-bool movie_start(int script, const char *data_dir, uint64_t now_ns)
+bool movie_start(enum MovieScript script, const char *data_dir, uint64_t now_ns)
 {
     movie_stop();
     if (script == MOVIE_SCRIPT_NONE)
@@ -217,7 +217,7 @@ bool movie_is_playing(void)
     return mv.playing;
 }
 
-int movie_current_step(void)
+enum MovieStep movie_current_step(void)
 {
     return mv.playing ? mv.step : MOVIE_STEP_NONE;
 }

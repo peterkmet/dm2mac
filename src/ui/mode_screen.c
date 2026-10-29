@@ -74,7 +74,7 @@ bool mode_screen_item_box(int16_t item, int16_t *rect)
 
 /* ---- Commands ---- */
 
-void mode_screen_key(int16_t action)
+void mode_screen_key(enum ModeScreenAction action)
 {
     if (done)
         return;

@@ -10,7 +10,7 @@
 #include "mve.h"
 
 /* The movie scripts of the launcher. */
-enum {
+enum MovieScript {
     MOVIE_SCRIPT_NONE = 0,
     MOVIE_SCRIPT_START = 1,
     MOVIE_SCRIPT_COMPLETED = 2,
@@ -18,7 +18,7 @@ enum {
 };
 
 /* The steps of the movie scripts. */
-enum {
+enum MovieStep {
     MOVIE_STEP_NONE = -1,
     MOVIE_STEP_SPLASH = 0,
     MOVIE_STEP_FTL = 1,
@@ -38,17 +38,17 @@ typedef struct {
 
 /* Scripts */
 /* The script that the launcher runs after the game ends with exit_code. */
-int movie_script_after(int exit_code);
+enum MovieScript movie_script_after(int exit_code);
 /* Stops the script: the game screen and its palette come back. */
 void movie_stop(void);
 /* Starts script with the files of data_dir at now_ns; false when no step of it can play. */
-bool movie_start(int script, const char *data_dir, uint64_t now_ns);
+bool movie_start(enum MovieScript script, const char *data_dir, uint64_t now_ns);
 
 /* Queries */
 /* True while a script plays. */
 bool movie_is_playing(void);
 /* The current step; MOVIE_STEP_NONE when no script plays. */
-int movie_current_step(void); /* exported for the tests */
+enum MovieStep movie_current_step(void); /* exported for the tests */
 /* True while the splash picture shows on the game screen; during a movie, movie_picture gives the picture. */
 bool movie_shows_splash(void);
 /* The picture of the current movie and its screen; all zero when no movie shows. */
