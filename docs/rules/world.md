@@ -26,7 +26,7 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 - `light_update_party_light` sets `g_light_level` (0 bright to 5 dark). A map without bits 12 to 15 in its object counts word is always at level 1.
 - The light sum: the torches (items with attribute flag `0x10`) in the leader hand and in the champion hands, by charges through `g_light_power_table`, the first fully and each next one half as much; the square light sum; the magic light (`g_magic_light`); the map value `0x67`; and the daylight (`0x7570e`, by hour light + heavy rain) while the weather shows.
-- The level is the index of the first of `99, 75, 50, 25, 1` that the sum is above; it is never below the map value `0x68`. An explosion light sum above 12 makes the view one level darker.
+- The level is the index of the first of `99, 75, 50, 25, 1` that the sum is above; it is never below the map value `0x68`. An explosion light sum above 12 makes the view one level brighter (glare).
 - `light_add_square_light` adds the light of one square around the party: lit wall ornaments and windows (value keys `0xf8` and `0x63`), floor ornaments, explosions and spell missiles, and creatures, less by distance. Its caller is the creature search of `ai_refresh_party_maps`.
 
 ## Skullkeep machines: object transfer sensors
