@@ -105,6 +105,8 @@ char *gtext_format(const char *fmt, char *dst)
         }
         int code = 0;
         if (c == FORMAT_CODE_BYTE) {
+            if (!fmt[1])
+                break; /* fix: the original reads its code past a cut text */
             code = (unsigned char)fmt[1] - FORMAT_CODE_BASE;
             fmt += FORMAT_CODE_PREFIX;
         } else {

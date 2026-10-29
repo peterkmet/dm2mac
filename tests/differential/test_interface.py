@@ -493,6 +493,15 @@ def test_text_format_stops_at_a_cut_code(port):
     port.gtext_format(ctypes.create_string_buffer(b"AB.Z1\0CDE"), mine)
     assert mine.value == b"AB"
 
+
+def test_text_format_stops_at_a_cut_byte_code(port):
+    # A damaged text that ends in the format code byte 1: the code takes no byte after the end of the text.
+    port.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    mine = ctypes.create_string_buffer(512)
+    port.gtext_format(ctypes.create_string_buffer(b"AB\x01\0CDE"), mine)
+    assert mine.value == b"AB"
+
+
 def test_message_area_matches_original(port, original):
     # Messages in the 3 rows of the message area: colors, wrapped lines, new lines, then the rows that expire.
     lib = port
