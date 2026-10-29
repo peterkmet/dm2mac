@@ -958,15 +958,15 @@ static int position_to_cell(int position)
 /* True when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
 static bool get_flip_parity(int kind, int16_t dir, int16_t x, int16_t y)
 {
-    int parity =
+    bool parity =
         (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) + dungeon_map_level(view.map)) &
         1;
-    int party_parity = g_game.party_dir & 1;
+    bool party_parity = g_game.party_dir & 1;
     int time = g_game.game_time & GAME_TIME_FRAMES;
     uint16_t flags = view.flip_flags;
     if (kind == PARITY_FLOOR) {
         if (!(flags & FLIP_FLOOR_BY_SQUARE))
-            return flags & FLIP_FLOOR_BY_PARTY ? party_parity : 0;
+            return flags & FLIP_FLOOR_BY_PARTY ? party_parity : false;
         if (flags & FLIP_FLOOR_BY_TIME)
             return time >= HALF_TIME_FRAMES;
         return parity;
@@ -974,7 +974,7 @@ static bool get_flip_parity(int kind, int16_t dir, int16_t x, int16_t y)
     if (kind == PARITY_CEILING) {
         if (flags & FLIP_CEILING_BY_SQUARE)
             return flags & FLIP_CEILING_BY_TIME ? time < HALF_TIME_FRAMES : !parity;
-        return flags & FLIP_CEILING_BY_PARTY ? party_parity : 0;
+        return flags & FLIP_CEILING_BY_PARTY ? party_parity : false;
     }
     return parity;
 }
