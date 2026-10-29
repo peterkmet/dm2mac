@@ -1,6 +1,6 @@
 # Game files and install
 
-The 10 game files that the port reads from the PC DOS version of Dungeon Master II (English, 1995), the check of each file, and the install of the files from a source at the first start. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
+The 10 game files that the port reads from the PC DOS version of Dungeon Master II (English, 1995), the check of each file, and the install of the files from a source on startup. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
 
 ## The files
 
@@ -21,9 +21,9 @@ The check of a file is its size and its CRC-32 (the standard polynomial `0xedb88
 
 `DATA/DUNGENB.DAT` and `DATA/DUNGEON.FTL` are optional files of the session. The DOS release has neither, and the install does not copy them. The port reads no other file of the DOS installation.
 
-A file fails when it is missing, has another size, or has another CRC-32. A file that is longer than the table size fails.
+A file fails when it is missing, has a different size, or has a different CRC-32. A file that is longer than the table size fails.
 
-## Start
+## Startup
 
 1. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
 2. Otherwise `main` creates `game/` when it is missing and opens the log.
@@ -78,4 +78,4 @@ The progress goes to the log only: the source path, the failed sources with thei
 
 ## Deviations from the original
 
-None: the install is port only.
+None, because the install is only in the port.

@@ -4,7 +4,7 @@ The game data container `GRAPHICS.DAT` and the two optional files `GRAPHIC2.DAT`
 
 ## GRAPHICS.DAT container
 
-The original routines are `FUN_0003d1c8` (open), `FUN_0003ce0a` (table load), `FUN_0003c4f2` (lookup), and `FUN_0003bef6` (read).
+The original routines are `gdat_load_index` (`0x3d1c8`, open), `gdat_load_key_table` (`0x3ce0a`), `gdat_find_entry` (`0x3c4f2`, lookup), and `gdat_file_read` (`0x3bef6`).
 
 | Offset | Size | Content |
 |---|---|---|
@@ -75,23 +75,23 @@ Both files are absent from `game/DATA`. The CD release does not need them.
 
 ### GRAPHIC2.DAT
 
-- It is the continuation of `GRAPHICS.DAT` for a split (floppy) distribution. `FUN_0003d1c8` compares the file size of `GRAPHICS.DAT` with the end of the last item. If the file is shorter, it sets the split flags `DAT_0007fa74` and `DAT_0007fa78`.
-- `FUN_0003bef6` (GDAT read): if `DAT_0007fa74` is set, it subtracts the size of `GRAPHICS.DAT` (`DAT_0007fa44`) from the item offset and reads the rest from the `GRAPHIC2.DAT` handle (`DAT_0007fac0`).
-- `FUN_0003d111` opens `.Z026GRAPHIC2.DAT` (`0x700a5`) only if `DAT_0007fa74 != 0 && DAT_0007fa78 == 0`. The disk labels `SKDISKA`, `SKDISKB`, `SKDISKC` (`0x7051c`) and the disk prompt in `FUN_000111c7` belong to the same floppy logic.
+- It is the continuation of `GRAPHICS.DAT` for a split (floppy) distribution. `gdat_load_index` compares the file size of `GRAPHICS.DAT` with the end of the last item. If the file is shorter, it sets the split flags `DAT_0007fa74` and `DAT_0007fa78`.
+- `gdat_file_read` (GDAT read): if `DAT_0007fa74` is set, it subtracts the size of `GRAPHICS.DAT` (`DAT_0007fa44`) from the item offset and reads the rest from the `GRAPHIC2.DAT` handle (`DAT_0007fac0`).
+- `gdat_open_files` opens `.Z026GRAPHIC2.DAT` (`0x700a5`) only if `DAT_0007fa74 != 0 && DAT_0007fa78 == 0`. The disk labels `SKDISKA`, `SKDISKB`, `SKDISKC` (`0x7051c`) and the disk prompt in `FUN_000111c7` belong to the same floppy logic.
 - The `GRAPHICS.DAT` of `game/DATA` is complete ([GRAPHICS.DAT container](#graphicsdat-container)).
 
 ### DUNGENB.DAT
 
-- It is an optional second new-game dungeon. `FUN_00037058` opens `.Z020DUNGENB.DAT` (`0x70082`) if `DAT_000803f8 != 0`. If the open fails, it opens `DUNGEON.DAT`.
+- It is an optional second new-game dungeon. `dungeon_open_file` opens `.Z020DUNGENB.DAT` (`0x70082`) if `DAT_000803f8 != 0`. If the open fails, it opens `DUNGEON.DAT`.
 - Command `0xd8` sets `DAT_000803f8 = 1` and the new-game flag `DAT_0007f280 = 1`. Command `0xd7` sets only the new-game flag (normal new game). Command `0xd9` clears it (load a game). See `FUN_00021d6c` (`command_execute`).
 - The mouse table at `0x72388` binds `0x80d7` and `0x00d8` to the same zone `0x197` (the new-game button), with button masks `0x8002` and `0x4010`. The input that matches mask `0x4010` is unknown.
-- `DUNGEON.FTL` (`0x70071`) is a similar fallback: the code at `0x37259` opens it as a new game when no save file exists.
+- `DUNGEON.FTL` (`0x70071`) is a similar fallback. The code at `0x37259` opens it as a new game when no save file exists.
 
 ### Compare with DUNGEON.DAT and GRAPHICS.DAT
 
 `GRAPHIC2.DAT` holds the bytes after the end of a short `GRAPHICS.DAT`. `DUNGENB.DAT` has the same role as `DUNGEON.DAT` but is a different start dungeon.
 
-The port keeps the `DUNGENB.DAT` fallback logic: it opens `DUNGENB.DAT` when it is chosen and present, otherwise `DUNGEON.DAT`. With the shipped files the result is the same as without command `0xd8`.
+The port keeps the `DUNGENB.DAT` fallback logic. It opens `DUNGENB.DAT` when it is chosen and present, otherwise `DUNGEON.DAT`. With the shipped files the result is the same as without command `0xd8`.
 
 ## Deviations from the original
 
@@ -99,7 +99,7 @@ The port keeps the `DUNGENB.DAT` fallback logic: it opens `DUNGENB.DAT` when it 
 - The port decodes the 8-bit codecs 2 and 3 only; codec 1 (LZW) gives a data error. No shipped image uses codec 1.
 - Fix: the port rejects a color ramp item (`(1, 0, 7, 2)`) whose ramp lengths reach past the item; the original reads on past it.
 - Fix: `zone_get_icon_rect` gives the zero rect for a zone that places no rect (an unknown zone, which only a damaged `GRAPHICS.DAT` asks for, or a zone that the walk view hides); the original widens the rect that it did not set.
-- Kept quirk: `zone_get_icon_rect` widens the cut rect also when the clip hides the icon, as in the original.
+- Kept quirk: `zone_get_icon_rect` widens the cut rect even when the clip hides the icon, as in the original.
 - Fix: the dimmed remap (`pal_apply_dim_remap`) skips a key color of 256 or more, which only a damaged `GRAPHICS.DAT` gives; the original writes it past the remap table.
 - Kept quirk: the scaled 4 bpp blit (`gfx_blit_scaled_4bpp`) wraps the nibble index of the source at 16 bits, as in the original; only a source of more than 65535 pixels reaches the wrap.
 - Kept quirk: `gdat_text_int_field` goes on with the digits of the first match when the key comes a second time in the text, as in the original.
