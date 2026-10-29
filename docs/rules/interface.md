@@ -4,7 +4,7 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 
 ## Font and text drawing
 
-- The font is GDAT `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there). The font has no lowercase letters: the codes of the lowercase letters have other glyphs. For example the name "f m" of item `(0x15, 62)` shows as "B %", as in the original.
+- The font is [GDAT](../formats/graphics.md#gdat-items) `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there). The font has no lowercase letters: the codes of the lowercase letters have other glyphs. For example the name "f m" of item `(0x15, 62)` shows as "B %", as in the original.
 - `build_glyph` makes a 4 bpp glyph of 6 × 6 pixels: the foreground value on the set bits, the background value on the other bits and in column 6. `text_draw` draws one glyph per character, 6 pixels apart, with the glyph rows from `y - 4` to `y + 1` (the base line is at `y`, 1 row of a glyph is below it).
 - In an 8 bpp bitmap the glyph holds 0 and 1, and a 2-entry colormap gives the color and the background. A background with bit `0x4000` is transparent. Text uses `MIRROR_NONE`, so the mirrored 4 bpp quirks of the blitters ([view.md](view.md#blitters-gfx_blit-and-its-row-functions)) do not apply.
 - `text_measure` gives the width `6 × length - 1` and the height 5. `text_wrap_line` breaks a line at the last space that fits; a word longer than the line breaks at the width.

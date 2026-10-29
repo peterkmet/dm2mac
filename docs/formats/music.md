@@ -4,7 +4,7 @@ The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graph
 
 ## HMP songs and SONGLIST.DAT
 
-- The songs are 29 GDAT items with key `(4, song, 3, 0)`, `song` = 0 to 28. Each item is a complete HMP file (`HMIMIDIP013195`).
+- The songs are 29 [GDAT](graphics.md#gdat-items) items with key `(4, song, 3, 0)`, `song` = 0 to 28. Each item is a complete HMP file (`HMIMIDIP013195`).
 - `game/TEST.HMP` is byte-equal to song 10 (item 5602, 9645 bytes).
 - `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes. The game reads at most `0x3f` bytes.
 - `music_play_song` (`0x1095d`) looks up the key `(4, song, 3, 0)` with `gdat_entry_exists`, `gdat_entry_size`, and `gdat_get_entry_data`, copies the item to `DAT_000704da`, and calls `hmi_midi_init_song`, `hmi_midi_start_song`, and `hmi_midi_set_song_volume(handle, 0x7f)`.

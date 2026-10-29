@@ -73,7 +73,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the timeline events. |
-| `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
+| `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and [GDAT](formats/graphics.md#gdat-items) text items. |
 | `engine/hooks.h` | none | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |

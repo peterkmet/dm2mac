@@ -16,7 +16,7 @@ The rules of the champions: the leader hand, damage and time effects, the action
 ## Actions
 
 - `g_action_repeat` has 2 records of 8 bytes for each champion: count, steps left, a fresh flag, the action, and the thing. `champ_process_repeated_actions` runs them each step.
-- `champ_perform_action` runs the command of an action (GDAT text field `CM`) with its skill, stamina cost, delay, and charges. A melee action at a closed door plays the door sound `(0x0e, door type, 0x8d)`; a hit creature plays `(0x0f, creature, 0x8d)`. Then the action plays its sound (text field 13) at the party, except after a reload and after a shot. The commands of creatures, spells, minions, and missiles call the rules of [creatures.md](creatures.md).
+- `champ_perform_action` runs the command of an action ([GDAT](../formats/graphics.md#gdat-items) text field `CM`) with its skill, stamina cost, delay, and charges. A melee action at a closed door plays the door sound `(0x0e, door type, 0x8d)`; a hit creature plays `(0x0f, creature, 0x8d)`. Then the action plays its sound (text field 13) at the party, except after a reload and after a shot. The commands of creatures, spells, minions, and missiles call the rules of [creatures.md](creatures.md).
 - `champ_add_experience` uses the last combat time and the experience factor of the map. A level gain prints a message in the color of the skill class (green, yellow, red, blue).
 
 ## Money and shops

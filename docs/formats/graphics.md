@@ -2,6 +2,10 @@
 
 The game data container `GRAPHICS.DAT` and the two optional files `GRAPHIC2.DAT` and `DUNGENB.DAT`. `GRAPHICS.DAT` holds the images, the sounds ([sound.md](sound.md)), the songs ([music.md](music.md)), the texts, and the layout data of the game. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
+## GDAT items
+
+GDAT is the `GRAPHICS.DAT` container in the code (`gdat_` in `src/data/gdat.c`). A GDAT item is one block of game data in it: an image, a sound, a song, a text, or a record. A key of four numbers selects an item: `(category, index, type, entry)`, the columns `T`, `I`, `D`, and `S` of the key table ([GRAPHICS.DAT container](#graphicsdat-container)). For example, `(1, 0, 9, 254)` is the palette. A key of type `0x0b` or `0x0c` holds a value instead of an item.
+
 ## GRAPHICS.DAT container
 
 The original routines are `gdat_load_index` (`0x3d1c8`, open), `gdat_load_key_table` (`0x3ce0a`), `gdat_find_entry` (`0x3c4f2`, lookup), and `gdat_file_read` (`0x3bef6`).

@@ -4,7 +4,7 @@ The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md]
 
 ## Sound items
 
-- The samples are GDAT items of type `2` in `GRAPHICS.DAT`. There are no separate sound files. `TEST.RAW` is only for the HMI `SETUP.EXE` test.
+- The samples are [GDAT](graphics.md#gdat-items) items of type `2` in `GRAPHICS.DAT`. There are no separate sound files. `TEST.RAW` is only for the HMI `SETUP.EXE` test.
 - There are 292 sound items. Each item has a 6-byte header and raw pulse-code modulation (PCM) data.
 - Header: u16 LE sample rate `0x2b77` (11127 Hz), then the bytes `08 01 00 00` (8 bits, 1 channel; unverified, because no code reads these bytes). All 292 items have the same header.
 - Data: 8-bit signed PCM, mono, not compressed. Length = item size - 6 (245 to 61713 bytes).
