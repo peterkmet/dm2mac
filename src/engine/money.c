@@ -131,7 +131,7 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     int16_t counter = 0;
     while (*p) {
         ItemRange r = {-1, 0, false};
-        int16_t base = -1;
+        int16_t base = -1; /* a range without a letter before it gives the item index number - 1, as in the original */
         scan_range(&p, &r);
         while (*p == 'J' && r.number == 0) {
             base = ITEM_FIRST_MISC;
@@ -293,7 +293,7 @@ bool money_parse_item_class_set(int creature, int class_list, uint8_t *bitset, b
     if (!*p)
         return false;
     ItemRange r = {-1, 0, false};
-    int16_t base = -1;
+    int16_t base = -1; /* a range without a letter before it gives the item index number - 1, as in the original */
     char c;
     do {
         scan_range(&p, &r);
