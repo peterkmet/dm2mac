@@ -703,8 +703,7 @@ static bool show_open_panel(bool full, bool party_changed, bool tick)
 /* The face of the champion of the open panel redraws while it has an aura, and once after the aura ends. */
 static void show_panel_face_aura(void)
 {
-    static const bool mode_shows_face[ACTION_MODE_RESULT + 1] = {[ACTION_MODE_MENU] = true, [ACTION_MODE_SPELL] = true};
-    if (g_action.champion <= 0 || g_action.mode < 0 || !mode_shows_face[g_action.mode])
+    if (g_action.champion <= 0 || (g_action.mode != ACTION_MODE_MENU && g_action.mode != ACTION_MODE_SPELL))
         return;
     const Champion *c = champion(g_action.champion - 1);
     if (c->aura_value || drawn.aura_mask) {
