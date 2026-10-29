@@ -10,13 +10,17 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import GameRecord, Location, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import GameRecord, Location, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
+    lib.seen_is_seen.argtypes = [Position]
+    lib.seen_is_seen.restype = ctypes.c_bool
+    return lib
 
 NORTH, EAST, SOUTH, WEST = C.DIR_NORTH, C.DIR_EAST, C.DIR_SOUTH, C.DIR_WEST
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
@@ -41,7 +45,7 @@ def automap(lib, advanced):  # noqa: F811
     flag(lib, "g_view_light_level").value = 0
     lib.game_set_cheats(0)
     game, _ = advanced
-    lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)  # the start step ran in vanilla
+    lib.seen_mark(Position(game.party_map, game.party_x, game.party_y), game.party_dir)  # the start step ran in vanilla
     yield advanced
     lib.game_set_cheats(0)
     flag(lib, "g_advanced_screen").value = 0
@@ -90,7 +94,7 @@ def expected(lib, m, x, y, d):
 
 def seen_squares(lib, m):
     return {(x, y) for x in range(lib.dungeon_map_width(m)) for y in range(lib.dungeon_map_height(m))
-            if lib.seen_is_seen(m, x, y)}
+            if lib.seen_is_seen(Position(m, x, y))}
 
 
 def floor_views(lib, m):
@@ -104,7 +108,7 @@ def test_marks_start_and_squares_ahead(lib, automap):
     m, x, y, d = game.party_map, game.party_x, game.party_y, game.party_dir
     lib.seen_reset()
     assert not seen_squares(lib, m)
-    lib.seen_mark(m, x, y, d)
+    lib.seen_mark(Position(m, x, y), d)
     assert (x, y) in seen_squares(lib, m) and ahead(x, y, d, 1) in seen_squares(lib, m)
     assert seen_squares(lib, m) == expected(lib, m, x, y, d)
 
@@ -140,7 +144,7 @@ def test_walls_stop_the_view_and_hide_the_side_squares(lib, automap):
     m, stopped, hidden = game.party_map, 0, 0
     for x, y, d in floor_views(lib, m):
         lib.seen_reset()
-        lib.seen_mark(m, x, y, d)
+        lib.seen_mark(Position(m, x, y), d)
         seen = seen_squares(lib, m)
         assert seen == expected(lib, m, x, y, d), (x, y, d)
         if blocks(lib, m, *ahead(x, y, d, 1)) and on_map(lib, m, *ahead(x, y, d, 2)):
@@ -160,7 +164,7 @@ def test_side_squares_beside_open_squares_are_seen(lib, automap):
         if blocks(lib, m, *ahead(x, y, d, 1)):
             continue
         lib.seen_reset()
-        lib.seen_mark(m, x, y, d)
+        lib.seen_mark(Position(m, x, y), d)
         for side in (-1, 1):
             if on_map(lib, m, *ahead(x, y, d, 1, side)):
                 assert ahead(x, y, d, 1, side) in seen_squares(lib, m)
@@ -177,7 +181,7 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
         flag(lib, "g_view_light_level").value = level
         lib.game_set_cheats(C.CHEAT_LIGHT if light else 0)
         lib.seen_reset()
-        lib.seen_mark(m, x, y, d)
+        lib.seen_mark(Position(m, x, y), d)
         seen = seen_squares(lib, m)
         assert ahead(x, y, d, depth) in seen and ahead(x, y, d, depth + 1) not in seen, (level, light)
 

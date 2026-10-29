@@ -152,7 +152,7 @@ static bool step_view(void)
                 view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
             play_present_viewport();
             if (g_game_mode != GAME_MODE_VANILLA)
-                seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
+                seen_mark((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir);
         }
         if (!g_party.move_steps)
             return true;

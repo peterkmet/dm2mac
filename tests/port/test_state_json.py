@@ -11,13 +11,19 @@ from dm2test.markers import ROOT
 from dm2test.control import GameWithChampions
 from dm2test.input import MainLoop
 from dm2test.interface import ActionArea
-from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.seen_visible.argtypes = [Position, ctypes.c_int16, ctypes.POINTER(SeenSquare)]
+    lib.seen_visible.restype = ctypes.c_int
+    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
+    lib.seen_is_seen.argtypes = [Position]
+    lib.seen_is_seen.restype = ctypes.c_bool
+    return lib
 
 STATE, VIEW, MAP = C.STATE_JSON_STATE, C.STATE_JSON_VIEW, C.STATE_JSON_MAP
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
@@ -166,7 +172,7 @@ SIDE_FLOOR_ORNAMENT, ORNAMENT_MASK = C.SIDE_FLOOR_ORNAMENT, C.ORNAMENT_INDEX_MAS
 def visible(lib, game):
     """The squares of the seen rule for the party (seen_visible) as {(depth, side, x, y)}."""
     out = (SeenSquare * SEEN_VISIBLE_MAX)()
-    count = lib.seen_visible(game.party_map, game.party_x, game.party_y, game.party_dir, out)
+    count = lib.seen_visible(Position(game.party_map, game.party_x, game.party_y), game.party_dir, out)
     return {(s.depth, s.side, s.x, s.y) for s in out[:count]}
 
 
@@ -205,7 +211,7 @@ def mark_whole_map(lib, game):
         for y in range(lib.dungeon_map_height(m)):
             if lib.dungeon_square(m, x, y) >> SQUARE_TYPE_SHIFT != SQUARE_WALL:
                 for d in range(4):
-                    lib.seen_mark(m, x, y, d)
+                    lib.seen_mark(Position(m, x, y), d)
 
 
 def expected_glyph(lib, m, x, y):
@@ -235,7 +241,6 @@ def test_map_rows_show_only_seen_squares(lib, game):
                                                    lib.dungeon_map_height(game.party_map))
     assert m["party"] == [game.party_x, game.party_y] and m["facing"] == DIRECTIONS[game.party_dir]
     in_view = {(x, y) for _, _, x, y in visible(lib, game)}
-    lib.seen_is_seen.restype = ctypes.c_bool
     assert len(m["rows"]) == m["height"] and len(m["grid"]) == m["height"] + 1
     for y, row in enumerate(m["rows"]):
         assert len(row) == m["width"] and m["grid"][y + 1].endswith(row)
@@ -243,7 +248,7 @@ def test_map_rows_show_only_seen_squares(lib, game):
             if (x, y) == (game.party_x, game.party_y):
                 assert char == "@"
             else:
-                assert (char != " ") == (bool(lib.seen_is_seen(game.party_map, x, y)) or (x, y) in in_view)
+                assert (char != " ") == (bool(lib.seen_is_seen(Position(game.party_map, x, y))) or (x, y) in in_view)
 
 
 def test_map_glyphs(lib, game):

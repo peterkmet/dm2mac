@@ -177,7 +177,7 @@ static bool margin_seen(const Position *position)
 {
     for (int dx = -1; dx <= 1; dx++)
         for (int dy = -1; dy <= 1; dy++)
-            if (seen_is_seen(position->map, (int16_t)(position->x + dx), (int16_t)(position->y + dy)))
+            if (seen_is_seen((Position){position->map, (int16_t)(position->x + dx), (int16_t)(position->y + dy)}))
                 return true;
     return false;
 }
@@ -186,7 +186,7 @@ bool automap_level_seen(Location level_at)
 {
     Position position;
     for (const uint8_t *m = party_level_maps(); *m != LEVEL_LIST_END; m++)
-        if (covers(*m, level_at, &position) && seen_is_seen(position.map, position.x, position.y))
+        if (covers(*m, level_at, &position) && seen_is_seen(position))
             return true;
     if (covered(level_at))
         return false;

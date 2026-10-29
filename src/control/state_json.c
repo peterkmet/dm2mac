@@ -834,7 +834,7 @@ static Viewer viewer_place(void)
 static int visible_squares(SeenSquare out[SEEN_VISIBLE_MAX])
 {
     Viewer v = viewer_place();
-    return seen_visible(g_game.party_map, v.at.x, v.at.y, v.dir, out);
+    return seen_visible((Position){g_game.party_map, v.at.x, v.at.y}, v.dir, out);
 }
 
 /* The square of a seen square. */
@@ -1296,7 +1296,7 @@ static char map_char(Location at)
 static void map_row(int16_t y, int w, const SeenSquare *squares, int count, char *out)
 {
     for (int16_t x = 0; x < w; x++) {
-        bool seen = seen_is_seen(g_game.party_map, x, y);
+        bool seen = seen_is_seen((Position){g_game.party_map, x, y});
         for (int i = 0; i < count && !seen; i++)
             seen = squares[i].x == x && squares[i].y == y;
         out[x] = x == g_game.party_x && y == g_game.party_y ? '@' : seen ? map_char((Location){x, y}) : ' ';

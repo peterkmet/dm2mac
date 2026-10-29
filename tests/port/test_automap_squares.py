@@ -30,6 +30,8 @@ def lib():
     lib.automap_level_square.restype = ctypes.c_bool
     lib.automap_level_seen.argtypes = [Location]
     lib.automap_level_seen.restype = ctypes.c_bool
+    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
+    lib.seen_is_seen.argtypes = [Position]
     lib.seen_is_seen.restype = ctypes.c_bool
     return lib
 
@@ -85,8 +87,8 @@ def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: 
 def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # noqa: F811
     lib.seen_reset()
     assert not lib.automap_level_seen(Location(52, 28))
-    lib.seen_mark(12, 25, 1, C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
-    assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(40, 6, 6)
+    lib.seen_mark(Position(12, 25, 1), C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
+    assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(Position(40, 6, 6))
     lib.seen_reset()
 
 
@@ -96,9 +98,9 @@ def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
     assert level_square(lib, 40, 26) == (12, 13, -1)
     assert level_square(lib, 21, 35) is None  # the margin of map 0 beside no open square: outside
     lib.seen_reset()
-    lib.seen_mark(12, 13, 2, C.DIR_SOUTH)  # the squares two rows away
+    lib.seen_mark(Position(12, 13, 2), C.DIR_SOUTH)  # the squares two rows away
     assert not lib.automap_level_seen(Location(40, 26))
-    lib.seen_mark(12, 13, 0, C.DIR_NORTH)  # the square next to the edge wall
+    lib.seen_mark(Position(12, 13, 0), C.DIR_NORTH)  # the square next to the edge wall
     assert lib.automap_level_seen(Location(40, 26))
     lib.seen_reset()
 
@@ -112,7 +114,7 @@ def test_edge_wall_over_an_unknown_square_of_another_map(lib, session):  # noqa:
     try:
         assert level_square(lib, 34, 60) == (24, 4, 4)
         lib.seen_reset()
-        lib.seen_mark(24, 4, 3, C.DIR_SOUTH)
+        lib.seen_mark(Position(24, 4, 3), C.DIR_SOUTH)
         assert lib.automap_level_seen(Location(34, 60))
     finally:
         game.party_map, game.party_x, game.party_y = saved
