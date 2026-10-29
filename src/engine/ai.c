@@ -259,7 +259,8 @@
 #define FILTER_PLACEABLE 0x10
 #define FILTER_ANY_ITEM  0x3f
 
-/* Plan command arguments: any item (a possession test, a drop), and the front group (a test of its item). */
+/* Plan command arguments: any item (a possession test; a drop that removes nothing), and the front group (a test of
+   its item). */
 #define PLAN_ARG_ANY_ITEM    (-2)
 #define PLAN_ARG_FRONT_GROUP 2
 #define STAND_VARIANT_LAST   2 /* the last of the three stands of cmd_stand_by_mood */

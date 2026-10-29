@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The creature AI tables of SKULL.EXE: behaviors, plan choices, plans, and targets. A copy of the data object of
    SKULL.EXE at the addresses of docs/reference/skull-symbols.csv; the records keep their original layout and link
-   each other by their address. tests/differential/test_ai_move.py runs them against the original. */
+   each other by their address. tests/differential/test_ai_move.py runs them against the original. Also the AI class
+   of a group (ai_group_class), which indexes these tables. */
 #include "ai.h"
 #include "ai_internal.h"
 #include "dungeon.h"

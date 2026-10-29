@@ -36,6 +36,7 @@ static inline bool sensor_sound_on(uint16_t sensor)
 {
     return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0;
 }
+
 /* The flags word. */
 /* Whether a flag bit of a sensor is set. */
 static inline bool sensor_flag(uint16_t sensor, uint16_t bit)
@@ -183,6 +184,7 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The positions of the wall cell and the group class in the sensor data. */
 #define SENSOR_CELL_SHIFT 6
 #define AREA_CLASS_SHIFT  4
+
 /* The sub-fields of the data word. */
 /* The map in the data word of a sensor. */
 static inline uint16_t sensor_data_map(uint16_t sensor)
