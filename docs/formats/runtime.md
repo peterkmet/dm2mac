@@ -5,7 +5,7 @@ The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, th
 ## SVGA option
 
 - The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320 × 200, 256 colors).
-- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, for SVGA only (unverified, see below), the switch ` +VS`.
+- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, for SVGA only, the switch ` +VS` (its use is unverified, see below).
 - The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
 - `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
 
@@ -38,7 +38,7 @@ The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz gam
 More facts of the `IBMIOP.EXE` timer:
 
 - `IBMIOP.EXE` function `0x0f` ends with `mov ax,1; retf`. Thus `g_timer_step` (`0x7efac`) is 1: each callback adds 1 tick.
-- The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. `DM2.BAT` passes `+VS`, so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with the reading above.
+- The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. The `DM2.BAT` of the SVGA install passes `+VS` (unverified, see above), so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with the reading above.
 - Function `0x30` (shutdown) clears the flag that function `0x0f` sets. After it, no tick arrives.
 - Game code reads no clock: all `int 0x21` calls are in the Watcom library, and there is no `int 0x1a`. `g_game_time` (`0x7f22c`) counts game steps. Timeline event times are game steps (24 bits).
 

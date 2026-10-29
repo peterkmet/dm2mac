@@ -28,7 +28,7 @@ Request: `FUN_00015ca9(cat, idx, entry, priority, volume, x, y, mode)`.
 1. If the global flag `DAT_0007f234` is set, `volume = volume >> 1`.
 2. The sound position is made relative to the party (`DAT_0007f26a`, `DAT_0007f26e`) and rotated by the party direction `DAT_0007f252`. The result is `lateral` (byte `+6`) and `forward` (byte `+7`).
 3. `dist = |dx| + |dy|`. If `dist > 1`, `FUN_0002facc(x, y)` returns `n`. If `n < 0`, the sound is dropped. If `dist < n`, both `lateral` and `forward` are scaled: `k = (n << 10) / dist`, and each component `c` becomes `±((|c| * k + 0x200) >> 10)`.
-4. `mode` is the delay: `1` queues to `DAT_0007f198`, `-1` queues to `DAT_0007f190`, `>= 2` uses timeline event `0x15`. `FUN_0001616d` flushes a queue. The rules of the delay: [world.md](../rules/world.md#sound-requests).
+4. `mode` is the delay: `0` plays now, `1` queues to `DAT_0007f198`, a negative value queues to `DAT_0007f190`, `>= 2` uses timeline event `0x15`. `FUN_0001616d` flushes a queue. The rules of the delay: [world.md](../rules/world.md#sound-requests).
 
 Volume and pan: `FUN_00010877` on the 12-byte request record.
 

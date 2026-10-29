@@ -63,7 +63,7 @@ Counts for the shipped file:
 - 3167 images are 8-bit and use codec 2 or 3. 1003 images are 4-bit. 6 images are not compressed.
 - No shipped image uses codec 1 (LZW).
 - The delta table key `(0,0,8,0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
-- 1442 items have a gate outside `{0, 31, -32}` and are not images. The decode entry does not reject them.
+- 1442 items have a gate outside `{0, 31, -32}`; 24 of them are 4-bit images with an offset in the gate (below), the others are not images. The decode entry does not reject them.
 
 Image items:
 

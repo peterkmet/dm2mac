@@ -53,5 +53,5 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 - A missing file, damaged data, a splash picture of a size different from 320 × 200, or a movie whose mode is not 640 × 480 is a failed step. The script goes on with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
 - `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`. It plays no start movies because the launcher starts only the game step again.
-- A closed window or a control `quit` ends the program without the end movies; QUIT GAME plays them.
+- A closed window or a control `quit` ends the program without the end movies. QUIT GAME after the death of the party plays `CREDITS`; QUIT of the save menu plays nothing.
 - The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still ([llm-mode.md](../llm/llm-mode.md#movies)).
