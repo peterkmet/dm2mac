@@ -134,7 +134,7 @@
 #define CELLS_FAR              0x0c
 
 /* The slope of a line in 1/64. */
-#define SLOPE_SHIFT    6
+#define SLOPE_UNIT     64
 #define SLOPE_VERTICAL 128 /* the main delta is 0 */
 
 /* Random bits of the sight of a creature. */
@@ -494,7 +494,7 @@ static int16_t line_slope(bool steep, int16_t x1, int16_t y1, int16_t x, int16_t
     int16_t major = (int16_t)(steep ? y - y1 : x - x1);
     if (!major)
         return SLOPE_VERTICAL;
-    return (int16_t)(((steep ? x - x1 : y - y1) << SLOPE_SHIFT) / major);
+    return (int16_t)((steep ? x - x1 : y - y1) * SLOPE_UNIT / major);
 }
 
 int16_t ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at))
