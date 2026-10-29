@@ -27,6 +27,10 @@
 #define DATA_STATS            3
 #define DATA_SKILLS           6
 #define DATA_WORD_SIZE        2 /* bytes per word of the champion data */
+/* The 52 bytes of the champion data that add_to_party reads. */
+#define DATA_SIZE             (DATA_WORD_SIZE * (DATA_SKILLS + SKILL_COUNT))
+/* The skill level is taken modulo 32 for its shift, as in the original. */
+#define SKILL_LEVEL_MASK      0x1f
 /* Start values of a new champion. */
 #define STAT_START_MIN        30
 #define SKILL_EXPERIENCE_BASE 64
@@ -74,8 +78,8 @@ static void add_to_party(int portrait, int index, int16_t dir)
     uint32_t size;
     const uint8_t *d =
         gdat_item(gdat_current(), gdat_find(gdat_current(), CAT_CHAMPION, portrait, PORTRAIT_DATA_TYPE, 0), &size);
-    if (!d)
-        return; /* fix: the original reads no data */
+    if (!d || size < DATA_SIZE)
+        return; /* fix: the original reads no data, or past a short item */
     c->health = (int16_t)le16(d + DATA_WORD_SIZE * DATA_HEALTH);
     c->max_health = c->health;
     c->stamina = (int16_t)le16(d + DATA_WORD_SIZE * DATA_STAMINA);
@@ -89,7 +93,7 @@ static void add_to_party(int portrait, int index, int16_t dir)
     }
     for (int s = SKILL_BASE_COUNT; s < SKILL_COUNT; s++) {
         uint16_t level = le16(d + DATA_WORD_SIZE * (DATA_SKILLS + s));
-        c->experience[s] = level ? (uint32_t)SKILL_EXPERIENCE_BASE << level : 0;
+        c->experience[s] = level ? (uint32_t)SKILL_EXPERIENCE_BASE << (level & SKILL_LEVEL_MASK) : 0;
     }
     for (int b = 0; b < SKILL_BASE_COUNT; b++) {
         uint32_t sum = 0;

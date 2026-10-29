@@ -6,6 +6,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.gdat import item_sizes
 from dm2test.input import Loop
 from dm2test.interface import LeaderHand
 from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
@@ -304,6 +305,30 @@ def test_recruit_and_cancel(loop, lib):
         loop.assert_loop(("finish", n))
     assert loop.game.champion_count == 2 and ui.candidate == 0
     loop.assert_equal("end")
+
+
+PORTRAIT_DATA_TYPE, CHAMPION_DATA_SIZE, CH_HEALTH = 8, 52, 0x36
+
+
+def test_recruit_with_a_short_champion_data_item(loop, lib, gdat):  # noqa: F811
+    # regression: the recruit read the 52 bytes of the champion data past the end of a shorter item (a damaged
+    # GRAPHICS.DAT); the port then leaves the values of the champion at 0
+    from dm2test.interface import CHAMPION_SIZE, champion_records
+    run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
+    sizes = item_sizes(gdat)
+    items = [i for p in range(256) if (i := lib.gdat_find(gdat, C.CAT_CHAMPION, p, PORTRAIT_DATA_TYPE, 0)) >= 0]
+    assert items and all(sizes[i] == CHAMPION_DATA_SIZE for i in items)
+    for i in items:
+        sizes[i] = CHAMPION_DATA_SIZE - 1
+    game = loop.game
+    try:
+        assert lib.recruit_start_champion(game.party_x, game.party_y, game.party_dir, game.party_map)
+    finally:
+        for i in items:
+            sizes[i] = CHAMPION_DATA_SIZE
+    records = champion_records(lib)
+    assert game.champion_count == 2 and records[CHAMPION_SIZE] != 0  # the champion joined with its name
+    assert struct.unpack_from("<h", records, CHAMPION_SIZE + CH_HEALTH)[0] == 0
 
 
 SENSOR_CREATE_ITEM = 0x3C

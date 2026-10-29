@@ -22,6 +22,18 @@ class ImageInfo(ctypes.Structure):
     _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int), ("bpp", ctypes.c_int), ("size", ctypes.c_size_t)]
 
 
+class GdatSizes(ctypes.Structure):
+    """The start of struct gdat of gdat.c: the file, the item count, the item offsets and sizes."""
+
+    _fields_ = [("file", ctypes.c_void_p), ("count", ctypes.c_int), ("offset", ctypes.POINTER(ctypes.c_uint32)),
+                ("size", ctypes.POINTER(ctypes.c_uint32))]
+
+
+def item_sizes(gdat):
+    """The byte sizes of the items of a loaded GRAPHICS.DAT, writable: a test shortens an item."""
+    return GdatSizes.from_address(gdat.value).size
+
+
 def image_info(lib, gdat, item):
     """The result of gdat_image_info and the ImageInfo it fills."""
     info = ImageInfo()
