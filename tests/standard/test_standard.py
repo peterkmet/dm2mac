@@ -1112,22 +1112,21 @@ def defines(path, name):
 
 
 def test_exports_have_users():
-    """An exported function or global has a use outside its module, or the test marker on its declaration; a name of
-    an _internal.h header has a use outside the file that defines it."""
+    """An exported function or global has a use outside its module and outside the file that defines it, or the test
+    marker on its declaration; a name of an _internal.h header has a use outside the file that defines it."""
     used_in = {path: set(IDENTIFIER.findall(strip(path.read_text(errors="replace")))) for path in sources()}
     ok = allowed()
     found = []
     for header in headers():
         internal = header.stem.endswith("_internal")
-        own = module_files(header)
         lines = header.read_text(errors="replace").splitlines()
         text = strip("\n".join(lines))
         names = [(f.name, f.line) for f in functions(header) if not f.static]
         names += [(n, text.count("\n", 0, m.start()) + 1) for m in EXTERN_VARIABLE.finditer(text) for n in extern_names(m.group(1))]
         for name, line in names:
             key = f"{rel(header)}:{name}"
-            if internal:
-                own = {header} | {p for p in module_files(header) if p.suffix == ".c" and defines(p, name)}
+            defining = {p for p in (module_files(header) if internal else sources()) if p.suffix == ".c" and defines(p, name)}
+            own = {header} | defining if internal else module_files(header) | defining
             if ("dead-api", key) in ok or any(name in ids for p, ids in used_in.items() if p not in own):
                 continue
             if TEST_MARKER not in lines[line - 1] + comment_above(lines, line):
