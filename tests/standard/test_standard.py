@@ -680,7 +680,7 @@ def test_platform_code_only_in_platform():
 
 
 EXTERN = re.compile(r"\bextern\b([^;]*);")
-REDRAW_FLAG_WRITE = re.compile(r"\bredraw\s*(?:[|&]=|=(?!=))")
+REDRAW_FLAG_WRITE = re.compile(r"\bredraw\s*(?:[|&]=|=(?!=))$")
 
 
 def engine_globals():
@@ -703,7 +703,7 @@ def test_ui_does_not_write_engine_variables():
             continue
         owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
         for n, line in code_lines(path):
-            if not write.search(line) or REDRAW_FLAG_WRITE.search(line):
+            if all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line)):  # no write, or only redraw flags
                 continue
             key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
             if ("engine-write", key) not in ok:
