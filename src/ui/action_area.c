@@ -469,7 +469,9 @@ static void show_money_box(uint16_t box)
         int16_t r[RECT_SIZE];
         int16_t sx = 0;
         int16_t sy = 0;
-        zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy);
+        /* fix: skip a coin without an image or a pile zone; no read of an unset rectangle */
+        if (!image || !zone_compute_rect(image, r, ZONE_COIN_PILE_FIRST + slot, &sx, &sy))
+            continue;
         /* the pile shows the last COIN_PILE_MAX coins */
         int at = slot * PILE_SLOT_STEP + max_int(counts[type] - COIN_PILE_MAX, 0);
         int n = min_int(counts[type], COIN_PILE_MAX);
