@@ -555,6 +555,9 @@ int creature_cell_mask(uint16_t possessions, int16_t side)
 
 int creature_active_group_event(int active_index)
 {
+    /* fix: the original reads past the table for an index at or past its end */
+    if (active_index < 0 || active_index >= g_active_group_max)
+        return EVENT_NO_SLOT;
     return g_active_groups[active_index].event;
 }
 
