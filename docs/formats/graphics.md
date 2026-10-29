@@ -21,7 +21,7 @@ The original routines are `gdat_load_index` (`0x3d1c8`, open), `gdat_load_key_ta
 
 The key table is big-endian (first word `0x8001` is read byte-swapped). It holds a row count (`11854`), a column count (`7`), and seven column descriptors (`T`, `I`, `D`, `S`, `F`, `G` with 1 byte, `P` with 2 bytes). Each row has 8 bytes. `T` is the category, `I` the index, `D` the type, `S` the entry. The meaning of column `G` is unknown. For types `0x0b` and `0x0c`, `P` is a value. For other types, `P & 0x7fff` is the item number.
 
-The sum of all item sizes ends at byte `8639757`. This is the exact size of `game/DATA/GRAPHICS.DAT`.
+The last item ends at byte `8639757`, the exact size of `game/DATA/GRAPHICS.DAT`.
 
 ### Language filter (field `F`)
 
@@ -45,7 +45,7 @@ The port applies the same filter when the key table loads. The default is Englis
 | Other value | 4-bit image, nibble and run-length codes | `image_decode_4bpp` (`0x12e4f`) |
 | (delta table present) | 4-bit image relative to a parent image | `image_decode_4bpp_delta` (`0x13258`) |
 
-`gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0, 0, 0x0b, 0)` is set, otherwise to 1000 (no gate can be 1000, so all images are 4-bit). The shipped flag item is `0x7b`, so the marker is 31.
+`gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0, 0, 0x0b, 0)` is set, otherwise to 1000. No gate can be 1000, so then all images are 4-bit. The shipped flag item is `0x7b`, so the marker is 31.
 
 `image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is an init function (`void (*)(void)`). Only codec 1 has one, `gdat_lzw_alloc_tables`, which allocates the LZW tables. `gdat_load_index` calls it once on startup through `0x757a4` when flag `0x40` of item `(0, 0, 0x0b, 0)` is set. `image_decode_8bpp` does not check the codec value.
 
@@ -82,7 +82,6 @@ Both files are absent from `game/DATA`. The CD release does not need them.
 - It is the continuation of `GRAPHICS.DAT` for a split (floppy) distribution. `gdat_load_index` compares the file size of `GRAPHICS.DAT` with the end of the last item. If the file is shorter, it sets the split flags `DAT_0007fa74` and `DAT_0007fa78`.
 - `gdat_file_read` (GDAT read): if `DAT_0007fa74` is set, it subtracts the size of `GRAPHICS.DAT` (`DAT_0007fa44`) from the item offset and reads the rest from the `GRAPHIC2.DAT` handle (`DAT_0007fac0`).
 - `gdat_open_files` opens `.Z026GRAPHIC2.DAT` (`0x700a5`) only if `DAT_0007fa74 != 0 && DAT_0007fa78 == 0`. The disk labels `SKDISKA`, `SKDISKB`, `SKDISKC` (`0x7051c`) and the disk prompt in `FUN_000111c7` belong to the same floppy logic.
-- The `GRAPHICS.DAT` of `game/DATA` is complete ([GRAPHICS.DAT container](#graphicsdat-container)).
 
 ### DUNGENB.DAT
 
