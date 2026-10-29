@@ -24,7 +24,7 @@ The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graph
 
 Music master volume, `sound_set_volume(level 0 to 7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 
-The port reads the songs from GDAT `(4, n, 3, 0)` and follows `music_update_for_map` with the fade of each game step (`music_update_for_map`, `src/ui/music.c`).
+The port (`music_update_for_map` in `src/ui/music.c`) reads the songs from GDAT `(4, n, 3, 0)` and runs the fade once per game step.
 
 ## HMP player
 
