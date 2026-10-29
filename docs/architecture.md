@@ -52,7 +52,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8 bpp pictures and the screen. |
 | `data/hmp.h` | `hmp_` | The HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. |
 | `data/ids.h` | none | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
-| `data/le.h` | `le16` `le32` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
+| `data/le.h` | `le16` `le32` `be16` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
 | `data/mve.h` | `mve_` | Interplay MVE movies: chunks, opcodes, 8-bit video, audio; from memory only. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
 | `data/pcx.h` | `pcx_` | PCX pictures, 8 bits per pixel, RLE, palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
