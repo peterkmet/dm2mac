@@ -41,7 +41,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its allowlist
    lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. Until the engine has
    setters for them, the minion map (`ui/minion_map.c`, `g_minion_map`) and `ui_render_hand_icon` (`ui/ui.c`,
-   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields. A write is an assignment, an
+   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields (the setters: [Todo](todo.md), "Fable review: style items for new checks"). A write is an assignment, an
    increment or a decrement, a `memcpy`, `memmove` or `memset` into the global, or a pointer to the global without
    `const`. `ui/` and `control/` do not write through a pointer that an engine query returns, except into the fields
    that this rule allows (review only). [engine-write]
