@@ -1839,7 +1839,7 @@ static enum ClickResult wall_click_result(WallClick *c, uint16_t t, int ornament
     case WALL_CLICK_PORTRAIT:
         if (!sensor_flag(t, SENSOR_STATE) || c->cell != dir_opposite(g_game.party_dir))
             return CLICK_MISMATCH;
-        recruit_start(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map);
+        recruit_start((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir);
         c->done = true;
         return CLICK_MATCH;
     case WALL_ITEM_HOLDER:

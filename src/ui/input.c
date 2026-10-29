@@ -2319,7 +2319,8 @@ static void execute_session_command(int command)
 static void execute_inventory_command(int champ)
 {
     if (g_ui.candidate)
-        recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, CMD_RECRUIT_CANCEL);
+        recruit_finish((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir,
+                       CMD_RECRUIT_CANCEL);
     else if (champ == CHAMPION_MAX)
         ui_close_inventory(true);
     else if (champ < g_game.champion_count)
@@ -2403,7 +2404,7 @@ static bool execute_champion_command(int command, bool idle)
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
         money_box_click_coin(command - CMD_COIN_FIRST);
     } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && idle) {
-        recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, command);
+        recruit_finish((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir, command);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
     } else if (command == CMD_EYE) {

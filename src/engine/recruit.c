@@ -111,15 +111,15 @@ static uint16_t mirror_sensor(int16_t x, int16_t y)
     return THING_NONE;
 }
 
-bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
+bool recruit_start(Position at, int16_t dir)
 {
     int index = g_game.champion_count;
     if (g_game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
         return false;
     int16_t saved = g_party.cur_map;
-    dun_set_current_map(map);
-    int16_t fx = (int16_t)(x + g_dir_dx[dir]);
-    int16_t fy = (int16_t)(y + g_dir_dy[dir]);
+    dun_set_current_map(at.map);
+    int16_t fx = (int16_t)(at.x + g_dir_dx[dir]);
+    int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dun_set_current_map(saved);
@@ -150,12 +150,12 @@ bool recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)
     return true;
 }
 
-void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
+void recruit_finish(Position at, int16_t dir, int command)
 {
-    int champ = g_ui.candidate - 1;
-    Champion *c = champion(champ);
+    int16_t champion_index = g_ui.candidate - 1;
+    Champion *c = champion(champion_index);
     int16_t saved = g_party.cur_map;
-    dun_set_current_map(map);
+    dun_set_current_map(at.map);
     uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
@@ -166,8 +166,8 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
             g_game.champion_count--;
         g_ui.candidate = 0;
         c->health = 0;
-        action_reset_champion(champ);
-        g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champ, g_ui_colors[UI_BLACK]);
+        action_reset_champion(champion_index);
+        g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champion_index, g_ui_colors[UI_BLACK]);
         g_hooks.show_view();
         dun_set_current_map(saved);
         return;
@@ -181,10 +181,10 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
             g_game.party_x, g_game.party_y, SOUND_NOW);
     }
     if (hand != THING_NONE)
-        inv_put_in_free_slot(champ, hand);
+        inv_put_in_free_slot(champion_index, hand);
     g_ui.candidate = 0;
-    int16_t fx = (int16_t)(x + g_dir_dx[dir]);
-    int16_t fy = (int16_t)(y + g_dir_dy[dir]);
+    int16_t fx = (int16_t)(at.x + g_dir_dx[dir]);
+    int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
             dungeon_unlink_thing_from_square(c->slots[s], g_party.cur_map, fx, fy);
@@ -194,10 +194,10 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     if (g_game.champion_count == 1)
         g_game.first_recruit_time = g_game.game_time;
     if (!recruit_silent) {
-        g_text_args.champion = (int16_t)champ;
+        g_text_args.champion = (int16_t)champion_index;
         g_hooks.print_newline();
         char text[TEXT_SIZE];
-        g_hooks.print_message(message_colors[champ], gtext_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
+        g_hooks.print_message(message_colors[champion_index], gtext_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (g_ui.inventory) {
             g_hooks.close_inventory(true);
             g_hooks.show_view();
@@ -209,9 +209,9 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
 bool recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     recruit_silent = true;
-    bool started = recruit_start(x, y, dir, map);
+    bool started = recruit_start((Position){map, x, y}, dir);
     if (started) /* fix: without a candidate recruit_finish unlinks the slots of champion -1 */
-        recruit_finish(x, y, dir, map, CMD_RECRUIT);
+        recruit_finish((Position){map, x, y}, dir, CMD_RECRUIT);
     recruit_silent = false;
     return started;
 }
