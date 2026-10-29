@@ -40,8 +40,12 @@
 
 /* The zones of the button texts (table of SKULL.EXE), and the first zone of the texts by button count; a dialog with
    more than DIALOG_BUTTONS_MAX buttons starts at the first zone. */
-static const uint16_t button_text_zones[BUTTON_TEXT_ZONES] = {0x1ce, 0x1cf, 0x1ce, 0x1cf, 0x1d2,
-                                                              0x1d3, 0x1d0, 0x1d1, 0x1d2, 0x1d3};
+static const uint16_t button_text_zones[BUTTON_TEXT_ZONES] = {
+    ZONE_BUTTON_TEXT_BOTTOM,                                                                   /* 1 button */
+    ZONE_BUTTON_TEXT_TOP,         ZONE_BUTTON_TEXT_BOTTOM,                                     /* 2 buttons */
+    ZONE_BUTTON_TEXT_TOP,         ZONE_BUTTON_TEXT_BOTTOM_LEFT, ZONE_BUTTON_TEXT_BOTTOM_RIGHT, /* 3 buttons */
+    ZONE_BUTTON_TEXT_TOP_LEFT,    ZONE_BUTTON_TEXT_TOP_RIGHT,   ZONE_BUTTON_TEXT_BOTTOM_LEFT,  /* 4 buttons */
+    ZONE_BUTTON_TEXT_BOTTOM_RIGHT};
 static const uint8_t button_zone_first[DIALOG_BUTTONS_MAX + 1] = {0, 0, 1, 3, 6};
 
 DialogState g_dialog = {.screen_mode = 1};

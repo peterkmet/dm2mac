@@ -213,8 +213,8 @@ void session_open_slot_dialog(int id, int buttons)
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
     dialog_screen_mode(true);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
-    text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
-    text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
+    text_draw_in_zone(ZONE_BUTTON_TEXT_BOTTOM_LEFT, g_ui_colors[UI_YELLOW], text[0]);
+    text_draw_in_zone(ZONE_BUTTON_TEXT_BOTTOM_RIGHT, g_ui_colors[UI_YELLOW], text[1]);
     list_slots();
     g_dialog.button_count = buttons;
     input_push_mode(INPUT_MODE_DIALOG);

@@ -115,7 +115,6 @@ hex engine/save.c:word_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
-hex ui/dialog.c:button_text_zones rule 3.12: a table of SKULL.EXE
 hex ui/fm.c:note_freq_table rule 3.12: a table of SKULL.EXE
 hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
