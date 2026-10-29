@@ -311,7 +311,7 @@ static const CreatureInfo creature_infos[CREATURE_INFO_COUNT] = {
 /* The AI class flags of the creature of a group. */
 static uint32_t class_flags(uint16_t group)
 {
-    return g_ai_class_flags[creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS)];
+    return g_ai_class_flags[ai_group_class(group)];
 }
 
 /* The square of the group in the AI context. */

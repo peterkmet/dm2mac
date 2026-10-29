@@ -33,6 +33,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
+  - an AI class of the GDAT creature attribute at or above `AI_CLASS_COUNT` (a damaged GRAPHICS.DAT): the original reads past its class tables, the port calls `os_fatal` (`ai_group_class`)
   - a square read at the map edge (not a pit)
   - a division by 0 for an animation of length 0 and for a minion map strip of 1 icon
   - the minion map square read outside the map: a wall square of another map of the level, and the pit one level up

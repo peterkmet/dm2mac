@@ -473,7 +473,7 @@ static uint32_t read_mood_choices(uint32_t addr)
 static int load_class(void)
 {
     if (g_ai.class_index == -1)
-        g_ai.class_index = (int16_t)creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS);
+        g_ai.class_index = ai_group_class(g_ai.group_thing);
     return g_ai.class_index;
 }
 
@@ -2942,8 +2942,7 @@ static void start_vanish(void)
     ActiveGroup *a = g_ai.active;
     a->counters[0] = (int16_t)g_ai.anim[0];
     a->counters[1] = (int16_t)g_ai.anim[1];
-    if (g_ai_class_flags[creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS)] &
-        AI_CLASS_NO_DEATH_CLOUD)
+    if (g_ai_class_flags[ai_group_class(g_ai.group_thing)] & AI_CLASS_NO_DEATH_CLOUD)
         return;
     int size = g_ai.info->hit_size; /* the power of the death cloud by size */
     explosion_create(EXPLOSION_DEATH_CLOUD,

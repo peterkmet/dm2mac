@@ -5,6 +5,7 @@
 #include "ai.h"
 #include "ai_internal.h"
 #include "dungeon.h"
+#include "os.h"
 
 /* Plan steps, mood entries, plan choices, and target records from AI_SCRIPTS_BASE. */
 const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE] = {
@@ -512,3 +513,11 @@ const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES] = {
     0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00, 0x00, 0xff,
     0xff, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x06, 0x00, 0x06, 0x00, 0x00, 0x03, 0x02, 0x01,
 };
+
+int16_t ai_group_class(uint16_t group)
+{
+    uint16_t class_index = creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS);
+    if (class_index >= AI_CLASS_COUNT)
+        os_fatal("creature type %d has AI class %d", group_creature(group), class_index);
+    return (int16_t)class_index;
+}

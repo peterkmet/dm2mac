@@ -30,6 +30,8 @@ static inline uint16_t ai_marker_level(uint16_t text)
 /* The flags of the AI classes (ai_data.c). */
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
+/* The AI class of the creature of a group; a class at or above AI_CLASS_COUNT (a damaged GRAPHICS.DAT) is fatal. */
+int16_t ai_group_class(uint16_t group);
 
 /* The cells of the possessions of a static creature by display kind and side (ai_data.c; creature_cell_mask reads
    it). */
