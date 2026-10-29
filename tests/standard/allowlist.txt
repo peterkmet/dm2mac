@@ -35,6 +35,7 @@ decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+decimal ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
@@ -126,7 +127,6 @@ hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
 hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE

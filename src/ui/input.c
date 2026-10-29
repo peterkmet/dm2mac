@@ -1920,12 +1920,12 @@ void input_update_viewport_arrow(void)
         uint16_t zone;
         int8_t push_turn, step_turn;
     } push_arrows[PUSH_ARROW_COUNT] = {
-        {0x12, 0x2a, 0,          0         },
-        {0x10, 0x29, TURN_RIGHT, 0         },
-        {0x14, 0x2b, TURN_BACK,  TURN_RIGHT},
-        {0x16, 0x2c, TURN_BACK,  TURN_BACK },
-        {0x18, 0x2d, TURN_BACK,  TURN_LEFT },
-        {0x0e, 0x28, TURN_LEFT,  0         },
+        {GFX_PUSH_ARROWS + 4,  ZONE_ARROW_FIRST + 2, 0,          0         },
+        {GFX_PUSH_ARROWS + 2,  ZONE_ARROW_FIRST + 1, TURN_RIGHT, 0         },
+        {GFX_PUSH_ARROWS + 6,  ZONE_ARROW_FIRST + 3, TURN_BACK,  TURN_RIGHT},
+        {GFX_PUSH_ARROWS + 8,  ZONE_ARROW_FIRST + 4, TURN_BACK,  TURN_BACK },
+        {GFX_PUSH_ARROWS + 10, ZONE_ARROW_FIRST + 5, TURN_BACK,  TURN_LEFT },
+        {GFX_PUSH_ARROWS,      ZONE_ARROW_FIRST,     TURN_LEFT,  0         },
     };
     if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
         return;

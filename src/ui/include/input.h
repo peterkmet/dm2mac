@@ -79,11 +79,11 @@
 #define CMD_MUSIC_VOLUME_FIRST   0x9d
 #define CMD_MUSIC_VOLUME_LAST    0xa4 /* settings 0 to 7 */
 #define CMD_PICTURE_CLICK        0xef /* a click on a picture of INPUT_MODE_PICTURE */
-#define CMD_QUICK_SAVE           (CMD_LAST + 1)
-#define CMD_QUICK_LOAD           (CMD_LAST + 2)
-#define CMD_AUTOMAP              (CMD_LAST + 3)
-#define CMD_CHEATS               (CMD_LAST + 4)
-#define CMD_OPTIONS              (CMD_LAST + 5) /* the advanced mode: no original command has these numbers */
+#define CMD_QUICK_SAVE           0xf3
+#define CMD_QUICK_LOAD           0xf4
+#define CMD_AUTOMAP              0xf5
+#define CMD_CHEATS               0xf6
+#define CMD_OPTIONS              0xf7 /* the advanced mode: no original command has these numbers */
 
 /* The cursor images of input_cursor_at. */
 enum CursorKind { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
