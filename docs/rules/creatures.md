@@ -1,6 +1,6 @@
 # Creatures, projectiles, magic, and minions
 
-The rules of the creatures: the creature data, the updates of the creature groups and their AI, the projectiles, the explosions, the magic, and the minion map. The code is in `src/engine/creature.c`, `src/engine/ai.c`, `src/engine/ai_move.c`, `src/engine/ai_data.c`, `src/engine/projectile.c`, `src/engine/magic.c`, `src/engine/minion.c`, and `src/ui/minion_map.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code of the creatures, the projectiles, the magic, and the minions is in `src/engine/creature.c`, `src/engine/ai.c`, `src/engine/ai_move.c`, `src/engine/ai_data.c`, `src/engine/projectile.c`, `src/engine/magic.c`, `src/engine/minion.c`, and `src/ui/minion_map.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Creature data
 
@@ -13,7 +13,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 
 - An update event of a group runs the animation step. When the animation is at its end, the AI runs: update the mood, select a behavior, choose a plan, run its commands and actions, and compute the time of the next update.
 - An AI command returns `0xfc` (an action is issued), `0xfd` (fail), or `0xfe` (done).
-- The plan state and the path of each group stay between its updates. The original keeps them in the image cache (keys `0x20000000 | group` and `0x30000000 | group`).
+- The plan state and the path of each group stay between its updates.
 
 ## Projectiles, explosions, and magic
 
@@ -31,11 +31,10 @@ The rules of the creatures: the creature data, the updates of the creature group
 
 - The scenario tests stub `mouse_area_add` and `mouse_area_remove` (the mouse areas of an input mode): when a creature attack wakes the party, the original sets the input mode, and the stub does nothing.
 - Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
-- The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
+- The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original keeps it in the image cache (keys `0x20000000 | group` and `0x30000000 | group`) and can lose it when the cache evicts it; then the group plans again.
 - The scratch blocks of the AI (last-in, first-out allocations of the original memory layer) are ordinary buffers in the port. The port has 4 blocks (`SCRATCH_BLOCKS`): a fifth nested creature update calls `os_fatal` (`ai_scratch_push`); the original has no such limit.
 - No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). A `COND_AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
-- The original tests the address of `rand_2bits` instead of calling it, so the extra wait before a group acts (the alert test of the creature update in `src/engine/ai.c`) always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
   - a creature type without its [GDAT](../formats/graphics.md#gdat-items) animation data (a damaged GRAPHICS.DAT): the original reads a null entry, the port calls `os_fatal` (`read_creature_data` in `src/engine/creature.c`)
@@ -66,6 +65,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 - `magic_add_light` does nothing for a light kind other than the three that exist (the original adds a light event with an unset delay and reads past its light power table; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
+  - the original tests the address of `rand_2bits` instead of calling it, so the extra wait before a group acts (the alert test of the creature update in `src/engine/ai.c`) always applies
   - a new group when the active group table is full (`create_group` in `src/engine/creature.c`): the group record that the creation took stays taken and is in no square, so no later creation or discard can use it
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
