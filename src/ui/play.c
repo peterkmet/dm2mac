@@ -85,9 +85,9 @@ void play_show_view(void)
     game_set_view_hidden(false);
     action_request_redraw();
     if (g_ui.inventory) {
-        int champ = g_ui.inventory - 1;
+        int16_t champion_index = g_ui.inventory - 1;
         game_set_open_inventory(0);
-        ui_toggle_inventory(champ);
+        ui_toggle_inventory(champion_index);
         return;
     }
     view_clear_viewport();

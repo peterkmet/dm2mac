@@ -172,18 +172,18 @@ void session_draw_name_entry(const char *name, bool cursor)
 static void list_slots(void)
 {
     char path[OS_PATH_SIZE];
-    for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
-        memset(slots[i], 0, sizeof slots[i]);
-        FILE *f = fopen(slot_path(path, i, false), "rb");
+    for (int16_t slot = 0; slot < SAVE_SLOT_COUNT; slot++) {
+        memset(slots[slot], 0, sizeof slots[slot]);
+        FILE *f = fopen(slot_path(path, slot, false), "rb");
         if (f) {
-            size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
-            (void)n;                                             /* a short file keeps its zeros after what it has */
-            slots[i][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
+            size_t n = fread(slots[slot], 1, SAVE_HEADER_SIZE, f);
+            (void)n;                                                /* a short file keeps its zeros after what it has */
+            slots[slot][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
             fclose(f);
             continue;
         }
-        snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
-        put_le32(slots[i] + SAVE_HEADER_EMPTY_MARK, SAVE_EMPTY_SLOT_MARK);
+        snprintf((char *)slots[slot] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", slot);
+        put_le32(slots[slot] + SAVE_HEADER_EMPTY_MARK, SAVE_EMPTY_SLOT_MARK);
     }
 }
 
