@@ -684,7 +684,7 @@ void creature_activate_group(uint16_t group, Location at)
         a->event = EVENT_NO_SLOT;
         a->action = ACTIVE_ACTION_NONE;
         AiContext saved;
-        bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_THINK, &saved); /* g_ai.active is a */
+        bool restored = ai_begin(group, at, EVENT_CREATURE_THINK, &saved); /* g_ai.active is a */
         a->plan = -1;
         a->plan_step = 0;
         a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - 1);
@@ -781,7 +781,7 @@ void creature_update_anim_at(Location at, bool alt)
     if (creature_group_info(group)->flags & CREATURE_STATIC && group_active(group) == GROUP_NOT_ACTIVE)
         creature_activate_group(group, at);
     AiContext saved;
-    bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_ANIMATION, &saved);
+    bool restored = ai_begin(group, at, EVENT_CREATURE_ANIMATION, &saved);
     if (g_ai.active)
         schedule_loop(alt);
     ai_end(restored, &saved);
@@ -883,7 +883,7 @@ void creature_process_event(Location at, int type)
     if (group == THING_NONE)
         return;
     AiContext saved;
-    bool restored = ai_begin(group, at.x, at.y, type, &saved);
+    bool restored = ai_begin(group, at, type, &saved);
     if (!g_ai.active) { /* fix: the original reads a null active entry */
         ai_end(restored, &saved);
         return;

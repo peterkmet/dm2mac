@@ -157,7 +157,7 @@ class Ai:
         self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square_scan"))
         self.saved = ctypes.create_string_buffer(AI_SIZE)
         self.scratch = sc.view.alloc(0x2A * 0x40)
-        lib.ai_begin.argtypes = [ctypes.c_uint16, ctypes.c_int16, ctypes.c_int16, ctypes.c_int, ctypes.c_void_p]
+        lib.ai_begin.argtypes = [ctypes.c_uint16, Location, ctypes.c_int, ctypes.c_void_p]
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
         lib.dun_set_current_map.argtypes = [ctypes.c_int16]
@@ -246,7 +246,7 @@ class Ai:
         """The AI context of group at (x, y) of map_ in both, prepared, with a scratch block for the item filters."""
         lib, emu = self.lib, self.emu
         self.set_map(map_)
-        lib.ai_begin(group, x, y, 0x22, self.saved)
+        lib.ai_begin(group, Location(x, y), 0x22, self.saved)
         lib.ai_prepare()
         lib.ai_scratch_push()
         self.begun = emu.call(AI_BEGIN, group, x, y, 0x22)

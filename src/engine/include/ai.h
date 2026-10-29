@@ -193,7 +193,7 @@ void ai_free_cached_data(uint16_t group);
 /* The update context */
 
 /* Begins a creature update: saves the context of an update in progress; true when it saved one. */
-bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved);
+bool ai_begin(uint16_t group, Location at, int type, AiContext *saved);
 /* Ends a creature update: frees the context, or restores the update that the nested one interrupted. */
 void ai_end(bool restored, const AiContext *saved);
 /* Takes a scratch block for the item filters of the update; exported for the tests. */

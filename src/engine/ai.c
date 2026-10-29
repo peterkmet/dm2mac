@@ -476,11 +476,11 @@ static int load_class(void)
 }
 
 /* The distance between two squares along the axes. */
-static int manhattan(int x1, int y1, int x2, int y2)
+static int16_t manhattan(Location a, Location b)
 {
-    int16_t dx = (int16_t)(x1 - x2);
-    int16_t dy = (int16_t)(y1 - y2);
-    return (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+    int16_t dx = (int16_t)(a.x - b.x);
+    int16_t dy = (int16_t)(a.y - b.y);
+    return (int16_t)(abs_int(dx) + abs_int(dy));
 }
 
 static AiCandidate *candidate_at(int i)
@@ -554,9 +554,9 @@ void ai_set_map(int16_t map)
                                    (int16_t)g_game.party_dir};
 }
 
-bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
+bool ai_begin(uint16_t group, Location at, int type, AiContext *saved)
 {
-    int map = g_party.cur_map;
+    int16_t map = g_party.cur_map;
     g_party.cur_map = CUR_MAP_NONE; /* ai_set_map reads the party position again */
     ai_set_map(map);
     g_ai_square.x = -1;
@@ -577,8 +577,8 @@ bool ai_begin(uint16_t group, int16_t x, int16_t y, int type, AiContext *saved)
     g_ai.event = (TimelineEvent){.time_map = timeline_time_map(g_game.game_time, map)};
     g_ai.event.priority = group_creature(g_ai.group_thing);
     g_ai.event.type = (uint8_t)type;
-    g_ai.event.data[EVENT_X] = (uint8_t)x;
-    g_ai.event.data[EVENT_Y] = (uint8_t)y;
+    g_ai.event.data[EVENT_X] = (uint8_t)at.x;
+    g_ai.event.data[EVENT_Y] = (uint8_t)at.y;
     g_ai.anim_step = NULL;
     g_ai.removed = false;
     g_ai.class_index = -1;
@@ -684,8 +684,8 @@ uint8_t ai_action_flag(int action)
 static bool party_beside_special_wall(void)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int x = g_ai_party.x + g_dir_dx[d];
-        int y = g_ai_party.y + g_dir_dy[d];
+        int16_t x = (int16_t)(g_ai_party.x + g_dir_dx[d]);
+        int16_t y = (int16_t)(g_ai_party.y + g_dir_dy[d]);
         uint8_t square = dun_get_square((Location){x, y});
         if (square_type(square) || !(square & SQUARE_HAS_THINGS))
             continue;
@@ -708,7 +708,7 @@ static bool cond_sees_party(int16_t x, int16_t y, bool front_only, int16_t range
         return false;
     if (front_only)
         return true;
-    int16_t d = (int16_t)manhattan(g_ai_party.x, g_ai_party.y, x, y);
+    int16_t d = manhattan((Location){g_ai_party.x, g_ai_party.y}, (Location){x, y});
     if (d <= 1)
         return true;
     return d <= range && !g_ui.inventory &&
@@ -737,9 +737,9 @@ static bool cond_party_at_pit(int16_t x, int16_t y)
 {
     if (g_ai.map != g_ai_party.map || (x == g_ai_party.x && y == g_ai_party.y))
         return false;
-    if (manhattan(x, y, g_ai_party.x, g_ai_party.y) > 1)
+    if (manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) > 1)
         return false;
-    int d = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
+    int16_t d = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
     uint8_t square =
         dun_get_square((Location){(int16_t)(g_ai_party.x + g_dir_dx[d]), (int16_t)(g_ai_party.y + g_dir_dy[d])});
     return square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0);
@@ -748,7 +748,7 @@ static bool cond_party_at_pit(int16_t x, int16_t y)
 /* True when the creature on (x, y) can close the door behind it. */
 static bool cond_door_behind(int16_t x, int16_t y)
 {
-    int d = dir_opposite(group_dir(g_ai.group_thing));
+    int16_t d = dir_opposite(group_dir(g_ai.group_thing));
     if (!(g_ai.door_flags & DOOR_SKILL_CLOSE_BEHIND))
         return false;
     if (square_type(dun_get_square((Location){(int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d])})) != SQUARE_DOOR)
@@ -761,7 +761,7 @@ static bool cond_static_ahead(int16_t x, int16_t y)
 {
     if (g_ai.map != g_ai_party.map)
         return false;
-    int d = group_dir(g_ai.group_thing);
+    int16_t d = group_dir(g_ai.group_thing);
     uint16_t g = creature_get_group_at((Location){(x + g_dir_dx[d]), (y + g_dir_dy[d])});
     return g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC && party_beside_special_wall();
 }
@@ -815,8 +815,8 @@ static bool test_condition(int condition, int arg, int plan)
     bool negate = c & COND_NOT;
     bool r = false;
     c &= COND_MASK;
-    int x = g_ai.event.data[EVENT_X];
-    int y = g_ai.event.data[EVENT_Y];
+    int16_t x = g_ai.event.data[EVENT_X];
+    int16_t y = g_ai.event.data[EVENT_Y];
     uint16_t home = thing_word(g_ai.group_thing, GROUP_HOME);
     uint16_t mood = group_mood(g_ai.group_thing);
     bool at_home = g_ai.map == location_map(home) && x == location_x(home) && y == location_y(home);
@@ -1540,7 +1540,7 @@ static void wander_at_random(void)
         ai_turn_toward(g_game.game_time & DIR_MASK);
         return;
     }
-    int dir = group_dir(g_ai.group_thing);
+    int16_t dir = group_dir(g_ai.group_thing);
     a->direction = (uint8_t)dir;
     int x = (g_ai.event.data[EVENT_X] + g_dir_dx[dir]) & LOCATION_COORD_MASK;
     int y = (g_ai.event.data[EVENT_Y] + g_dir_dy[dir]) & LOCATION_COORD_MASK;
@@ -1761,7 +1761,7 @@ int ai_cmd_front_group_carries(void)
 {
     if (g_ai.arg1 == -1)
         return AI_RESULT_FAIL;
-    int cell = (uint8_t)g_ai.arg2;
+    int16_t cell = (uint8_t)g_ai.arg2;
     if (cell != CELL_ANY)
         cell = dir_turn(cell, facing() + TURN_BACK);
     int f = facing();
@@ -1902,8 +1902,8 @@ static int cmd_go_to_target(void)
         hurry = (int)(rand_next() & 0xf) < n;
     }
     if (!ai_next_path_step()) {
-        int x = g_ai.event.data[EVENT_X];
-        int y = g_ai.event.data[EVENT_Y];
+        int16_t x = g_ai.event.data[EVENT_X];
+        int16_t y = g_ai.event.data[EVENT_Y];
         if (x == dest_x() && y == dest_y() && location_map(a->destination) == g_party.cur_map)
             return AI_RESULT_DONE;
         int dir = dun_get_direction_to(x, y, dest_x(), dest_y());
@@ -1971,9 +1971,9 @@ static int cmd_turn_to_party(void)
     g_ai.command_result = AI_RESULT_FAIL;
     if (g_party.cur_map != g_ai_party.map)
         return AI_RESULT_FAIL;
-    int x = g_ai.event.data[EVENT_X];
-    int y = g_ai.event.data[EVENT_Y];
-    int dir = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
+    int16_t x = g_ai.event.data[EVENT_X];
+    int16_t y = g_ai.event.data[EVENT_Y];
+    int16_t dir = dun_get_direction_to(x, y, g_ai_party.x, g_ai_party.y);
     if (square_type(dun_get_square((Location){(int16_t)(x + g_dir_dx[dir]), (int16_t)(y + g_dir_dy[dir])})))
         return ai_turn_toward(dir).result;
     return AI_RESULT_FAIL;
@@ -2289,7 +2289,7 @@ static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
         if (c != -1)
             a->cell = champion(c)->cell;
     }
-    int cell = a->cell;
+    int16_t cell = a->cell;
     if (count > (int16_t)g_game.champion_count)
         count = (int16_t)g_game.champion_count;
     while (--count != -1) {
@@ -2338,16 +2338,16 @@ static bool act_melee_attack(void)
 {
     ActiveGroup *a = g_ai.active;
     const CreatureInfo *info = g_ai.info;
-    int dx = ai_state.dest_x;
-    int dy = ai_state.dest_y;
-    int x = g_ai.event.data[EVENT_X];
-    int y = g_ai.event.data[EVENT_Y];
-    int dir = facing();
+    int16_t dx = ai_state.dest_x;
+    int16_t dy = ai_state.dest_y;
+    int16_t x = g_ai.event.data[EVENT_X];
+    int16_t y = g_ai.event.data[EVENT_Y];
+    int16_t dir = facing();
     if (a->mode == MOVE_KIND_STEP_BACK)
         dir = dir_opposite(dir);
     bool at_self = x == dx && y == dy;
     if (!at_self) {
-        if (manhattan(x, y, dx, dy) > 1)
+        if (manhattan((Location){x, y}, (Location){dx, dy}) > 1)
             return true;
         /* a creature that always shows its front attacks in any direction */
         if (dun_get_direction_to(x, y, dx, dy) != dir && !(info->flags & CREATURE_FACES_PARTY))
@@ -2460,9 +2460,9 @@ static bool act_move_stairs(void)
             /* inverted: a fixed exit */
             dir = sensor_flag(link.sensor, SENSOR_INVERTED) ? exit : dir_turn(exit, link.dir);
         } else {
-            int saved = g_party.cur_map;
-            Position to = dungeon_location_on_map(
-                (Position){(int16_t)saved, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
+            int16_t saved = g_party.cur_map;
+            Position to =
+                dungeon_location_on_map((Position){saved, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, delta);
             dun_set_current_map(to.map);
             int16_t d2 = dun_find_adjacent_level_link((Location){to.x, to.y}, -delta).dir;
             dun_set_current_map(saved);
@@ -2710,7 +2710,7 @@ static bool act_give_items(void)
             break;
         n++;
         dungeon_unlink_thing_from_list(t, group_possessions(g_ai.group_thing));
-        int cell = g_ai.active->cell;
+        int16_t cell = g_ai.active->cell;
         if (cell == CELL_ANY)
             cell = rand_2bits();
         t = thing_with_cell(t, cell);
@@ -2779,8 +2779,8 @@ static void become_creature(int type)
 static void act_transform(void)
 {
     ActiveGroup *a = g_ai.active;
-    int x = g_ai.event.data[EVENT_X];
-    int y = g_ai.event.data[EVENT_Y];
+    int16_t x = g_ai.event.data[EVENT_X];
+    int16_t y = g_ai.event.data[EVENT_Y];
     int8_t phase = (int8_t)a->phase;
     a->phase++;
     int sound = SOUND_ENTRY_TRANSFORMED;
@@ -2930,7 +2930,7 @@ static void take_next_action(void)
         g_ai.cache.path_left = 0;
         g_ai.cache.kind = -1;
     }
-    int dir = group_dir(g_ai.group_thing);
+    int16_t dir = group_dir(g_ai.group_thing);
     if (a->action == ACTION_TURN_LEFT)
         a->facing = (uint8_t)dir_turn(dir, TURN_LEFT);
     else if (a->action == ACTION_TURN_RIGHT)
