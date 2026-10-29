@@ -14,7 +14,7 @@
 /* True for a closed fake wall that the party walks through: the automap draws it as a checkered wall; exported for the tests. */
 bool automap_is_imaginary_wall(uint8_t square);
 /* True for a floor square with a sensor that the party, a creature, or an item triggers and that the view draws with a floor ornament; the automap marks it; exported for the tests. */
-bool automap_is_pressure_pad(int16_t map, int16_t x, int16_t y);
+bool automap_is_pressure_pad(Position at);
 /* The map square of the party level that the automap draws at the level position level_at; false when no map covers it; exported for the tests. */
 bool automap_level_square(Location level_at, Position *position);
 /* True when a map of the party level that covers the level position level_at has seen its square there; exported for the tests. */

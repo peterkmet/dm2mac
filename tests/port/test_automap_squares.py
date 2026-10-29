@@ -22,7 +22,7 @@ def lib():
     lib = load_lib()
     lib.automap_is_imaginary_wall.argtypes = [ctypes.c_uint8]
     lib.automap_is_imaginary_wall.restype = ctypes.c_bool
-    lib.automap_is_pressure_pad.argtypes = [ctypes.c_int16] * 3
+    lib.automap_is_pressure_pad.argtypes = [Position]
     lib.automap_is_pressure_pad.restype = ctypes.c_bool
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.thing_word.restype = ctypes.c_uint16
@@ -66,8 +66,8 @@ def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):  # n
             if t >> 10 & 15 == THING_SENSOR and lib.thing_word(t, 2) & SENSOR_TYPE_MASK in STEP_TYPES:
                 (visible if lib.thing_word(t, 4) >> ORNAMENT_SHIFT else hidden).append((map_, x, y))
     assert visible and hidden
-    assert all(lib.automap_is_pressure_pad(*p) for p in visible if p not in hidden)
-    assert not any(lib.automap_is_pressure_pad(*p) for p in hidden if p not in visible)
+    assert all(lib.automap_is_pressure_pad(Position(*p)) for p in visible if p not in hidden)
+    assert not any(lib.automap_is_pressure_pad(Position(*p)) for p in hidden if p not in visible)
 
 
 def level_square(lib, x, y):

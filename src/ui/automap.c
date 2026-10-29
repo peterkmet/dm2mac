@@ -83,16 +83,16 @@ bool automap_is_imaginary_wall(uint8_t square)
            !square_flag(square, SQUARE_FAKE_WALL_OPEN);
 }
 
-bool automap_is_pressure_pad(int16_t map, int16_t x, int16_t y)
+bool automap_is_pressure_pad(Position at)
 {
-    if (square_type(dungeon_square(map, x, y)) != SQUARE_FLOOR)
+    if (square_type(dungeon_square(at.map, at.x, at.y)) != SQUARE_FLOOR)
         return false;
     ViewSquare view;
-    aspect_get(&view, map, DIR_NORTH, x, y);
+    aspect_get(&view, at.map, DIR_NORTH, at.x, at.y);
     if ((view.side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_INDEX_MASK) == ORNAMENT_NONE)
         return false; /* the view draws no pad: a hidden trigger stays hidden */
-    for (uint16_t t = dungeon_square_first_thing(map, x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
-         t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_square_first_thing(at.map, at.x, at.y);
+         t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_ornament_index(t) < 0)
             continue;
         switch (sensor_type(t)) {
@@ -274,7 +274,7 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
         return; /* an edge wall has no imaginary wall and no pad */
     if (automap_is_imaginary_wall(dungeon_square(position.map, position.x, position.y)))
         checker_overlay(o, clip, icon_x, icon_y);
-    else if (automap_is_pressure_pad(position.map, position.x, position.y))
+    else if (automap_is_pressure_pad(position))
         fill_clipped(o, clip,
                      (int16_t[RECT_SIZE]){(int16_t)(icon_x + PAD_MARK_OFFSET), (int16_t)(icon_y + PAD_MARK_OFFSET),
                                           PAD_MARK_SIZE, PAD_MARK_SIZE},
