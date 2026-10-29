@@ -662,7 +662,7 @@ static bool set_event_thing(uint16_t event, int offset, uint16_t thing)
     return true;
 }
 
-/* Reads what the record of a new thing stores beside its mask; returns the mask of the record, NULL on a read error. */
+/* Reads what the record of a thing stores beside its mask; returns the mask of the record, NULL on a read error. */
 static const uint8_t *read_thing_head(uint16_t thing, bool *carried)
 {
     int type = thing_type(thing);
@@ -670,6 +670,13 @@ static const uint8_t *read_thing_head(uint16_t thing, bool *carried)
     uint16_t value;
     *carried = false;
     switch (type) {
+    case THING_SENSOR:
+        if (has_sensor_data(thing)) {
+            if (!read_value(&value, SENSOR_DATA_MASK))
+                return NULL;
+            sensor_set_data(thing, value);
+        }
+        break;
     case THING_GROUP:
         if (!read_value(&value, CREATURE_MASK))
             return NULL;
@@ -830,13 +837,10 @@ static bool read_squares(void)
                     int type = thing_type(t);
                     if (!thing_masks[type])
                         continue;
-                    uint16_t data;
-                    if (type == THING_SENSOR && has_sensor_data(t)) {
-                        if (!read_value(&data, SENSOR_DATA_MASK))
-                            return false;
-                        sensor_set_data(t, data);
-                    }
-                    if (!read_packed(dungeon_thing_record(t), thing_masks[type], dungeon_thing_size(type), 1, true))
+                    bool carried;
+                    const uint8_t *thing_mask = read_thing_head(t, &carried);
+                    if (!thing_mask ||
+                        !read_packed(dungeon_thing_record(t), thing_mask, dungeon_thing_size(type), 1, true))
                         return false;
                 }
                 if (!read_thing_list(&at, NULL, true, true))
