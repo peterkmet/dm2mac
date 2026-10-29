@@ -29,9 +29,9 @@ IconSize icon_build(const Gdat *g, uint32_t *pixels, int max)
     for (int i = 0; i < width * height; i++) {
         uint8_t rgb[RGB_CHANNELS];
         gdat_palette_color(g, decoded[i], rgb);
-        uint32_t red = video_vga_to_8bit(rgb[RGB_RED]);
-        uint32_t green = video_vga_to_8bit(rgb[RGB_GREEN]);
-        uint32_t blue = video_vga_to_8bit(rgb[RGB_BLUE]);
+        uint8_t red = video_vga_to_8bit(rgb[RGB_RED]);
+        uint8_t green = video_vga_to_8bit(rgb[RGB_GREEN]);
+        uint8_t blue = video_vga_to_8bit(rgb[RGB_BLUE]);
         pixels[i] = decoded[i] == ICON_CREATURE_KEY ? 0 : video_argb_pack(red, green, blue);
     }
     free(decoded);

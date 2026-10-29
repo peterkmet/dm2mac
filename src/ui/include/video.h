@@ -59,7 +59,7 @@ VideoPoint video_map_mouse(int output_w, int output_h, int output_x, int output_
 /* ---- ARGB pixels ---- */
 
 /* An opaque ARGB8888 pixel of 8-bit red, green, and blue. */
-static inline uint32_t video_argb_pack(uint32_t red, uint32_t green, uint32_t blue)
+static inline uint32_t video_argb_pack(uint8_t red, uint8_t green, uint8_t blue)
 {
     return ARGB_OPAQUE | red << ARGB_RED_SHIFT | green << ARGB_GREEN_SHIFT | blue;
 }

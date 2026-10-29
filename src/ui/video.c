@@ -20,9 +20,9 @@ uint8_t video_vga_to_8bit(uint8_t v)
 uint32_t video_argb(uint8_t palette_color)
 {
     const uint8_t *p = g_video_palette[palette_color];
-    uint32_t red = video_vga_to_8bit(p[RGB_RED]);
-    uint32_t green = video_vga_to_8bit(p[RGB_GREEN]);
-    uint32_t blue = video_vga_to_8bit(p[RGB_BLUE]);
+    uint8_t red = video_vga_to_8bit(p[RGB_RED]);
+    uint8_t green = video_vga_to_8bit(p[RGB_GREEN]);
+    uint8_t blue = video_vga_to_8bit(p[RGB_BLUE]);
     return video_argb_pack(red, green, blue);
 }
 
