@@ -44,4 +44,4 @@ The inflate is tinf 1.2.1 by Jørgen Ibsen (zlib license), vendored in `src/thir
 
 ## Deviations from the original
 
-None, because the install is only in the port.
+None, because only the port reads ZIP archives.

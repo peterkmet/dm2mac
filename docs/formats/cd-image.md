@@ -49,4 +49,4 @@ A name matches without case. The reader cuts the version suffix `;1`, then a fin
 
 ## Deviations from the original
 
-None, because the install is only in the port.
+None, because only the port reads CD images.

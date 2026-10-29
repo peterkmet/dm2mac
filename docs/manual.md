@@ -90,7 +90,7 @@ The controls of the original game work in all modes except the turn-based mode.
 | Shift+Left, keypad 1 | Move left (strafe) |
 | Shift+Right, keypad 3 | Move right (strafe) |
 | Click on a movement arrow | Move or turn |
-| `1`–`4` | Open the inventory of champion 1–4 |
+| `1` to `4` | Open the inventory of champion 1 to 4 |
 | Alt+S (Option+S) | Open the save menu |
 | `Esc` | Pause the game. A key continues. The advanced mode opens the options menu instead (see [Advanced keys](#advanced-keys)). |
 | Click on the sleep button | Sleep. A key or a click wakes the party. |
@@ -99,7 +99,7 @@ The controls of the original game work in all modes except the turn-based mode.
 | Click on a champion hand | Open the action menu. Click an action to run it. |
 | Click on the gray triangle beside a champion in the party panel | Make the champion the leader. The hand on a triangle marks the leader. |
 | Click on the `!` beside a champion in the party panel | Open the spell panel of the champion |
-| Inventory: click on the speaker button | Open the volume dialog: the sound and music volumes 0–7 |
+| Inventory: click on the speaker button | Open the volume dialog: the sound and music volumes 0 to 7 |
 | Inventory: the name editor | Type the name and the title of the champion |
 
 ### Advanced keys
