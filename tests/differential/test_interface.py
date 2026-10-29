@@ -569,6 +569,28 @@ def test_message_rows_follow_print_scroll_and_expiry(port):
     assert [lib.text_message_row(i) for i in range(3)] == [b"", b"", b""]
 
 
+FONT_SIZE = C.FONT_GLYPH_HEIGHT * 128  # the font of text.c: 128 characters of FONT_GLYPH_HEIGHT rows
+
+
+def test_text_init_refuses_a_short_font_or_color_item(port, gdat):
+    # regression: text_init copied the font and read the 16 UI colors past the end of a shorter item (a damaged
+    # GRAPHICS.DAT)
+    from dm2test.gdat import item_sizes
+    lib = port
+    sizes = item_sizes(gdat)
+    for kind, entry, need in ((C.GDAT_TYPE_FONT, C.GFX_FONT, FONT_SIZE),
+                              (C.GDAT_TYPE_DATA, C.GFX_UI_COLORS, C.UI_COLOR_COUNT)):
+        item = lib.gdat_find(gdat, C.CAT_INTERFACE, 0, kind, entry)
+        assert item >= 0 and sizes[item] >= need
+        size = sizes[item]
+        sizes[item] = need - 1
+        try:
+            assert not lib.text_init(gdat)
+        finally:
+            sizes[item] = size
+    assert lib.text_init(gdat)
+
+
 def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port

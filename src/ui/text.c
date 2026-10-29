@@ -54,11 +54,12 @@ static struct {
 
 bool text_init(const Gdat *gdat)
 {
-    uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &size);
+    uint32_t font_size, colors_size;
+    const uint8_t *p =
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &font_size);
     const uint8_t *colors =
-        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
-    if (!p || !colors)
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &colors_size);
+    if (!p || !colors || font_size < FONT_SIZE || colors_size < UI_COLOR_COUNT) /* fix: no read past a short item */
         return false;
     memcpy(text_state.font, p, FONT_SIZE);
     gtext_gdat_set_ui_colors(colors);
