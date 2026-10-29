@@ -2,6 +2,14 @@
 
 The port builds with `make`, tests with `make test`, and checks with `make check`. For the structure of the code, see [Architecture](architecture.md).
 
+The port is built in three steps:
+
+1. **Decompilation:** Ghidra decompiles `SKULL.EXE` to C ([Decompiling](decompiling.md)).
+2. **Reimplementation:** the game rules in C11 follow the decompiled code. The port does not reproduce the DOS
+   technical layer.
+3. **Differential verification:** a test runs a ported C function and the original code in an emulator with the
+   same input and compares the state ([Tests](#tests)).
+
 ## Build
 
 The port uses C11, `clang`, SDL3, and `uv`. Install the tools first.
@@ -24,7 +32,15 @@ uv sync
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
-Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAVE0.DAT`.
+Put your DOS game (the folder, the ZIP archive, or the CD image) into the project folder, then start the game:
+
+```sh
+build/dm2                                   # New game (mode screen)
+build/dm2 --mode vanilla                    # Skip the mode screen
+build/dm2 --save game/DATA/SKSAVE0.DAT      # Load a save
+```
+
+All options are in the [Player manual](manual.md).
 
 ### Windows build
 
@@ -116,3 +132,35 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 ## Manual checks
 
 The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [manual-test-checklist.md](manual-test-checklist.md#t-turn-based-mode).
+
+## Documentation
+
+- [Player manual](manual.md): the options, the modes, the controls, and the cheats.
+- [Architecture](architecture.md) and [Coding standard](coding-standard.md): the structure of the code.
+- [Decompiling](decompiling.md), [SKULL.EXE map](reference/skull-map.md), and
+  [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
+- [LLM mode](llm/llm-mode.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
+  plays the game.
+- [TODO](todo.md): the open work. [Changelog](../CHANGELOG.md): the changes.
+
+Data formats:
+
+- [Graphics data files](formats/graphics.md)
+- [Movies](formats/movies.md)
+- [Music](formats/music.md)
+- [Digital sound effects](formats/sound.md)
+- [Save file format](formats/save.md)
+- [Runtime layer and timing](formats/runtime.md)
+- [Game files and install](formats/game-files.md)
+- [ZIP archives](formats/zip.md)
+- [CD images](formats/cd-image.md)
+
+Game rules:
+
+- [Start menu, save and load, dialogs, and end of game](rules/game-flow.md)
+- [Main loop, input, and movement](rules/movement.md)
+- [Dungeon view](rules/view.md)
+- [Interface panels and text](rules/interface.md)
+- [Champions, inventory, items, money, and shops](rules/champions.md)
+- [Creatures, projectiles, magic, and minions](rules/creatures.md)
+- [Weather, day and night, light, and Skullkeep machines](rules/world.md)
