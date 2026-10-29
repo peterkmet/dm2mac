@@ -134,12 +134,11 @@ static bool read_file(const char *path, uint8_t *data, uint32_t size)
     return ok;
 }
 
-/* Finds each part of name in the folder listings below folder, without case, and reads the file. */
-static bool read_from_folder(const char *folder, const char *name, uint8_t *data, uint32_t size)
+/* Writes the path of the file at name below folder into path; each part of name is found without case. */
+static bool find_folder_path(const char *folder, const char *name, char *path, size_t size)
 {
-    char path[OS_PATH_SIZE];
     char part[OS_PATH_SIZE];
-    if (snprintf(path, sizeof path, "%s", folder) >= (int)sizeof path)
+    if (snprintf(path, size, "%s", folder) >= (int)size)
         return false;
     const char *at = name;
     for (;;) {
@@ -149,34 +148,49 @@ static bool read_from_folder(const char *folder, const char *name, uint8_t *data
             return false;
         memcpy(part, at, length);
         part[length] = '\0';
-        if (!find_in_folder(path, sizeof path, part))
+        if (!find_in_folder(path, size, part))
             return false;
         if (!end)
-            return read_file(path, data, size);
+            return true;
         at = end + 1;
     }
 }
 
-/* Reads <root><name> from the archive. */
-static bool read_from_zip(const Source *source, const char *name, uint8_t *data, uint32_t size)
+/* Writes the entry name <root><name> of the archive into entry_name. */
+static bool make_entry_name(const Source *source, const char *name, char *entry_name, size_t size)
 {
-    char entry_name[OS_PATH_SIZE];
-    ZipEntry entry;
-    if (snprintf(entry_name, sizeof entry_name, "%s%s", source->zip_root, name) >= (int)sizeof entry_name)
-        return false;
-    return zip_find(source->zip, entry_name, &entry) && zip_read(source->zip, &entry, data, size);
+    return snprintf(entry_name, size, "%s%s", source->zip_root, name) < (int)size;
 }
 
 bool source_read(const Source *source, const char *name, uint8_t *data, uint32_t size)
 {
+    char path[OS_PATH_SIZE];
+    ZipEntry entry;
     IsoFile file;
     switch (source->form) {
     case SOURCE_FOLDER:
-        return read_from_folder(source->folder, name, data, size);
+        return find_folder_path(source->folder, name, path, sizeof path) && read_file(path, data, size);
     case SOURCE_ZIP:
-        return read_from_zip(source, name, data, size);
+        return make_entry_name(source, name, path, sizeof path) && zip_find(source->zip, path, &entry) &&
+               zip_read(source->zip, &entry, data, size);
     case SOURCE_CD:
         return iso_find(source->iso, name, &file) && iso_read(source->iso, &file, data, size);
+    }
+    return false;
+}
+
+bool source_has_file(const Source *source, const char *name)
+{
+    char path[OS_PATH_SIZE];
+    ZipEntry entry;
+    IsoFile file;
+    switch (source->form) {
+    case SOURCE_FOLDER:
+        return find_folder_path(source->folder, name, path, sizeof path);
+    case SOURCE_ZIP:
+        return make_entry_name(source, name, path, sizeof path) && zip_find(source->zip, path, &entry);
+    case SOURCE_CD:
+        return iso_find(source->iso, name, &file);
     }
     return false;
 }

@@ -162,6 +162,17 @@ def test_wrong_file_message(lib, tmp_path):
     assert not [name for name in CONTENTS if (tmp_path / "game" / name).exists()]
 
 
+def test_folder_without_game_files_is_no_source(lib, tmp_path):
+    for folder in ("a/b", "docs"):
+        (tmp_path / folder).mkdir(parents=True)
+    (tmp_path / "docs" / "README.txt").write_bytes(b"not a game file")
+    write_zip(tmp_path / "game.zip", damaged(CONTENTS, "DATA/GRAPHICS.DAT"))
+    result, message = install(lib, tmp_path)
+    assert result == C.INSTALL_NO_SOURCE
+    assert message == missing_message(tmp_path, f"{tmp_path}/game.zip: DATA/GRAPHICS.DAT is missing or wrong.")
+    assert LOG == [f"{tmp_path}/game.zip: DATA/GRAPHICS.DAT is missing or wrong"]
+
+
 def test_message_names_the_bad_file_of_game(lib, tmp_path):
     gamefiles.write(tmp_path / "game", damaged({"FTL": CONTENTS["FTL"]}, "FTL"))
     result, message = install(lib, tmp_path)

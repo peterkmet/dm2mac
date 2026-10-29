@@ -25,5 +25,7 @@ void source_close(Source *source);
 /* Queries */
 /* Reads the game file at name ("DATA/GRAPHICS.DAT") into data; false unless it is there with size bytes. */
 bool source_read(const Source *source, const char *name, uint8_t *data, uint32_t size);
+/* Whether the source has a file at name, of any size. */
+bool source_has_file(const Source *source, const char *name);
 
 #endif /* DM2_PLATFORM_SOURCE_H */

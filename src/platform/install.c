@@ -176,13 +176,26 @@ static void report_failure(Search *search, const char *path, const char *reason)
     append_text(&search->failures, "\n%s: %s.", path, reason);
 }
 
-/* Opens the source and checks all game files in it; the source that passes stays open in the search. */
+/* Whether the source has at least one of the game files, of any size. */
+static bool has_game_file(const GameFile *files, const Source *source)
+{
+    for (int i = 0; i < GAMEFILE_COUNT; i++)
+        if (source_has_file(source, files[i].name))
+            return true;
+    return false;
+}
+
+/* Checks all game files of the source and keeps it open when it passes; skips a folder without a game file. */
 static bool check_source(Search *search, SourceForm form, const char *path)
 {
     const char *problem = "";
     Source *source = source_open(form, path, &problem);
     if (!source) {
         report_failure(search, path, problem);
+        return false;
+    }
+    if (form == SOURCE_FOLDER && !has_game_file(search->files, source)) {
+        source_close(source);
         return false;
     }
     for (int i = 0; i < GAMEFILE_COUNT; i++) {
