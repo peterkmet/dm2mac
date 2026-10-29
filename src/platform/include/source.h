@@ -17,14 +17,13 @@ typedef struct Source Source; /* an open source */
 /* Setup */
 /* Opens a source; NULL with *problem set to a short text for the message ("not a ZIP archive or damaged",
    "not a CD image or damaged", "a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only", "no
-   DATA/GRAPHICS.DAT in the archive"); exported for the tests. */
+   DATA/GRAPHICS.DAT in the archive"). */
 Source *source_open(SourceForm form, const char *path, const char **problem);
-/* Closes the source and frees it; exported for the tests. */
+/* Closes the source and frees it. */
 void source_close(Source *source);
 
 /* Queries */
-/* Reads the game file at name ("DATA/GRAPHICS.DAT") into data; false unless it is there with size bytes;
-   exported for the tests. */
+/* Reads the game file at name ("DATA/GRAPHICS.DAT") into data; false unless it is there with size bytes. */
 bool source_read(const Source *source, const char *name, uint8_t *data, uint32_t size);
 
 #endif /* DM2_PLATFORM_SOURCE_H */
