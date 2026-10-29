@@ -285,6 +285,7 @@ def test_raw_click_runs_a_turn_in_a_dialog(tb, lib):
     r = act(path, "click", x=x, y=y, button="left")
     assert r["ok"] and r["state"]["mode"] == "inventory"
     assert act(path, "click", x=-1, y=0) == {"ok": False, "error": "x must be 0-319 and y 0-199"}
+    assert act(path, "click", x=1, y=1, button=1) == {"ok": False, "error": "button must be left or right"}
     assert act(path, "key", key="nokey") == {"ok": False, "error": "unknown key"}
 
 

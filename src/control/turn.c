@@ -948,9 +948,9 @@ static const char *click(const char *r)
         snprintf(turn.error, sizeof turn.error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
         return turn.error;
     }
-    control_get_string(r, "button", button, sizeof button);
+    bool bad = control_find_value(r, "button") && !control_get_string(r, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
-    if (!right && strcmp(button, "left"))
+    if (bad || (!right && strcmp(button, "left"))) /* fix: a present but bad button is no left click */
         return "button must be left or right";
     add_click((int16_t)x, (int16_t)y, right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
     return NULL;

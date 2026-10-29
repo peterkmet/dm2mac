@@ -284,6 +284,7 @@ def test_bad_requests_get_errors(control, lib):
     bad = [({"x": 1}, "missing cmd"), ({"cmd": "jump"}, "unknown cmd"), ({"cmd": "key", "key": "nokey"}, "unknown key"),
            ({"cmd": "click", "x": 320, "y": 0}, "x must be 0-319 and y 0-199"),
            ({"cmd": "click", "x": 1, "y": 1, "button": "middle"}, "button must be left or right"),
+           ({"cmd": "click", "x": 1, "y": 1, "button": 1}, "button must be left or right"),
            ({"cmd": "click", "x": TOO_BIG, "y": 0}, "x must be 0-319 and y 0-199"),
            ({"cmd": "command", "id": TOO_BIG}, "missing id"),
            ({"cmd": "wait", "ticks": 0}, "ticks must be 1-6000"), ({"cmd": "screenshot"}, "missing path"),

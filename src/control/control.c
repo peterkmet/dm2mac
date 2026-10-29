@@ -551,9 +551,9 @@ static void handle_button(const char *request, bool down, bool up, Json *reply)
     ScreenPoint at;
     if (!get_position(request, &at, reply))
         return;
-    control_get_string(request, "button", button, sizeof button);
+    bool bad = control_find_value(request, "button") && !control_get_string(request, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
-    if (!right && strcmp(button, "left")) {
+    if (bad || (!right && strcmp(button, "left"))) { /* fix: a present but bad button is no left click */
         put_error(reply, "button must be left or right");
         return;
     }
