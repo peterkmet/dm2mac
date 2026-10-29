@@ -851,3 +851,58 @@ def test_warp_to_marker_matches_original(magic):
         magic.assert_same((n, m, x, y))
     assert moved
     magic.assert_equal("end")
+
+
+# A cell of each relative flight direction of a missile where the minion map takes icon 5 or 6 of its strip.
+FAR_ICON_CELL = {0: 2, 1: 1, 2: 0, 3: 0}
+
+
+def test_a_missile_icon_past_a_short_strip_draws_nothing(port, original):
+    # regression: a missile of the minion map took icon 3 to 6 of its strip also when the strip had fewer icons (a
+    # damaged GRAPHICS.DAT) and read past the strip; the port draws no icon past the end
+    from dm2test.view import Bitmap
+    lib, emu = port, original.emu
+    lib.item_is_minion_map.argtypes = lib.view_missile_kind.argtypes = [ctypes.c_uint16]
+    lib.mmap_draw.argtypes = lib.projectile_dir.argtypes = [ctypes.c_uint16]
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
+    lib.area_begin_draw.argtypes = [ctypes.c_bool]
+    lib.area_begin_draw.restype = ctypes.POINTER(ctypes.POINTER(Bitmap))  # the first field of Offscreen
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
+    thing = next(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i for i in range(lib.dungeon_thing_count(C.THING_CONTAINER))
+                 if lib.item_is_minion_map(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i))
+    set_word(lib, emu, thing, 6, 0xFFFF)
+    set_word(lib, emu, thing, 2, C.THING_ENDOFLIST)
+    pool = Pool(lib)
+    m, x, y = next((m, x, y) for m, x, y in squares_of(lib, (C.SQUARE_FLOOR,))
+                   if y > 0 and lib.dungeon_square(m, x, y - 1) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_FLOOR
+                   and pool.last_thing(m, x, y - 1))
+    place_party(lib, emu, m, x, y, 0)  # the party looks north, to the square with things
+    last, record = pool.last_thing(m, x, y - 1), pool.free[C.THING_PROJECTILE][0]
+    set_word(lib, emu, record, 2, C.SPELL_LIGHTNING)
+    set_word(lib, emu, record, 4, 0x6464)
+    set_word(lib, emu, record, 6, 0)
+    set_word(lib, emu, record, 0, C.THING_ENDOFLIST)
+    missile = FAR_ICON_CELL[lib.projectile_dir(record)] << C.THING_CELL_SHIFT | record
+    assert lib.view_missile_kind(missile) == C.MISSILE_FRONT_BACK
+    strip = lib.draw_gdat_image(lib.item_gdat_category(missile), lib.item_gdat_index(missile), C.GFX_STRIP).contents
+    assert strip.width // C.MAP_ICON_W == 7
+    action = ActionArea.in_dll(lib, "g_action")
+
+    def grid(with_missile):
+        set_word(lib, emu, last, 0, missile if with_missile else C.THING_ENDOFLIST)
+        action.flags |= C.MAP_OPTION_ITEMS
+        lib.mmap_draw(thing)
+        area = lib.area_begin_draw(False).contents.contents
+        return ctypes.string_at(area.pixels, area.width * area.height)
+
+    try:
+        empty = grid(False)
+        assert grid(True) != empty  # the missile shows
+        strip.width = 4 * C.MAP_ICON_W
+        assert grid(True) == empty
+    finally:
+        strip.width = 7 * C.MAP_ICON_W
+        set_word(lib, emu, last, 0, C.THING_ENDOFLIST)
+        set_word(lib, emu, record, 0, C.THING_NONE)
