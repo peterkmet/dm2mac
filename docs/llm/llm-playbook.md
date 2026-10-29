@@ -195,7 +195,7 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Several actions | `uv run dm2-play --brief act_many '["move_forward", "turn_left", "move_forward"]'` |
 | Pass time | `uv run dm2-play --brief wait '{"ticks": 50}'` |
 | Save, load | `uv run dm2-play save`, `uv run dm2-play load` |
-| Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake` |
+| Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake`, then `uv run dm2-play --brief act close_inventory` |
 | See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
 
 ### View a screenshot as an LLM
