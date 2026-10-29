@@ -10,7 +10,7 @@ from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.scenario import (  # noqa: F401 (gdat, start and scenario are fixtures)
     CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, Location, approaches, gdat, scenario, sensor_squares, square_event, squares, start,
+    Command, Location, approaches, gdat, scenario, sensor_squares, square_event, square_things, squares, start,
 )
 
 
@@ -220,3 +220,37 @@ def test_clicks_in_the_view(scenario, lib):
             scenario.assert_equal(n)
     assert clicked > 100
     scenario.assert_equal("end")
+
+
+def test_teleporter_square_whose_first_thing_is_no_teleporter(scenario, lib):
+    # A damaged dungeon (port only): a chest with the target words of the teleporter goes before the things of an
+    # active party teleporter square; the party steps onto the square and stays there.
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    party_scope = (C.TELEPORTER_SCOPE_MASK & ~C.TELEPORTER_SCOPE_CREATURES) << C.TELEPORTER_SCOPE_SHIFT
+    for map_, px, py, d in approaches(lib, C.SQUARE_TELEPORTER, lambda s: s & C.SQUARE_TELEPORTER_ON):
+        x, y = px + DIRS[d][0], py + DIRS[d][1]
+        tele = lib.dungeon_square_first_thing(map_, x, y)
+        target = lib.thing_word(tele, C.TELEPORTER_TARGET)
+        if target & party_scope and (target & C.LOCATION_COORD_MASK, target >> C.LOCATION_Y_SHIFT & C.LOCATION_COORD_MASK) != (x, y):
+            break
+    else:
+        pytest.fail("no active party teleporter")
+    chest = lib.dungeon_unused_thing(C.THING_CONTAINER)
+    for field in (C.TELEPORTER_TARGET, C.TELEPORTER_MAP):
+        lib.thing_set_word(chest, field, lib.thing_word(tele, field))
+    things = square_things(lib, map_, x, y)
+    for t in things:
+        lib.dungeon_unlink_thing_from_square(t, map_, x, y)
+    for t in [chest] + things:
+        lib.dungeon_link_thing_to_square(t, map_, x, y)
+    assert lib.dungeon_square_first_thing(map_, x, y) == chest
+    scenario.place(map_, px, py, d)
+    for _ in range(3):
+        scenario.step()
+    lib.command_execute(ctypes.byref(Command(0, 0, C.CMD_MOVE_FORWARD)))
+    for _ in range(3):
+        scenario.step()
+    game = scenario.game
+    assert (game.party_map, game.party_x, game.party_y) == (map_, x, y)

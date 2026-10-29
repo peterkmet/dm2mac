@@ -1151,7 +1151,6 @@ static bool search_square_test(int command, int16_t x, int16_t y)
         return true;
     case SQUARE_TELEPORTER:
         if (square & SQUARE_TELEPORTER_ON) {
-            uint16_t link = THING_NONE;
             /* an open teleporter next to a seamless passage: test the square behind it */
             PassageEnd end;
             if (!dun_get_linked_teleporter_dest(&end, (Location){x + 1, y}) &&
@@ -1159,7 +1158,9 @@ static bool search_square_test(int command, int16_t x, int16_t y)
                 !dun_get_linked_teleporter_dest(&end, (Location){x, y + 1}) &&
                 !dun_get_linked_teleporter_dest(&end, (Location){x, y - 1}))
                 return true;
-            link = first_thing(x, y);
+            uint16_t link = first_thing(x, y);
+            if (thing_type(link) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+                return true;
             if (end.map != teleporter_map(link) ||
                 axis_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
                 return true;
@@ -1228,7 +1229,10 @@ static uint16_t needed_move_flags(int kind, bool no_movers, bool map_changed, in
             g_ai_square_scan.passage = 1;
             return creature_is_native_to_map(g_ai.group_thing, g_ai_square_scan.end.map) ? MOVE_LEVELS : 0;
         } else {
-            return teleporter_scope(cached_first_thing()) & TELEPORTER_SCOPE_CREATURES ? MOVE_TELEPORTER : MOVE_FLOOR;
+            uint16_t tele = cached_first_thing();
+            if (thing_type(tele) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+                return MOVE_FLOOR;
+            return teleporter_scope(tele) & TELEPORTER_SCOPE_CREATURES ? MOVE_TELEPORTER : MOVE_FLOOR;
         }
     case SQUARE_FAKE_WALL:
         if (square & SQUARE_FAKE_WALL_OPEN)

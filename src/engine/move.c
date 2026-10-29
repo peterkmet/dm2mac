@@ -754,6 +754,8 @@ static bool transit_teleporter(Transit *t, uint8_t square)
     if (!(square & SQUARE_TELEPORTER_ON))
         return false;
     uint16_t tele = first_thing(t->x, t->y);
+    if (thing_type(tele) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+        return false;
     int tele_scope = teleporter_scope(tele);
     int rotation = teleporter_rotation(tele);
     bool absolute = teleporter_flag(tele, TELEPORTER_ABSOLUTE);
