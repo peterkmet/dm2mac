@@ -6,7 +6,7 @@ An LLM run is a playthrough of the game by an LLM player in the turn-based mode 
 
 The goal of a run is to complete the game. The runs also measure how much an LLM player gets better: from session to session, and against earlier runs. The main session of Claude Code starts the coordinator, the agent `dm2-coordinator` ([Agents](#agents)). The coordinator starts the sessions and keeps the records.
 
-- Allowed changes of the player instructions between sessions and runs: general rules about how to play and about the game, for example survival, fights, food and water, training, saves, the use of the commands, and how to keep the memory. Change them in small steps and write each change, its reason, and the session where it starts.
+- Allowed changes of the player instructions between sessions and runs: general rules about how to play and about the game, for example survival, fights, food and water, training, saves, the use of the commands, and how to keep the memory. Change them in small steps and write each change, its reason, and the session where it starts in `coordinator/instruction_changes.md`.
 - Not allowed: hints for this dungeon, for example a position, a map, the solution of a puzzle, where an item lies, or the way to the next level. The memory of an earlier run (maps, lessons) is the player's own knowledge, not a hint.
 
 ## Runs and checkpoints
