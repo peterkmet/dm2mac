@@ -267,8 +267,9 @@ void area_draw_entered_runes(bool clear)
     size_t n = strnlen(c->runes, CHAMPION_RUNES_SIZE + 1);
     for (size_t i = 0; i < n; i++) {
         char s[RUNE_TEXT_SIZE] = {c->runes[i], '\0'};
-        offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i, g_ui_colors[UI_BLACK],
-                                    g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
+        offscreen_draw_text_in_zone(&area, ZONE_RUNE_ENTERED_FIRST + (int)i,
+                                    (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT},
+                                    s);
     }
 }
 
@@ -286,8 +287,8 @@ void area_draw_name(int i, bool highlight)
     }
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight},
                               ZONE_ACTION_BUTTON_FIRST + i, GFX_OPAQUE);
-    offscreen_draw_shadow_text(&area, ZONE_ACTION_NAME_FIRST + i, g_ui_colors[UI_WHITE],
-                               g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT,
+    offscreen_draw_shadow_text(&area, ZONE_ACTION_NAME_FIRST + i,
+                               (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT},
                                gtext_gdat_label(a->category, a->index, a->entry));
 }
 
@@ -376,8 +377,10 @@ static void show_panel_header(void)
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK}, ZONE_MENU_BACK,
                               GFX_OPAQUE);
     int champ = g_action.champion - 1;
-    offscreen_draw_shadow_text(&area, ZONE_MENU_NAME, g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
-                               g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT, champion(champ)->name);
+    offscreen_draw_shadow_text(&area, ZONE_MENU_NAME,
+                               (TextColors){g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
+                                            g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT},
+                               champion(champ)->name);
 }
 
 /* Draws the face of the champion whose hand or spell panel is open. */
@@ -404,8 +407,9 @@ static void show_spell_panel(void)
     if (set < SPELL_RUNE_SETS) {
         for (int i = 0; i < SPELL_RUNES_PER_SET; i++) {
             char s[RUNE_TEXT_SIZE] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + i), '\0'};
-            offscreen_draw_text_in_zone(&area, ZONE_RUNE_CHOICE_FIRST + i, g_ui_colors[UI_BLACK],
-                                        g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT, s);
+            offscreen_draw_text_in_zone(
+                &area, ZONE_RUNE_CHOICE_FIRST + i,
+                (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_LIGHT_GRAY] | TEXT_TRANSPARENT}, s);
         }
     }
     area_draw_entered_runes(false);
@@ -746,7 +750,8 @@ static void show_action_result(int16_t value)
             digits[--at] = (char)('0' + value % DECIMAL_BASE);
             value = (int16_t)(value / DECIMAL_BASE);
         } while (value);
-        offscreen_draw_text_in_zone(&area, ZONE_RESULT, g_ui_colors[UI_CYAN], g_ui_colors[UI_BLACK], digits + at);
+        offscreen_draw_text_in_zone(&area, ZONE_RESULT, (TextColors){g_ui_colors[UI_CYAN], g_ui_colors[UI_BLACK]},
+                                    digits + at);
     } else if (value == RESULT_NO_AMMO) {
         offscreen_draw_gdat_image(
             &area, (GdatKey){CAT_PANEL, 0, g_action.result_flag ? GFX_AMMO_HAND_OTHER : GFX_AMMO_HAND_DEFAULT},

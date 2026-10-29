@@ -604,25 +604,25 @@ static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
     return zone_compute_rect(NULL, r, zone, &size.w, &size.h);
 }
 
-void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
+void offscreen_draw_text_in_zone(Offscreen *o, int zone, TextColors colors, const char *text)
 {
     int16_t r[RECT_SIZE];
     if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-              (TextColors){color, bg}, text);
+              colors, text);
     add_dirty_rect(o, r);
 }
 
-void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
+void offscreen_draw_shadow_text(Offscreen *o, int zone, TextColors colors, const char *text)
 {
     int16_t r[RECT_SIZE];
     if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (TextColors){color, bg}, text);
+                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), colors, text);
     add_dirty_rect(o, r);
 }
 
@@ -787,7 +787,8 @@ static void show_damage_number(int champ)
 {
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
                               ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
-    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
+    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ,
+                                (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_RED]},
                                 gtext_format_number(champion(champ)->damage, false, NUMBER_DIGITS));
 }
 
@@ -1360,8 +1361,8 @@ static void show_champion_name(int champ, ChampionRedraw *d)
     if (!d->inv) {
         status_box_begin(champ, false);
         d->box_drawn = true;
-        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ, color,
-                                   g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ,
+                                   (TextColors){color, g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT}, c->name);
         return;
     }
     char title[TEXT_SIZE];
@@ -1426,8 +1427,9 @@ void ui_draw_champion_state(int16_t champion_index)
             d.flags |= d.inv ? REDRAW_BARS : REDRAW_BARS | REDRAW_NAME;
             d.force_slots = true;
         } else {
-            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champion_index, g_ui_colors[UI_WHITE],
-                                       g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+            offscreen_draw_shadow_text(
+                &status_box, ZONE_STATUS_NAME + champion_index,
+                (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT}, c->name);
         }
     }
     if (c->health)

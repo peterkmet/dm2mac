@@ -94,9 +94,9 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
 void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text);
 /* Draws text placed in zone. */
-void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
+void offscreen_draw_text_in_zone(Offscreen *o, int zone, TextColors colors, const char *text);
 /* Draws text with a shadow placed in zone. */
-void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text);
+void offscreen_draw_shadow_text(Offscreen *o, int zone, TextColors colors, const char *text);
 
 /* ---- Interface pictures ---- */
 

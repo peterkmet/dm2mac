@@ -762,8 +762,9 @@ void mmap_draw_option_buttons(int pressed)
             area, (GdatKey){CAT_CONTAINER, g_action.map_item, down & 1 ? GFX_OPTION_BUTTON_DOWN : GFX_OPTION_BUTTON_UP},
             ZONE_OPTION_BUTTON_FIRST + i, GFX_OPAQUE);
         char label[OPTION_LABEL_SIZE] = {(char)(OPTION_LABEL_FIRST + i), '\0'};
-        offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i, g_ui_colors[UI_BLACK],
-                                    g_ui_colors[UI_GRAY] | TEXT_TRANSPARENT, label);
+        offscreen_draw_text_in_zone(area, ZONE_OPTION_LABEL_FIRST + i,
+                                    (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_GRAY] | TEXT_TRANSPARENT},
+                                    label);
     }
 }
 
