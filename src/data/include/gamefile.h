@@ -22,7 +22,7 @@ typedef struct {
 } GameFile;
 
 /* The 10 game files of the English PC DOS version of 1995. */
-const GameFile *gamefile_table(void); /* exported for the tests */
+const GameFile *gamefile_table(void);
 /* Whether data holds the file: its size and its CRC-32. */
 bool gamefile_is_valid(const GameFile *file, const uint8_t *data, size_t size);
 /* Reads folder/<file name> and checks it; false when the file is missing, has another size, or fails the CRC. */
