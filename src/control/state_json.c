@@ -271,6 +271,7 @@ static void put_null(Json *j)
     json_raw(j, "null");
 }
 
+/* Append "key": and its value: an integer, a string, or a truth value. */
 static void key_int(Json *j, const char *key, int64_t value)
 {
     json_key(j, key);
