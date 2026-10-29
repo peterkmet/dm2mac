@@ -1,6 +1,6 @@
 # CD images
 
-The reader of an ISO 9660 CD image with the game files (ECMA-119), in `src/data/iso.c`. It opens the image with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
+`src/data/iso.c` reads an ISO 9660 CD image (ECMA-119) with the game files. It opens the image with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
 
 ## Sector layouts
 

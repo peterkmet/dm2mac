@@ -1,6 +1,6 @@
 # ZIP archives
 
-The reader of a ZIP archive with the game files (PKWARE APPNOTE), in `src/data/zip.c`. It reads the central directory and the stored and deflated entries. It opens the archive with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
+`src/data/zip.c` reads a ZIP archive with the game files (the PKWARE APPNOTE format): the central directory and the stored and deflated entries. It opens the archive with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
 
 ## Records
 
@@ -27,13 +27,13 @@ The reader searches backward from the end of the file through the last 22 + 6553
 
 ## Names
 
-An entry name matches without case. The root of the game files is the prefix of the first entry in byte order of the names whose name is `DATA/GRAPHICS.DAT` or ends with `/DATA/GRAPHICS.DAT`. The prefix is empty or ends with `/`. The port reads a game file at `<root><name>`. An archive without such an entry is no source.
+An entry name matches without case. The reader sorts the entry names in byte order and takes the first name that is `DATA/GRAPHICS.DAT` or ends with `/DATA/GRAPHICS.DAT`. The root is the part before `DATA/GRAPHICS.DAT`: empty, or a path that ends with `/`. The port reads a game file at `<root><name>`. An archive without such an entry is no source.
 
 ## Bounds checks
 
 The reader fails on a mismatch instead of reading on:
 
-- The end record with its directory (offset and size) must lie before the end record in the file.
+- The central directory (offset and size) must lie before the end record in the file.
 - Every central directory entry must fit into the directory, with its name, extra field, and comment.
 - At reading: the size of the entry must equal the size of the game file in the table; the local header must lie inside the file; its signature must match; it must not be encrypted; the data (compressed size) must lie inside the file.
 - Deflate stops at the size of the game file and must produce exactly that many bytes.

@@ -6,7 +6,7 @@ The repository has no game files. You supply your own files of Dungeon Master II
 
 Start the game from a release zip (`DM2Mac-macos-arm64.zip` or `DM2Mac-windows-x64.zip`, see the [README](../README.md#play)), or build it (see [Development](development.md)) and start `build/dm2` on macOS or `build/dm2.exe` on Windows.
 
-The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your game into the folder where you start the program (in a release: the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
+The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). Copy your game into the folder where you start the program (in a release: the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
 
 The Windows build has no console. It writes its messages to `dm2.log` in `<data>`.
 
@@ -49,7 +49,7 @@ Without `--mode` and `--save`, the program first shows the mode screen. The scre
 
 The cursor stops at the ends of the list. Close the window to end the program. The selected mode plays as with `--mode`.
 
-Then the program plays the start movies, and then shows the start menu. Click to skip a movie. The movies at the start and at the end of the game, and when a click skips them, are in [movies.md](formats/movies.md#deviations-from-the-original).
+Then the program plays the start movies and shows the start menu. Click to skip a movie. The list of the movies and the skip rules are in [movies.md](formats/movies.md#deviations-from-the-original).
 
 The start menu starts a new game, loads a save slot, shows a picture, or quits ([game-flow.md](rules/game-flow.md#start-of-a-run)).
 

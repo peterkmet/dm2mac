@@ -1,6 +1,6 @@
 # Game files and install
 
-The 10 game files that the port reads from the PC DOS version of Dungeon Master II (English, 1995), the check of each file, and the install of the files from a source on startup. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
+The port reads 10 game files of the PC DOS version of Dungeon Master II (English, 1995), checks each file, and installs them from a source on startup. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
 
 ## The files
 
@@ -60,7 +60,7 @@ When no source passes, the port stops with `EXIT_FAILURE` and a message. In the 
 2. The user needs their own copy of the PC DOS version (English, 1995).
 3. The forms of a source (folder, `.zip`, `.iso`, `.img`, `.bin`) and the full path of the working folder.
 4. When `game/` holds a file that exists and fails, a line with the first such file of the table, `game/<file> is missing or wrong.`
-5. One line per failed source: `<path>: <reason>.` The reason is a problem of the source (`not a ZIP archive or damaged`, `not a CD image or damaged`, `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`, `no DATA/GRAPHICS.DAT in the archive`) or `<file> is missing or wrong` for the first file of the table that fails.
+5. One line per failed source: `<path>: <reason>.` The reason is one of: `not a ZIP archive or damaged`; `not a CD image or damaged`; `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`; `no DATA/GRAPHICS.DAT in the archive`; `<file> is missing or wrong` (the first file of the table that fails).
 
 The message has at most 4095 characters; a longer message ends with `...`. When the port cannot write into `game/`, the message is `cannot write the game files into <path>`.
 
