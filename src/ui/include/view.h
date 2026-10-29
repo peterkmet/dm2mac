@@ -27,7 +27,8 @@
 #define MISSILE_FRONT      2 /* front picture 8 only */
 #define MISSILE_NO_SIDE    3 /* no side picture 12 */
 
-/* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
+/* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward; 358 bytes, one
+   more than 21 x 17, as the original allocates (0x166). */
 #define VIEW_GRID_SIZE 358
 
 /* Kinds of a click zone of the view. */
