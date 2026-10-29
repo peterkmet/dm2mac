@@ -657,7 +657,7 @@ def test_tables_are_const():
 
 
 PORTABLE_HEADERS = {"stdbool", "stddef", "stdint", "stdio", "stdlib", "string", "ctype", "math", "stdarg", "inttypes",
-                    "opl3/opl3"}
+                    "opl3/opl3", "tinf/tinf"}
 PLATFORM_CODE = re.compile(r"^\s*#\s*(?:el)?if.*\b_WIN32\b|^\s*#\s*include\s*<(?!(?:" + "|".join(sorted(PORTABLE_HEADERS))
                            + r")\.h>)", re.M)
 STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\b(?:exit|abort)\s*\(")

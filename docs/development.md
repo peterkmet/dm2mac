@@ -18,6 +18,8 @@ uv sync
 | `make SANITIZE=1` | The build with the address and undefined-behavior sanitizers. |
 | `make lib CFLAGS_EXTRA=-DNAME` | One build with extra compiler flags. A change of the flags recompiles all objects. |
 | `make windows` | `build/dm2.exe` for Windows x86-64. |
+| `make dist` | `build/DM2Mac-macos-arm64.zip`: the release zip for macOS. |
+| `make dist-win` | `build/DM2Mac-windows-x64.zip`: the release zip for Windows (`DM_DIR` names the `dm` folder). |
 | `make clean` | Remove `build/`. |
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
