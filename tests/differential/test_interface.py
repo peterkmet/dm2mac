@@ -613,6 +613,29 @@ def test_message_area_without_its_zone_draws_nothing(port, gdat):
         assert lib.zone_load(gdat)
 
 
+def test_face_icon_without_a_palette_gives_black_colors(port, gdat):
+    # regression: ui_draw_champion_face_icon left the face colors unset when the face picture has no palette (a
+    # damaged GRAPHICS.DAT); the callers read them
+    from dm2test.gdat import item_sizes
+    lib = port
+    lib.ui_draw_champion_face_icon.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, u8_p]
+    pixels = (ctypes.c_uint8 * ((C.FACE_SIZE + 1) // 2 * C.FACE_SIZE))()
+    face = Bitmap(pixels, C.FACE_SIZE, C.FACE_SIZE, C.IMAGE_4BPP)
+    colors = (ctypes.c_uint8 * C.FACE_ICON_COLORS)()
+    lib.ui_draw_champion_face_icon(ctypes.byref(face), 0, colors)
+    assert any(colors)
+    item = lib.gdat_find(gdat, C.CAT_INTERFACE, C.UI_INDEX_FACES, C.GDAT_TYPE_IMAGE, 0)
+    sizes = item_sizes(gdat)
+    size = sizes[item]
+    sizes[item] = C.FACE_ICON_COLORS - 1  # shorter than the palette at the end of a 4 bpp picture
+    try:
+        ctypes.memset(colors, 0xAA, C.FACE_ICON_COLORS)
+        lib.ui_draw_champion_face_icon(ctypes.byref(face), 0, colors)
+        assert bytes(colors) == bytes(C.FACE_ICON_COLORS)
+    finally:
+        sizes[item] = size
+
+
 def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
