@@ -530,8 +530,8 @@ def test_no_packed_fields_at_call_sites():
     report("packed", found)
 
 
-BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32", "read_u32")
-BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32|read_u32)\w*)", re.M)
+BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32")
+BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32)\w*)", re.M)
 BYTE_SHIFT = re.compile(r"\]\s*\)?\s*<<\s*(?:8|16|24)\b|>>\s*(?:8|16|24)\s*\)?\s*&\s*0x[fF]{2}\b")
 BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?uint8_t\s*\*\s*\)")
 

@@ -28,9 +28,9 @@ decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by button count of SKULL.EXE
-decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
-decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
-decimal ui/fm.c:op_modulator rule 3.12: a table of SKULL.EXE
+decimal ui/fm.c:level_attenuation rule 3.12: a driver table of HMIMDRV.386
+decimal ui/fm.c:op_carrier rule 3.12: a driver table of HMIMDRV.386
+decimal ui/fm.c:op_modulator rule 3.12: a driver table of HMIMDRV.386
 decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
@@ -116,7 +116,7 @@ hex engine/save.c:word_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
-hex ui/fm.c:note_freq_table rule 3.12: a table of SKULL.EXE
+hex ui/fm.c:note_freq_table rule 3.12: a driver table of HMIMDRV.386
 hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
