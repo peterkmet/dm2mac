@@ -1261,6 +1261,7 @@ static SummonedGroup create_group(int creature_type, int count, int16_t dir, Loc
             return none;
     }
     uint16_t group = dungeon_unused_thing(THING_GROUP);
+    /* a full active group table keeps the taken group record (THING_NEXT set) unlinked, as in the original */
     if (group == THING_NONE || g_active_group_count >= g_active_group_max) {
         if (minion)
             thing_set_word(projectile, THING_NEXT, THING_NONE);
