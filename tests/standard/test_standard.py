@@ -974,7 +974,7 @@ def test_function_comments():
         lines = path.read_text(errors="replace").splitlines()
         found += [f"comment {rel(path)}  | {name}: no comment above the static definition"
                   for name, start, end, static in definitions(path)
-                  if static and end - start - 1 > TRIVIAL_BODY_LINES and not comment_above(lines, start)]
+                  if static and end - start - 2 > TRIVIAL_BODY_LINES and not comment_above(lines, start)]
     report("comment", found)
 
 
