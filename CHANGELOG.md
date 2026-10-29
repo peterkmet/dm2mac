@@ -11,7 +11,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - Cheat screen (`C`) with six cheats: full light, immortal, food and water, one-hit kill, walk through walls, and reveal map. It also casts spells. The save slots and `QUICK.DAT` keep the cheats in a CHTS block.
 - Quick save and quick load (`F5`, `F9`) and spells on the cheat screen.
 - Automap: a frame, a checkerboard for imaginary walls, and a mark for the pressure pads that the dungeon view draws. The cheat keys of the automap are gone; use the cheat screen.
-- Options menu on `Esc` with the upscale filter FILTER (changes at once), saved in `SETTINGS.TXT`.
+- Options menu on `Esc` with the upscale filter (a change shows immediately), saved in `SETTINGS.TXT`.
 - `Tab` closes the open inventory.
 - The damage star of a hit stays one more game step in the action area.
 - Projectiles fly smoothly between game steps.
@@ -28,7 +28,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 - World systems: weather, day and night, the party light, lightning, and the Skullkeep machines (object transfer sensors).
 - Sound effects: 64 voices mixed at 44100 Hz with the volume and stereo position of the original, sound requests, delayed and ambient sounds.
 - Music: Nuked-OPL3 (`src/third_party/opl3/`, LGPL-2.1), the BNK loader with the MIDI to OPL conversion of `HMIMDRV.386`, the HMP player, and the songs of `SONGLIST.DAT` with fades.
-- Start menu, new game, save and load with the slot dialogs, the volume dialog, the name editor, and the end of the game (end sensor and death of the party). `--save PATH` starts a save at once; `--data DIR` sets the game folder.
+- Start menu, new game, save and load with the slot dialogs, the volume dialog, the name editor, and the end of the game (end sensor and death of the party). `--save PATH` starts a save immediately; `--data DIR` sets the game folder.
 - Tests: `uv run pytest` compares the C port with the original code in the emulator (differential, data, and scenario tests on `tests/saves/start.DAT`).
 - Manual test checklist: `docs/manual-test-checklist.md`.
 - LLM control socket: `build/dm2 --control PATH` takes keys, clicks, commands, waits, and screenshots as JSON lines; the CLI `dm2-play` sends them. Details: [llm-mode.md](docs/llm/llm-mode.md).
@@ -62,7 +62,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Fixed
 
-- The first word of the AI enabled-byte table matches `SKULL.EXE`; the name editor cancel restores the whole name and title; a trap fall without a leader reads no champion out of bounds; a dungeon without maps loads; the Windows log is closed at a restart; the control socket retries a call that a signal stopped; color ramps past their item are rejected; the Ghidra test skips without a JDK.
+- The first word of the AI enabled-byte table matches `SKULL.EXE`; the name editor cancel restores the whole name and title; a trap fall without a leader reads no champion out of bounds; a dungeon without maps loads; the Windows log closes on restart; the control socket retries a call that a signal stopped; color ramps past their item are rejected; the Ghidra test skips without a JDK.
 - Advanced mode: a held key no longer fills the input queue; the party stops when the key goes up.
 - A damaged save with a poison event for a missing champion no longer writes outside the champions; guards for inactive creature groups; a melee attack with bit 15 pierces as in the original; the item description breaks lines at the line start; the price table reads its prices byte-order safe; an unknown `--` option ends with a usage line; the image cache, the timeline, and the seen squares are freed at shutdown; the color ramps are checked against their bounds.
 
@@ -74,5 +74,5 @@ All notable changes to this project are in this file. The format follows [Keep a
 - The save menu title shows the last folder of the data path in capitals as the drive path.
 - A `--save` start has the party light, the level digits, and the saved volumes of a menu load.
 - RESTART drops `--save` and shows the start menu.
-- The window comes to the front at the start.
+- The window comes to the front on startup.
 - The champion drag stops when the game view hides.
