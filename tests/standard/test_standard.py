@@ -658,15 +658,17 @@ def test_tables_are_const():
     report("const", found)
 
 
-PLATFORM_CODE = re.compile(r"^\s*#\s*if.*\b_WIN32\b|^\s*#\s*include\s*<(?:unistd|dirent|strings|execinfo|fcntl|poll"
-                           r"|windows|direct|io)\.h>|^\s*#\s*include\s*<(?:sys|arpa|netinet)/", re.M)
-STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\bexit\s*\(")
+PORTABLE_HEADERS = {"stdbool", "stddef", "stdint", "stdio", "stdlib", "string", "ctype", "math", "stdarg", "inttypes",
+                    "opl3/opl3"}
+PLATFORM_CODE = re.compile(r"^\s*#\s*(?:el)?if.*\b_WIN32\b|^\s*#\s*include\s*<(?!(?:" + "|".join(sorted(PORTABLE_HEADERS))
+                           + r")\.h>)", re.M)
+STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\b(?:exit|abort)\s*\(")
 NONDETERMINISM = re.compile(r"\b(?:s?rand|time|clock)\s*\(")
 
 
 def test_platform_code_only_in_platform():
-    """Operating system headers, rand, srand, time and clock only in platform/; stderr and exit only in platform/
-    and data/os.c."""
+    """Headers other than the portable C ones, rand, srand, time and clock only in platform/; stderr, exit and abort
+    only in platform/ and data/os.c."""
     ok = allowed()
     found = []
     for path in sources():
