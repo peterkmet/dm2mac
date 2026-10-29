@@ -120,6 +120,7 @@
 #define HIDDEN_DISTANCE        4 /* beyond it an invisible party or a party in the dark stays hidden */
 #define FLEE_LINE_DISTANCE     5 /* a flee target nearer to the party must be out of its line of sight */
 #define MISSILE_WATCH_RANGE    3 /* the squares in which a creature sees the missiles that fly toward it */
+#define PARTY_RANGE_DISTANCE   2 /* TARGET_PARTY_RANGE_2: the distance to the party along the axes */
 #define PATH_CHECK_STEPS       5 /* the steps of a stored path that the path check tests */
 /* The feedback of the shift register of the first search direction. */
 #define SEARCH_DIRECTION_TAPS  0xb400
@@ -1715,7 +1716,7 @@ static int16_t give_place(ItemTest *it)
         return give_cell(it->d);
     int r = rand_bit();
     if (!it->same)
-        r += 2;
+        r += TURN_BACK;
     it->action = drop_actions[r];
     return (int16_t)dir_turn(it->d, r);
 }
@@ -2368,7 +2369,7 @@ static bool test_entered(Search *s, int i)
     case TARGET_ACTIVATION:
         return at_place(s, s->act_x, s->act_y, s->act_map);
     case TARGET_PARTY_RANGE_2:
-        return on_party_map && axis_distance(x, y, g_ai_party.x, g_ai_party.y) == 2;
+        return on_party_map && axis_distance(x, y, g_ai_party.x, g_ai_party.y) == PARTY_RANGE_DISTANCE;
     case TARGET_FLEE:
         return entered_flee(s, c, m, on_party_map);
     case TARGET_SHOOT_PARTY:
