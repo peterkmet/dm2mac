@@ -57,7 +57,7 @@ The install writes only the 10 fixed names of the table, never a path from the s
 When no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode the message goes to the log only; in the other modes the port also shows it in a message box without a window. The message has these parts:
 
 1. The game files of Dungeon Master II are missing.
-2. The need of an own copy of the PC DOS version (English, 1995).
+2. The user needs their own copy of the PC DOS version (English, 1995).
 3. The forms of a source (folder, `.zip`, `.iso`, `.img`, `.bin`) and the full path of the working folder.
 4. When `game/` holds a file that exists and fails, a line with the first such file of the table, `game/<file> is missing or wrong.`
 5. One line per failed source: `<path>: <reason>.` The reason is a problem of the source (`not a ZIP archive or damaged`, `not a CD image or damaged`, `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`, `no DATA/GRAPHICS.DAT in the archive`) or `<file> is missing or wrong` for the first file of the table that fails.
