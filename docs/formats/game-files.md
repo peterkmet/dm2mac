@@ -66,7 +66,7 @@ The message has at most 4095 characters; a longer message ends with `...`. When 
 
 ## Log
 
-The progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in `game/` on Windows, the error output on macOS. The port shows no progress.
+The progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in the data folder (`game/` by default) on Windows, the error output on macOS. The port shows no progress.
 
 ## Invariants
 

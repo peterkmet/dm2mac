@@ -6,9 +6,9 @@ The repository has no game files. You supply your own files of Dungeon Master II
 
 Start the game from a release zip (`DM2Mac-macos-arm64.zip` or `DM2Mac-windows-x64.zip`, see the [README](../README.md#play)), or build it (see [Development](development.md)) and start `build/dm2` on macOS or `build/dm2.exe` on Windows.
 
-The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the program folder (the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
+The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your game into the folder where you start the program (in a release: the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
 
-The Windows build has no console. It writes its messages to `dm2.log` in `game/`.
+The Windows build has no console. It writes its messages to `dm2.log` in `<data>`.
 
 ## Options
 
@@ -19,7 +19,7 @@ The Windows build has no console. It writes its messages to `dm2.log` in `game/`
 | `--mode NAME` | `advanced` | The game mode: `vanilla`, `advanced`, or `turnbased` (see [Modes](#modes)). The option skips the mode screen. |
 | `--filter NAME` | `none` | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
 | `--saves DIR` | `<data>/DATA` | The folder of the quick save `QUICK.DAT` and of `SETTINGS.TXT`, in all modes. The game does not make the folder. The save slots stay in the `--data` folder. |
-| `--control PATH` | none | The control socket of the LLM mode (see [llm-mode.md](llm/llm-mode.md#start-the-game)). Only on macOS. |
+| `--control PATH` | none; `~/.dm2/control.sock` in the turn-based mode | The control socket of the LLM mode (see [llm-mode.md](llm/llm-mode.md#start-the-game)). Only on macOS. |
 
 ```sh
 build/dm2 --mode vanilla
@@ -61,7 +61,7 @@ Press Alt+S (Option+S on a Mac keyboard) to open the save menu, and save the gam
 
 ### Quick save and quick load
 
-The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--saves DIR` the file is `DIR/QUICK.DAT`. The file has the format of the save slots. `F5` and `F9` work only in the dungeon view (see [Advanced keys](#advanced-keys)).
+The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--saves DIR` the file is `DIR/QUICK.DAT`. The file has the format of the save slots. `F5` and `F9` work in the dungeon view and on the cheat screen (see [Advanced keys](#advanced-keys)).
 
 `F5` writes the game to `QUICK.DAT`. The message area shows one of these lines:
 
@@ -114,8 +114,8 @@ The advanced mode adds these keys:
 | `D` | Move right (strafe) | Where the arrow keys move the party |
 | `Q` | Turn left | Where the arrow keys move the party |
 | `E` | Turn right | Where the arrow keys move the party |
-| `F5` | Quick save | Dungeon view only |
-| `F9` | Quick load | Dungeon view only |
+| `F5` | Quick save | Dungeon view and cheat screen |
+| `F9` | Quick load | Dungeon view and cheat screen |
 | `Tab` or `M` | Open the automap | Dungeon view only |
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
 | `C` | Open the cheat screen | Dungeon view only |
@@ -132,7 +132,7 @@ The dungeon view is the movement input mode with at least one champion: no inven
 
 ## Modes
 
-The game has three modes. Without the cheats, the game rules are the same in all modes.
+The game has three modes. The game rules are the same in all modes, except the cheats and the changes under [Advanced features](#advanced-features).
 
 | Mode | Behavior |
 |---|---|

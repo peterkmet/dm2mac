@@ -147,7 +147,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 `main` (`platform/main.c`) does these steps in this order:
 
 1. It reads the options and selects the game mode (`--mode`, or the advanced mode).
-2. It loads GRAPHICS.DAT and the save of `--save`, opens the window, the control socket of `--control`, and the
+2. It checks the game files and installs them from a source when needed ([game-files.md](formats/game-files.md#startup)). It loads GRAPHICS.DAT and the save of `--save`, opens the window, the control socket of `--control`, and the
    music. It sets the hooks of the platform: `g_os_full_path_hook`, `g_optmenu_filter_hook`, and
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.
@@ -274,7 +274,7 @@ The other hooks:
 | `g_play_frame_hook` | `ui/play.h` | `platform/main.c`, the tests | `play_wait_frames` (`ui/play.c`) | a modal loop counts the timer ticks and shows no frame |
 | `g_optmenu_filter_hook` | `ui/optmenu.h` | `platform/main.c` (`plat_set_filter`) | `ui/optmenu.c` | no window: the filter is not shown |
 
-On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the game folder, because the Windows build has
+On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the data folder, because the Windows build has
 no console.
 
 ## The test library
