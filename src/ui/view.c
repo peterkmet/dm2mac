@@ -2302,14 +2302,15 @@ static void show_centered_label(int16_t x, int16_t y, const char *text)
                           (TextColors){colors[UI_WHITE], colors[UI_BLACK] | TEXT_TRANSPARENT}, text);
 }
 
-/* The price table of a shop ornament and its word count in *count; NULL when the ornament has none. */
+/* The price table of a shop ornament and its word count in *count; NULL when the ornament has none or it holds no
+   word. */
 static const uint8_t *price_table(uint8_t ornament, int *count)
 {
     int item = gdat_find(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_TABLE, GFX_ORN_SHOP_TABLE);
     uint32_t size = 0;
     const uint8_t *data = item < 0 ? NULL : gdat_item(gdat_current(), item, &size);
     *count = (int)(size / 2);
-    return data;
+    return *count ? data : NULL; /* fix: the original reads before an empty table */
 }
 
 /* The place of item in the price table of count words; count when the table does not hold it. */
