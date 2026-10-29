@@ -390,4 +390,4 @@ their allowlist key:
 | `todo` | a TODO marker in code |
 | `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |
 | `format` | a file that `clang-format --dry-run --Werror` reports |
-| `allowlist` | an allowlist line with a reason that this document does not name |
+| `allowlist` | an allowlist line with a reason that this document does not name, a rule whose exception does not cover its check, or a line that accepts no violation of its check |
