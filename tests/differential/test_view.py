@@ -1006,3 +1006,37 @@ def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
         lib.thing_set_word(plate, C.TEXT_DATA, data)
         game.party_x, game.party_y, game.party_dir, game.party_map = saved_party
         lib.view_enter_map(game.party_map)
+
+
+class ViewObjectClick(ctypes.Structure):
+    """view.h ViewObjectClick: a click on the objects of a square cell."""
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("pos", ctypes.c_int), ("at", Location),
+                ("kind", ctypes.c_int)]
+
+
+class ObjectClickResult(ctypes.Structure):
+    """view.h ObjectClickResult: the outcome of a click on the objects of a cell."""
+    _fields_ = [("kind", ctypes.c_int), ("thing", ctypes.c_uint16)]
+
+
+OBJECT_CLICK_DONE = 1  # enum ObjectClick of view.h
+
+
+def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
+    # regression: a click on the possessions of a creature that left the square read the record of THING_NONE; the
+    # click does nothing
+    lib.view_hit_test_object.argtypes = [ctypes.POINTER(ViewObjectClick), ctypes.c_uint16, ctypes.c_bool]
+    lib.view_hit_test_object.restype = ObjectClickResult
+    lib.creature_group_at.argtypes = [Position]
+    lib.creature_group_at.restype = ctypes.c_uint16
+    party = PartyHead.in_dll(lib, "g_party")
+    saved, party.cur_map = party.cur_map, loaded.party_map
+    at = Location(loaded.party_x, loaded.party_y)
+    assert lib.creature_group_at(Position(loaded.party_map, at.x, at.y)) == C.THING_NONE  # the party square
+    click = ViewObjectClick(0, 0, C.POS_PARTY, at, C.CLICK_POSSESSIONS)
+    try:
+        for placing in (False, True):
+            result = lib.view_hit_test_object(ctypes.byref(click), 0, placing)
+            assert (result.kind, result.thing) == (OBJECT_CLICK_DONE, C.THING_NONE), placing
+    finally:
+        party.cur_map = saved

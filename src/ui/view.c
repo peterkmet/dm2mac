@@ -3751,6 +3751,8 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
         group = creature_group_at((Position){g_party.cur_map, click->at.x, click->at.y});
+        if (group == THING_NONE) /* fix: the creature left the square; no read of the record of THING_NONE */
+            return (ObjectClickResult){OBJECT_CLICK_DONE, THING_NONE};
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
         t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);
