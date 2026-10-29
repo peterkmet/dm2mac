@@ -34,7 +34,7 @@ BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
 MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"
 MASK_OPERAND = re.compile(rf"{BIT_OPERATOR}\s*\(?\s*{MASK}|\b{MASK}\s*\)?\s*{BIT_OPERATOR}")
 STRTOL_BASE = re.compile(r"\bstrto\w*\s*\([^;]*?,\s*10\s*\)")
-DECOMPILER = re.compile(r"\b(?:[uisbcp]Var\d+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
+DECOMPILER = re.compile(r"\b(?:[a-z]{1,3}Var\d+|[a-z]{1,2}Stack_[0-9a-f]+|extraout_\w+|unaff_\w+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
 RECORD = re.compile(r"\bdungeon_thing_record\(")
 CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};()]*\{([^}]*)\}")
