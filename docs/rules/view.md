@@ -20,7 +20,13 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 
 ## View square record and the view
 
-- View square (18 bytes, 23 records): `+0`/`+1` map x, y; `+2` aspect (0 wall, 1 floor, 2 open pit, 5 visible teleporter, 7 hidden, `0x10` door seen from the side, `0x11` door front, `0x12` stairs front, `0x13` stairs side); `+4` square byte; `+6` first thing that is not a wall thing; `+8` to `+0x0e` by aspect: the wall ornaments of the faces (`frame << 10 | ornament`, front face at `+0x0c`), or door state and door thing, or the up bit of stairs and pits, or the floor ornament at `+0x0c` (`frame * 10 << 8 | ornament`); `+0x10` wall text thing or portrait index.
+- View square record (18 bytes, 23 records):
+  - `+0`/`+1`: map x, y.
+  - `+2`: aspect (0 wall, 1 floor, 2 open pit, 5 visible teleporter, 7 hidden, `0x10` door seen from the side, `0x11` door front, `0x12` stairs front, `0x13` stairs side).
+  - `+4`: square byte.
+  - `+6`: first thing that is not a wall thing.
+  - `+8` to `+0x0e`, by aspect: the wall ornaments of the faces (`frame << 10 | ornament`, front face at `+0x0c`), or door state and door thing, or the up bit of stairs and pits, or the floor ornament at `+0x0c` (`frame * 10 << 8 | ornament`).
+  - `+0x10`: wall text thing or portrait index.
 - Squares away from the map (`dun_get_square`): a wall with the bit of its face toward the map (`8 >> direction`, the random ornament bits of a wall) next to an open edge square, otherwise `0xe0`.
 - Random wall ornaments: hash `((((x * 0x20 + 2000 + (((dir + side) & 3) + 1) * (y + 1)) * 0x7ab9) >> 1) + (map * 0x40 + 3000 + width + height) * 11 + dungeon header word 0) >> 2) % 30`; a value below the random ornament count picks an ornament of the party map's wall ornament list.
 - Pictures go through `setup_picture`: GDAT image, scale (1/64), offset, layout zone, and a color remap. The remap is the depth shading table `(8, graphics set, 7, depth)` when it exists, otherwise a dimming by the depth light; the view shade (light level * 10) dims both.
@@ -45,7 +51,16 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 - No image cache: each GDAT image is decoded once and kept; scaled images and offscreen bitmaps live until the end of the frame. The original cache key of a scaled image keeps only 5 bits of the height scale and 7 bits of the width scale, so two scales can share a cached image; the port always scales anew.
 - `gdat_exists` is true for every key of the file. The original is false also for an image that the map did not preload. The view checks only images of the map graphics set, which the original preloads.
 - Text entries: `gdat_text` decrypts the text but does not expand the `.Z` placeholders of `gtext_format` ([interface.md](interface.md#ui-colors-and-text-formats)).
-- `view_unhide_linked_squares` read far past the view squares for missing neighbours, `show_ceiling_pit` read the square above without a bounds check; `setup_picture` divided by 0 for a width scale key with a low byte of 0; `inverse_scale` divided by 0 for a near door picture of 0 width or height (the port uses the full scale); `get_shaded_palette` wrote a 256-color table into a 16-byte buffer. A wall text with more lines than its plate holds wrote lines above or below the plate bitmap; the port skips each line that leaves the plate. `view_hit_test_object` read the possessions from the record of `THING_NONE` for a possessions click after the creature left the square; the port does nothing for that click. `choose_shop_item` read before a price table of 0 or 1 bytes; the port steps through the item indices as for a shop ornament without a price table. `ornament_frame` divided by 0 for an ornament frames value of `0x8000`; the port shows frame 1, as the cycle of 1 of the sensors ([world.md](world.md#deviations-from-the-original)).
+- Bounds and division by 0:
+  - `view_unhide_linked_squares` read far past the view squares for missing neighbours.
+  - `show_ceiling_pit` read the square above without a bounds check.
+  - `setup_picture` divided by 0 for a width scale key with a low byte of 0.
+  - `inverse_scale` divided by 0 for a near door picture of 0 width or height (the port uses the full scale).
+  - `get_shaded_palette` wrote a 256-color table into a 16-byte buffer.
+  - A wall text with more lines than its plate holds wrote lines above or below the plate bitmap; the port skips each line that leaves the plate.
+  - `view_hit_test_object` read the possessions from the record of `THING_NONE` for a possessions click after the creature left the square; the port does nothing for that click.
+  - `choose_shop_item` read before a price table of 0 or 1 bytes; the port steps through the item indices as for a shop ornament without a price table.
+  - `ornament_frame` divided by 0 for an ornament frames value of `0x8000`; the port shows frame 1, as the cycle of 1 of the sensors ([world.md](world.md#deviations-from-the-original)).
 - Explosion types 100 and 101 in alcoves are ported, but GRAPHICS.DAT has no pictures for them.
 - The mirrored sparkle mask of an odd width has an undefined last column in the original (an image cache bitmap that is not cleared); the port clears it. The rain bitmap of a wet ornament is rect width × rain height (all rain pictures are 224 × 20). Its tile row is that area - 16 - 0 to 31 pixels, from a start of `rand_below(area - 60)` (16-bit). When the tile row is not longer than its start, for example a wet ornament 1 or 2 pixels wide, the original tiles from past the end of the rain bitmap; the port then fills the background with the color key. The rain over the view has the same tile row from a start of 0 to 255; with a rain picture of fewer than about 330 pixels (a damaged GRAPHICS.DAT) the row is not longer than its start, and the port draws no rain. The explosion tint over the view tiles a row of its picture minus 40 pixels; when the row is not longer than its start (a tint picture of at most 40 pixels, a damaged GRAPHICS.DAT), the port draws no tint. Reads past tables (creature info, animation frames, creature sizes, the rain flag of a sky state above 4) and a division by 0 for a looping animation of length 0 are guarded.
 - `src/engine/save.c` reads the static flag from the creature info table of `src/engine/creature.c`.

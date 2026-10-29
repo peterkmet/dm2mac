@@ -25,7 +25,14 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 
 ## Dialogs
 
-- A dialog is GDAT `(0x1a, id)`: picture entry 0 in zone 4 (the viewport), text entries 0 to 19 the buttons (zones `0x1ce` to `0x1d3` by button count), text `0x14` the message, wrapped to a width near the message zone width and centered; an error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog. Screen mode 1 (at the program start, the "GAME LOADED" dialog of a load, and the end) draws on a black screen in zone 5; mode 0 in the game viewport. `game_loop` sets mode 0 at its start; `play_hide_view` and `play_show_view` do nothing in mode 1.
+- A dialog is GDAT `(0x1a, id)`:
+  - Picture entry 0 in zone 4 (the viewport).
+  - Text entries 0 to 19 are the buttons (zones `0x1ce` to `0x1d3` by button count).
+  - Text `0x14` is the message, wrapped to a width near the message zone width and centered.
+  - An error message (dialog 0, entry `0x1b` to `0x1f`) shows below it or first in its own dialog.
+- Screen mode 1 (at the program start, the "GAME LOADED" dialog of a load, and the end) draws on a black screen in zone 5; mode 0 in the game viewport.
+  - `game_loop` sets mode 0 at its start.
+  - `play_hide_view` and `play_show_view` do nothing in mode 1.
 - `dialog_run` pushes input mode 4; the input conditions 1 and 2 select the button zones by screen mode and button count. The choice is the place of the matched command in its list. Enter clicks the first button.
 - The pressed button picture is GDAT `(0x1a, 0xfe, 1, 0 or 1)` (click feedback opcodes `0x0f` and `0x10`), color 7 transparent, centered in the button.
 - The volume dialog (`0x87`) sets the sound and music volumes (0 to 7, commands `0x95` to `0xa4`); a new sound volume plays the test sound `(3, 0, 0x8b)`. Both volumes are 7 in a new game and are part of the save.
@@ -41,6 +48,17 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 - `session_quit` sets `g_main_loop.quit` and returns; the main loop then ends (the original exits the process immediately). After the end sensor the rest of that timeline step still runs. Exit code 3 (RESTART) starts the program again (`execvp`; a failed start prints an error). The restart drops `--save PATH`, so the program shows the start menu, as in the original.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
-- Fixes: a failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk); the link pass marks no square when no map lies below a pit (the original writes into map -1); the projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map); the name editor does not read before an empty field; slot names are bounded to 31 characters; a dungeon with a map of level 63 does not load (the original writes past its level tables); the level digit scan stops at the end of the start text (the original reads past it); the level table of a dungeon without maps (a test or damaged file) keeps the level digits (the original reads the start square of map 0 from the empty map tables); a door switch sensor whose target door square has no things or starts with a thing other than a door (a damaged file) sets no flag (the link pass, `link_door_flag` in `src/engine/dungeon.c`; the original writes the flag into the record of that thing, or of `THING_ENDOFLIST`); the link pass skips the teleporter link of a teleporter whose target map is past the last map (a damaged file; `link_teleporters`; the original reads the squares of that map); the load of `DUNGEON.DAT` stops for a thing type with more records than its cap or with records of a type without a record size, and the free records of a new game stay inside the cap (the original reads and writes past its record buffers); a dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
+- Fixes:
+  - A failed load of the last slot after the death of the party shows the error dialog (the original asks for the game disk).
+  - The link pass marks no square when no map lies below a pit (the original writes into map -1).
+  - The projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map).
+  - The name editor does not read before an empty field, and slot names are bounded to 31 characters.
+  - A dungeon with a map of level 63 does not load (the original writes past its level tables).
+  - The level digit scan stops at the end of the start text (the original reads past it).
+  - The level table of a dungeon without maps (a test or damaged file) keeps the level digits (the original reads the start square of map 0 from the empty map tables).
+  - A door switch sensor whose target door square has no things or starts with a thing other than a door (a damaged file) sets no flag (the link pass, `link_door_flag` in `src/engine/dungeon.c`; the original writes the flag into the record of that thing, or of `THING_ENDOFLIST`).
+  - The link pass skips the teleporter link of a teleporter whose target map is past the last map (a damaged file; `link_teleporters`; the original reads the squares of that map).
+  - The load of `DUNGEON.DAT` stops for a thing type with more records than its cap or with records of a type without a record size, and the free records of a new game stay inside the cap (the original reads and writes past its record buffers).
+  - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0; the link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).
 - The `--save PATH` option starts the game of PATH immediately, without the menu and without the dialog after a load.

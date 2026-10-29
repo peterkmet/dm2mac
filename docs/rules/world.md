@@ -15,7 +15,12 @@ The rules of the world: day and night, the weather, the party light, the object 
 - A storm step (event `0x54`, `world_update_day_night(true)`) adds multiplier × the curve value of the step to the storm intensity (0 to 255) and queues the next step after 50 to 305 game steps. After 32 steps a new cycle starts.
 - Each game step (`world_update_day_night(false)`): without a storm, the clouds thin out and lightning comes with a chance of 1 in 64. With a storm, the sky darkness is the storm intensity; rain starts by chance and then follows the storm intensity; rain grows the clouds; lightning comes more often from intensity `0xcd` on.
 - Sky objects (`g_sky_objects`, 10-byte records, ended by `0xff`): rain (`0x67` to `0x69` by sky darkness from `0x10`, `0x40`, `0x80`; `0x80` sets heavy rain), clouds (`0x6a` to `0x6c` by cloud cover from `0x40`, `0x80`, `0xc0`), and a lightning bolt (`0x64` to `0x66`) at a random place between its zone and the next zone. The weather update builds them again in each step while the weather shows.
-- Lightning: in a storm from intensity 60 (random), it strikes 1 to 8 random floor squares of the map. A creature is struck only when it is near the party or in front of it (creature info byte `+2` not `0xff`). The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script byte `0x40` is above a random threshold (4 to 7). A strike creates explosion `0xffb0` ([creatures.md](creatures.md#projectiles-explosions-and-magic)). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script byte `0x41`. The graphics set of map 1 gives a fixed square instead (value key `0x6c`: x high byte, y low byte), which gets a square event. Without a strike, a bolt shows in the sky; every second bolt thunders after a delay. The flash sets the light level to 0 for one step.
+- Lightning:
+  - In a storm from intensity 60 (random), it strikes 1 to 8 random floor squares of the map. A strike creates explosion `0xffb0` ([creatures.md](creatures.md#projectiles-explosions-and-magic)). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script byte `0x41`.
+  - A creature is struck only when it is near the party or in front of it (creature info byte `+2` not `0xff`).
+  - The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script byte `0x40` is above a random threshold (4 to 7).
+  - The graphics set of map 1 gives a fixed square instead (value key `0x6c`: x high byte, y low byte), which gets a square event.
+  - Without a strike, a bolt shows in the sky; every second bolt thunders after a delay. The flash sets the light level to 0 for one step.
 
 ## The party light
 

@@ -11,7 +11,13 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 ## The input tree
 
-- The tables are in `SKULL.EXE` and in `src/ui/input.c`: the nodes (condition with bit 7 for a node with children, argument, child list or zone), the child lists (bit 7 starts a list), the root node of each of the 10 input modes, the zones (7 bytes: layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area), the command lists at `0x72388` (6 bytes: command with bit 15 to start a list, zone, mouse buttons, flags), and the key lists at `0x729b8` (4 bytes: command with bit 15 to start a list, key code).
+- The tables in `SKULL.EXE` and `src/ui/input.c`:
+  - The nodes: condition (bit 7 for a node with children), argument, child list or zone.
+  - The child lists: bit 7 starts a list.
+  - The root node of each of the 10 input modes.
+  - The zones (7 bytes): layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area.
+  - The command lists at `0x72388` (6 bytes): command with bit 15 to start a list, zone, mouse buttons, flags.
+  - The key lists at `0x729b8` (4 bytes): command with bit 15 to start a list, key code.
 - A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c`, left `0x4b`, right `0x4d`, down `0x50`, shift and left `0x4f`, shift and right `0x51`. Esc (`0x01`) pauses.
 - A click goes down the tree from the root node of the input mode. The first command whose zone holds the click and whose buttons match wins. The matched zone rectangle and the click position stay for the click feedback.
 - The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released left button and for the area events). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released left buttons.
@@ -51,7 +57,16 @@ The rules of the main loop, the input, and the movement: the timing and the game
 ## Deviations from the original
 
 - Uninitialized data of the original: some events keep 2 to 4 data bytes or the high bits of a word from the stack (hold square events, sensor timers, item and wall events). The port sets them to 0. The reverse of a hold effect and the priority of a hold square event are uninitialized too: the port keeps the hold effect and uses priority 3.
-- Bounds: a wall square event to a map outside the dungeon does nothing; at most 32 view click zones; a teleporter square without things has no teleporter link and is not a closed teleporter (`link_side`, `is_closed_teleporter`; the original reads the record of the end mark); a teleporter link to a map outside the dungeon is no link; an active teleporter square whose first thing is not a teleporter (a damaged dungeon) does not move the party, an object, or a creature, and the AI sees it as floor without a passage behind it (`transit_teleporter`, `needed_move_flags`, `search_square_test`; the original reads the record of that thing as a teleporter); `dungeon_unlink_thing_from_square` on a square without things does nothing (the original reads before the first-thing table); `dungeon_link_thing_to_square` returns false for a full first-thing table (the original stops with a system error). A create item sensor (`0x3c`) whose item index has no thing type creates nothing; the original asks for a free record of type `0xffff`. When the party falls from a trap teleport text (`fall_risk`) and the random champion is dead, the hurt sound takes the portrait of the leader; without a leader the port plays no hurt sound (the original reads the portrait of champion index `0xffff`, before the champion table).
+- Bounds and invalid records:
+  - A wall square event to a map outside the dungeon does nothing.
+  - The view records at most 32 click zones.
+  - A teleporter square without things has no teleporter link and is not a closed teleporter (`link_side`, `is_closed_teleporter`; the original reads the record of the end mark).
+  - A teleporter link to a map outside the dungeon is no link.
+  - An active teleporter square whose first thing is not a teleporter (a damaged dungeon) does not move the party, an object, or a creature, and the AI sees it as floor without a passage behind it (`transit_teleporter`, `needed_move_flags`, `search_square_test`; the original reads the record of that thing as a teleporter).
+  - `dungeon_unlink_thing_from_square` on a square without things does nothing (the original reads before the first-thing table).
+  - `dungeon_link_thing_to_square` returns false for a full first-thing table (the original stops with a system error).
+  - A create item sensor (`0x3c`) whose item index has no thing type creates nothing (the original asks for a free record of type `0xffff`).
+  - When the party falls from a trap teleport text (`fall_risk`) and the random champion is dead, the hurt sound takes the portrait of the leader; without a leader the port plays no hurt sound (the original reads the portrait of champion index `0xffff`, before the champion table).
 - System errors of the timeline: when an event is not in the queue (`find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.
 - `creature_cell_mask` reads kinds 5 to 15 past its table: [creatures.md](creatures.md#deviations-from-the-original).
