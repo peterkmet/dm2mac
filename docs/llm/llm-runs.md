@@ -1,6 +1,6 @@
 # LLM runs
 
-An LLM run is a playthrough of the game by an LLM player in the turn-based mode ([llm-mode.md](llm-mode.md)). The player manual is [llm-playbook.md](llm-playbook.md).
+An LLM run is a playthrough of the game by an LLM player in the turn-based mode ([llm-mode.md](llm-mode.md)). The playbook of the player is [llm-playbook.md](llm-playbook.md).
 
 ## Goal of the runs
 

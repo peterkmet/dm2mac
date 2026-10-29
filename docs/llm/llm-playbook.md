@@ -1,4 +1,4 @@
-# LLM player manual
+# LLM playbook
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
