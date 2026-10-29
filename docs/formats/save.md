@@ -1,6 +1,6 @@
 # Save file format
 
-The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads and writes them. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port is `src/engine/save.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads and writes them, and the quick save files and the settings file of the port. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port is `src/engine/save.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Container
 
@@ -123,6 +123,27 @@ A load reads the blocks when they are there.
 - The game loads in all these cases. A save with only the original data (vanilla) loads with an empty automap and no cheats.
 
 The original game loads a save with the blocks because its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
+
+## Quick save files
+
+The quick save `QUICK.DAT` of the advanced and the turn-based modes is in the `--saves` folder, otherwise in `<data>/DATA` ([manual.md](../manual.md#quick-save-and-quick-load)). A quick load uses a copy of the running game, `QUICK.TMP` next to `QUICK.DAT` (`advanced_quick_load` in `src/ui/advanced.c`):
+
+- Before the load, the game writes the running game to `QUICK.TMP`. When this write fails, the game does not load.
+- When `QUICK.DAT` does not load, the game loads `QUICK.TMP` back. After a load or a restore, the game deletes `QUICK.TMP`.
+- When `QUICK.TMP` does not load either, the game is lost. `QUICK.TMP` stays, and the log gets an error line. The advanced mode ends the program (`EXIT_GAME_LOST`, [game-flow.md](../rules/game-flow.md#deviations-from-the-original)); the turn-based mode goes on without a game ([llm-mode.md](../llm/llm-mode.md#turn-based-commands)).
+
+## SETTINGS.TXT
+
+The settings file of the advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#settingstxt)). It is in the folder of `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
+
+```
+filter=scale2x
+```
+
+- The values are `none`, `scale2x`, and `scale3x`.
+- The game ignores a CR at the end of a line, an unknown key, a bad value, and a line of 64 characters or more.
+- A file over 1024 bytes gives the defaults (no filter).
+- The game writes `SETTINGS.TMP` first and replaces the file with it.
 
 ## Deviations from the original
 

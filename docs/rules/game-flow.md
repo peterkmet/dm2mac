@@ -62,3 +62,9 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
   - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0; the link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).
 - The `--save PATH` option starts the game of PATH immediately, without the menu and without the dialog after a load.
+- The exit codes of the port program (`src/ui/include/session.h`, `EXIT_USAGE` in `src/platform/main.c`):
+  - 0: quit.
+  - 1: the game is completed, or the program cannot start, for example with a `--data` folder without `DATA/GRAPHICS.DAT`.
+  - 2: QUIT GAME after the death of the party, or a bad command-line option: an option without a value, an unknown argument that starts with `--`, an unknown mode, or an unknown filter.
+  - 3: RESTART.
+  - 4: a quick load of the advanced mode that loads neither `QUICK.DAT` nor the copy of the running game ([save.md](../formats/save.md#quick-save-files)).

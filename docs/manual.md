@@ -27,13 +27,14 @@ build/dm2 --save game/DATA/SKSAVE0.DAT
 build/dm2 --filter scale2x
 ```
 
-- An unknown argument that starts with `--` prints the usage line and ends the program with a nonzero code.
+- An unknown argument that starts with `--` prints the usage line and ends the program.
 - The environment variable `DM2_FILTER` sets the filter as `--filter` does. The option has priority.
 - `--save` without `--mode` plays the advanced mode.
-- An option without a value stops the program with exit code 2 and the message `OPTION needs a value`, for example `--data needs a value`.
-- An unknown mode stops the program with exit code 2 and the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. An unknown filter gives exit code 2 and the message `unknown filter VALUE: use none, scale2x, or scale3x`.
-- A `--data` folder without `DATA/GRAPHICS.DAT` stops the program with exit code 1 and the message `cannot read DIR/DATA/GRAPHICS.DAT`.
-- The turn-based mode and `--control` need macOS. On Windows the program stops with exit code 1.
+- An option without a value stops the program with the message `OPTION needs a value`, for example `--data needs a value`.
+- An unknown mode stops the program with the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. An unknown filter gives the message `unknown filter VALUE: use none, scale2x, or scale3x`.
+- A `--data` folder without `DATA/GRAPHICS.DAT` stops the program with the message `cannot read DIR/DATA/GRAPHICS.DAT`.
+- The turn-based mode and `--control` need macOS. On Windows the program stops.
+- The exit codes of the program are in [game-flow.md](rules/game-flow.md#deviations-from-the-original).
 
 ## Start screens
 
@@ -73,8 +74,8 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 
 - `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks for confirmation, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
-- `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
-- `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `QUICK.TMP`, next to `QUICK.DAT`, before the load, so it does not load. The game goes on.
+- `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. When the game cannot restore the running game either, the program ends ([save.md](formats/save.md#quick-save-files)).
+- `UNABLE TO SAVE`: the game cannot keep a copy of the running game before the load, so it does not load. The game goes on.
 
 ## Controls
 
@@ -137,7 +138,7 @@ The game has three modes. Without the cheats, the game rules are the same in all
 |---|---|
 | `vanilla` | The original game without additions. The advanced keys do nothing. |
 | `advanced` | The default. The original game with the advanced features below. |
-| `turnbased` | A program plays through the control socket, one turn per request. The mode has the seen squares of the advanced mode ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)), but no advanced keys and no cheats. See [LLM mode: play over the control socket](llm/llm-mode.md). Only on macOS. |
+| `turnbased` | A program plays through the control socket, one turn per request. The mode has the [seen squares](#seen-squares) of the advanced mode, but no advanced keys and no cheats. See [LLM mode: play over the control socket](llm/llm-mode.md). Only on macOS. |
 
 ### Advanced features
 
@@ -146,7 +147,7 @@ The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#qu
 - A left click on a status box outside the hands puts the object of the leader hand into the inventory of the champion, as a click on the bars does. With an empty leader hand it opens the inventory, as a click on the name does. The hands keep their click.
 - A held key repeats only when the game waits for input, so the party stops when you release the key. In the vanilla mode the party walks on for the queued repeats, as in the original ([movement.md](rules/movement.md#deviations-from-the-original)).
 - An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)).
-- A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
+- A slot save and the quick save keep the seen squares and the cheats.
 
 ### Automap
 
@@ -164,13 +165,7 @@ The automap shows the seen squares of all maps of the party level, each at its p
 
 ### Seen squares
 
-Each game step marks the squares of the dungeon view. The view has 5 rows: the party row and 4 rows ahead, with 3, 3, 5, 5, and 7 squares.
-
-- The party square is seen.
-- A square is seen when the seen square beside it toward the middle is open, or when the seen square in front of it (one row nearer) is open.
-- The rows end at the first middle square that is not open.
-- Not open: a wall, a closed fake wall, a closed door, and a square off the map.
-- In dark light the view is shorter: light level 4 shows one row less, light level 5 two rows less. The light cheat shows all rows.
+Each game step marks the squares that the dungeon view shows as seen. In dark light the party sees fewer rows. The light cheat shows all rows. The rule is in [view.md](rules/view.md#seen-squares).
 
 A new game starts with an empty automap.
 
@@ -230,14 +225,8 @@ A projectile moves one cell (half a square) per game step, as in the original ga
 
 #### SETTINGS.TXT
 
-The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--saves DIR`, otherwise `<data>/DATA`). The file has one line:
-
-```
-filter=scale2x
-```
-
-The values are `none`, `scale2x`, and `scale3x`. The file is a text file of `key=value` lines. The game ignores a CR at the end of a line, an unknown key, a bad value, and a line of 64 characters or more. A file over 1024 bytes gives the defaults (no filter).
+The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--saves DIR`, otherwise `<data>/DATA`). The file format is in [save.md](formats/save.md#settingstxt).
 
 The advanced mode reads the file once on startup of the program and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
 
-The game writes the file only when the filter changes. It writes `SETTINGS.TMP` first and replaces the file with it. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.
+The game writes the file only when the filter changes. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.

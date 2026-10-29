@@ -46,6 +46,16 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 - Explosions: drawn in 5 rounds (the 4 cells in an order by the party direction, the explosions on the whole square in the middle). An explosion with picture `0x14` is a sparkle field. On the party square an explosion tints the whole view. Type `0x30` counts its views in global bytes `0x40` and `0x41`. The scale of an explosion in a near cell of the party square comes from the byte before the scale table (19).
 - Sparkle fields (visible teleporters: `(0x18, 0)`) and rain tile a random part of their picture (`gfx_blit_tiled_4to8`) over the zone; the sparkles use a mask picture per position. Rain shows when the rain intensity is not 0 and the sky state `(8, graphics set, 0x0b, 0x66)` allows it (states 1 and 4). The rain picture (`0x6d` to `0x74`) depends on the rain intensity and on the wind relative to the party. A wet ornament takes a random part of the rain picture as its background.
 
+## Seen squares
+
+The advanced and the turn-based modes mark the seen squares of the automap (`seen_visible` in `src/engine/seen.c`; the original game has no automap). Each game step marks the squares of the dungeon view. The view has 5 rows: the party row and 4 rows ahead, with 3, 3, 5, 5, and 7 squares.
+
+- The party square is seen.
+- A square is seen when the seen square beside it toward the middle is open, or when the seen square in front of it (one row nearer) is open.
+- The rows end at the first middle square that is not open.
+- Not open: a wall, a closed fake wall, a closed door, and a square off the map.
+- In dark light the view is shorter: light level 4 shows one row less, light level 5 two rows less. The light cheat shows all rows.
+
 ## Deviations from the original
 
 - No image cache: each GDAT image is decoded once and kept; scaled images and offscreen bitmaps live until the end of the frame. The original cache key of a scaled image keeps only 5 bits of the height scale and 7 bits of the width scale, so two scales can share a cached image; the port always scales anew.
