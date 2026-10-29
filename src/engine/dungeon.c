@@ -523,6 +523,8 @@ void dungeon_link_things_after_load(void)
 
 void dungeon_read_level_table(void)
 {
+    if (dun.map_count == 0) /* fix: the original reads the start square of map 0 of a dungeon without maps */
+        return;
     char text[LEVEL_TEXT_SIZE] = {0};
     memset(text, LEVEL_TEXT_FILL, LEVEL_TEXT_FILLED);
     int last = 0;

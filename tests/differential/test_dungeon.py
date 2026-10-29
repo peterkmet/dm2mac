@@ -168,6 +168,16 @@ def test_thing_count_cap(lib, tmp_path):
     assert lib.dungeon_load(str(path).encode()) == 0
 
 
+def test_level_table_of_a_dungeon_without_maps(lib, tmp_path):
+    # regression: the level table of a map-less dungeon read the start square of map 0 from the empty map tables
+    path = tmp_path / "no_maps.dat"
+    path.write_bytes(synthetic_dungeon([0] * C.THING_TYPE_COUNT))
+    assert lib.dungeon_load(str(path).encode()) == 1
+    digits = [lib.dungeon_level_digit(level) for level in range(C.LEVEL_COUNT)]
+    lib.dungeon_read_level_table()
+    assert [lib.dungeon_level_digit(level) for level in range(C.LEVEL_COUNT)] == digits
+
+
 def test_bad_files(lib, tmp_path):
     compressed = tmp_path / "compressed.dat"
     compressed.write_bytes(b"\x04\x81" + bytes(0x2A))
