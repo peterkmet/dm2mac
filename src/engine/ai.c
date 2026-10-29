@@ -2613,6 +2613,7 @@ static bool act_pick_up_items(void)
         if (!ai_thing_matches_filter(t, g_ai.active->sub))
             continue;
         move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, 0);
+        /* as in the original, the next thing is the end of the possessions, so SUB_REPEAT picks up one item */
         dungeon_append_thing(t, group_possessions(g_ai.group_thing));
         n++;
         if (!(g_ai.active->sub & SUB_REPEAT))
