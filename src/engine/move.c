@@ -406,9 +406,9 @@ void move_party_turn(int command)
         move_party_to((Position){end.map, end.x, end.y}, end.target_side);
         return;
     }
-    sensor_leave_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_leave_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
     champ_set_party_direction(dir_turn(g_game.party_dir, command == CMD_TURN_RIGHT ? TURN_RIGHT : TURN_LEFT));
-    sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_enter_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
 }
 
 /* The party steps onto the square ahead from the square of map: seamless passages, stairs, teleporter passages, then
@@ -452,7 +452,7 @@ static void bash_door(int16_t x, int16_t y, BumpedChampions bumped)
         strength = bash_strength(bumped.first);
     if (bumped.second != bumped.first && bumped.second != -1)
         strength += bash_strength(bumped.second);
-    sensor_door_try_destroy(x, y, (int16_t)strength, false, 0);
+    sensor_door_try_destroy((Location){x, y}, (int16_t)strength, false, 0);
 }
 
 /* The party walks into the creature group ahead: a bump, then a push when the group can be pushed; false when the
@@ -1129,7 +1129,7 @@ static void arrive_party(const ThingMove *m)
         }
     }
     if (map == m->start_map)
-        sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, m->same, false);
+        sensor_enter_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, m->same, false);
     else
         g_party.new_map = map;
 }
@@ -1195,7 +1195,7 @@ static bool arrive_group(const ThingMove *m)
     if (m->flying)
         dungeon_link_thing_to_square(thing, g_party.cur_map, dst_x, dst_y);
     else
-        sensor_enter_square(dst_x, dst_y, thing, false, false);
+        sensor_enter_square((Location){dst_x, dst_y}, thing, false, false);
     update_carried_missiles(thing, (Position){map, dst_x, dst_y}, false);
     if (active == GROUP_NOT_ACTIVE) {
         if (!(creature_group_info(thing)->flags & CREATURE_STATIC))
@@ -1229,7 +1229,8 @@ static void arrive_object(const ThingMove *m)
         if (g != THING_NONE)
             under_static = creature_group_info(g)->flags & CREATURE_STATIC;
     }
-    sensor_enter_square(dst_x, dst_y, m->thing, dun_on_party_square((Location){dst_x, dst_y}), under_static);
+    sensor_enter_square((Location){dst_x, dst_y}, m->thing, dun_on_party_square((Location){dst_x, dst_y}),
+                        under_static);
 }
 
 /* A thing (THING_NONE: the party) leaves the source of m: the floor sensors there react; a group that leaves the
@@ -1239,13 +1240,13 @@ static void leave_square(const ThingMove *m)
     int16_t src_x = m->path.src_x;
     int16_t src_y = m->path.src_y;
     if (m->thing == THING_NONE) {
-        sensor_leave_square(src_x, src_y, THING_NONE, m->same, false);
+        sensor_leave_square((Location){src_x, src_y}, THING_NONE, m->same, false);
         return;
     }
     if (m->flying)
         dungeon_unlink_thing_from_square(m->thing, g_party.cur_map, src_x, src_y);
     else
-        sensor_leave_square(src_x, src_y, m->thing, dun_on_party_square((Location){src_x, src_y}),
+        sensor_leave_square((Location){src_x, src_y}, m->thing, dun_on_party_square((Location){src_x, src_y}),
                             m->path.dst_x < 0 && m->path.dst_y == MOVE_IN_POSSESSIONS);
     if (thing_type(m->thing) == THING_GROUP && m->path.dst_x < MOVE_NO_SQUARE) {
         int a = group_active(m->thing);

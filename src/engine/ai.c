@@ -2359,7 +2359,7 @@ static bool act_melee_attack(void)
     } else {
         if (square_type(dun_get_square((Location){dx, dy})) == SQUARE_DOOR) {
             int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
-            if (sensor_door_try_destroy(dx, dy, (int16_t)strength, false, 0))
+            if (sensor_door_try_destroy((Location){dx, dy}, (int16_t)strength, false, 0))
                 return true;
         }
         if (at_self)
@@ -2591,7 +2591,7 @@ static bool act_trigger_square(void)
                            ai_location(ai_state.dest_x, ai_state.dest_y), facing())
             .passed &&
         g_ai.active->action == ACTION_OPERATE_DOOR) {
-        sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, EFFECT_TOGGLE, g_game.game_time);
+        sensor_schedule_square_event(ai_location(ai_state.dest_x, ai_state.dest_y), 0, EFFECT_TOGGLE, g_game.game_time);
         return false;
     }
     return true;
@@ -2756,7 +2756,7 @@ static bool act_use_wall_sensor(void)
             return true;
         dungeon_unlink_thing_from_list(hand, group_possessions(g_ai.group_thing));
     }
-    sensor_process_wall_click(dest_x(), dest_y(), dir_opposite(a->facing), g_ai.group_thing, hand);
+    sensor_process_wall_click(dest_square(), dir_opposite(a->facing), g_ai.group_thing, hand);
     return false;
 }
 

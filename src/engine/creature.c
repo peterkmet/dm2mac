@@ -1010,7 +1010,7 @@ static void signal_home_square(uint16_t group, int effect)
     int saved = g_party.cur_map;
     uint16_t home = thing_word(group, GROUP_HOME);
     dun_set_current_map(location_map(home));
-    sensor_schedule_square_event(location_x(home), location_y(home), 0, effect, g_game.game_time + 1);
+    sensor_schedule_square_event((Location){location_x(home), location_y(home)}, 0, effect, g_game.game_time + 1);
     dun_set_current_map(saved);
 }
 

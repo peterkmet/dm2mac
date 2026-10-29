@@ -354,7 +354,7 @@ static SkyObject *show_lightning(SkyObject *o)
         uint16_t packed = map_value(MAP_KEY_LIGHTNING_TARGET);
         if (packed) {
             Location target = lightning_target(packed);
-            sensor_schedule_square_event(target.x, target.y, 0, EFFECT_SET, g_game.game_time + 1);
+            sensor_schedule_square_event(target, 0, EFFECT_SET, g_game.game_time + 1);
             sndreq_request_with_fallback(
                 (SoundCue){CAT_EXPLOSION, LIGHTNING_SOUND_INDEX, SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE,
                            rand_below(LIGHTNING_RANGE) + SOUND_VOLUME_NORMAL},

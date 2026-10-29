@@ -368,7 +368,7 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
         uint16_t door = dungeon_square_first_thing(g_party.cur_map, ex, ey);
         power_thing = door;
         if (door_has_button(door))
-            sensor_schedule_square_event(ex, ey, 0, type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
+            sensor_schedule_square_event((Location){ex, ey}, 0, type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
                                          g_game.game_time + 1);
         break;
     }
@@ -622,7 +622,7 @@ static bool hit_door(Hit *h)
             return false;
     }
     uint16_t attack = (uint16_t)(projectile_get_attack(h->projectile, h->payload) + 1);
-    sensor_door_try_destroy(h->x, h->y, (int16_t)(rand_below(attack) + attack), false, 0);
+    sensor_door_try_destroy((Location){h->x, h->y}, (int16_t)(rand_below(attack) + attack), false, 0);
     return true;
 }
 
@@ -931,7 +931,7 @@ void explosion_process_event(TimelineEvent *e)
     if (square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR) {
         int16_t attack = (int16_t)explosion_get_attack(t, dungeon_square_first_thing(g_party.cur_map, x, y));
         if (attack)
-            sensor_door_try_destroy(x, y, attack, true, 0);
+            sensor_door_try_destroy((Location){x, y}, attack, true, 0);
     }
     int type = explosion_type(t);
     if (type != BLAST_MISSILE_WALL && type != BLAST_FIREBALL && type != BLAST_LIGHTNING) {

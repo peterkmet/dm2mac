@@ -240,23 +240,23 @@ static inline uint16_t sensor_area_class(uint16_t sensor)
 uint16_t sensor_door_value(uint16_t door, int key);
 /* True when a living champion, the open container, or the leader hand holds an item of the item index type. */
 bool sensor_party_possesses_type(int type);
-/* Queues a square event for (x, y) of the current map at time. */
-void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time);
+/* Queues a square event for the square at of the current map at time. */
+void sensor_schedule_square_event(Location at, int16_t cell, int effect, uint32_t time);
 /* Presses the button of door at the square: toggles the door next tick and queues the button release. */
 void sensor_press_door_button(Location at, uint16_t door);
 /* Queues the square event of the target of sensor with effect, delay ticks after its own delay. */
 void sensor_trigger_target(uint16_t sensor, int effect, int delay);
-/* A strong hit on the door at (x, y): it breaks when strength reaches its door type value (magic: by spell).
+/* A strong hit on the door on at: it breaks when strength reaches its door type value (magic: by spell).
    True when the door breaks. */
-bool sensor_door_try_destroy(int16_t x, int16_t y, int strength, bool magic, int delay);
+bool sensor_door_try_destroy(Location at, int strength, bool magic, int delay);
 
 /* Floor sensors. */
-/* A thing (THING_NONE: the party) enters the square (x, y) of the current map: the floor sensors and texts of the
+/* A thing (THING_NONE: the party) enters the square at of the current map: the floor sensors and texts of the
    square react. on_square: the party stands there (for the party: the move ends on the same square); into_possessions:
    an item goes into the possessions of a static creature. */
-void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions);
-/* A thing (THING_NONE: the party) leaves the square (x, y) of the current map, as sensor_enter_square. */
-void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions);
+void sensor_enter_square(Location at, uint16_t thing, bool on_square, bool into_possessions);
+/* A thing (THING_NONE: the party) leaves the square at of the current map, as sensor_enter_square. */
+void sensor_leave_square(Location at, uint16_t thing, bool on_square, bool into_possessions);
 
 /* Sensor effects. */
 /* A new game starts the timer sensors that are on and stops the others. */
@@ -281,9 +281,9 @@ void sensor_process_map_entry(bool entering);
 bool sensor_is_alcove_shown(uint16_t first, uint16_t thing);
 /* A value of the alcove ornament of thing on a wall square (first: its first thing) that the wall face shows, else 0. */
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key);
-/* A click on the wall face side of (x, y) of the current map, by the party (actor THING_NONE) or a creature group,
+/* A click on the wall face side of the square at of the current map, by the party (actor THING_NONE) or a creature group,
    with held (the object in the hand, THING_NONE: empty): buttons, alcoves, item holders, ladders. True when a sensor
    reacts, so that the command stops. */
-bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held);
+bool sensor_process_wall_click(Location at, int side, uint16_t actor, uint16_t held);
 
 #endif /* DM2_ENGINE_SENSOR_H */

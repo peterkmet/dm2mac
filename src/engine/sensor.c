@@ -267,15 +267,15 @@ static bool possessions_hold_type(uint16_t group, int type)
     return false;
 }
 
-void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect, uint32_t time)
+void sensor_schedule_square_event(Location at, int16_t cell, int effect, uint32_t time)
 {
     TimelineEvent e = {.time_map = current_map_time(time), .type = EVENT_SQUARE};
     /* fix: the original leaves the priority of a hold effect uninitialized; it gets the priority of a clear */
     e.priority = effect == EFFECT_SET                              ? SQUARE_PRIORITY_SET
                  : effect == EFFECT_CLEAR || effect == EFFECT_HOLD ? SQUARE_PRIORITY_CLEAR
                                                                    : SQUARE_PRIORITY_TOGGLE;
-    e.data[EVENT_X] = (uint8_t)x;
-    e.data[EVENT_Y] = (uint8_t)y;
+    e.data[EVENT_X] = (uint8_t)at.x;
+    e.data[EVENT_Y] = (uint8_t)at.y;
     e.data[EVENT_CELL] = (uint8_t)cell;
     e.data[EVENT_EFFECT] = (uint8_t)effect;
     timeline_add_event(&e);
@@ -283,7 +283,7 @@ void sensor_schedule_square_event(int16_t x, int16_t y, int16_t cell, int effect
 
 void sensor_press_door_button(Location at, uint16_t door)
 {
-    sensor_schedule_square_event(at.x, at.y, 0, EFFECT_TOGGLE, g_game.game_time + 1);
+    sensor_schedule_square_event(at, 0, EFFECT_TOGGLE, g_game.game_time + 1);
     TimelineEvent e = {.time_map = current_map_time(g_game.game_time + 1), .type = EVENT_DOOR_BUTTON_RELEASE};
     put_le16(e.data + SENSOR_EVENT_THING, first_thing(at.x, at.y));
     timeline_add_event(&e);
@@ -292,26 +292,27 @@ void sensor_press_door_button(Location at, uint16_t door)
 
 void sensor_trigger_target(uint16_t sensor, int effect, int delay)
 {
-    sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor), effect,
+    sensor_schedule_square_event((Location){sensor_target_x(sensor), sensor_target_y(sensor)},
+                                 sensor_target_cell(sensor), effect,
                                  (uint32_t)((int16_t)delay + sensor_delay(sensor) + g_game.game_time));
 }
 
-bool sensor_door_try_destroy(int16_t x, int16_t y, int strength, bool magic, int delay)
+bool sensor_door_try_destroy(Location at, int strength, bool magic, int delay)
 {
-    uint16_t door = first_thing(x, y);
+    uint16_t door = first_thing(at.x, at.y);
     if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE))
         return false;
     if ((int16_t)strength < (int16_t)sensor_door_value(door, DOOR_KEY_STRENGTH))
         return false;
-    uint8_t *square = current_square(x, y);
+    uint8_t *square = current_square(at.x, at.y);
     if ((*square & SQUARE_DOOR_STATE) != DOOR_STATE_CLOSED)
         return false;
     if (delay) {
         /* fix: the original leaves 4 data bytes of the event uninitialized */
         TimelineEvent e = {.time_map = current_map_time((uint16_t)delay + g_game.game_time),
                            .type = EVENT_DOOR_DESTRUCTION};
-        e.data[EVENT_X] = (uint8_t)x;
-        e.data[EVENT_Y] = (uint8_t)y;
+        e.data[EVENT_X] = (uint8_t)at.x;
+        e.data[EVENT_Y] = (uint8_t)at.y;
         timeline_add_event(&e);
     } else {
         *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
@@ -492,8 +493,8 @@ static void floor_text(const FloorMove *m, uint16_t t, int16_t x, int16_t y)
         if (sub == SUBTYPE_RANDOM_PIT) {
             if (m->type == -1 && !m->on_square && g_game.champion_count && rand_below(PERCENT) < textrec_value(t) &&
                 textrec_is_visible(t) != m->enter) {
-                sensor_schedule_square_event(x, y, 0, EFFECT_SET, g_game.game_time + 1);
-                sensor_schedule_square_event(x, y, 0, EFFECT_CLEAR, g_game.game_time + PIT_OPEN_TICKS);
+                sensor_schedule_square_event((Location){x, y}, 0, EFFECT_SET, g_game.game_time + 1);
+                sensor_schedule_square_event((Location){x, y}, 0, EFFECT_CLEAR, g_game.game_time + PIT_OPEN_TICKS);
             }
         } else if (sub == SUBTYPE_TRAP_TELEPORT && m->type == -1 && !m->enter && g_game.champion_count) {
             fall_risk(t, x, y, m->on_square);
@@ -560,14 +561,14 @@ static void process_floor(int16_t x, int16_t y, uint16_t thing, FloorMove m, boo
     }
 }
 
-void sensor_enter_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions)
+void sensor_enter_square(Location at, uint16_t thing, bool on_square, bool into_possessions)
 {
-    process_floor(x, y, thing, (FloorMove){.enter = true, .on_square = on_square}, into_possessions);
+    process_floor(at.x, at.y, thing, (FloorMove){.enter = true, .on_square = on_square}, into_possessions);
 }
 
-void sensor_leave_square(int16_t x, int16_t y, uint16_t thing, bool on_square, bool into_possessions)
+void sensor_leave_square(Location at, uint16_t thing, bool on_square, bool into_possessions)
 {
-    process_floor(x, y, thing, (FloorMove){.enter = false, .on_square = on_square}, into_possessions);
+    process_floor(at.x, at.y, thing, (FloorMove){.enter = false, .on_square = on_square}, into_possessions);
 }
 
 /* ---- Sensor effects ---- */
@@ -603,8 +604,8 @@ static void relay_delayed(const TimelineEvent *e, uint16_t sensor, bool scaled)
     unsigned data = sensor_data(sensor);
     unsigned bits = sensor_delay(sensor);
     uint32_t time = scaled ? (data << bits) + g_game.game_time : g_game.game_time + data + bits;
-    sensor_schedule_square_event(sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor),
-                                 passed_effect(sensor, effect), time);
+    sensor_schedule_square_event((Location){sensor_target_x(sensor), sensor_target_y(sensor)},
+                                 sensor_target_cell(sensor), passed_effect(sensor, effect), time);
 }
 
 /* Passes the event effect (hold sensors) or the own effect of the sensor to its target. */
@@ -1941,10 +1942,10 @@ static void wall_click_text(WallClick *c, uint16_t t)
     }
 }
 
-bool sensor_process_wall_click(int16_t x, int16_t y, int side, uint16_t actor, uint16_t held)
+bool sensor_process_wall_click(Location at, int side, uint16_t actor, uint16_t held)
 {
-    WallClick c = {.x = x, .y = y, .hand = held, .give = THING_NONE, .has_leader = g_game.leader != LEADER_NONE};
-    uint16_t first = first_thing(x, y);
+    WallClick c = {.x = at.x, .y = at.y, .hand = held, .give = THING_NONE, .has_leader = g_game.leader != LEADER_NONE};
+    uint16_t first = first_thing(at.x, at.y);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
         c.cell = thing_cell(t);
         if (c.cell != side)

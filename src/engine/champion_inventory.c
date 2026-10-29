@@ -212,7 +212,7 @@ void champ_put_in_leader_hand(uint16_t thing)
     g_hooks.render_hand_icon();
     inv_show_object_name(thing);
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_ADD);
-    sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_enter_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
 }
 
 uint16_t champ_take_from_leader_hand(void)
@@ -225,7 +225,7 @@ uint16_t champ_take_from_leader_hand(void)
     g_game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_REMOVE);
-    sensor_leave_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_leave_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
     return thing;
 }
 

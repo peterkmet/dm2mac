@@ -638,7 +638,7 @@ static bool is_furniture(const CreatureInfo *info)
 static bool run_melee(ActionRun *a)
 {
     if (square_type(a->front_square) == SQUARE_DOOR && (a->front_square & SQUARE_DOOR_STATE) == DOOR_STATE_CLOSED) {
-        sensor_door_try_destroy(a->front.x, a->front.y, champ_get_strength(a->champion_index, a->hand, a->skill), false,
+        sensor_door_try_destroy(a->front, champ_get_strength(a->champion_index, a->hand, a->skill), false,
                                 DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
