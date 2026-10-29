@@ -22,8 +22,9 @@ typedef struct {
     int16_t *(*zone_rect)(int16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
     void (*update_action_area)(bool tick);              /* redraws what changed in the action area */
     void (*reset_action_area)(void);                    /* clears the drawn state of the action area */
-    void (*reset_action_champion)(int champ);           /* clears the drawn state of the action area for a champion */
-    void (*render_hand_icon)(void);                     /* draws the leader hand object into the cursor */
+    void (*reset_action_champion)(
+        int16_t champion_index);    /* clears the drawn state of the action area for a champion */
+    void (*render_hand_icon)(void); /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry,
                                  int zone);      /* an interface picture in a screen zone */
     void (*enter_map_view)(int16_t map);         /* the view loads the graphics of the map that the party enters */

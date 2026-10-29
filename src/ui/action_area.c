@@ -120,12 +120,12 @@ void area_reset(void)
     area.bitmap = NULL;
 }
 
-void area_reset_champion(int champ)
+void area_reset_champion(int16_t champion_index)
 {
-    drawn.cell[champ] = DRAWN_NONE;
-    drawn.dir[champ] = DRAWN_NONE;
-    drawn.alive[champ] = false;
-    memset(drawn.busy[champ], 0, sizeof drawn.busy[champ]);
+    drawn.cell[champion_index] = DRAWN_NONE;
+    drawn.dir[champion_index] = DRAWN_NONE;
+    drawn.alive[champion_index] = false;
+    memset(drawn.busy[champion_index], 0, sizeof drawn.busy[champion_index]);
 }
 
 /* ---- Drawing ---- */
@@ -148,10 +148,10 @@ Offscreen *area_begin_draw(bool clear)
 
 /* The icon of the item (or the empty hand) in a hand, with its shadow, on the icon background color; NULL when
    the hand has no action. */
-static Bitmap *make_hand_icon(int champ, int hand)
+static Bitmap *make_hand_icon(int16_t champion_index, int16_t hand)
 {
-    uint16_t thing = champion(champ)->slots[hand];
-    if (!champ_list_actions(champ, thing, hand))
+    uint16_t thing = champion(champion_index)->slots[hand];
+    if (!champ_list_actions(champion_index, thing, hand))
         return NULL;
     Bitmap *icon = draw_temp_bitmap(ICON_SIZE + ICON_OFFSET, ICON_SIZE + ICON_OFFSET, ICON_BPP);
     if (!icon)
@@ -192,10 +192,10 @@ static Bitmap *make_hand_icon(int champ, int hand)
     return icon;
 }
 
-void area_draw_hand_icon(int champ, int hand, bool flash)
+void area_draw_hand_icon(int16_t champion_index, int16_t hand, bool flash)
 {
     begin_draw(false);
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int zone = (hand == SLOT_ACTION_HAND ? ZONE_ACTION_HAND_FIRST : ZONE_READY_HAND_FIRST) +
                dir_relative(c->cell, g_game.party_dir);
     int16_t r[RECT_SIZE];
@@ -208,7 +208,7 @@ void area_draw_hand_icon(int champ, int hand, bool flash)
         &area,
         (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, (uint8_t)(hand * PICTURE_PAIR + GFX_ACTION_HAND_BACK_FIRST + flash)},
         zone, GFX_OPAQUE);
-    Bitmap *icon = make_hand_icon(champ, hand);
+    Bitmap *icon = make_hand_icon(champion_index, hand);
     if (icon) {
         int16_t centered[RECT_SIZE] = {(int16_t)(((r[RECT_W] - icon->width + 1) >> 1) + r[RECT_X]),
                                        (int16_t)(r[RECT_Y] + ((r[RECT_H] - icon->height + 1) >> 1)), icon->width,
@@ -227,10 +227,10 @@ static void dim_drawn(const DrawCtx *d)
     offscreen_fill_rect_dithered(&area, r, UI_BLACK);
 }
 
-void area_draw_spell_icon(int champ, bool flash)
+void area_draw_spell_icon(int16_t champion_index, bool flash)
 {
     begin_draw(false);
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int rel = dir_relative(c->cell, g_game.party_dir);
     int16_t r[RECT_SIZE];
     offscreen_fill_rect(&area, zone_get_rect(ZONE_SPELL_ICON_FIRST + rel, r), g_ui_colors[UI_BLACK]);
@@ -238,13 +238,13 @@ void area_draw_spell_icon(int champ, bool flash)
         return;
     bool mirror = rel == CELL_FRONT_RIGHT || rel == CELL_BACK_RIGHT;
     int rune = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_RUNE_LEFT : GFX_ACTION_SPELL_RUNE_RIGHT;
-    int hand = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
-    if (champ == g_game.leader)
+    int picture = rel <= CELL_FRONT_RIGHT ? GFX_ACTION_SPELL_HAND_LEFT : GFX_ACTION_SPELL_HAND_RIGHT;
+    if (champion_index == g_game.leader)
         rune++;
     if (flash)
-        hand++;
+        picture++;
     DrawCtx d;
-    draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
+    draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, picture);
     d.flip = mirror ? MIRROR_H : 0;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
     if (g_party_sleeping || c->action_delay[ACTION_SPELL])
@@ -294,10 +294,10 @@ void area_draw_name(int i, bool highlight)
 
 /* ---- Redraw ---- */
 
-/* Draws the aura of champ over its face in zone: frame by direction and game time. */
-static void show_aura(int champ, int zone)
+/* Draws the aura of champion_index over its face in zone: frame by direction and game time. */
+static void show_aura(int16_t champion_index, int zone)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     if (!c->aura_value)
         return;
     DrawCtx a;
@@ -333,8 +333,8 @@ static Bitmap *face_bitmap(void)
     return face;
 }
 
-/* Draws the face of champ in zone through the face bitmap, moved while the party hastes, with its aura. */
-static void put_face(Bitmap *face, int champ, int zone)
+/* Draws the face of champion_index in zone through the face bitmap, moved while the party hastes, with its aura. */
+static void put_face(Bitmap *face, int16_t champion_index, int zone)
 {
     int16_t r[RECT_SIZE];
     int16_t sx = 0;
@@ -343,10 +343,10 @@ static void put_face(Bitmap *face, int champ, int zone)
         return;
     haste_jitter(r);
     uint8_t palette[IMAGE_COLORS];
-    ui_draw_champion_face_icon(face, champ, palette);
+    ui_draw_champion_face_icon(face, champion_index, palette);
     offscreen_blit(&area, &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette},
                    r);
-    show_aura(champ, zone);
+    show_aura(champion_index, zone);
 }
 
 /* Draws the faces of the party in their cells, with the auras. */
@@ -376,11 +376,11 @@ static void show_panel_header(void)
                               ZONE_MENU_HEADER, GFX_OPAQUE);
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_MENU_BACK}, ZONE_MENU_BACK,
                               GFX_OPAQUE);
-    int champ = g_action.champion - 1;
+    int16_t champion_index = g_action.champion - 1;
     offscreen_draw_shadow_text(&area, ZONE_MENU_NAME,
-                               (TextColors){g_ui_colors[champ == g_game.leader ? UI_GOLD : UI_WHITE],
+                               (TextColors){g_ui_colors[champion_index == g_game.leader ? UI_GOLD : UI_WHITE],
                                             g_ui_colors[UI_DARKEST_GRAY] | TEXT_TRANSPARENT},
-                               champion(champ)->name);
+                               champion(champion_index)->name);
 }
 
 /* Draws the face of the champion whose hand or spell panel is open. */
@@ -529,11 +529,11 @@ static bool is_cell_taken(const Champion *c)
     return false;
 }
 
-/* Draws the hand icons of champion champ that changed, flashed or went busy; full or redraw draws both. */
-static void show_hand_icons(int champ, bool full, bool redraw, bool flash_this)
+/* Draws the hand icons of champion champion_index that changed, flashed or went busy; full or redraw draws both. */
+static void show_hand_icons(int16_t champion_index, bool full, bool redraw, bool flash_this)
 {
-    const Champion *c = champion(champ);
-    for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
+    const Champion *c = champion(champion_index);
+    for (int16_t hand = 0; hand < SLOT_HAND_COUNT; hand++) {
         bool flash = false;
         bool update = false;
         if (flash_this && g_action.flash_hand == hand) {
@@ -541,16 +541,16 @@ static void show_hand_icons(int champ, bool full, bool redraw, bool flash_this)
             update = true;
         }
         bool busy = c->action_delay[hand] != 0;
-        if (busy != drawn.busy[champ][hand]) {
-            drawn.busy[champ][hand] = busy;
+        if (busy != drawn.busy[champion_index][hand]) {
+            drawn.busy[champion_index][hand] = busy;
             update = true;
         }
-        if (g_action.hand_items[champ][hand] != c->slots[hand] || full || redraw) {
-            g_action.hand_items[champ][hand] = c->slots[hand];
+        if (g_action.hand_items[champion_index][hand] != c->slots[hand] || full || redraw) {
+            g_action.hand_items[champion_index][hand] = c->slots[hand];
             update = true;
         }
         if (full || redraw || update)
-            area_draw_hand_icon(champ, hand, flash);
+            area_draw_hand_icon(champion_index, hand, flash);
     }
 }
 
@@ -644,10 +644,10 @@ static void refresh_input_zones(void)
    the hand closes. */
 static void show_hand_panel(void)
 {
-    int champ = g_action.champion - 1;
-    uint16_t thing = champion(champ)->slots[g_action.hand];
+    int16_t champion_index = g_action.champion - 1;
+    uint16_t thing = champion(champion_index)->slots[g_action.hand];
     if (item_is_minion_map(thing) && !g_action.flags) {
-        minion_map_open(champ);
+        minion_map_open(champion_index);
     } else if (item_is_moneybox(thing)) {
         g_action.mode = ACTION_MODE_MONEY_BOX;
     } else if (item_is_chest(thing) && g_action.mode != ACTION_MODE_CONTAINER) {
@@ -658,7 +658,7 @@ static void show_hand_panel(void)
         show_money_box(thing);
     } else if (g_action.mode == ACTION_MODE_CONTAINER) {
         show_chest(thing, true);
-    } else if (champ_list_actions(champ, thing, g_action.hand) && g_action.mode != ACTION_MODE_MINION_MAP) {
+    } else if (champ_list_actions(champion_index, thing, g_action.hand) && g_action.mode != ACTION_MODE_MINION_MAP) {
         g_action.mode = ACTION_MODE_MENU;
         refresh_input_zones(); /* the menu draws with the input zones of its actions */
         show_action_menu();
