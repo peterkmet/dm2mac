@@ -301,20 +301,16 @@ static int16_t *clip_placed(int16_t *rect, const int16_t *clip, int16_t *w, int1
     return rect[RECT_W] > 0 && rect[RECT_H] > 0 ? rect : NULL;
 }
 
-int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h)
-{
-    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
-}
-
-int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
-                                    int16_t *out_h)
+/* Places the *out_w x *out_h box (0: the size of image) of anchored: its top left corner and its clip go to *at_out;
+   false when the zone places nothing. */
+static bool place_zone(const Bitmap *image, AnchoredZone anchored, int16_t *out_w, int16_t *out_h, Placement *at_out)
 {
     if (anchored.zone == ZONE_NONE)
-        return NULL;
+        return false;
     bool relative = anchored.zone & ZONE_RELATIVE;
     const int16_t *rec = find_zone(anchored.zone & ~ZONE_RELATIVE);
     if (!rec)
-        return NULL;
+        return false;
     Placement at = {
         .clip = {CLIP_FAR, CLIP_FAR, CLIP_SIZE, CLIP_SIZE}
     };
@@ -331,7 +327,7 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         at.y = rec[ZONE_Y];
     } else {
         if (type == ANCHOR_SIZE)
-            return NULL;
+            return false;
         type -= ANCHOR_RELATIVE;
     }
     if (relative) {
@@ -341,21 +337,44 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         *out_h = 0;
     }
     if (!image && (*out_w <= 0 || *out_h <= 0))
-        return NULL;
+        return false;
     if (!place_in_parents(rec, &at))
-        return NULL;
+        return false;
     if ((unsigned)type > ANCHOR_LEFT)
-        return NULL;
+        return false;
     *out_w = *out_w ? *out_w : image->width;
     *out_h = *out_h ? *out_h : image->height;
     ScreenPoint offset = anchor_offset(type, *out_w, *out_h);
-    rect[RECT_X] = (int16_t)(at.x - offset.x);
-    rect[RECT_Y] = (int16_t)(at.y - offset.y);
+    at.x = (int16_t)(at.x - offset.x);
+    at.y = (int16_t)(at.y - offset.y);
     if (g_zone_clip_rect[RECT_W]) {
         for (int i = 0; i < RECT_SIZE; i++)
             at.clip[i] = g_zone_clip_rect[i];
     }
-    if (g_party.move_steps && at.last_parent == WALK_PARENT && !clip_rect(at.clip, g_zone_walk_view_rect))
+    *at_out = at;
+    return true;
+}
+
+/* Cuts the clip of at to the walk view while the party walks; false when nothing is left. */
+static bool clip_to_walk_view(Placement *at)
+{
+    return !g_party.move_steps || at->last_parent != WALK_PARENT || clip_rect(at->clip, g_zone_walk_view_rect);
+}
+
+int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h)
+{
+    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
+}
+
+int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
+                                    int16_t *out_h)
+{
+    Placement at;
+    if (!place_zone(image, anchored, out_w, out_h, &at))
+        return NULL;
+    rect[RECT_X] = at.x;
+    rect[RECT_Y] = at.y;
+    if (!clip_to_walk_view(&at))
         return NULL;
     return clip_placed(rect, at.clip, out_w, out_h);
 }
@@ -419,7 +438,15 @@ int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect)
 {
     int16_t w = ICON_SIZE;
     int16_t h = ICON_SIZE;
-    zone_compute_rect(NULL, rect, zone, &w, &h);
+    Placement at;
+    if (!place_zone(NULL, (AnchoredZone){(uint16_t)zone, ZONE_NO_ANCHOR}, &w, &h, &at) || !clip_to_walk_view(&at)) {
+        for (int i = 0; i < RECT_SIZE; i++) /* fix: the original widens the rect that it did not set */
+            rect[i] = 0;
+        return rect;
+    }
+    rect[RECT_X] = at.x;
+    rect[RECT_Y] = at.y;
+    clip_placed(rect, at.clip, &w, &h); /* as in the original, an icon that the clip hides keeps its cut rect */
     rect[RECT_X] -= ICON_FRAME;
     rect[RECT_Y] -= ICON_FRAME;
     rect[RECT_W] += 2 * ICON_FRAME;

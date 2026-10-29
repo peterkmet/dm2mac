@@ -61,7 +61,8 @@ bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPo
 void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom);
 
 /* Zones of the interface. */
-/* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame. */
+/* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame; the zero rect for a zone that the layout does
+   not place. */
 int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
 ScreenPoint zone_get_position(int16_t zone);

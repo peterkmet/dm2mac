@@ -94,3 +94,12 @@ def test_zone_rect_matches_original(lib, gdat, emu, margins):
                 assert bytes(rect) == emu.read(RECT, 8), (zone, w_scale, h_scale)
     assert found_count > 500
     clip[2] = 0
+
+
+def test_icon_rect_of_unknown_zone(lib, gdat):
+    # An icon in a zone that the layout does not place (a damaged GRAPHICS.DAT) gets the zero rect.
+    assert lib.zone_load(gdat) == 1
+    lib.zone_get_icon_rect.argtypes = [ctypes.c_int16, ctypes.POINTER(ctypes.c_int16)]
+    rect = (ctypes.c_int16 * 4)(0x55, 0x55, 0x55, 0x55)
+    lib.zone_get_icon_rect(0x7FFF, rect)
+    assert tuple(rect) == (0, 0, 0, 0)
