@@ -866,13 +866,18 @@ def test_header_heads():
                       if ("header", rel(path)) not in ok and (error := header_error(path))])
 
 
+FUNCTION_TYPEDEF = re.compile(r"\btypedef\b[^;{(]*?(?:\(\s*\*\s*(\w+)\s*\)\s*\(|\b(\w+)\s*\((?!\s*\*))[^;{]*\)\s*;")
+
+
 def defined_names(header, cache={}):
-    """The names that a header makes known: macros, types, tags, functions, variables, enum members."""
+    """The names that a header makes known: macros, types (also function and function pointer types), tags,
+    functions, variables, enum members."""
     if header not in cache:
         text = strip(header.read_text(errors="replace"))
         names = set(re.findall(r"^\s*#\s*define\s+(\w+)", text, re.M))
         names |= set(re.findall(r"\}\s*(\w+)\s*;", text)) | set(re.findall(r"\btypedef\b[^;{]*?(\w+)\s*;", text))
         names |= set(re.findall(r"\b(?:struct|enum|union)\s+(\w+)", text))
+        names |= {a or b for a, b in FUNCTION_TYPEDEF.findall(text)}
         names |= {f.name for f in functions(header)}
         names |= {n for decl in EXTERN_VARIABLE.findall(text) for n in extern_names(decl)}
         for body in ENUM.findall(text):
