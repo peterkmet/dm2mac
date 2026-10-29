@@ -827,9 +827,17 @@ def base_header(path):
                 and (path.stem == h.stem or path.stem.startswith(h.stem + "_"))), key=lambda h: len(h.stem), default=None)
 
 
+def main_suffixes():
+    """The part file suffixes that IncludeIsMainRegex of .clang-format lists."""
+    regex = re.search(r"^IncludeIsMainRegex: '(.*)'", (ROOT / ".clang-format").read_text(), re.M).group(1)
+    return set(re.search(r"\(_\(([^)]*)\)\)\?", regex).group(1).split("|"))
+
+
 def test_one_public_header_per_module():
-    """A .c file belongs to a public header; a module has one public header."""
+    """A .c file belongs to a public header; a part file has a suffix that IncludeIsMainRegex lists; a module has
+    one public header."""
     ok = allowed()
+    suffixes = main_suffixes()
     found = []
     for path in sources():
         if ("module", rel(path)) in ok:
@@ -837,6 +845,9 @@ def test_one_public_header_per_module():
         own = public_header(layer_of(path), path.stem.removesuffix("_internal"))
         if path.suffix == ".c" and not base_header(path):
             found.append(f"module {rel(path)}  | no header")
+        elif path.suffix == ".c" and path.stem != (main := base_header(path).stem) and (
+                part := path.stem.removeprefix(main + "_")) not in suffixes:
+            found.append(f"module {rel(path)}  | the suffix _{part} is not in IncludeIsMainRegex")
         elif path.suffix == ".h" and path.stem.endswith("_internal"):
             if not own.exists():
                 found.append(f"module {rel(path)}  | an internal header without its public header")
