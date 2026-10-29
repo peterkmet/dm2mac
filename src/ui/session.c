@@ -6,6 +6,7 @@
 #include <string.h>
 #include "action.h"
 #include "action_area.h"
+#include "champion.h"
 #include "creature.h"
 #include "dialog.h"
 #include "draw.h"
@@ -386,6 +387,7 @@ static bool load_new_game(void)
     if (!g_session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
     save_clear_party();
+    champ_reset_step_state(); /* no step state of the last game, as at a load */
     bool first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
         return false;

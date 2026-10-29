@@ -11,6 +11,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
 from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
+from dm2test.input import session  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
 
 
@@ -603,13 +604,31 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
     assert aura == (0 if dead else 7)
 
 
-def test_load_clears_action_repeats_and_raised_skills(lib, gdat, start, tmp_path):  # noqa: F811
-    # A load after a repeated action and a raised skill starts with no repeats and no raised skills.
+
+@pytest.mark.parametrize("new_game", [False, True])
+def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+    # A load or a new game after a repeated action, a raised skill and pending damage starts with no repeats, no
+    # raised skills and no pending damage.
+    from dm2test.dialog import Session
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
     raised = (ctypes.c_uint8 * 16).in_dll(lib, "g_champ_skill_raised")
+    damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
     ctypes.memset(repeats, 0x5A, ctypes.sizeof(repeats))
     ctypes.memset(raised, 1, ctypes.sizeof(raised))
-    assert lib.save_load(str(path).encode(), gdat) == 0
-    assert not any(repeats) and not any(raised)
+    ctypes.memset(damage, 1, ctypes.sizeof(damage))
+    if new_game:
+        (tmp_path / "DATA").mkdir()
+        (tmp_path / "DATA" / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
+        state = Session.in_dll(lib, "g_session")
+        state.data_dir = str(tmp_path).encode()
+        state.slot, state.loaded, state.new_game = -1, 0, 1
+        lib.session_load.restype = ctypes.c_bool
+        try:
+            assert lib.session_load()
+        finally:
+            state.new_game = 0
+    else:
+        assert lib.save_load(str(path).encode(), gdat) == 0
+    assert not any(repeats) and not any(raised) and not any(damage)
