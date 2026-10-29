@@ -61,6 +61,8 @@ def test_the_active_groups_end_below_the_inactive_index(lib, gdat, tmp_path):  #
     path = tmp_path / "groups.dat"
     path.write_bytes(struct.pack("<6H16H", 0, 0, 0, 0, 0, 0, *counts) + bytes(THING_RECORD_SIZE * MANY_GROUPS))
     assert lib.dungeon_load(str(path).encode()) == 1
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    lib.gdat_select(gdat)
     walker = next(t for t in range(256) if not lib.creature_info(gdat, t)[0] & C.CREATURE_STATIC)
     for i in range(MANY_GROUPS):
         lib.thing_set_word(C.THING_GROUP << C.THING_TYPE_SHIFT | i, C.GROUP_CREATURE, walker)
