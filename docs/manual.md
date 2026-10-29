@@ -17,9 +17,9 @@ The Windows build has no console. It writes its messages to `dm2.log` in `<data>
 | `--data DIR` | `game` | The folder of the game files (`<data>` on this page). The save slots are in `<data>/DATA`. |
 | `--save PATH` | none | Loads the save `PATH` and starts its game immediately: no mode screen, no start movies, no start menu, and no dialog after the load. |
 | `--mode NAME` | `advanced` | The game mode: `vanilla`, `advanced`, or `turnbased` (see [Modes](#modes)). The option skips the mode screen. |
-| `--filter NAME` | `none` | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
+| `--filter NAME` | `none`; the advanced mode takes the filter of [SETTINGS.TXT](#settingstxt) | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
 | `--saves DIR` | `<data>/DATA` | The folder of the quick save `QUICK.DAT` and of `SETTINGS.TXT`, in all modes. The game does not make the folder. The save slots stay in the `--data` folder. |
-| `--control PATH` | none; `~/.dm2/control.sock` in the turn-based mode | The control socket of the LLM mode (see [llm-mode.md](llm/llm-mode.md#start-the-game)). Only on macOS. |
+| `--control PATH` | none; `~/.dm2/control.sock` in the turn-based mode | The control socket ([llm-mode.md](llm/llm-mode.md#start-the-game)), in all modes. Only on macOS. |
 
 ```sh
 build/dm2 --mode vanilla
@@ -128,7 +128,7 @@ A right click closes the automap, the cheat screen, and the options menu. In the
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In the dungeon view `Esc` opens the options menu. There the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. There the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). In the vanilla mode `Esc` pauses. The automap, the cheat screen, and the options menu do not open together.
 
 ## Modes
 
@@ -173,7 +173,7 @@ A new game starts with an empty automap.
 
 ### Cheats
 
-The advanced mode has six cheats. They switch on the cheat screen (`C` key). A slot save and the quick save keep them. A load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
+The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on and off. A slot save and the quick save keep them. A load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
@@ -194,7 +194,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names. The names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
 
-A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, otherwise the leader, otherwise the first living champion. Without a living champion the message area shows `NO CHAMPION CAN CAST`. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
+A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, otherwise the leader, otherwise the first living champion. Without a living champion the message area shows `NO CHAMPION CAN CAST`. The power is MON, the highest power, for a spell without a power rune (every spell of the game is one). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
 
 ### Damage hold
 
@@ -231,4 +231,4 @@ The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--sav
 
 The advanced mode reads the file once on startup of the program and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
 
-The game writes the file only when the filter changes. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.
+The game writes the file only when the filter changes. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once. It shows again only after a write works and a later write fails.

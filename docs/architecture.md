@@ -161,7 +161,7 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
 
 ## The frame loop
 
-`platform/platform.c` waits for each tick of the timer interrupt of the original (ticks of the programmable interval timer, PIT;
+`platform/platform.c` waits for each PIT tick (the programmable interval timer of the original;
 `plat_wait_tick`). The rates of the PIT tick, the timer tick, and the game step are in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 

@@ -34,9 +34,9 @@ The search runs in every mode, including the turn-based mode.
 
 ## Sources
 
-A source holds all 10 files. The search runs in the working folder in this order:
+A source is a folder, a ZIP archive, or a CD image that holds all 10 files. The search runs in the working folder in this order:
 
-1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder counts as a source only when it holds at least one of the 10 files at its root. Other folders are searched into, but they get no log line and no message line.
+1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder is tried only when it holds at least one of the 10 files at its root. Other folders are searched into, but they get no log line and no message line.
 2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is found as in [zip.md](zip.md#names).
 3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image (see [cd-image.md](cd-image.md)).
 
@@ -54,7 +54,7 @@ The install writes only the 10 fixed names of the table, never a path from the s
 
 ## Message
 
-When no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode the message goes to the log only; in the other modes the port also shows it in a message box without a window. The message has these parts:
+When no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode the message goes to the log only; in the other modes the port also shows it in a system message box (the game window is not open yet). The message has these parts:
 
 1. The game files of Dungeon Master II are missing.
 2. The user needs their own copy of the PC DOS version (English, 1995).

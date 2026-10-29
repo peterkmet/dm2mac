@@ -12,7 +12,7 @@ All fields are little-endian.
 | Central directory entry (46 bytes + name, extra, comment) | `0x02014b50` | flags (8), method (10), compressed size (20), size (24), name size (28), extra size (30), comment size (32), local header offset (42) |
 | Local header (30 bytes + name, extra) | `0x04034b50` | flags (6), name size (26), extra size (28) |
 
-The reader searches the end record in the last 22 + 65535 bytes of the file, from the end, and takes the last signature whose comment ends inside the file. It reads the whole central directory into memory. Sizes and the method come from the central directory only; the sizes of the local header are not used. An archive written to a stream (flag bit 3, a data descriptor) therefore reads as well.
+The reader searches backward from the end of the file through the last 22 + 65535 bytes and takes the first signature it finds whose comment ends inside the file. It reads the whole central directory into memory. Sizes and the method come from the central directory only; the sizes of the local header are not used. An archive written to a stream (flag bit 3, a data descriptor) therefore reads as well.
 
 ## Support
 

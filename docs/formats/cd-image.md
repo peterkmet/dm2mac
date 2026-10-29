@@ -34,7 +34,7 @@ It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT
 
 ## Names
 
-A name matches without case. The reader ignores the version suffix `;1` and a final `.` after it is cut, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
+A name matches without case. The reader cuts the version suffix `;1`, then a final `.`, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
 
 ## What fails
 
@@ -42,7 +42,8 @@ A name matches without case. The reader ignores the version suffix `;1` and a fi
 |---|---|
 | File too short, no sector 16, no `CD001` | damaged image |
 | MODE2 (XA) raw image | fails with a message that names MODE2 |
-| Root extent or file extent outside the image | damaged image, or the file is not found |
+| Root extent outside the image | damaged image |
+| File extent outside the image | the file is not found |
 | Joliet and Rock Ridge names | not read; the reader uses the ISO 9660 names of the primary descriptor |
 | A `.cue` file | ignored; the port reads `.iso`, `.img`, and `.bin` files only |
 
