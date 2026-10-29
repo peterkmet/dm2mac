@@ -369,9 +369,9 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, in
         }
         table[i] = (uint8_t)color;
     }
-    if (key1 >= 0)
+    if (key1 >= 0 && key1 < REMAP_COLORS) /* fix: a key past the table */
         table[key1] = (uint8_t)key1;
-    if (key2 >= 0)
+    if (key2 >= 0 && key2 < REMAP_COLORS)
         table[key2] = (uint8_t)key2;
     return table;
 }
