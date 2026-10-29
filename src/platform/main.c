@@ -53,6 +53,11 @@
 /* The start of each command line option. */
 #define OPTION_PREFIX "--"
 
+/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
+_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
+                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
+               "filter numbers");
+
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
@@ -417,11 +422,6 @@ static void pump_mode_screen_events(void)
     }
     plat_mouse_position(&g_input_mouse_x, &g_input_mouse_y);
 }
-
-/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
-_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
-                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
-               "filter numbers");
 
 /* Reads the values of the command line options into options; the option without a value, NULL when all have one.
    *unknown is the first argument that starts with -- and matches no option, or NULL. */
