@@ -109,7 +109,7 @@
 
 /* Light levels and square light values. */
 #define LIGHT_LEVEL_LIT  1
-#define EXPLOSION_GLARE  12 /* explosion light above which the view gets one level darker (glare) */
+#define EXPLOSION_GLARE  12 /* explosion light above which the view gets one level brighter (glare) */
 #define WINDOW_LIGHT_MIN 3
 #define SQUARE_LIGHT_MIN 2
 #define MISSILE_FALLOFF  3

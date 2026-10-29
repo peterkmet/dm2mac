@@ -39,3 +39,4 @@
   - A `CMD_` block out of value order: `ui/include/input.h:23-85` (P13#6).
   - A header that includes `gdat.h` only for `const Gdat *`: `ui/include/icon.h:10`, `ui/include/zone.h:12` (P13#15, P17#15).
   - The `rule 1.5` lines of Task 2: engine setters for `ui/minion_map.c` and `ui/ui.c:697-698` (`g_leader_hand.cursor`) (P0#1, P14#1).
+- Docs vocabulary: one name per concept across the docs. Object, item, and thing name the same game things in `docs/rules/champions.md`, `docs/rules/creatures.md`, and `docs/llm/llm-playbook.md`; tick, game step, and game time name the same time unit in `docs/llm/llm-playbook.md`. Define each term once (a thing is any dungeon record, an object or item what the party can carry; a timer tick differs from a game step), use it in prose, and keep the other words only in code names such as `take_object` and `move_thing` (Gemini docs review, out-06 #13, out-08 #13 and #14).

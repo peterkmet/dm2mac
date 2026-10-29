@@ -1,6 +1,6 @@
 # CD images
 
-The reader of an ISO 9660 CD image with the game files (ECMA-119), in `src/data/iso.c`. It opens the image with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
+`src/data/iso.c` reads an ISO 9660 CD image (ECMA-119) with the game files. It opens the image with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
 
 ## Sector layouts
 
@@ -19,11 +19,22 @@ Sector 16 is the primary volume descriptor. The reader requires type `0x01` and 
 
 ## Directory records
 
-The reader reads the fields of a record: length (offset 0), extent (2), data length (10), flags (25), name length (32), name (33). The folder flag is `0x02`. It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root folder, or a folder in the root folder and a file in it. A file or a folder at the wrong place in the path does not match. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
+The reader reads these fields of a record:
+
+| Field | Offset |
+|---|---|
+| Length | 0 |
+| Extent (first sector) | 2 |
+| Data length | 10 |
+| Flags (bit `0x02`: directory) | 25 |
+| Name length | 32 |
+| Name | 33 |
+
+It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root directory, or a subdirectory of the root directory and a file in it. A file or a folder at the wrong place in the path does not match. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
 
 ## Names
 
-A name matches without case. The reader ignores the version suffix `;1` and a final `.` after it is cut, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
+A name matches without case. The reader cuts the version suffix `;1`, then a final `.`, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
 
 ## What fails
 
@@ -31,10 +42,11 @@ A name matches without case. The reader ignores the version suffix `;1` and a fi
 |---|---|
 | File too short, no sector 16, no `CD001` | damaged image |
 | MODE2 (XA) raw image | fails with a message that names MODE2 |
-| Root extent or file extent outside the image | damaged image, or the file is not found |
+| Root extent outside the image | damaged image |
+| File extent outside the image | the file is not found |
 | Joliet and Rock Ridge names | not read; the reader uses the ISO 9660 names of the primary descriptor |
 | A `.cue` file | ignored; the port reads `.iso`, `.img`, and `.bin` files only |
 
 ## Deviations from the original
 
-None: the install is port only.
+None, because only the port reads CD images.

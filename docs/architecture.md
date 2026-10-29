@@ -1,13 +1,13 @@
 # Architecture
 
 The port is a reimplementation of Dungeon Master II (PC DOS, `SKULL.EXE`) in C11. The game rules follow the
-decompiled original; the port does not reproduce the DOS technical layer. The source in `src/` has five layers.
+decompiled original. The port does not reproduce the DOS technical layer. The source in `src/` has five layers.
 The build makes the game `build/dm2` and one shared library `build/libdm2.dylib` for the tests.
 
 ## Layers
 
 ```
-platform/   SDL window, sound output, the control socket, the scale filters, main
+platform/   SDL window, sound output, the control socket, the upscale filters, main
    │
 control/    the line protocol of the control socket and the turns of the turn-based mode
    │
@@ -51,14 +51,15 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/crc32.h` | `crc32_` | The CRC-32 of PNG and ZIP. |
 | `data/gamefile.h` | `gamefile_` | The table of the 10 game files and the check of a file against it. |
 | `data/gdat.h` | `gdat_` `image_` | GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. |
-| `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8 bpp pictures and the screen. |
+| `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8-bit pictures and the screen. |
 | `data/hmp.h` | `hmp_` | The HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. |
 | `data/ids.h` | none | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
 | `data/iso.h` | `iso_` | ISO 9660 CD images: finds and reads the game files on a CD image. |
 | `data/le.h` | `le16` `le32` `be16` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
 | `data/mve.h` | `mve_` | Interplay MVE movies: chunks, opcodes, 8-bit video, audio; from memory only. |
+| `data/num.h` | `abs_` `clamp_` `max_` `min_` | Integer helpers: the smaller, the bigger, the absolute, and the limited value. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
-| `data/pcx.h` | `pcx_` | PCX pictures, 8 bits per pixel, RLE, palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
+| `data/pcx.h` | `pcx_` | PCX pictures, 8-bit, RLE (run-length encoded), palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
 | `data/settings.h` | `settings_` | The settings file of the advanced mode (SETTINGS.TXT in the saves folder): reads and writes the upscale filter; it does not apply the value. |
 | `data/zip.h` | `zip_` | ZIP archives: the central directory and the stored and deflated entries. |
 
@@ -73,7 +74,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the update of the groups. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: the step timing, the map changes, and the timeline events. |
-| `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and GDAT text items. |
+| `engine/game_text.h` | `gtext_` | The game texts and the UI colors: decoding, formatting, and [GDAT](formats/graphics.md#gdat-items) text items. |
 | `engine/hooks.h` | none | Calls of the game rules into the user interface, for events that must run the interface inside the rule. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |
@@ -119,7 +120,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/view.h` | `view_` | The dungeon view: the squares in sight and their drawing. |
 | `ui/zone.h` | `zone_` | Layout zones: the GDAT record of each zone with its anchor type, parent zone, and position. |
 
-`ui/ui_hooks.c` has no header of its own: it defines `g_hooks` of `engine/hooks.h`.
+`ui/ui_hooks.c` has no header of its own, because it defines `g_hooks` of `engine/hooks.h`.
 
 ### control/
 
@@ -147,12 +148,12 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 `main` (`platform/main.c`) does these steps in this order:
 
 1. It reads the options and selects the game mode (`--mode`, or the advanced mode).
-2. It loads GRAPHICS.DAT and the save of `--save`, opens the window, the control socket of `--control`, and the
+2. It checks the game files and installs them from a source when needed ([game-files.md](formats/game-files.md#startup)). It loads GRAPHICS.DAT and the save of `--save`, opens the window, the control socket of `--control`, and the
    music. It sets the hooks of the platform: `g_os_full_path_hook`, `g_optmenu_filter_hook`, and
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.
 4. Without `--save`, it plays the start movies and starts the game: the start menu, or a new game in the
-   turn-based mode. After a RESTART it shows no mode screen and no start movie.
+   turn-based mode. After a RESTART (the RESTART choice of the save menu) it shows no mode screen and no start movie.
 5. It runs the main loop of the mode until a quit: `run_realtime` or `run_turnbased`.
 6. It plays the end movies, closes the platform, and starts the program again after a RESTART of the game.
 
@@ -161,7 +162,7 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
 
 ## The frame loop
 
-`platform/platform.c` waits for each tick of the timer interrupt of the original (PIT ticks,
+`platform/platform.c` waits for each PIT tick (the programmable interval timer of the original;
 `plat_wait_tick`). The rates of the PIT tick, the timer tick, and the game step are in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 
@@ -175,7 +176,7 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
    with the mouse cursor in the window.
 4. `plat_wait_tick` mixes the audio and waits for the next PIT tick.
 
-`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event: keys and
+`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event, because keys and
 clicks do not reach the input queue. Each frame calls `transport_poll` and `control_frame`, and shows the screen.
 While no turn is pending, the frame waits one timer tick. The loop never ends the session by itself; `load` and
 `new_game` start the next game.
@@ -203,11 +204,11 @@ A viewport screen of the advanced mode (the automap, the cheat screen, the optio
 game step. The split of the original `game_loop` into the two parts is in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 
-The rules do not draw the panels. They set redraw flags that `ui/` reads and draws:
+The rules request a redraw of the panels with redraw flags that `ui/` reads and draws:
 
 - `Champion.redraw` (`engine/champion.h`): the `REDRAW_*` bits for the name, the bars, the load, the title, the
   status box, and the inventory of one champion.
-- `g_party.redraw` (`engine/move.h`): the `REDRAW_*` bits for the view squares and the creature maps.
+- `g_party.redraw` (`engine/move.h`): the `PARTY_REDRAW_*` bits for the view and the squares around the party.
 
 ## The control socket and the turn
 
@@ -226,7 +227,7 @@ main loop, at `~/.dm2/control.sock` when `--control` is missing, and stops with 
   `control/turn.c` holds the actions of a turn and their end rules.
 
 In the vanilla and advanced modes the game runs in real time, and `pump_events` polls the socket on each PIT tick.
-In the turn-based mode the game time stands still between two turns, because only `control_frame` runs
+In the turn-based mode the game time does not advance between two turns, because only `control_frame` runs
 `play_tick`.
 
 The interface of the control code, all in `build/libdm2.dylib`:
@@ -245,7 +246,7 @@ The globals of the game:
 - The game state that the save file holds: `g_game` (`engine/save.h`; the party position, the game time, the
   champion records, the global flags), the dungeon (`engine/dungeon.h`), the timeline `g_timeline`
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
-  `static` in `engine/dungeon.c`; the other modules read and write them through the `dungeon_` and `thing_`
+  `static` in `engine/dungeon.c`; modules outside `engine/dungeon.c` read and write them through the `dungeon_` and `thing_`
   functions.
 - `g_party` (`engine/move.h`): the movement state of the party, and the current map of the square reads (`cur_map`).
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
@@ -270,11 +271,11 @@ The other hooks:
 |---|---|---|---|---|
 | `g_os_log_hook` | `data/os.h` | `platform/main.c` (Windows only) | `os_log` (`data/os.c`) | the message goes to stderr |
 | `g_os_fatal_hook` | `data/os.h` | `platform/main.c` (Windows only) | `os_fatal` (`data/os.c`) | the message goes to stderr |
-| `g_os_full_path_hook` | `data/os.h` | `platform/main.c`, `dm2test.lib` | `os_get_full_path` (`data/os.c`) | no full path; the call returns false |
+| `g_os_full_path_hook` | `data/os.h` | `platform/main.c`, `load_lib` (`tests/dm2test/lib.py`) | `os_get_full_path` (`data/os.c`) | no full path; the call returns false |
 | `g_play_frame_hook` | `ui/play.h` | `platform/main.c`, the tests | `play_wait_frames` (`ui/play.c`) | a modal loop counts the timer ticks and shows no frame |
 | `g_optmenu_filter_hook` | `ui/optmenu.h` | `platform/main.c` (`plat_set_filter`) | `ui/optmenu.c` | no window: the filter is not shown |
 
-On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the game folder, because the Windows build has
+On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the data folder, because the Windows build has
 no console.
 
 ## The test library
@@ -289,4 +290,4 @@ no console.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of
   [coding-standard.md](coding-standard.md#2-headers-and-includes)).
 
-The test folders are in [Tests](development.md#tests).
+The test folders are in [development.md](development.md#tests).
