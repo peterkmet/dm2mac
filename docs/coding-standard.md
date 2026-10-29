@@ -356,14 +356,14 @@ their allowlist key:
 | Key | Fails on |
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
-| `platform` | an operating system header or `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
+| `platform` | a header other than the portable C headers and `opl3/` outside `platform/`; `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr`, `exit(` or `abort(` outside `platform/` and `data/os.c` |
 | `engine-write` | a write (`=`, `++`, `--`, `memcpy`, `memmove`, `memset`, a pointer without `const`) of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
-| `module` | a `.c` file without its header, a second public header of one module |
+| `module` | a `.c` file without its header, a part file whose suffix `IncludeIsMainRegex` of `.clang-format` does not list, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
 | `include` | a project header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
-| `dead-api` | an exported name with no use outside its module and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
+| `dead-api` | an exported name with no use outside its module and the file that defines it, and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
 | `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `(`, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
@@ -379,7 +379,7 @@ their allowlist key:
 | `static-local` | a `static` declaration without `const` inside a function |
 | `const` | a file-scope array with an initializer list and without `const` that no function writes |
 | `global` | an `extern` without `g_`, a file-static with `g_` |
-| `decompiler` | a decompiler name |
+| `decompiler` | a decompiler name (`uVar1`, `puVar3`, `uStack_2c`, `extraout_EDX`, `local_10`, `param_2`) |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
 | `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer or in a static function of a `.c` file with another type than the table of rule 5.1 (a pointer to the table type passes) |
 | `long` | a function above 60 lines without an allowlist reason |
