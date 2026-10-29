@@ -1,17 +1,17 @@
 # Music
 
-The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graphics.md)), `SONGLIST.DAT`, the HMP player, and the conversion of MIDI to OPL register writes in the HMI driver library `HMIMDRV.386` with the instrument banks `MELODIC.BNK` and `DRUM.BNK`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIST.DAT` selects the song of each map. The HMI driver library `HMIMDRV.386` converts MIDI to OPL register writes with the instrument banks `MELODIC.BNK` and `DRUM.BNK`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## HMP songs and SONGLIST.DAT
 
 - The songs are 29 [GDAT](graphics.md#gdat-items) items with key `(4, song, 3, 0)`, `song` = 0 to 28. Each item is a complete HMP file (`HMIMIDIP013195`).
 - `game/TEST.HMP` is byte-equal to song 10 (item 5602, 9645 bytes).
-- `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes. The game reads at most `0x3f` bytes.
+- `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes.
+- `SONGLIST.DAT` bytes 0 to 45: `2 17 14 27 4 12 12 18 15 13 12 12 16 6 21 14 17 17 17 17 3 8 17 14 2 23 22 20 17 0 2 2 2 9 2 3 14 16 28 22 19 9 22 3 17 2`.
 - `music_play_song` (`0x1095d`) looks up the key `(4, song, 3, 0)` with `gdat_entry_exists`, `gdat_entry_size`, and `gdat_get_entry_data`, copies the item to `DAT_000704da`, and calls `hmi_midi_init_song`, `hmi_midi_start_song`, and `hmi_midi_set_song_volume(handle, 0x7f)`.
-- In file order, the song items go from `file+0x7bd597` (song 0) to `file+0x83b356` (song 17). Every item begins with `HMIMIDIP013195`.
+- In file order, the song items go from `file+0x7bd597` (song 0) to `file+0x83b356` (song 17).
 - `sound_init` loads `DATA\SONGLIST.DAT` (`0x70019`) into `DAT_0007ef78`, at most `0x3f` bytes.
 - The main loop calls `music_update_for_map(DAT_0007f260 >> 16)` once per game step (`FUN_00024691`, `game_loop`). `DAT_0007f260 >> 16` is the current map index. It also indexes the 16-byte map records at `DAT_0007f3c4`.
-- `SONGLIST.DAT` bytes 0 to 45: `2 17 14 27 4 12 12 18 15 13 12 12 16 6 21 14 17 17 17 17 3 8 17 14 2 23 22 20 17 0 2 2 2 9 2 3 14 16 28 22 19 9 22 3 17 2`.
 
 ## Song change
 
@@ -55,9 +55,9 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 | `0x1450c` | `gusmidi.com` | `0x83e8` | `0xa00a` |
 | `0x1c924` | `intspkr.com` | `0x304` | `0xa006` |
 
-`SETUP.INI` maps Sound Blaster and Sound Blaster Pro to `0xa002` (OPL2), and Sound Blaster 16 to `0xa009` (OPL3). The README says that DM2 supports FM music only.
+`SETUP.INI` maps Sound Blaster and Sound Blaster Pro to `0xa002` (OPL2), and Sound Blaster 16 to `0xa009` (OPL3). The `README.TXT` of the game says that DM2 supports FM music only.
 
-The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addresses are relative to `file+0x5c`. The entry at `file+0x560` dispatches through a function table at driver offset `0xbb`. The code is compiled C with `ebp` frames. It is 12.7 KB of plain 32-bit code with `cdecl` frames and no relocations. The OPL3 driver contains the same BNK packing code (`file+0x3efe`).
+The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addresses are relative to `file+0x5c`. The entry at `file+0x560` dispatches through a function table at driver offset `0xbb`. The code is 12.7 KB of compiled 32-bit C with `cdecl` `ebp` frames and no relocations. The OPL3 driver contains the same BNK packing code (`file+0x3efe`).
 
 | File offset | Driver offset | Function |
 |---|---|---|
@@ -94,7 +94,7 @@ The operator offsets per channel come from the byte pairs at driver `[0x2ee5 + 2
 
 ### OPL2 driver logic
 
-Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default). It does not use the standard AdLib mapping (9 voices, F-number from the note, TL by velocity).
+The offsets in the table are driver offsets. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default). It does not use the standard AdLib mapping (9 voices, F-number from the note, TL by velocity).
 
 | Offset | Function |
 |---|---|
