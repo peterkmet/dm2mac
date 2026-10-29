@@ -11,9 +11,11 @@
 #include "game.h"
 
 /* The actions of the mode screen keys. */
-#define MODE_SCREEN_UP    0
-#define MODE_SCREEN_DOWN  1
-#define MODE_SCREEN_ENTER 2
+enum {
+    MODE_SCREEN_UP = 0,
+    MODE_SCREEN_DOWN = 1,
+    MODE_SCREEN_ENTER = 2,
+};
 
 /* ---- Setup ---- */
 

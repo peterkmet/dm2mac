@@ -10,18 +10,22 @@
 #include "mve.h"
 
 /* The movie scripts of the launcher. */
-#define MOVIE_SCRIPT_NONE       0
-#define MOVIE_SCRIPT_START      1
-#define MOVIE_SCRIPT_COMPLETED  2
-#define MOVIE_SCRIPT_PARTY_DEAD 3
+enum {
+    MOVIE_SCRIPT_NONE = 0,
+    MOVIE_SCRIPT_START = 1,
+    MOVIE_SCRIPT_COMPLETED = 2,
+    MOVIE_SCRIPT_PARTY_DEAD = 3,
+};
 
 /* The steps of the movie scripts. */
-#define MOVIE_STEP_NONE    (-1)
-#define MOVIE_STEP_SPLASH  0
-#define MOVIE_STEP_FTL     1
-#define MOVIE_STEP_INTRO   2
-#define MOVIE_STEP_END     3
-#define MOVIE_STEP_CREDITS 4
+enum {
+    MOVIE_STEP_NONE = -1,
+    MOVIE_STEP_SPLASH = 0,
+    MOVIE_STEP_FTL = 1,
+    MOVIE_STEP_INTRO = 2,
+    MOVIE_STEP_END = 3,
+    MOVIE_STEP_CREDITS = 4,
+};
 
 /* The picture of a movie and the screen of the original player that shows it. */
 typedef struct {
