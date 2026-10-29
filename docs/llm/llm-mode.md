@@ -4,7 +4,7 @@
 
 The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](../manual.md#modes)).
 
-- In the `vanilla` and `advanced` modes the game runs in real time, and the requests do not stop the game time. A client sends raw input with the [Commands](#commands). Use them for manual-style UI tests.
+- In the `vanilla` and `advanced` modes the game runs in real time, and the requests do not stop the game time. A client sends raw input with the [Commands](#commands). Use them for UI tests that a person would do by hand in the window.
 - In the `turnbased` mode the game time does not advance between requests. A request is one turn: the game runs until the party can act again, then the reply gives the state and the view as JSON. See [The turn-based mode](#the-turn-based-mode).
 - `state`, `screenshot`, and `quit` work in all modes.
 
@@ -24,7 +24,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](..
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
    ```
 
-   - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is a different file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it.
+   - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When a file at `PATH` exists and is not a socket, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it.
    - The other options of a normal start (`--save`, `--data`, `--mode`, `--filter`) and the start movies are in [manual.md](../manual.md#options).
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
@@ -67,7 +67,7 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 - `<json-fields>`: the other fields of the request as one JSON object. For `act`: the action, then its `args` as one JSON object. For `act_many`: the `actions` as one JSON list.
 - `--socket PATH`: the socket path. Without it, `dm2-play` uses `$DM2_CONTROL`, otherwise `~/.dm2/control.sock`.
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
-- The exit code is 1 when the reply has `"ok": false`, even when the game is not reachable.
+- The exit code is 1 when the reply has `"ok": false`, and when the game is not reachable.
 - A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in a different directory.
 - Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
 
@@ -245,7 +245,7 @@ Writes a PNG file of 320 × 200 pixels: the screen with the palette and the curs
 
 ### quit
 
-Ends the program the same way as a closed window. The exit code is 0 in the game. The game removes the socket file.
+Ends the program the same way as a closed window, with exit code 0. The game removes the socket file.
 
 ```json
 {"cmd": "quit"}
@@ -293,7 +293,7 @@ An `act` turn does these steps:
 2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
 3. It ends when at least 2 steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after 64 steps, and immediately when the game is over.
 
-A game that does not tick (a dialog) ends a turn after 16 frames for each step of the maximum of the turn (64 steps, or the `ticks` of `wait`). The game rules do not change.
+While the game does not tick (a dialog shows), a turn ends after 16 frames per step of its maximum: 64 steps for `act`, the `ticks` of `wait`.
 
 A `wait` turn runs `ticks` game steps (`TURN_WAIT_MAX_TICKS` is 5000). It ends early when news arrives. The real-time [wait](#wait) keeps its own limit of 6000 timer ticks.
 
@@ -375,13 +375,13 @@ The reply of a batch has `ran` (the turns that ran), `stopped`, `error` (only wi
 
 The slot names (`slots[].where`) are in slot number order in [Protocol vocabulary](#protocol-vocabulary). The chest slots are 30 to 37. The slot numbers are in `slots[].slot`; `put_in_slot`, `take_from_slot`, and `look` use them.
 
-`get_view` gives the squares that the party sees now (the seen rule), with `facing`, `darkness`, `squares` (each with `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`), `piles` (the objects of cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. It shows no creature health and nothing behind a wall.
+`get_view` gives the squares that the party sees now ([seen squares](../rules/view.md#seen-squares)). It has `facing`, `darkness`, `squares`, `piles` (the objects of cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. Each square has `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`. It shows no creature health and nothing behind a wall.
 
 `get_map` gives the explored squares of the party map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([view.md](../rules/view.md#seen-squares)).
 
 ### Cells
 
-A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1 are on the party square, cells 2 and 3 on the square ahead, cell 4 is the alcove ahead. `get_view` `piles` uses the same numbers.
+A cell is a number from 0 to 3 in `take_object` and from 0 to 4 in `drop_object`: cells 0 and 1 are on the party square, cells 2 and 3 on the square ahead, cell 4 is the alcove ahead. `get_view` `piles` uses the same numbers.
 
 ### Game over and the modal loops
 
@@ -429,12 +429,12 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 The program plays the start movies and the end movies of [manual.md](../manual.md#start-screens) ([movies.md](../formats/movies.md)). While one of them plays:
 
 - `state` gives `"mode": "movie"` and `"dialog": null`.
-- `click` and `press` skip as a click does ([movies.md](../formats/movies.md#deviations-from-the-original)). `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
+- `click` and `press` skip the movie, as a mouse click in the window does ([movies.md](../formats/movies.md#deviations-from-the-original)). `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
 - `wait` counts game timer ticks. They stand still during a movie, so the reply comes after the movies.
 - `screenshot` saves the game screen (320 × 200), not the movie.
 - `quit` stops the movies and ends the program.
 
-To reach the start menu fast: `click` until `state` gives a different mode. In the `vanilla` mode, the splash and `FTL` take about 8.5 seconds.
+To reach the start menu fast: `click` until `state` gives a different mode. In the `vanilla` mode, the splash picture and the `FTL` movie take about 8.5 seconds.
 
 ## Errors
 
@@ -492,7 +492,7 @@ Each line lists the names of one table of the protocol, in table order.
 - The game state JSON (`state_json_state`) gives object, coin, and action names without the trailing spaces of their [GDAT](../formats/graphics.md#gdat-items) texts (`FINE ROBE ` gives `FINE ROBE`). Other characters stay as GDAT gives them: the rune glyph letters in a potion name (for example `` ` `` to `e` for the power runes) are not mapped.
 - The skill ranks of the JSON are the texts of the skills panel. The panel shows the master ranks with a power rune glyph of the font (`` ` `` and `a` to `e`, characters `0x60` to `0x65`); the JSON gives the upper-case rune name for it: `LO`, `UM`, `ON`, `EE`, `PAL`, `MON` (`LO MASTER FIGHTER`).
 - The slot dialogs (`0x80` load, `0x81` save) do not set the dialog id (`g_dialog.id`); the JSON gives the id and the button texts of the last dialog that `dialog_draw` drew.
-- The JSON names the champion slots by their place in the inventory picture: `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `neck` (10); the slots that the ready hand loads from, `ready_quiver_1` (11) and `ready_quiver_2` (6); the slots that the action hand loads from, `action_quiver_1` (12) to `action_quiver_4` (7, 8, 9); the backpack, `backpack_1` (13, left of the second row) to `backpack_17` (14 to 21 in the first row, 22 to 29 in the second).
+- The JSON names the champion slots by their place in the inventory picture: `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `neck` (10); the slots that the ready hand loads from, `ready_quiver_1` (11) and `ready_quiver_2` (6); the slots that the action hand loads from, `action_quiver_1` (12) to `action_quiver_4` (7, 8, 9); the backpack, `backpack_1` (13, left of the second row), `backpack_2` to `backpack_9` (14 to 21, the first row), `backpack_10` to `backpack_17` (22 to 29, the rest of the second row).
 - The weather of the JSON uses the thresholds of the sky pictures:
   - `clouds` from the cloud cover: `light` from 64, `medium` from 128, `heavy` from 192;
   - `rain` from the sky darkness: `light` from 16, `medium` from 64, `heavy` from 128;
@@ -505,6 +505,6 @@ Each line lists the names of one table of the protocol, in table order.
 - `piles` and `alcove` are the cells of [Cells](#cells) in the last drawn view. While the inventory hides the view, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is false.
 - The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (`door_has_button`, as in the minion map).
 - The map JSON (`state_json_map`) marks a floor square with `_` when the minion map draws its floor ornament without the details option (`mmap_shows_floor_ornament`). It shows no floor sensor without an ornament and no wall feature.
-- A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. DM has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.
+- A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. Dungeon Master (DM) has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.
 - The seen record of a turn (`seen.creature_changes`) gives `before` 1 and `after` 0 for a creature group that the party saw and that the game killed: a DM2 group record holds one creature, and a group that left the view and whose record is free (its link is `THING_NONE`, as `creature_delete_group_at` leaves it) counts as killed.
 - The turn-based `load` starts the loaded game with `play_start_session`, which runs one game step: the game time after a `load` is the time of the save plus 1. A damaged `QUICK.DAT` restores the running game from `QUICK.TMP` the same way, so the failed `load` also adds one game step. It is the one failed request that changes the game; every other failed request changes nothing.

@@ -39,7 +39,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Food, water, sleep
 
-- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
+- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Between -512 and -1, the stamina stays. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
 - Sleep doubles the use of food and water.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
@@ -127,7 +127,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Some items and spells give minions: creatures that work for the party.
 - A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]` (`option` 0-3, `name`: `creatures`, `details`, `items`, `hold`; `on`).
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
-- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by 1 plus the mana of the options that are on. When the champion has no mana left, the map loses its power. Close it when you do not use it.
+- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by (1 plus the mana of the options that are on). When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
 - Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
 
@@ -416,7 +416,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
 - A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` when it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
-- A `flying` entry is `{kind, name}`. A projectile has `kind` `projectile` and the object name, or `spell`. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
+- A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of a different picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists every object of the pile, top first. `take_object` takes `objects[0]`, the same object as `top`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
