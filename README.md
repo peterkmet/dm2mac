@@ -80,6 +80,9 @@ Data formats:
 - [Digital sound effects](docs/formats/sound.md)
 - [Save file format](docs/formats/save.md)
 - [Runtime layer and timing](docs/formats/runtime.md)
+- [Game files and install](docs/formats/game-files.md)
+- [ZIP archives](docs/formats/zip.md)
+- [CD images](docs/formats/cd-image.md)
 
 Game rules:
 
