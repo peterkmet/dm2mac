@@ -63,6 +63,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - A move without a destination (a removal) leaves a stale register in the destination map of the original (`g_party.dest_map`). The port writes the current map; the scenario tests skip `dest_map` after a removal.
 - The search for a discarded record (`dun_get_discarded_thing` in `src/engine/move.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
 - Kept quirks of the original:
+  - `move_follow_square_transitions` follows at most 49 square transitions (teleporters, pits, stairs) of one move: its loop limit `TRANSITION_MAX` is 50, but the loop pre-decrements the counter
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
   - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square; the stairs check of the same step (`move_follow_square_transitions`) then reads that type
   - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index

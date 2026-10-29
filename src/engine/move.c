@@ -982,7 +982,7 @@ Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool c
             g_party.dest_dir =
                 (int16_t)projectile_dir(thing); /* the flight direction: bits 10-11 of the position word */
     }
-    for (int loop = TRANSITION_MAX; --loop;) {
+    for (int loop = TRANSITION_MAX; --loop;) { /* 49 passes, as in the original */
         uint8_t square = dungeon_square(g_party.cur_map, t.x, t.y);
         int square_kind = square_type(square);
         if (square_kind == SQUARE_TELEPORTER) {
