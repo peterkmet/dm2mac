@@ -1,14 +1,14 @@
 # Player manual
 
-How to run DM2Mac and how to play it. The repository has no game files. You supply your own files of Dungeon Master II (PC DOS, English). The items and their values are in [items.md](reference/items.md).
+The repository has no game files. You supply your own files of Dungeon Master II (PC DOS, English). The items and their values are in [items.md](reference/items.md).
 
 ## Run the game
 
 Start the game from a release zip (`DM2Mac-macos-arm64.zip` or `DM2Mac-windows-x64.zip`, see the [README](../README.md#play)), or build it (see [Development](development.md)) and start `build/dm2` on macOS or `build/dm2.exe` on Windows.
 
-The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the program folder (the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. At the first start the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
+The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the program folder (the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
 
-- The Windows build has no console. It writes its messages to `dm2.log` in `game/`.
+The Windows build has no console. It writes its messages to `dm2.log` in `game/`.
 
 ## Options
 
@@ -19,7 +19,7 @@ The game needs 10 files of the PC DOS version of Dungeon Master II (English, 199
 | `--mode NAME` | `advanced` | The game mode: `vanilla`, `advanced`, or `turnbased` (see [Modes](#modes)). The option skips the mode screen. |
 | `--filter NAME` | `none` | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
 | `--saves DIR` | `<data>/DATA` | The folder of the quick save `QUICK.DAT` and of `SETTINGS.TXT`, in all modes. The game does not make the folder. The save slots stay in the `--data` folder. |
-| `--control PATH` | none | The control socket of the LLM mode (see [Start the game](llm/llm-mode.md#start-the-game)). Only on macOS. |
+| `--control PATH` | none | The control socket of the LLM mode (see [llm-mode.md](llm/llm-mode.md#start-the-game)). Only on macOS. |
 
 ```sh
 build/dm2 --mode vanilla
@@ -56,7 +56,7 @@ RESTART in the save menu shows no mode screen and keeps the mode, even the mode 
 
 ## Saved games
 
-Press Alt+S (Option+S on a Mac keyboard) to open the save menu, and save the game in a slot of `<data>/DATA`. Load a slot from the start menu. The slots, the save menu, and the end of the game are in [game-flow.md](rules/game-flow.md#save-and-load); the file format is in [save.md](formats/save.md).
+Press Alt+S (Option+S on a Mac keyboard) to open the save menu, and save the game in a slot of `<data>/DATA`. Load a slot from the start menu. The slots, the save menu, and the end of the game are in [game-flow.md](rules/game-flow.md#save-and-load). The file format is in [save.md](formats/save.md).
 
 ### Quick save and quick load
 
@@ -71,7 +71,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 
 `F9` loads `QUICK.DAT` without a dialog. The message area shows one of these lines:
 
-- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks before the quit, as after a game that is not saved.
+- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks for confirmation, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
 - `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
 - `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `QUICK.TMP`, next to `QUICK.DAT`, before the load, so it does not load. The game goes on.
@@ -86,8 +86,8 @@ The controls of the original game work in all modes except the turn-based mode.
 | Down, keypad 2 | Move back |
 | Left, keypad 4 | Turn left |
 | Right, keypad 6 | Turn right |
-| Shift+Left, keypad 1 | Move left (sideways) |
-| Shift+Right, keypad 3 | Move right (sideways) |
+| Shift+Left, keypad 1 | Move left (strafe) |
+| Shift+Right, keypad 3 | Move right (strafe) |
 | Click on a movement arrow | Move or turn |
 | `1`–`4` | Open the inventory of champion 1–4 |
 | Alt+S (Option+S) | Open the save menu |
@@ -141,7 +141,12 @@ The game has three modes. Without the cheats, the game rules are the same in all
 
 ### Advanced features
 
-The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. A left click on a status box outside the hands puts the object of the leader hand into the inventory of the champion, as a click on the bars does; with an empty leader hand it opens the inventory, as a click on the name does. The hands keep their click. A held key repeats only when the game waits for input, so the party stops when you release the key; in the vanilla mode the party walks on for the queued repeats, as in the original ([movement.md](rules/movement.md#deviations-from-the-original)). An antidote always cures the poison; in the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)). A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
+The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. It also changes these things:
+
+- A left click on a status box outside the hands puts the object of the leader hand into the inventory of the champion, as a click on the bars does. With an empty leader hand it opens the inventory, as a click on the name does. The hands keep their click.
+- A held key repeats only when the game waits for input, so the party stops when you release the key. In the vanilla mode the party walks on for the queued repeats, as in the original ([movement.md](rules/movement.md#deviations-from-the-original)).
+- An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)).
+- A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
 
 ### Automap
 
@@ -171,7 +176,7 @@ A new game starts with an empty automap.
 
 ### Cheats
 
-The advanced mode has six cheats. They switch on the cheat screen (`C` key). A slot save and the quick save keep them in the CHTS block; a load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
+The advanced mode has six cheats. They switch on the cheat screen (`C` key). A slot save and the quick save keep them. A load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
@@ -190,17 +195,17 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 - SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page shows the cheat page.
 - CLOSE: closes the screen.
 
-A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names: the names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
+A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names. The names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
 
 A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, otherwise the leader, otherwise the first living champion. Without a living champion the message area shows `NO CHAMPION CAN CAST`. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
 
 ### Damage hold
 
-The damage star of a hit stays one game step longer in the action area than in the original game. A left click in the action area during this extra step ends it and draws the hand icons; the click then acts as usual. The action delay and the timing of the champion do not change. Failures and hits of zero damage keep the original time.
+The damage star of a hit stays one game step longer in the action area than in the original game. A left click in the action area during this extra step ends it and draws the hand icons. The click then acts as usual. The action delay and the timing of the champion do not change. Failures and hits of zero damage keep the original time.
 
 ### Smooth projectile flight
 
-A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps. On each timer tick (60 Hz) the game draws the view again, with each projectile part of the way from its place at the last game step to its place now. At the game step the projectile shows at its old place; at the end of the step it reaches its new place. The flight shows one game step later than the game rules move the projectile.
+A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps. On each timer tick (60 Hz) the game draws the view again, with each projectile part of the way from its place at the last game step to its place now. At the start of the game step the projectile shows at its old place. At the end of the step it reaches its new place. The flight shows one game step later than the game rules move the projectile.
 
 - A projectile that is new or was not in the view of the game step before shows at its place now.
 - The flight shows only when the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.
@@ -233,6 +238,6 @@ filter=scale2x
 
 The values are `none`, `scale2x`, and `scale3x`. The file is a text file of `key=value` lines. The game ignores a CR at the end of a line, an unknown key, a bad value, and a line of 64 characters or more. A file over 1024 bytes gives the defaults (no filter).
 
-The advanced mode reads the file once on startup of the program and applies the filter. `--filter` and `DM2_FILTER` have priority on startup; the menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
+The advanced mode reads the file once on startup of the program and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
 
 The game writes the file only when the filter changes. It writes `SETTINGS.TMP` first and replaces the file with it. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.

@@ -8,13 +8,13 @@ and Windows (x86-64). It is built from its own Ghidra decompilation of `SKULL.EX
 </p>
 
 This repository contains no game data. You must provide your own copy of Dungeon Master II (PC DOS, English) as a
-folder, a ZIP archive, or a CD image; the game installs the 10 files it needs at the first start. See
+folder, a ZIP archive, or a CD image; the game installs the 10 files it needs on first startup. See
 [Play](#play) and the [Player manual](docs/manual.md#run-the-game).
 
 ## Features
 
 - **Vanilla mode:** The original rules, timing, and interface.
-- **Advanced mode:** A mode screen at the start, WASD movement, quick save and quick load, an automap, an options
+- **Advanced mode:** A mode screen on startup, WASD movement, quick save and quick load, an automap, an options
   menu, and a cheat screen.
 - **Display scaling:** Smooth window scaling with live resize, and the `scale2x` and `scale3x` pixel-art filters.
 - **Turn-based mode (macOS only, `--mode turnbased`):** A program, for example an LLM, plays the game turn by turn
@@ -22,7 +22,7 @@ folder, a ZIP archive, or a CD image; the game installs the 10 files it needs at
 
 ## Play
 
-Download the latest release from the releases page of this repository (`DM2Mac-macos-arm64.zip` or
+Download the [latest release](https://github.com/peterkmet/dm2mac/releases/latest) (`DM2Mac-macos-arm64.zip` or
 `DM2Mac-windows-x64.zip`), extract it, and copy your own DOS files into the extracted folder (the program folder): the DOS folder, a ZIP archive,
 or a CD image (`.iso`, `.img`, `.bin`).
 
@@ -37,7 +37,7 @@ or a CD image (`.iso`, `.img`, `.bin`).
 - **Windows 10+:** Run `dm2.exe`. If Windows SmartScreen warns about an unknown publisher, select "More info",
   then "Run anyway".
 
-At the first start, the game checks the 10 files and installs them into `game/`. The saves go to `game/DATA`. The
+On first startup, the game checks the 10 files and installs them into `game/`. The saves go to `game/DATA`. The
 sources and the checks are in [Game files and install](docs/formats/game-files.md).
 
 To play from source, build the game (see [Build](#build)), put your own DOS files into the project folder, and
