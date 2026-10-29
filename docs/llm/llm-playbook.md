@@ -2,7 +2,7 @@
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
-This page is self-contained for the player agent: you need no other page to play. [llm-mode.md](llm-mode.md) is the reference of the protocol. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
+You need no other page to play. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
 
 ## Your notes
 
@@ -22,7 +22,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## The party
 
 - A new game starts with one champion, Torham. The party has up to 4 champions.
-- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion shows as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. While a candidate shows, the game accepts only `recruit`, `click`, and `key`. Write each mirror and its champion in `party.md`.
+- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion shows as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. Write each mirror and its champion in `party.md`.
 - Each champion has health, stamina, and mana, and the statistics strength, dexterity, wisdom, vitality, antimagic, and antifire.
 - The party has 2 rows: `front_left`, `front_right`, `back_right`, `back_left` (`champions[].position`). The front row fights hand to hand and takes most of the hits from the front. The back row casts spells, throws objects, or shoots. `swap_champions` swaps the places of two champions.
 - The party turns as one. A creature attacks the champions on the side that faces it: a creature behind the party hits the back row.
@@ -46,7 +46,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only the actions `wake`, `click`, and `key` run, and the command `wait`. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
@@ -179,7 +179,6 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 - The user watches the window. Before each `dm2-play` call, write one short line of text: what you do next and why.
 - Each call costs tokens. Use `--brief` for each call. Plan several steps per call: a whole route or a whole fight in one `act_many`, a long rest in one `wait`. Keep your text and your thinking per call short: do not repeat the state, decide the next steps.
 - `act_many` stops early when something happens (see [Batches](#batches)). Check why it stopped before you continue.
-- One `wait` with many ticks stops by itself on damage, a new creature, or a message.
 - A script may compute a route or an action list from `get_map` and send it as one `act_many`.
 - A script must not loop over `get_state`, `get_view`, `wait`, or `act`: each turn is your decision.
 - Ask for `get_map` only when you plan a route: one `get_map` per route plan, not one per step. The `act`, `act_many`, and `wait` responses already contain the state and the view.
@@ -243,9 +242,7 @@ Each call appends a line to `playthroughs/current/coordinator/calls.log`.
 
 ### Batches
 
-A batch runs many turns with one request. Each item is one `act` turn. After each turn the batch stops early when something happens, so that you can look again.
-
-`act_many` runs the items in order. An item is an action name (`"move_forward"`) or an object `{"action": "take_object", "args": {"cell": 2}}`. Separate the items with commas and spaces. A string must not contain a `"` character.
+A batch (`act_many`) runs many `act` turns with one request, one turn per item, in order. After each turn the batch stops early when something happens, so that you can look again. An item is an action name (`"move_forward"`) or an object `{"action": "take_object", "args": {"cell": 2}}`. Separate the items with commas and spaces. A string must not contain a `"` character.
 
 ```sh
 uv run dm2-play --brief act_many '["turn_left", "move_forward", {"action": "take_object", "args": {"cell": 2}}]'
@@ -258,8 +255,8 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 | `stopped` | Reason |
 |---|---|
 | `game_over` | The party died, or the game is complete. |
-| `bumped` | A move did not change the party square. See [Bump](#bump). |
-| `moved`, `turned` | The dungeon moved or turned the party. See [Displacement](#displacement). |
+| `bumped` | A move did not change the party square ([Bump](#bump)). |
+| `moved`, `turned` | The dungeon moved or turned the party ([Displacement](#displacement)). |
 | `damage` | A champion lost health. |
 | `creature` | A creature group is in view that was not in view before the turn. A group that stays in view does not stop the batch again. |
 | `message` | The game printed a new message. |
@@ -293,7 +290,7 @@ When the dungeon changes the party in a different way, the turn has a displaceme
 
 ### Wait
 
-A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends immediately when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, otherwise the news. `ticks` gives the ticks that ran. This also works while the party sleeps: damage wakes the party.
+A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends immediately when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, otherwise the news. `ticks` gives the ticks that ran.
 
 Example: rest until something happens, at most 5000 ticks.
 
@@ -303,7 +300,7 @@ uv run dm2-play --brief wait '{"ticks": 5000}'
 
 ### Seen
 
-An explosion lasts only a few ticks. It can be gone before the turn ends, so the `view` of the response does not show it. A creature can die in the same way. For this reason, an `act`, `act_many`, or `wait` request records what the party sees after each tick.
+An explosion lasts only a few ticks. It can be gone before the turn ends, so the `view` of the response does not show it. A creature can die in the same way. Thus an `act`, `act_many`, or `wait` request records what the party sees after each tick.
 
 The response has `seen: {explosions, creature_changes}` when the record is not empty. Without a record, the response has no `seen` field.
 
@@ -344,7 +341,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
 | `key` | `key` | A raw key: one character, `esc`, `enter`, `space`, `backspace`, `tab`, `f1` to `f10`, `up`, `down`, `left`, `right`. |
 
-`click` and `key` also run while a candidate shows, while the party sleeps, and while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
+`click` and `key` also run while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
 
 ### Slots
 
@@ -425,7 +422,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 
 Visibility rule: the party square is in the view. A square is in the view when the square beside it toward the center is in the view and open, or when the square in front of it (one row nearer) is in the view and open. The rows end at the first center square that blocks sight (a wall, a closed fake wall, or a closed door). Nothing behind it is in the view. A square outside the map is a wall.
 
-The view shows what a player sees. Creature health is not in the view, because the original does not show it.
+The view shows what a player sees. It shows no creature health.
 
 ### Map fields
 
