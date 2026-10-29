@@ -65,6 +65,7 @@
 #define SKY_LIGHTNING_KINDS 3 /* the number of lightning pictures from GFX_SKY_LIGHTNING */
 #define SKY_OBJECT_MAX      5 /* sky objects of the weather, with the end mark */
 #define STORM_STEPS         32
+#define STORM_CURVE_COUNT   4 /* rand_2bits picks the curve of a storm cycle */
 #define LIGHT_LEVEL_MAX     5
 #define FALLOFF_WEATHER_MAX 8
 #define FALLOFF_MAX         5
@@ -123,7 +124,7 @@ static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
 static const int8_t light_by_hour[HOURS_PER_DAY] = {5, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1,
                                                     1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 5};
 /* The storm curves: the change of the storm intensity in each of the 32 storm steps. */
-static const int8_t storm_curves[][STORM_STEPS] = {
+static const int8_t storm_curves[STORM_CURVE_COUNT][STORM_STEPS] = {
     {1,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5,  -5,  -5,  -1 },
     {1,  2,  2,  2,  4,  4,  6,  6,  6,  7,  8,  9,  7,  5,  4,  3,  -3, -4, -5, -7, -9, -8, -7, -6, -6, -6, -4, -4, -2,  -2,  -2,  -1 },
     {10, 18, 22, 26, -4, -4, -4, -4, -4, -4, -4, -4, -3, -3, -3, -3,

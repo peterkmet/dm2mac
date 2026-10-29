@@ -947,7 +947,7 @@ static void create_item(uint16_t sensor)
         return;
     item_set_gdat_index(thing, item_index_gdat_index(item));
     if (sensor_effect(sensor) == SENSOR_KEEP_ITEM)
-        item_set_do_not_discard(thing, 1);
+        item_set_do_not_discard(thing, true);
     SquareCell target = {sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor)};
     transfer_object(thing, sensor, NULL, target, false);
 }
