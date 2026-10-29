@@ -432,7 +432,7 @@ static void add_dirty_rect(Offscreen *o, const int16_t *rect)
     delta = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]);
     if (delta < 0) {
         d[RECT_H] = (int16_t)(d[RECT_H] + delta);
-        if (d[RECT_H] < 1) {
+        if (d[RECT_H] <= 0) {
             o->dirty_count--;
             return;
         }
@@ -441,7 +441,7 @@ static void add_dirty_rect(Offscreen *o, const int16_t *rect)
     delta = (int16_t)((o->rect[RECT_X] + o->rect[RECT_W] - 1) - (d[RECT_X] + d[RECT_W] - 1));
     if (delta < 0)
         d[RECT_W] = (int16_t)(d[RECT_W] + delta);
-    delta = (int16_t)((o->rect[RECT_H] + o->rect[RECT_Y] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
+    delta = (int16_t)((o->rect[RECT_Y] + o->rect[RECT_H] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
     if (delta < 0)
         d[RECT_H] = (int16_t)(d[RECT_H] + delta);
 }
