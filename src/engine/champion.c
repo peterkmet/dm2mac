@@ -118,7 +118,7 @@ int champ_get_stat(const Champion *c, int stat, int which)
     return clamp_int(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
 
-int champ_get_skill_level(int16_t champion_index, int skill, bool with_bonus)
+int champ_get_skill_level(int16_t champion_index, int16_t skill, bool with_bonus)
 {
     if (g_party_sleeping)
         return SKILL_LEVEL_UNTRAINED;

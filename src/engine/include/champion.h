@@ -255,7 +255,7 @@ void champ_init_party_state(void);
    220. */
 int champ_get_stat(const Champion *c, int stat, int which);
 /* The level of skill; with_bonus adds the skill bonus and the base skill's bonus. */
-int champ_get_skill_level(int16_t champion_index, int skill, bool with_bonus);
+int champ_get_skill_level(int16_t champion_index, int16_t skill, bool with_bonus);
 /* value reduced when the stamina is below half of its maximum. */
 int champ_scale_by_stamina(const Champion *c, int value);
 /* The load in 1/10 kg that the champion can carry. */
@@ -301,7 +301,7 @@ void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);
 /* The strength of champion_index with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
-int champ_get_strength(int16_t champion_index, int16_t hand, int skill);
+int champ_get_strength(int16_t champion_index, int16_t hand, int16_t skill);
 /* The dexterity of champion_index with its load, 1 to 100. */
 int champ_get_dexterity(int16_t champion_index);
 /* A luck test against chance; the luck changes by 2. True when the champion is lucky. */

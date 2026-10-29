@@ -142,7 +142,7 @@ static int armor_defense(uint16_t attr, bool sharp)
                  SHARP_FACTOR_SHIFT);
 }
 
-int champ_get_strength(int16_t champion_index, int16_t hand, int skill)
+int champ_get_strength(int16_t champion_index, int16_t hand, int16_t skill)
 {
     Champion *c = champion(champion_index);
     int16_t v = (int16_t)((rand_next() & STRENGTH_ROLL) + champ_get_stat(c, STAT_STRENGTH, STAT_CURRENT));
@@ -156,7 +156,7 @@ int champ_get_strength(int16_t champion_index, int16_t hand, int skill)
         if (weight > heavy)
             v = (int16_t)(v - (weight - heavy) * 2);
     }
-    if ((int16_t)skill >= 0) {
+    if (skill >= 0) {
         v = (int16_t)(v + champ_get_skill_level(champion_index, skill, true) * 2);
         int bonus = 0;
         if (skill == SKILL_FIGHTER || (skill >= SKILL_SWING && skill <= SKILL_PARRY) || skill == SKILL_FIGHT) {

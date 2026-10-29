@@ -48,6 +48,7 @@ class Rules:
         scenario.game.champion_count = C.CHAMPION_MAX
         self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", C.CHAMPION_MAX))
         lib.champ_test_luck.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.champ_get_strength.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
 
     def record(self, thing):
         """(C address, original address) of a thing record."""
