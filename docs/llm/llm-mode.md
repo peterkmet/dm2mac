@@ -279,7 +279,7 @@ Ends the program the same way as a closed window. The exit code is 0 in the game
 - An unknown `cmd` gives `unknown cmd`. A request without `cmd` gives `missing cmd`.
 - `act`, `act_many`, `wait`, and `save` give `game over` after a game over. The other commands still work.
 - `save` gives `answer the candidate first (act recruit)` while a champion candidate shows, and `cannot write the save file` when the write fails. `save` is allowed with no champion.
-- `load` gives `no saved game (use save first)` when `QUICK.DAT` does not exist, `the saved game is damaged` when it does not load, and `cannot write QUICK.TMP: nothing loaded` when the game cannot keep a copy of the running game. The game goes on unchanged. When the copy also does not load, the game is lost (see below).
+- `load` gives `no saved game (use save first)` when `QUICK.DAT` does not exist, `the saved game is damaged` when it does not load, and `cannot write QUICK.TMP: nothing loaded` when the game cannot keep a copy of the running game. The game goes on unchanged, except after `the saved game is damaged`: the game is then restored from `QUICK.TMP`, one game step later (see [Deviations from the original](#deviations-from-the-original)). When the copy also does not load, the game is lost (see below).
 - `load` and `new_game` also work after a game over. Each ends the old game without a question. After `load`, the game time is the time of the save plus 1 (see [Deviations from the original](#deviations-from-the-original)).
 - `new_game` gives `cannot start the new game` when `DUNGEON.DAT` does not load. The game is lost then.
 - A lost game (a failed restore or a failed new game): every command except `load`, `new_game`, and `quit` gives `no game is running: use load or new_game`.
@@ -415,7 +415,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 | `recruit` | `choice` (`join` or `cancel`) | The candidate joins or goes back to its mirror. | `no candidate: click a champion mirror first (click_wall_ahead)`, `choice must be join or cancel` |
 | `sleep` | none | Opens the inventory of the leader through its status box, then sleeps. | `no leader`, `the inventory cannot open now` |
 | `wake` | none | Wakes the party. | `the party cannot wake now` |
-| `swap_champions` | `a`, `b` | The two champions swap cells. | `a and b must be living champions`, `a and b must be different champions` |
+| `swap_champions` | `a`, `b` | The two champions swap cells. | `a and b must be living champions`, `a and b must be different champions`, `close the open panel first (pass)` |
 | `look` | optional `slot`, `champion` (default the open inventory) | Holds the eye on the leader hand object. With `slot`, the hand takes the slot object first and puts it back after. The reply has `look`. | `open an inventory first (open_inventory): the eye is in the inventory`, `the leader hand is empty: take an object, or give champion and slot`, `the leader hand must be empty to look at a slot`, `no object in this slot` |
 | `take_coin` | `slot` 0-5 | One coin of the open money box goes to the leader hand. | `open a money box first (choose_action on the hand that holds it)`, `slot must be 0-5`, `no coin in this slot` |
 | `minion_map_option` | `option` 0-3 | Toggles an option of the open minion map. | `open a minion map first`, `this minion map has no options`, `option must be 0-3` |

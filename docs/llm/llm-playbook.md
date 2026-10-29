@@ -46,7 +46,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only `wake`, `wait`, `click`, and `key` run. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only the actions `wake`, `click`, and `key` run, and the command `wait`. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
@@ -327,7 +327,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `drop_object` | `cell` 0-4 | The leader drops the hand object: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
 | `close_inventory` | none | |
-| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | Swaps the leader hand with the slot. Slots 0 and 1 work without the inventory; the other slots need the open inventory of the champion. See [Slots](#slots). |
+| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | A click on the slot swaps the leader hand with the slot object: `put_in_slot` needs an object in the hand, `take_from_slot` an empty hand. Slots 0 and 1 work without the inventory; the other slots need the open inventory of the champion. See [Slots](#slots). |
 | `eat`, `drink` | none | The champion of the open inventory eats or drinks the leader hand object. |
 | `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Runs action `index` of the action menu of the hand (`champions[].hands`). A money box, a chest, or a minion map opens its panel instead. |
 | `pass` | none | Closes the open action menu or panel. |
@@ -342,7 +342,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `take_coin` | `slot` 0-5 | One coin of the open money box to the leader hand. |
 | `minion_map_option` | `option` 0-3 | Turns an option of the open minion map on or off. |
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
-| `key` | `key` | A raw key (names in [llm-mode.md](llm-mode.md#key)). |
+| `key` | `key` | A raw key: one character, `esc`, `enter`, `space`, `backspace`, `tab`, `f1` to `f10`, `up`, `down`, `left`, `right`. |
 
 `click` and `key` also run while a candidate shows, while the party sleeps, and while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
 

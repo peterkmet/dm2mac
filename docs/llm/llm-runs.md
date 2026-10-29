@@ -17,7 +17,7 @@ The template of the player files is `playthroughs/template/`. The folder layout 
 playthroughs/
   current -> run<N>             a link to the folder of the current run
   run<N>/
-    player/                     the memory of the player (the player sees only this)
+    player/                     the memory of the player
     coordinator/                the coordinator files; calls.log of dm2-play
     game/                       the live save folder: QUICK.DAT (--saves)
     saves/<name>/               a checkpoint: a copy of QUICK.DAT, and of player/ in files/
