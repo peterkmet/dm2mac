@@ -2,7 +2,7 @@
 
 You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
 
-This page tells you how to play. This page is self-contained for the player agent: you need no other page to play. [llm-mode.md](llm-mode.md) is the reference of the protocol. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
+This page is self-contained for the player agent: you need no other page to play. [llm-mode.md](llm-mode.md) is the reference of the protocol. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
 
 ## Your notes
 
@@ -39,14 +39,14 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Food, water, sleep
 
-- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
+- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Between -512 and -1, the stamina stays. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
 - Sleep doubles the use of food and water.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only `wake`, `wait`, `click`, and `key` run. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. While the party sleeps, only the actions `wake`, `click`, and `key` run, and the command `wait`. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
@@ -58,7 +58,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## Skills and training
 
 - Each champion has 4 base skills: `fighter`, `ninja`, `priest`, and `wizard`. `skills` gives the `level` and the `rank` text of each. A skill gets a new level when the champion uses it. A new level prints a message.
-- Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Known from the code: fighter has swing and parry; ninja has steal, fight, throw, and shoot. Hint: the other sub-skills are as in Dungeon Master: fighter thrust and club; priest identify, heal, influence, and defend; wizard fire, air, earth, and water.
+- Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Fighter has swing and parry; ninja has steal, fight, throw, and shoot. Hint: the other sub-skills are as in Dungeon Master: fighter thrust and club; priest identify, heal, influence, and defend; wizard fire, air, earth, and water.
 - Fighter: hand-to-hand attacks. Ninja: fast attacks, throwing, shooting, stealing. Priest: healing, potions, protection. Wizard: attack spells.
 - A new level gives more health, stamina, or mana and better statistics.
 - Before you go to a new level, follow the training rule in `progress.md`.
@@ -127,7 +127,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Some items and spells give minions: creatures that work for the party.
 - A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]` (`option` 0-3, `name`: `creatures`, `details`, `items`, `hold`; `on`).
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
-- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it not powered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by 1 plus the mana of the options that are on. When the champion has no mana left, the map loses its power. Close it when you do not use it.
+- The minion map takes 1 mana of the champion when it opens; a champion without mana opens it unpowered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by (1 plus the mana of the options that are on). When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
 - Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
 
@@ -327,7 +327,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `drop_object` | `cell` 0-4 | The leader drops the hand object: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
 | `close_inventory` | none | |
-| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | Swaps the leader hand with the slot. Slots 0 and 1 work without the inventory; the other slots need the open inventory of the champion. See [Slots](#slots). |
+| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | A click on the slot swaps the leader hand with the slot object: `put_in_slot` needs an object in the hand, `take_from_slot` an empty hand. Slots 0 and 1 work without the inventory; the other slots need the open inventory of the champion. See [Slots](#slots). |
 | `eat`, `drink` | none | The champion of the open inventory eats or drinks the leader hand object. |
 | `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Runs action `index` of the action menu of the hand (`champions[].hands`). A money box, a chest, or a minion map opens its panel instead. |
 | `pass` | none | Closes the open action menu or panel. |
@@ -342,7 +342,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `take_coin` | `slot` 0-5 | One coin of the open money box to the leader hand. |
 | `minion_map_option` | `option` 0-3 | Turns an option of the open minion map on or off. |
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
-| `key` | `key` | A raw key (names in [llm-mode.md](llm-mode.md#key)). |
+| `key` | `key` | A raw key: one character, `esc`, `enter`, `space`, `backspace`, `tab`, `f1` to `f10`, `up`, `down`, `left`, `right`. |
 
 `click` and `key` also run while a candidate shows, while the party sleeps, and while a dialog shows. `state.dialog` gives the `id` and the `buttons` of an open dialog.
 
@@ -416,7 +416,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
 - A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` when it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
-- A `flying` entry is `{kind, name}`. A projectile has `kind` `projectile` and the object name, or `spell`. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
+- A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of a different picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists every object of the pile, top first. `take_object` takes `objects[0]`, the same object as `top`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
