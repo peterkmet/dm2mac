@@ -21,7 +21,7 @@ The sum of all item sizes ends at byte `8639757`. This is the exact size of `gam
 
 ### Language filter (field `F`)
 
-Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". The names of the symbol table agree: `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).
+The symbol table names are `gdat_key_row_matches_language` (`0x3cd2f`) and `g_language` (`0x7576c`).
 
 - `gdat_load_key_table` keeps a row only if `F & 0xf0` is `0` or equal to `g_language`. Other rows are not installed.
 - `g_language` is `0x10` by default. `main` sets `0x30` for `+GLG` and `0x40` for `+GLF`.
@@ -31,8 +31,6 @@ Source: reDM2 `docs/formats.md`, "F IS THE LANGUAGE". The names of the symbol ta
 The port applies the same filter when the key table loads. The default is English (`0x10`).
 
 ### Image compression
-
-Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3e867` and `0x3f71c`. `reference/decomp/SKULL.c` confirms the dispatch.
 
 `gdat_decode_image` (`0x3e867`) reads the first u32 of the raw item as a signed value and shifts it right by 26 (the gate):
 
@@ -56,14 +54,14 @@ Source: reDM2 `docs/formats.md`, section "Compression", and its comments on `0x3
 
 `g_gdat_decompressors` (`0x757a0`) is `g_image_decoders[1]`.
 
-reDM2 measurements for the shipped file:
+Counts for the shipped file:
 
 - 3167 images are 8-bit and use codec 2 or 3. 1003 images are 4-bit. 6 images are not compressed.
 - No shipped image uses codec 1 (LZW).
 - The delta table key `(0,0,8,0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
 - 1442 items have a gate outside `{0, 31, -32}` and are not images. The decode entry does not reject them.
 
-Image sweep of `tests/differential/test_gdat.py` and the facts of the image items:
+Image items:
 
 - The English image keys (type 1) point to 803 4-bit, 3166 8-bit, and 6 uncompressed images, and to 24 items with other gates. All 3969 compressed images decode byte-equal to the original decoders. 167 gate-0 items of types 2, 4, 7, 8, and 9 are not valid 4-bit streams.
 - The 24 image items with other gates are 4-bit images. The gate (top 6 bits of word 1, the high half of the first u32) holds the y offset and the top 6 bits of word 0 hold the x offset of the image (`gdat_get_image_offset`, `0x3eed3`). An 8-bit image holds its offset in bytes 4 and 5. When the top 6 bits of word 0 are `-32`, the offset is the value key `(category, index, 0x0c, entry)`. All 827 4-bit images decode byte-equal.

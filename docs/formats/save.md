@@ -2,11 +2,9 @@
 
 The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads and writes them. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port is `src/engine/save.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
-Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call sequence in `session_load`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
-
 ## Container
 
-| Part | Size (reDM2 saves) | Content |
+| Part | Size | Content |
 |---|---|---|
 | 1 | 42 bytes | Save header |
 | 2 | 43443 bytes | Dungeon image in the `DUNGEON.DAT` section format |
@@ -55,7 +53,7 @@ Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call s
 ## Reader and writer of the port
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
-- After a load, things of types 4 to 15 can sit in other slots than in the file (reDM2 measured 492 of 941). A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
+- After a load, things of types 4 to 15 can sit in other slots than in the file. A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
 - A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original

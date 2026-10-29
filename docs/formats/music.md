@@ -7,10 +7,7 @@ The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graph
 - The songs are 29 GDAT items with key `(4, song, 3, 0)`, `song` = 0 to 28. Each item is a complete HMP file (`HMIMIDIP013195`).
 - `game/TEST.HMP` is byte-equal to song 10 (item 5602, 9645 bytes).
 - `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes. The game reads at most `0x3f` bytes.
-
-The code and the data show this:
-
-- `FUN_0001095d` at `0x10999`: `mov eax,4; mov edx,song; mov ebx,3; xor ecx,ecx; call 0x3c92e` (exists), then `0x3f573` (size) and `0x3ecc7` (pointer). It copies the item to `DAT_000704da` and calls `FUN_0005f6ad` (`sosMIDIInitSong`), `FUN_0005fed2` (`sosMIDIStartSong`), and `FUN_00062012(handle, 0x7f)` (song volume).
+- `music_play_song` (`0x1095d`) looks up the key `(4, song, 3, 0)` with `gdat_entry_exists`, `gdat_entry_size`, and `gdat_get_entry_data`, copies the item to `DAT_000704da`, and calls `hmi_midi_init_song`, `hmi_midi_start_song`, and `hmi_midi_set_song_volume(handle, 0x7f)`.
 - In file order, the song items go from `file+0x7bd597` (song 0) to `file+0x83b356` (song 17). Every item begins with `HMIMIDIP013195`.
 - `FUN_00010010` loads `DATA\SONGLIST.DAT` (`0x70019`) into `DAT_0007ef78`, at most `0x3f` bytes.
 - The main loop calls `FUN_00010af6(DAT_0007f260 >> 16)` once per game step (`FUN_00024691`, `game_loop`). `DAT_0007f260 >> 16` is the current map index. It also indexes the 16-byte map records at `DAT_0007f3c4`.
@@ -26,8 +23,6 @@ The code and the data show this:
 4. A `SONGLIST.DAT` byte 0 starts no song (`FUN_0001095d(0)`), so GDAT song 0 never plays through this path.
 
 Music master volume, `FUN_00010736(level 0..7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
-
-reDM2 (`docs/formats.md`, "T=0x04 IS MUSIC") gives the same key, the same 29 items, and the same match of item 5602 with `TEST.HMP`.
 
 The port reads the songs from GDAT `(4, n, 3, 0)` and follows `FUN_00010af6` with the fade of each game step (`music_update_for_map`, `src/ui/music.c`).
 
@@ -62,7 +57,7 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 
 `SETUP.INI` maps Sound Blaster and Sound Blaster Pro to `0xa002` (OPL2), and Sound Blaster 16 to `0xa009` (OPL3). The README says that DM2 supports FM music only.
 
-The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addresses are relative to `file+0x5c`. The entry at `file+0x560` dispatches through a function table at driver offset `0xbb`. The code is compiled C with `ebp` frames. It is 12.7 KB of plain 32-bit code with no relocations: Ghidra reads the bytes `file+0x5c .. file+0x31e8` as a raw x86-32 binary at base 0 (`tools/ghidra/decompile.sh` without `Watcall.java`, because the driver uses `cdecl`). The OPL3 driver contains the same BNK packing code (`file+0x3efe`).
+The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addresses are relative to `file+0x5c`. The entry at `file+0x560` dispatches through a function table at driver offset `0xbb`. The code is compiled C with `ebp` frames. It is 12.7 KB of plain 32-bit code with `cdecl` frames and no relocations. The OPL3 driver contains the same BNK packing code (`file+0x3efe`).
 
 | File offset | Driver offset | Function |
 |---|---|---|
@@ -121,7 +116,6 @@ Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `
 - Level: `level = ((volume << 7) / 127) * velocity >> 7`, `a = table_0x2f00[level >> 1]`, `TL = 64 - (64 - a) * (64 - instrument TL) / 64` with the instrument KSL. The modulator gets it too when the melodic instrument of the channel program is additive (also on the drum channel).
 - Start state: channel volume 127, pitch bend 64, bend range 2, program 0, voice velocity 127.
 - The sustain bytes of operators 16 to 21 share memory with the low F-number bytes of voices 0 to 5. Controller `0x79` sets the velocity of the voice with the number of the channel.
-- Differential test (`tests/differential/test_music.py`): the driver runs in Unicorn and gets the same events as the port. All 115842 note, controller, program, and bend events of the 29 songs give the same OPL register writes. The test uses the first 1000 events of each song and a list of edge events.
 
 ## Deviations from the original
 

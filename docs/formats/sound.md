@@ -11,8 +11,6 @@ The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md]
 - At load time, `SKULL.EXE` converts the data in place to unsigned 8-bit (XOR `0x80`).
 - The SOS digital driver mixes at 11025 Hz. The game stores the 11127 Hz rate but does not pass it to the driver. The samples play at 11025 Hz (0.9 % slower).
 
-The code and the data show this:
-
 - GDAT flag item `(0,0,0x0b,0)` = `0x7b`. `FUN_0003d1c8` stores `0x7b & 0x20` in `DAT_00071698`.
 - `FUN_0001623b` (sound cache): for each key `(cat, idx, 2, entry)` it sets the 16-byte descriptor at `DAT_0007f194 + n*16`:
   - `+0` data pointer = item + 6 (item + 2 if the `0x20` flag is clear),
@@ -20,7 +18,6 @@ The code and the data show this:
   - `+6` u16 rate = first item word (constant `0x157c` = 5500 Hz if the flag is clear),
   - `+8` link for the cache list.
 - `FUN_000104ea` XORs each byte with `0x80`. The descriptor field `+6` has no reader in the decompiled code.
-- First sound item `(3,0,2,129)`, item 170, at `file+0x4bdd3`: `77 2b 08 01 00 00 7f 6b 20 cd ...`. Item 172 (`file+0x4ddcb`): `77 2b 08 01 00 00 0a 09 08 09 0a ...`. The mean of all data bytes read as signed is 1.02. Read as unsigned it is 119.7. Thus the data is signed.
 - Driver init (`FUN_00010010`): `_DAT_00070482 = 0x2b11` (11025) in the SOS init structure at `0x70472` (buffer size word `0x1000`). Then `FUN_0005bc00` (`sosDIGIInitDriver`).
 - Categories that hold sounds: 15 (192 items), 9 (24), 22 (21), 13 (16), 10 (8), 3 (7), and others.
 

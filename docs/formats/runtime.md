@@ -9,8 +9,6 @@ The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, th
 - The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
 - `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
 
-The files show this:
-
 - `INSTALL.EXE` and `IBMIOP.EXE` are LZEXE 0.91 (`LZ91`) files. Decompressed strings: the copy lists, the SVGA prompt, `IBMIOP SKULL.EXE`, ` +VS`, `DM2.BAT`.
 - The MVE opcode `0x0a` (set video mode) of each movie gives its video mode ([movies.md](movies.md#mve-stream)).
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 10h` with `AX=0x0013`. `SKULL.EXE` has no `int 10h` and no VESA call.
@@ -26,18 +24,7 @@ The effect is certain. The exact use of ` +VS` is unverified, because no static 
 - Digital driver service event: 120 Hz.
 - Game time: `IBMIOP.EXE` calls the game timer callback (`INT 2Dh`, handler `FUN_00010cc2`) on every 4th of its timer interrupts: nominal 60 Hz. Each call adds 1 to `DAT_0007f256`. A game step is due when the sum reaches `DAT_0007f268` = 8. Nominal game step rate: 7.5 Hz (133 ms). `DAT_0007f268 = 1` in one special mode (`FUN_00021d6c`, `command_execute`).
 
-PIT programming in the HMI timer library, `FUN_00062efd` and `FUN_00062f43`:
-
-```text
-00062f1e: 66ba4300   mov dx, 0x43
-00062f22: b036       mov al, 0x36        ; channel 0, lo/hi, mode 3
-00062f24: ee         out dx, al
-00062f25: 66ba4000   mov dx, 0x40
-00062f29: 8b4508     mov eax, [ebp+8]    ; divisor
-00062f2c: ee         out dx, al
-00062f2d: 8ac4       mov al, ah
-00062f2f: ee         out dx, al
-```
+`FUN_00062efd` and `FUN_00062f43` in the HMI timer library write the byte `0x36` (channel 0, low/high byte, mode 3) to port `0x43`, then the low and the high byte of the divisor to port `0x40`.
 
 - `FUN_00010010` calls `FUN_0005ae04(0xf0, 0, 0)` (`sosTIMERInitSystem(240)`): divisor = `0x1234dc / 240` = 4971. It also registers a chain event to the old `INT 8` handler at the BIOS rate (`0xff00`).
 - `FUN_0005af1a` (`sosTIMERRegisterEvent`) lowers the divisor only for a rate above the current rate. Registered rates: `0x78` (120 Hz, digital driver, `FUN_00010010`) and `song[+0x38]` (`sosMIDIStartSong`, `FUN_0005fed2`). `FUN_0005f52b` registers 1500 Hz, but nothing calls it.
@@ -57,7 +44,7 @@ More facts of the `IBMIOP.EXE` timer:
 
 ## Unknown values
 
-Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 2Dh` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot fix it. A measurement in DOSBox can: compare the game clock in two saves with a known real time between them. reDM2 did not measure the real rate either. Manual check C10 compares the game rate of the port with DOSBox.
+Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 2Dh` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot fix it.
 
 ## IBMIOP.EXE runtime layer
 
