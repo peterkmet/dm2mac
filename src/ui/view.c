@@ -1444,6 +1444,8 @@ static void show_rain(void)
     const uint8_t *palette = get_shaded_palette(CAT_SKY, view.gfx_set, entry, 0);
     int offset = rand_next() & RANDOM_BYTE;
     int width = (int16_t)(rain->width * rain->height - TILE_TRIM - (rand_next() & RANDOM_TILE_SPREAD));
+    if (width <= offset)
+        return; /* fix: the tiled blit of a tile row not longer than its start never ends */
     TileFill fill = {.tile = rain->pixels, .tile_width = width, .tile_offset = offset, .colormap = palette};
     gfx_blit_tiled_4to8(&fill, g_view_viewport.pixels, VIEWPORT_WIDTH, rect);
 }
