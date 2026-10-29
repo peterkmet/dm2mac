@@ -193,6 +193,18 @@ static int cell_across(int16_t cell, int16_t dir)
 
 /* ---- Projectile events ---- */
 
+/* The energy step packed into bits 12-15 of a position word. */
+static uint16_t position_pack_step(int step)
+{
+    return (uint16_t)((step & POSITION_STEP_MASK) << POSITION_STEP_SHIFT);
+}
+
+/* The energy step in bits 12-15 of a position word. */
+static int position_step(uint16_t word)
+{
+    return word >> POSITION_STEP_SHIFT;
+}
+
 int projectile_dir(uint16_t projectile)
 {
     return flight_dir(&g_timeline.events[thing_word(projectile, PROJECTILE_EVENT)]);
@@ -221,8 +233,7 @@ void projectile_create(const ProjectileLaunch *launch)
     e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
     put_le16(e.data + PROJECTILE_EVENT_POSITION,
-             (uint16_t)(event_square_dir(launch->x, launch->y, launch->dir) | (launch->step & POSITION_STEP_MASK)
-                                                                                  << POSITION_STEP_SHIFT));
+             (uint16_t)(event_square_dir(launch->x, launch->y, launch->dir) | position_pack_step(launch->step)));
     thing_set_word(t, PROJECTILE_EVENT, (uint16_t)timeline_add_event(&e));
 }
 
@@ -399,16 +410,14 @@ void projectile_destroy(uint16_t projectile, uint16_t *list, int16_t x, int16_t 
                 int cell = thing_cell(projectile);
                 if ((creature_group_info(g)->possessions & POSSESSIONS_KIND_MASK) == POSSESSIONS_DIRECTION)
                     cell = projectile_dir(projectile);
-                move_thing(thing_with_cell(payload, cell), MOVE_DROPPED_PROJECTILE, MOVE_IN_POSSESSIONS, (int16_t)x,
-                           (int16_t)y);
+                move_thing(thing_with_cell(payload, cell), MOVE_DROPPED_PROJECTILE, MOVE_IN_POSSESSIONS, x, y);
             } else {
-                move_thing(thing_with_cell(payload, thing_cell(projectile)), MOVE_DROPPED_PROJECTILE, 0, (int16_t)x,
-                           (int16_t)y);
+                move_thing(thing_with_cell(payload, thing_cell(projectile)), MOVE_DROPPED_PROJECTILE, 0, x, y);
             }
         }
         sndreq_request_with_fallback((SoundCue){item_gdat_category(projectile), item_gdat_index(projectile),
                                                 SOUND_ENTRY_DROP, SOUND_PRIORITY_DROP, SOUND_VOLUME_NORMAL},
-                                     SOUND_FALLBACK, (int16_t)x, (int16_t)y, SOUND_STEP_END);
+                                     SOUND_FALLBACK, x, y, SOUND_STEP_END);
     }
     thing_set_word(projectile, THING_NEXT, THING_NONE);
 }
@@ -583,7 +592,7 @@ static bool hit_champion(Hit *h, int16_t cell)
     if (h->payload == SPELL_POISON_BOLT)
         a.extra_damage = (uint16_t)(a.extra_damage * 2);
     /* the original compares without a wrap: only flights to the north and east can face a champion */
-    if (champion(champ)->dir == projectile_dir(h->projectile) + 2)
+    if (champion(champ)->dir == projectile_dir(h->projectile) + TURN_BACK)
         a.type |= ATTACK_BLOCKABLE; /* the champion faces it */
     if ((int16_t)champ_take_damage(champ, (int16_t)attack, WOUND_PROJECTILE, a.type) && a.extra_damage &&
         rand_next() & ROLL_POISON_CHAMPION)
@@ -613,7 +622,7 @@ static bool hit_door(Hit *h)
             return false;
     }
     uint16_t attack = (uint16_t)(projectile_get_attack(h->projectile, h->payload) + 1);
-    sensor_door_try_destroy(h->x, h->y, (int16_t)(rand_below(attack) + attack), 0, 0);
+    sensor_door_try_destroy(h->x, h->y, (int16_t)(rand_below(attack) + attack), false, 0);
     return true;
 }
 
@@ -772,7 +781,8 @@ static void alert_creatures_ahead(MoveDest dest)
 }
 
 /* The projectile of event e on (*x, *y) flies into the next square in its flight direction: it hits a wall or stairs
-   there and stops, or a missile wall there turns it back (the square stays). */
+   there and stops, or a missile wall there turns it back (the square stays). As in the original, a turn back also
+   writes the direction into the freed event slot of this move, which the projectile word still names. */
 static SquareEntry enter_next_square(TimelineEvent *e, uint16_t projectile, int16_t *x, int16_t *y)
 {
     int dir = flight_dir(e);
@@ -808,7 +818,7 @@ void projectile_process_event(TimelineEvent *event)
     uint16_t projectile = le16(e.data + PROJECTILE_EVENT_THING);
     uint16_t position = le16(e.data + PROJECTILE_EVENT_POSITION);
     int16_t x = location_x(position);
-    int16_t y = (int16_t)location_y(position);
+    int16_t y = location_y(position);
     if (e.type == EVENT_PROJECTILE_MOVE) {
         e.type = EVENT_PROJECTILE_MOVE_2; /* the first move: no hit on the launch square */
     } else {
@@ -818,7 +828,7 @@ void projectile_process_event(TimelineEvent *event)
               hit_square(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile)) ||
              hit_square(PROJECTILE_HIT_CREATURE, x, y, cell, projectile)))
             return;
-        int step = le16(e.data + PROJECTILE_EVENT_POSITION) >> POSITION_STEP_SHIFT;
+        int step = position_step(le16(e.data + PROJECTILE_EVENT_POSITION));
         if (projectile_energy(projectile) <= step) {
             dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
             projectile_destroy(projectile, NULL, x, y);
@@ -921,7 +931,7 @@ void explosion_process_event(TimelineEvent *e)
     if (square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR) {
         int16_t attack = (int16_t)explosion_get_attack(t, dungeon_square_first_thing(g_party.cur_map, x, y));
         if (attack)
-            sensor_door_try_destroy(x, y, attack, 1, 0);
+            sensor_door_try_destroy(x, y, attack, true, 0);
     }
     int type = explosion_type(t);
     if (type != BLAST_MISSILE_WALL && type != BLAST_FIREBALL && type != BLAST_LIGHTNING) {

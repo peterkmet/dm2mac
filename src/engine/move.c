@@ -187,7 +187,7 @@ void dun_set_current_map(int16_t map)
 {
     if (map == g_party.cur_map || map < 0)
         return;
-    g_party.cur_map = (int16_t)map;
+    g_party.cur_map = map;
     if (!g_party.alt_view_active || map != g_party.alt_view_map) {
         g_party.square_x = (int16_t)g_game.party_x;
         g_party.square_y = (int16_t)g_game.party_y;
@@ -453,7 +453,7 @@ static void bash_door(int16_t x, int16_t y, BumpedChampions bumped)
         strength = bash_strength(bumped.first);
     if (bumped.second != bumped.first && bumped.second != -1)
         strength += bash_strength(bumped.second);
-    sensor_door_try_destroy(x, y, (int16_t)strength, 0, 0);
+    sensor_door_try_destroy(x, y, (int16_t)strength, false, 0);
 }
 
 /* The party walks into the creature group ahead: a bump, then a push when the group can be pushed; false when the
@@ -833,7 +833,8 @@ static void transit_pit_marker(Transit *t)
 {
     int marker = 0;
     for (uint16_t th = first_thing(t->x, t->y); th != THING_ENDOFLIST; th = dungeon_next_thing(th)) {
-        t->type = thing_type(th); /* t->type keeps the type of the last thing read, as in the original */
+        /* as in the original, t->type keeps the type of the last thing read; the stairs check reads it */
+        t->type = thing_type(th);
         if (t->type > THING_SENSOR)
             break;
         if (t->type != THING_TEXT)
@@ -963,7 +964,7 @@ Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool c
     if (thing == THING_NONE) {
         if (g_party.push_mode) {
             g_party.push_mode = 0;
-            g_ui.push_mode = 0;
+            g_ui.push_mode = false;
             g_hooks.draw_movement_arrows();
         }
         set_party_square((Location){route.dst_x, route.dst_y});
