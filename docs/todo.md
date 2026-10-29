@@ -4,7 +4,7 @@
 - Manual test J16: complete the final task and check the end of the game (needs long play).
 - Manual test H6: an animated wall ornament with a sound (only on levels 2 and 4).
 - Flaky test: `tests/port/test_modes.py::test_program_starts_in_advanced_unless_vanilla[advanced]` once got `{'error': 'busy'}` from the control socket in a parallel run.
-- Names without a verb (rule 4.1): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value. Functions with one prefix that other modules define (for example `money_*` in `item.c`, `shop_*` in `money.c`) could move to the module of their prefix.
+- Names without a verb (rule 4.1): `dialog_volume`. `sensor_door_value` reads the GDAT value of a door type, not a sensor value.
 - Manual tests: the sound direction next to creatures and doors, and the end of the game with the end sensor. The music and the thunder sound are not checked (dummy audio).
 - `gdat_find` (`data/gdat.c`) scans the 11854 key rows linearly; sort or index the rows if lookups get hot.
 - Automap visibility (`visible_depths` in `engine/seen.c`): a fixed cut by light level; a finer rule if a player needs it.
@@ -26,3 +26,16 @@
 - `docs/reference/reference-crosscheck.md`: the 1405 reDM2 function starts do not equal the table sum 473 + 151 + 27 + 677 + 79 = 1407. Check the count against the reDM2 data.
 - Creature names in the control replies: `state_json_creature_name` writes the creature type number, because the game data has no creature names; a name table needs names from the manual.
 - Item handling (proposal): while the leader hand holds an item, a click on the name of a champion opens the inventory of that champion, and the item stays in the leader hand. Check first what the click does in the original and in the port, and decide if the change is an advanced-mode feature.
+- Fable review: style items for new checks. Each item is a candidate check of `tests/standard/test_standard.py`; sites are at the commit of this entry (the review lines in brackets moved). P8#20 (the shop command tests) needs no work: `test_merchant_commands` (`tests/differential/test_ai_move.py:1066`) covers it.
+  - A hand-written clamp beside `clamp_int`/`min_int` (`data/include/num.h`): `engine/game.c:278`, `engine/item.c:356,398`, `ui/music.c:152`, `ui/sound.c:37,82-85` (P7#7, P14#9). The same form is also in `ui/zone.c:432`, `ui/text.c:240`, `engine/ai.c:2015`.
+  - `abs(` where `abs_int` exists, and an unused C header: `abs(` is now only in `ui/input.c:1968-1975` and `ui/view.c:1049-1631,2722`; the unused `#include <stdlib.h>` is at `engine/champion_damage.c:4` and `data/gfx.c:3` (P5#11, P1#8).
+  - `0`/`1` assigned to a `bool` field or passed to a `bool` setter: `engine/champion.c:376`, `platform/main.c:262,263,686,692` (P5#8, P18#3; the `champion_damage.c` sites are fixed).
+  - `&` beside `||`, `&&` or `?` without parentheses: `engine/dungeon.c:834` (no `&` there now), `ui/input.c:956`, `ui/minion_map.c:203,205,240,360,478`, `ui/ui.c:1349` (P7#19, P13#11, P14#10, P15#15; the lines moved, re-grep for the check).
+  - `++`/`--` inside a call argument: `ui/input.c:1233,2538` (P13#12).
+  - A `#define` that only renames another constant (rule 3.5): `engine/include/aspect.h:63`, `ui/view.c:167,171`, `control/include/state_json.h:18` (P4#13, P16#10, P17#9).
+  - A raw record write outside its accessor: `time_map++` outside `timeline.h` at `engine/sensor.c:1362,1465,1474,1557`, `engine/timeline.c:285`, `engine/projectile.c:870,970` (P11#4); `thing_set_word(…, THING_NEXT, THING_NONE)` outside `dungeon.c`, 18 sites in `ai.c`, `ai_move.c`, `champion_action.c`, `champion_inventory.c`, `creature.c`, `money.c`, `projectile.c`, `save.c`, `sensor.c`, `timeline.c` (P8#10).
+  - A hand-written hand-slot test beside `action_is_hand_slot`: `engine/item.c:509`, `engine/champion_inventory.c:107,265` (P7#8).
+  - One section comment form per file: `engine/move.c` mixes `/* ---- X ---- */` (lines 184, 274, 332, 714, 1355) with `/* X. */` (lines 1507, 1540, 1596, 1631, 1662) (P9#17).
+  - A `CMD_` block out of value order: `ui/include/input.h:23-85` (P13#6).
+  - A header that includes `gdat.h` only for `const Gdat *`: `ui/include/icon.h:10`, `ui/include/zone.h:12` (P13#15, P17#15).
+  - The `rule 1.5` lines of Task 2: engine setters for `ui/minion_map.c` and `ui/ui.c:697-698` (`g_leader_hand.cursor`) (P0#1, P14#1).

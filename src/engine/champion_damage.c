@@ -436,6 +436,7 @@ static void drag_click(int16_t cell, bool finish)
     }
     int from = g_input_drag_state - 1;
     g_input_drag_state = 0;
+    /* a champion holds cell from: a drag starts on a champion, and kill_champion cancels the drag of its cell */
     int16_t dragged = champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
     if (finish)
         champion(dragged)->dir = (uint8_t)g_game.party_dir;
@@ -641,7 +642,7 @@ void champ_apply_time_effects(void)
                 uint8_t *v = c->stats[s];
                 if (v[STAT_CURRENT] < v[STAT_MAXIMUM])
                     v[STAT_CURRENT]++;
-                else if (v[STAT_CURRENT] > v[STAT_MAXIMUM])
+                else if (v[STAT_MAXIMUM] && v[STAT_CURRENT] > v[STAT_MAXIMUM]) /* fix: the original divides by 0 */
                     v[STAT_CURRENT] = (uint8_t)(v[STAT_CURRENT] - v[STAT_CURRENT] / v[STAT_MAXIMUM]);
             }
         }

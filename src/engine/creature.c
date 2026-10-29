@@ -469,6 +469,7 @@ AnimStep creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t 
 AnimStep creature_anim_start(int creature_type, int action, uint16_t start)
 {
     const uint8_t *table = read_creature_data(creature_type, GDAT_TYPE_TABLE, GFX_CREATURE_SEQUENCES, NULL);
+    /* action -1 equals SEQUENCE_END and takes the end entry, as an action without an entry; no caller passes -1 */
     for (;; table += SEQUENCE_ENTRY_SIZE) {
         int16_t a = (int16_t)le16(table);
         if (a == SEQUENCE_END || a == (int16_t)action)
@@ -555,6 +556,9 @@ int creature_cell_mask(uint16_t possessions, int16_t side)
 
 int creature_active_group_event(int active_index)
 {
+    /* fix: the original reads past the table for an index at or past its end */
+    if (active_index < 0 || active_index >= g_active_group_max)
+        return EVENT_NO_SLOT;
     return g_active_groups[active_index].event;
 }
 
@@ -582,6 +586,8 @@ void creature_alloc_active_groups(void)
             n++;
     }
     g_active_group_max = n + ACTIVE_GROUP_SPARE < count ? n + ACTIVE_GROUP_SPARE : count;
+    if (g_active_group_max > GROUP_NOT_ACTIVE) /* fix: the active index is a byte; the original has no cap */
+        g_active_group_max = GROUP_NOT_ACTIVE;
     free(g_active_groups);
     g_active_groups = calloc(g_active_group_max ? g_active_group_max : 1, sizeof *g_active_groups);
     if (!g_active_groups)
@@ -650,7 +656,8 @@ void creature_cancel_update(uint16_t group)
     }
 }
 
-/* Schedules the next update of the group on at for the next game step. */
+/* Schedules the next update of the group on at for the next game step. The group must have an active group (each
+   caller activates it or tests it first); there is no NULL check here. */
 static void schedule_update(Location at)
 {
     uint16_t group = creature_get_group_at(at);
@@ -1254,6 +1261,7 @@ static SummonedGroup create_group(int creature_type, int count, int16_t dir, Loc
             return none;
     }
     uint16_t group = dungeon_unused_thing(THING_GROUP);
+    /* a full active group table keeps the taken group record (THING_NEXT set) unlinked, as in the original */
     if (group == THING_NONE || g_active_group_count >= g_active_group_max) {
         if (minion)
             thing_set_word(projectile, THING_NEXT, THING_NONE);

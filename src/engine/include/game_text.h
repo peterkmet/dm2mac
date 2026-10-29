@@ -66,8 +66,8 @@ extern char g_text_drive_path[TEXT_SIZE];
 #define FIELD_HAND       17
 
 /* Formatted texts */
-/* A number as decimal text; pad right-aligns it in width characters with spaces. The text stays valid until the
-   next call. */
+/* A number as decimal text; pad right-aligns it in width characters with spaces (width at most NUMBER_WIDTH, 4, of
+   game_text.c). The text stays valid until the next call. */
 const char *gtext_format_number(int value, bool pad, int width);
 /* Copies fmt to dst with the format codes replaced; returns dst (TEXT_SIZE bytes). */
 char *gtext_format(const char *fmt, char *dst);

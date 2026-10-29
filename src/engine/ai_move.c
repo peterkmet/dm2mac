@@ -134,7 +134,7 @@
 #define CELLS_FAR              0x0c
 
 /* The slope of a line in 1/64. */
-#define SLOPE_SHIFT    6
+#define SLOPE_UNIT     64
 #define SLOPE_VERTICAL 128 /* the main delta is 0 */
 
 /* Random bits of the sight of a creature. */
@@ -494,7 +494,7 @@ static int16_t line_slope(bool steep, int16_t x1, int16_t y1, int16_t x, int16_t
     int16_t major = (int16_t)(steep ? y - y1 : x - x1);
     if (!major)
         return SLOPE_VERTICAL;
-    return (int16_t)(((steep ? x - x1 : y - y1) << SLOPE_SHIFT) / major);
+    return (int16_t)((steep ? x - x1 : y - y1) * SLOPE_UNIT / major);
 }
 
 int16_t ai_trace_line(Location viewer, Location target, bool (*blocked)(Location at))
@@ -633,6 +633,14 @@ static Location back_off_line(uint8_t *distance_map, Location from, int16_t back
         int16_t py = sy;
         sx += g_dir_dx[back];
         sy += g_dir_dy[back];
+        /* fix: no read outside the distance map; y = -1 with x > 0 and x = width below MAP_SIDE_MAX read another
+           cell, as in the original */
+        int offset = sx * SEARCH_COLUMN_SIZE + sy * SEARCH_CELL_SIZE;
+        if (offset < 0 || offset >= MAP_SIDE_MAX * SEARCH_COLUMN_SIZE) {
+            sx = px;
+            sy = py;
+            break;
+        }
         uint8_t reached = *search_cell(distance_map, sx, sy);
         if (!reached || reached > limit || ai_blocks_line_to_target((Location){sx, sy})) {
             sx = px;
@@ -1143,7 +1151,6 @@ static bool search_square_test(int command, int16_t x, int16_t y)
         return true;
     case SQUARE_TELEPORTER:
         if (square & SQUARE_TELEPORTER_ON) {
-            uint16_t link = THING_NONE;
             /* an open teleporter next to a seamless passage: test the square behind it */
             PassageEnd end;
             if (!dun_get_linked_teleporter_dest(&end, (Location){x + 1, y}) &&
@@ -1151,7 +1158,9 @@ static bool search_square_test(int command, int16_t x, int16_t y)
                 !dun_get_linked_teleporter_dest(&end, (Location){x, y + 1}) &&
                 !dun_get_linked_teleporter_dest(&end, (Location){x, y - 1}))
                 return true;
-            link = first_thing(x, y);
+            uint16_t link = first_thing(x, y);
+            if (thing_type(link) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+                return true;
             if (end.map != teleporter_map(link) ||
                 axis_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
                 return true;
@@ -1220,7 +1229,10 @@ static uint16_t needed_move_flags(int kind, bool no_movers, bool map_changed, in
             g_ai_square_scan.passage = 1;
             return creature_is_native_to_map(g_ai.group_thing, g_ai_square_scan.end.map) ? MOVE_LEVELS : 0;
         } else {
-            return teleporter_scope(cached_first_thing()) & TELEPORTER_SCOPE_CREATURES ? MOVE_TELEPORTER : MOVE_FLOOR;
+            uint16_t tele = cached_first_thing();
+            if (thing_type(tele) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+                return MOVE_FLOOR;
+            return teleporter_scope(tele) & TELEPORTER_SCOPE_CREATURES ? MOVE_TELEPORTER : MOVE_FLOOR;
         }
     case SQUARE_FAKE_WALL:
         if (square & SQUARE_FAKE_WALL_OPEN)
@@ -1657,7 +1669,7 @@ static bool floor_item_in_reach(ItemTest *it)
         if ((uint8_t)g_ai_square_scan.cells[0] == CELL_ANY) {
             /* the cells in reach: the near half of the square, or all of the own square */
             int bits = same ? (d == -1 ? CELLS_ALL : CELLS_NEAR) : CELLS_FAR;
-            int16_t c = same && d == -1 ? 0 : d;
+            int16_t c = d == -1 ? 0 : d; /* fix: the original writes the cell before the table for direction -1 */
             for (int i = 0; i < DIR_COUNT; i++) {
                 g_ai_square_scan.cells[c] = (int8_t)(bits & 1);
                 c = dir_turn(c, TURN_RIGHT);

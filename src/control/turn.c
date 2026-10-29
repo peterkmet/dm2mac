@@ -149,8 +149,9 @@ void turn_drop_reply(void)
 
 static void add_input(InputKind kind, uint16_t value, int16_t x, int16_t y)
 {
-    if (turn.input_count < TURN_INPUT_MAX)
-        turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
+    if (turn.input_count >= TURN_INPUT_MAX)
+        os_fatal("an action lists more than %d inputs", TURN_INPUT_MAX); /* fix: no silent drop of an input */
+    turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
 }
 
 static void add_key(uint16_t code)
@@ -948,9 +949,9 @@ static const char *click(const char *r)
         snprintf(turn.error, sizeof turn.error, "x must be 0-%d and y 0-%d", SCREEN_W - 1, SCREEN_H - 1);
         return turn.error;
     }
-    control_get_string(r, "button", button, sizeof button);
+    bool bad = control_find_value(r, "button") && !control_get_string(r, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
-    if (!right && strcmp(button, "left"))
+    if (bad || (!right && strcmp(button, "left"))) /* fix: a present but bad button is no left click */
         return "button must be left or right";
     add_click((int16_t)x, (int16_t)y, right ? INPUT_BUTTON_RIGHT : INPUT_BUTTON_LEFT);
     return NULL;

@@ -31,7 +31,7 @@ BIT_OPERATOR = r"(?:<<|>>|(?<![&|])[&|^](?![&|]))=?"
 MASK = r"0x(?:0?[fF]|[fF]{2}|[fF]{4})[uU]?\b"
 MASK_OPERAND = re.compile(rf"{BIT_OPERATOR}\s*\(?\s*{MASK}|\b{MASK}\s*\)?\s*{BIT_OPERATOR}")
 STRTOL_BASE = re.compile(r"\bstrto\w*\s*\([^;]*?,\s*10\s*\)")
-DECOMPILER = re.compile(r"\b(?:[uisbcp]Var\d+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
+DECOMPILER = re.compile(r"\b(?:[a-z]{1,3}Var\d+|[a-z]{1,2}Stack_[0-9a-f]+|extraout_\w+|unaff_\w+|local_[0-9a-f]+|arg_[0-9a-f]+|param_\d+|in_[AD][0-7]\w*|CONCAT\d+|DAT_[0-9a-f]+|FUN_[0-9a-f]+)\b")
 RECORD = re.compile(r"\bdungeon_thing_record\(")
 CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};()]*\{([^}]*)\}")
@@ -99,7 +99,8 @@ def code_lines(path):
             yield number, line
 
 
-TABLE_START = re.compile(r"\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{")
+TABLE_START = re.compile(r"^(?:[^\s#]|[ \t]+static\b)[^\n=;{}()]*?\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{"
+                         r"|^[ \t]+\}\s*([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{", re.M)
 
 
 def tables(path):
@@ -118,7 +119,7 @@ def tables(path):
         first = text.count("\n", 0, equals) + 1
         end = i
         for n in range(first, text.count("\n", 0, i) + 2):
-            found.setdefault(n, (m.group(1), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
+            found.setdefault(n, (m.group(1) or m.group(2), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
     return found
 
 
@@ -410,7 +411,7 @@ def test_function_names_are_short():
                 continue
             seen.add((rel(path), f.name))
             prefix = "" if f.static and path.suffix == ".c" else next((p for p in prefixes if f.name.startswith(p)), "")
-            words = f.name[len(prefix):].split("_")
+            words = f.name[len(prefix):].strip("_").split("_")
             if len(f.name) > MAX_NAME_CHARS or len(words) > MAX_NAME_WORDS:
                 found.append(f"name {key}  | {len(f.name)} characters, {len(words)} words after {prefix or 'no prefix'}")
     report("name", found)
@@ -527,15 +528,15 @@ def test_no_packed_fields_at_call_sites():
     report("packed", found)
 
 
-BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32", "read_u32")
-BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32|read_u32)\w*)", re.M)
+BYTE_ORDER_HELPERS = ("le16", "le32", "be16", "put_le16", "put_le32", "put_be32")
+BYTE_ORDER_MACRO = re.compile(r"^\s*#\s*define\s+((?:le16|le32|be16|put_le16|put_le32|put_be32)\w*)", re.M)
 BYTE_SHIFT = re.compile(r"\]\s*\)?\s*<<\s*(?:8|16|24)\b|>>\s*(?:8|16|24)\s*\)?\s*&\s*0x[fF]{2}\b")
-BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?uint8_t\s*\*\s*\)")
+BYTE_CAST = re.compile(r"\(\s*(?:const\s+)?(?:u?int8_t|char)\s*\*\s*\)")
 
 
 def test_byte_order_helpers_only_in_le_header():
     """The byte order helpers and the shifts that join or split bytes stand only in data/include/le.h; a cast to
-    (uint8_t *) or (const uint8_t *) stands only in data/."""
+    (uint8_t *), (int8_t *) or (char *), also with const, stands only in data/."""
     ok = allowed()
     found = []
     for path in sources():
@@ -655,15 +656,17 @@ def test_tables_are_const():
     report("const", found)
 
 
-PLATFORM_CODE = re.compile(r"^\s*#\s*if.*\b_WIN32\b|^\s*#\s*include\s*<(?:unistd|dirent|strings|execinfo|fcntl|poll"
-                           r"|windows|direct|io)\.h>|^\s*#\s*include\s*<(?:sys|arpa|netinet)/", re.M)
-STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\bexit\s*\(")
+PORTABLE_HEADERS = {"stdbool", "stddef", "stdint", "stdio", "stdlib", "string", "ctype", "math", "stdarg", "inttypes",
+                    "opl3/opl3"}
+PLATFORM_CODE = re.compile(r"^\s*#\s*(?:el)?if.*\b_WIN32\b|^\s*#\s*include\s*<(?!(?:" + "|".join(sorted(PORTABLE_HEADERS))
+                           + r")\.h>)", re.M)
+STDERR_OR_EXIT = re.compile(r"\bfprintf\s*\(\s*stderr\b|\b(?:exit|abort)\s*\(")
 NONDETERMINISM = re.compile(r"\b(?:s?rand|time|clock)\s*\(")
 
 
 def test_platform_code_only_in_platform():
-    """Operating system headers, rand, srand, time and clock only in platform/; stderr and exit only in platform/
-    and data/os.c."""
+    """Headers other than the portable C ones, rand, srand, time and clock only in platform/; stderr, exit and abort
+    only in platform/ and data/os.c."""
     ok = allowed()
     found = []
     for path in sources():
@@ -690,10 +693,12 @@ def engine_globals():
 
 
 def test_ui_does_not_write_engine_variables():
-    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function)."""
+    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function):
+    no assignment, increment, memcpy, memmove or memset into it, and no pointer to it without const."""
     alt = "|".join(sorted(engine_globals(), key=len, reverse=True)) or "(?!)"
     target = rf"\b(?:{alt})\b(?:\s*\[[^\]]*\]|\s*(?:\.|->)\s*\w+)*"
     write = re.compile(rf"(?:\+\+|--)\s*{target}|{target}\s*(?:\+\+|--|(?:[-+*/|&^]|<<|>>)?=(?!=))")
+    copy_or_alias = re.compile(rf"\bmem(?:cpy|move|set)\s*\(\s*&?\s*{target}|^(?![^=]*\bconst\b)[^=]*\*\s*\w+\s*=\s*&\s*{target}")
     ok = allowed()
     found = []
     for path in sorted([*(SRC / "ui").glob("*.c"), *(SRC / "control").glob("*.c")]):
@@ -701,7 +706,8 @@ def test_ui_does_not_write_engine_variables():
             continue
         owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
         for n, line in code_lines(path):
-            if all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line)):  # no write, or only redraw flags
+            if (all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line))  # no write, or only redraw flags
+                    and not copy_or_alias.search(line)):
                 continue
             key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
             if ("engine-write", key) not in ok:
@@ -819,9 +825,17 @@ def base_header(path):
                 and (path.stem == h.stem or path.stem.startswith(h.stem + "_"))), key=lambda h: len(h.stem), default=None)
 
 
+def main_suffixes():
+    """The part file suffixes that IncludeIsMainRegex of .clang-format lists."""
+    regex = re.search(r"^IncludeIsMainRegex: '(.*)'", (ROOT / ".clang-format").read_text(), re.M).group(1)
+    return set(re.search(r"\(_\(([^)]*)\)\)\?", regex).group(1).split("|"))
+
+
 def test_one_public_header_per_module():
-    """A .c file belongs to a public header; a module has one public header."""
+    """A .c file belongs to a public header; a part file has a suffix that IncludeIsMainRegex lists; a module has
+    one public header."""
     ok = allowed()
+    suffixes = main_suffixes()
     found = []
     for path in sources():
         if ("module", rel(path)) in ok:
@@ -829,6 +843,9 @@ def test_one_public_header_per_module():
         own = public_header(layer_of(path), path.stem.removesuffix("_internal"))
         if path.suffix == ".c" and not base_header(path):
             found.append(f"module {rel(path)}  | no header")
+        elif path.suffix == ".c" and path.stem != (main := base_header(path).stem) and (
+                part := path.stem.removeprefix(main + "_")) not in suffixes:
+            found.append(f"module {rel(path)}  | the suffix _{part} is not in IncludeIsMainRegex")
         elif path.suffix == ".h" and path.stem.endswith("_internal"):
             if not own.exists():
                 found.append(f"module {rel(path)}  | an internal header without its public header")
@@ -955,7 +972,7 @@ def test_function_comments():
         lines = path.read_text(errors="replace").splitlines()
         found += [f"comment {rel(path)}  | {name}: no comment above the static definition"
                   for name, start, end, static in definitions(path)
-                  if static and end - start - 1 > TRIVIAL_BODY_LINES and not comment_above(lines, start)]
+                  if static and end - start - 2 > TRIVIAL_BODY_LINES and not comment_above(lines, start)]
     report("comment", found)
 
 
@@ -1092,22 +1109,21 @@ def defines(path, name):
 
 
 def test_exports_have_users():
-    """An exported function or global has a use outside its module, or the test marker on its declaration; a name of
-    an _internal.h header has a use outside the file that defines it."""
+    """An exported function or global has a use outside its module and outside the file that defines it, or the test
+    marker on its declaration; a name of an _internal.h header has a use outside the file that defines it."""
     used_in = {path: set(IDENTIFIER.findall(strip(path.read_text(errors="replace")))) for path in sources()}
     ok = allowed()
     found = []
     for header in headers():
         internal = header.stem.endswith("_internal")
-        own = module_files(header)
         lines = header.read_text(errors="replace").splitlines()
         text = strip("\n".join(lines))
         names = [(f.name, f.line) for f in functions(header) if not f.static]
         names += [(n, text.count("\n", 0, m.start()) + 1) for m in EXTERN_VARIABLE.finditer(text) for n in extern_names(m.group(1))]
         for name, line in names:
             key = f"{rel(header)}:{name}"
-            if internal:
-                own = {header} | {p for p in module_files(header) if p.suffix == ".c" and defines(p, name)}
+            defining = {p for p in (module_files(header) if internal else sources()) if p.suffix == ".c" and defines(p, name)}
+            own = {header} | defining if internal else module_files(header) | defining
             if ("dead-api", key) in ok or any(name in ids for p, ids in used_in.items() if p not in own):
                 continue
             if TEST_MARKER not in lines[line - 1] + comment_above(lines, line):

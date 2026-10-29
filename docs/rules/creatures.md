@@ -41,6 +41,8 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`, `creature_alert`); the port reads none (`creature_alert` returns)
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
+  - `creature_active_group_event` with an active index at or past the end of the table (the arrival of a moved group, `arrive_group` in `src/engine/move.c`; no caller passes one): the original reads past it, the port gives no event
+  - the active group table of a dungeon with more than 155 walking groups (`creature_alloc_active_groups` in `src/engine/creature.c`; no shipped dungeon has them): the original allocates an entry for each walking group plus 100 and gives index 255 (no active group) and wrapped indices to the groups past 254, the port allocates at most 255 entries
   - `creature_deactivate_all_groups` stops at the end of the active group table: the original loops while the active group count is not 0
   - `creature_get_party_distance` with a square outside the distance map (x below 0, y outside 0 to 31): the original checks only x below the map width and reads outside the map, the port returns -1
   - `creature_current_step_acts`, `ai_begin`, and `creature_process_event` for a non-static group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group (`creature_process_event` ends the update)
@@ -51,11 +53,16 @@ The rules of the creatures: the creature data, the updates of the creature group
   - an item filter value outside the class bitmap (a negative or large index of `ai_thing_matches_filter`): the original reads outside the bitmap, the port finds no match (an inverted filter matches)
   - the level counts of the cost search (`search_entered`): the original counts past its 51 levels into its own variables, the port counts in a table of 256 levels
   - the move command of the path check of `ai_plan_path`: the original reads a byte after the path buffer that nothing writes, the port uses 0 (`PATH_CHECK_COMMAND`)
+  - the back-off of a ranged attack along a line out of the distance map (`back_off_line` in `src/engine/ai_move.c`): the original reads before or after the distance map, the port stops the line on the last square inside the map; any cell before the map (x below 0, and x = 0 with y = -1) or after it (x = 32 on a map 32 wide, and x = 31 with y = 32) stops it
+  - a melee attack of a creature info with random champions and two champions together (`melee_attack_party` in `src/engine/ai.c`; no shipped creature info has both): when no living champion is left to pick, the original attacks champion -1, the port skips the pick
+  - the AI condition "health below" (`test_condition` in `src/engine/ai.c`) of a creature info with a maximum health of 0 (no shipped creature info has one): the original divides by 0, the port divides by 1
+  - the cells in reach of a floor item (`floor_item_in_reach` in `src/engine/ai_move.c`) for another square and direction -1 (no caller passes both): the original writes the cell byte before its table, the port starts at cell 0
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
-- `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
+- `magic_add_light` does nothing for a light kind other than the three that exist (the original adds a light event with an unset delay and reads past its light power table; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
-  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does
+  - a new group when the active group table is full (`create_group` in `src/engine/creature.c`): the group record that the creation took stays taken and is in no square, so no later creation or discard can use it
+  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does, with the random ornament count, the size and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
   - a projectile move also writes the direction into its freed event
@@ -73,5 +80,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
   - the action "move two steps" in phase 2: when the fall of the group waits or the group leaves the dungeon, the AI position takes the destination of the last move inside that move (`g_party.dest_*`; for example a dropped possession or the removal of the group), not the square of the group
+  - the back-off of a ranged attack along a line (`back_off_line` in `src/engine/ai_move.c`) has no map test: a step to y = -1 with x above 0 reads the last cell of the column before, and a step to x = map width on a map less than 32 wide reads a cell of the next column of the distance map, and a step to y = 32 on a map 32 high (x below 31) reads the first cell of the next column
   - `ai_free_cached_data` frees the plan state of the group whose index is the OR of the freed group and the group of the update in progress, so during a creature update it can free the plan state of another group, which then plans again
+  - the action "pick up items" with `SUB_REPEAT` (`act_pick_up_items` in `src/engine/ai.c`) ends after one item: the item joins the end of the possessions before the loop takes the next thing
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

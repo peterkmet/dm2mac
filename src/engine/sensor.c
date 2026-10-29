@@ -740,7 +740,7 @@ static void run_activation(const TimelineEvent *e, uint16_t sensor, bool wall)
         if (sensor_flag(sensor, SENSOR_AUDIBLE)) {
             int16_t x = e->data[EVENT_X];
             int16_t y = e->data[EVENT_Y];
-            if (wall)
+            if (wall) /* as in the original: the effect byte is the wall side */
                 wall_sound_square(&x, &y, e->data[EVENT_EFFECT] & DIR_MASK);
             uint16_t ticks = (uint16_t)(gdat_entry_index(gdat_current(), ornament_category(wall),
                                                          wall_or_floor_ornament(sensor, wall), GDAT_TYPE_VALUE,

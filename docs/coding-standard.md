@@ -39,9 +39,12 @@ that this port cannot use keeps its number with "No rule in dm2".
    (`redraw_delay`, `flags`, `mode`) and `redraw_changes` (`redraw_delay`, `dirty`, `mode`, `result`). The action
    area also closes the open hand and opens a chest or a minion map when the panel redraws; `haste_jitter` takes
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its allowlist
-   lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. `ui/` and `control/` do
-   not write through a pointer that an engine query returns, except into the fields that this rule allows (review
-   only). [engine-write]
+   lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. Until the engine has
+   setters for them, the minion map (`ui/minion_map.c`, `g_minion_map`) and `ui_render_hand_icon` (`ui/ui.c`,
+   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields (the setters: [Todo](todo.md), "Fable review: style items for new checks"). A write is an assignment, an
+   increment or a decrement, a `memcpy`, `memmove` or `memset` into the global, or a pointer to the global without
+   `const`. `ui/` and `control/` do not write through a pointer that an engine query returns, except into the fields
+   that this rule allows (review only). [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it
    calls `control/`, never the reverse. [platform]
 7. A module is one public header `<module>.h`, the files `<module>.c` and `<module>_<part>.c`, and an optional
@@ -82,9 +85,9 @@ that this port cannot use keeps its number with "No rule in dm2".
    forward-declared. [include for an unused header; the forward declaration review only]
 3. A `.c` file includes exactly the headers it uses. A `.h` and a `.c` file use one order: the own header (in a
    `.c`); C standard headers; third-party headers; project headers, alphabetical. `.clang-format` sorts them by the
-   angle-bracket and quote forms. There is no umbrella header per layer. [format, include]
+   angle-bracket and quote forms. There is no umbrella header per layer. [format, include; the rest review only]
 4. The one-line comment of a public function is in the header above its prototype. [comment]
-5. A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration or `; exported for the tests.` at the end of the comment above it.
+5. A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration or the words `exported for the tests` anywhere in the comment above it (a final period is optional).
    [dead-api]
 
 ## 3. Constants
@@ -95,9 +98,9 @@ that this port cannot use keeps its number with "No rule in dm2".
    (an (x, y) pair, RGB, a 4D vector). Every other number is a named constant, also in an array size and in a
    loop bound. The base argument of `strtol` and its siblings is a plain number. The names cover thing types
    (`THING_DOOR`), no thing (`THING_NONE`) and the end of a list (`THING_ENDOFLIST`), directions, cells, champion
-   slots (`SLOT_HAND_READY`), statistics, skills, square types, sensor types, door states, timeline event types,
+   slots (`SLOT_READY_HAND`), statistics, skills, square types, sensor types, door states, timeline event types,
    commands, and the systems of Dungeon Master II: money types, minion types (`MINION_GUARD`), weather states,
-   and the states of the Skullkeep machines. [hex, decimal; a `2` outside `< 2;`: review only]
+   and the states of the Skullkeep machines. [hex, decimal; a `2` outside `< 2;` and the forms the patterns miss, such as `f(3)`, `case 3:`, `return 3;`: review only]
 2. A constant is `#define NAME value` with the value written out; a negative value is in parentheses:
    `#define COLOR_NONE (-1)`. A closed set of symbolic values (a result type of rule 6.1, a mode, a state) is a
    named `enum` type whose members share one first word (`MOVE_DONE`, `MOVE_WAIT` of `MoveResult`), if no
@@ -111,8 +114,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    line, with the same digit width. A block of ids from the data files and from `SKULL.EXE` is hex too: GDAT
    categories and entries, sound entries, priorities and volumes, event types, command codes, key codes. A
    block of counts, sizes, ticks, percentages, coordinates, distances, divisors and thresholds is decimal in
-   every line. A block never mixes the two. A shift count is a count: it stands in its own decimal block next to its mask block (`GLOBAL_BIT_SHIFT` and `GLOBAL_BIT_MASK`). A table row uses one notation. [notation; the table row review
-   only]
+   every line. A block never mixes the two. A shift count is a count: it stands in its own decimal block next to its mask block (`GLOBAL_BIT_SHIFT` and `GLOBAL_BIT_MASK`). In a table of structs the notation is per field: a flag field is
+   hex and a count field is decimal in every row. [notation; the table fields review only]
 
    ```c
    /* Door flags of the door record. */
@@ -134,7 +137,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 7. Graphic, zone, icon and string numbers live in `data/ids.h`, grouped by kind (`GFX_` for the graphic entry
    numbers of `GRAPHICS.DAT`, `ZONE_`, `ICON_`, `TEXT_`), sorted by value, one name per value. A zone that a
    rule passes to a hook is in `data/ids.h` too; `engine/` includes it. The categories of the file format
-   (`CAT_`, `GDAT_`) stay in `data/gdat.h`. `GFX_` names every entry number of `GRAPHICS.DAT`, the text entries
+   (`CAT_`, `GDAT_`) stay in `data/gdat.h`. The prefixes `GFX_`, `ZONE_`, `ICON_` and `TEXT_` mark the id spaces of `ids.h`; an offset added to an id has no id prefix. `GFX_` names every entry number of `GRAPHICS.DAT`, the text entries
    included; `TEXT_` names the string ids; one block per id space (category and type). [duplicate; one name per
    value: review only]
 8. No byte offset, event number or original address in a name. [numbered]
@@ -143,16 +146,15 @@ that this port cannot use keeps its number with "No rule in dm2".
    site, and no shift by a `*_SHIFT` constant of another module. [packed]
 10. The byte order helpers `le16`, `le32`, `put_le16`, `put_le32` (little-endian, the DOS file formats) and
     `be16`, `put_be32` (big-endian, the PNG files) are `static inline` functions in `data/le.h` only. No other file
-    defines a function or a macro whose name starts with `le16`, `le32`, `be16`, `put_le16`, `put_le32`, `put_be32` or
-    `read_u32`. [byteorder]
+    defines a function or a macro whose name starts with `le16`, `le32`, `be16`, `put_le16`, `put_le32` or `put_be32`. [byteorder]
 11. The record layout belongs to `engine/dungeon.h`: the field offsets and bits. The named accessors of a thing
     type can be in the header of its module (`sensor.h`, `projectile.h`, `item.h`, `ai.h`); they use the field
     constants of `dungeon.h`. No file outside `engine/dungeon.c` and `engine/include/dungeon.h` calls
     `dungeon_thing_record(`. Exception: the save image (`engine/save.c`) packs and unpacks whole thing records
     bit by bit; its allowlist line gives `rule 3.11`. [record]
 12. Read the data files (`DUNGEON.DAT`, `GRAPHICS.DAT`, saves) at run time; do not copy their content into the
-    source. A table that exists only in `SKULL.EXE` goes into the source as a named `const` array with a
-    one-line comment that tells its game meaning; no unexplained number or string. The PC keyboard scan code
+    source. A table that exists only in `SKULL.EXE`, or a driver table of `HMIMDRV.386`, goes into the source as a named `const` array with a
+    one-line comment that tells its game meaning (one comment may stand over a group of adjacent tables); no unexplained number or string. The PC keyboard scan code
     tables (`control/control.c`, `platform/main.c`) stay in the source too. The allowlist names each file of
     these tables with the key `<file>:<table>` and the reason `rule 3.12`; the key covers the initializer
     from the `=`, not the array size before it. [decimal, hex, allowlist]
@@ -184,7 +186,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 ## 5. Types and values
 
 1. One value has one type on its whole path (field, parameter, local, return value), so that no cast is needed
-   to pass it on. Game values keep the 16-bit types of the original. The type of each game value kind: [type
+   to pass it on (a fixed-width field that stores an enum value, rule 3.2, needs none). Game values keep the 16-bit types of the original. The type of each game value kind: [type
    for the parameter names `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks`, `square`
    in the public prototypes and in the static functions; the rest review only]
 
@@ -316,7 +318,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
 7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
    between bytes and a struct variable: read and write the fields through the byte order helpers of rule 3.10.
-   Outside `data/`, no cast to `(uint8_t *)` or `(const uint8_t *)`.
+   Outside `data/`, no cast to `(uint8_t *)`, `(int8_t *)` or `(char *)`, also with `const`.
    Exception: a packed struct that mirrors a record or a memory layout of `SKULL.EXE` that the save or the
    differential tests use; its allowlist line names the struct as `<file>:<type>` and gives `rule 10.7`. A byte
    cast that reads no value of more than one byte; its allowlist line names the file and gives `rule 10.7`.
@@ -329,7 +331,7 @@ original in the emulator), `tests/port/` (the port alone), `tests/tools/` (the P
 `tests/standard/` (this standard), and the helpers in `tests/dm2test/`. The rules that the standard check
 enforces: [tests]
 
-1. A test module imports helpers from `tests/dm2test/` only, never from another test module or from
+1. A test module imports helpers from `tests/dm2test/` and the tools from `tools/dm2tools/` only, never from another test module or from
    `conftest`.
 2. A C constant comes from the headers through `dm2test.constants`; no hand-mirrored value. [review only]
 3. A test calls the accessors of the port; it does not decode a record by bit shifts. [review only]
@@ -354,14 +356,14 @@ their allowlist key:
 | Key | Fails on |
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
-| `platform` | an operating system header or `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
-| `engine-write` | a write of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
-| `module` | a `.c` file without its header, a second public header of one module |
+| `platform` | a header other than the portable C headers and `opl3/` outside `platform/`; `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr`, `exit(` or `abort(` outside `platform/` and `data/os.c` |
+| `engine-write` | a write (`=`, `++`, `--`, `memcpy`, `memmove`, `memset`, a pointer without `const`) of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
+| `module` | a `.c` file without its header, a part file whose suffix `IncludeIsMainRegex` of `.clang-format` does not list, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
 | `include` | a project header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
-| `dead-api` | an exported name with no use outside its module and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
+| `dead-api` | an exported name with no use outside its module and the file that defines it, and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
 | `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `(`, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
@@ -369,7 +371,7 @@ their allowlist key:
 | `duplicate` | a constant name defined in more than one header or `.c` file |
 | `numbered` | an event number, a byte offset or an address in a name |
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
-| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `be16`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)` or `(const uint8_t *)` cast outside `data/` |
+| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `be16`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)`, `(int8_t *)` or `(char *)` cast, also with `const`, outside `data/` |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
 | `name` | a function name above four words after the prefix or above 40 characters |
 | `static-prefix` | a static function with a module prefix |
@@ -377,7 +379,7 @@ their allowlist key:
 | `static-local` | a `static` declaration without `const` inside a function |
 | `const` | a file-scope array with an initializer list and without `const` that no function writes |
 | `global` | an `extern` without `g_`, a file-static with `g_` |
-| `decompiler` | a decompiler name |
+| `decompiler` | a decompiler name (`uVar1`, `puVar3`, `uStack_2c`, `extraout_EDX`, `local_10`, `param_2`) |
 | `ordinal` | `_ordinal` or `_plus_1` in a name |
 | `type` | a parameter `champion_index`, `cell`, `dir`, `map`, `slot`, `x`, `y`, `thing`, `ticks` or `square` in the headers of a layer or in a static function of a `.c` file with another type than the table of rule 5.1 (a pointer to the table type passes) |
 | `long` | a function above 60 lines without an allowlist reason |

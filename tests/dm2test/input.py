@@ -5,6 +5,8 @@ import struct
 
 import pytest
 
+from dm2test import constants as C
+from dm2test.interface import c_screen, diff
 from dm2test.scenario import Scenario
 
 
@@ -151,3 +153,54 @@ class Loop(Scenario):
 
 
 CHAMPION_UNCOMPARED = ((0x32, 2),)  # redraw flags
+
+
+# The click feedback of the original: the script of a command and its run.
+INPUT_GET_CLICK_FEEDBACK_SCRIPT, INPUT_RUN_CLICK_FEEDBACK = 0x20EE0, 0x21394
+G_CURRENT_COMMAND, G_CLICK_FEEDBACK_SCRIPT, G_CLICK_FEEDBACK_DELAY = 0x7F4CE, 0x7F47C, 0x7F52A
+G_INPUT_DISABLED, G_COMMAND_QUEUE_HEAD, G_COMMAND_QUEUE_TAIL = 0x7F50A, 0x7F50E, 0x7F516
+G_FEEDBACK_WAITING, G_FEEDBACK_BUSY = 0x7F474, 0x7F488
+
+
+def find_click(lib, mode, cmd):
+    """The first screen point whose left click in input mode gives command cmd, and the rect of its zone."""
+    rect = (ctypes.c_int16 * 4)()
+    lib.input_click_command.restype = ctypes.c_uint16
+    x, y = next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
+                if lib.input_click_command(mode, x, y, C.INPUT_BUTTON_LEFT, rect) == cmd)
+    return x, y, tuple(rect)
+
+
+def click_feedback(lib, original, cmd, where, mode=C.INPUT_MODE_MOVE, clicks=None):
+    """A left click on the button of command cmd in input mode in the port; the original starts the click feedback
+    script of the same command and rect. Both run the script tick by tick until it ends; the screens must be equal
+    after each tick. The queued commands and the disabled input are cleared after the script. clicks: the click
+    points of the caller (command: x, y, rect); a missing command gets the point of find_click."""
+    emu = original.emu
+    clicks = {} if clicks is None else clicks
+    if cmd not in clicks:
+        clicks[cmd] = find_click(lib, mode, cmd)
+    x, y, rect = clicks[cmd]
+    loop = MainLoop.in_dll(lib, "g_main_loop")
+    lib.input_reset_states()
+    lib.input_flush()
+    emu.write(G_CLICK_FEEDBACK_DELAY, bytes(2))
+    emu.write_u32(G_FEEDBACK_WAITING, 0)
+    emu.write_u32(G_FEEDBACK_BUSY, 0)
+    lib.input_set_mode(mode)
+    lib.input_mouse_click(x, y, C.INPUT_BUTTON_LEFT)
+    emu.write(G_CURRENT_COMMAND, struct.pack("<3H4h", x, y, cmd, *rect))
+    emu.write_u32(G_CLICK_FEEDBACK_SCRIPT, emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, G_CURRENT_COMMAND))
+    for tick in range(20):
+        loop.timer_ticks += 1
+        lib.input_poll()
+        emu.call(INPUT_RUN_CLICK_FEEDBACK, int(tick > 0))
+        mine, theirs = c_screen(lib), original.screen()
+        assert mine == theirs, (where, "feedback", hex(cmd), tick, diff(mine, theirs, C.SCREEN_W))
+        if not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT):
+            break
+    assert not emu.read_u32(G_CLICK_FEEDBACK_SCRIPT), where
+    lib.input_flush()
+    emu.write(G_INPUT_DISABLED, bytes(2))
+    emu.write(G_COMMAND_QUEUE_HEAD, bytes(2))
+    emu.write(G_COMMAND_QUEUE_TAIL, bytes(2))

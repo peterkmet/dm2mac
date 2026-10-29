@@ -401,6 +401,8 @@ static uint16_t merge_object_lists(uint16_t a, uint16_t b)
 static bool link_teleporters(uint16_t teleporter, int16_t map, int16_t x, int16_t y)
 {
     int target_map = teleporter_map(teleporter);
+    if (target_map >= dun.map_count)
+        return true; /* fix: the original uses a map outside the dungeon */
     dun_set_current_map(target_map);
     uint16_t other = dungeon_square_first_thing(target_map, teleporter_x(teleporter), teleporter_y(teleporter));
     if (other == THING_ENDOFLIST || thing_type(other) != THING_TELEPORTER)
@@ -453,6 +455,8 @@ static void link_door_flag(uint16_t sensor, int16_t map)
     if (square_type(dun_get_square((Location){tx, ty})) != SQUARE_DOOR)
         return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
+    if (door == THING_ENDOFLIST || thing_type(door) != THING_DOOR) /* fix: the original writes into another thing */
+        return;
     door_set_flag(door, DOOR_SWITCH_ON, sensor_flag(sensor, SENSOR_STATE));
 }
 
@@ -523,6 +527,8 @@ void dungeon_link_things_after_load(void)
 
 void dungeon_read_level_table(void)
 {
+    if (dun.map_count == 0) /* fix: the original reads the start square of map 0 of a dungeon without maps */
+        return;
     char text[LEVEL_TEXT_SIZE] = {0};
     memset(text, LEVEL_TEXT_FILL, LEVEL_TEXT_FILLED);
     int last = 0;

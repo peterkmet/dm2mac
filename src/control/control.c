@@ -489,7 +489,8 @@ static bool write_png(const char *path, uint8_t screen[SCREEN_H][SCREEN_W])
     png_chunk(f, "IHDR", ihdr, sizeof ihdr);
     png_chunk(f, "IDAT", z, (uint32_t)(q - z));
     png_chunk(f, "IEND", NULL, 0);
-    return fclose(f) == 0;
+    bool ok = !ferror(f); /* fix: a failed fwrite (a full disk) fails the screenshot */
+    return fclose(f) == 0 && ok;
 }
 
 /* The screen as the window shows it, with the cursor image at the pointer (none while the pointer is unset). */
@@ -550,9 +551,9 @@ static void handle_button(const char *request, bool down, bool up, Json *reply)
     ScreenPoint at;
     if (!get_position(request, &at, reply))
         return;
-    control_get_string(request, "button", button, sizeof button);
+    bool bad = control_find_value(request, "button") && !control_get_string(request, "button", button, sizeof button);
     bool right = !strcmp(button, "right");
-    if (!right && strcmp(button, "left")) {
+    if (bad || (!right && strcmp(button, "left"))) { /* fix: a present but bad button is no left click */
         put_error(reply, "button must be left or right");
         return;
     }

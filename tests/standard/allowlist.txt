@@ -4,6 +4,9 @@ byteorder engine/include/ai.h:AiCandidate rule 10.7: the 22-byte candidate recor
 byteorder engine/include/ai.h:AiPlanCache rule 10.7: the 14-byte plan state of a group of SKULL.EXE that the differential tests compare
 byteorder engine/include/champion.h:Champion rule 10.7: the 263-byte champion record of SKULL.EXE that the save stores
 byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the champion record and the end mark after them
+byteorder engine/sound_request.c rule 10.7: sndreq_load reads the signed 8-bit samples after the sample header
+byteorder platform/main.c rule 10.7: restart passes the const mode name in the char * argument list of execvp
+byteorder ui/session.c rule 10.7: the save slot name is a byte string in the save header
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE
@@ -28,9 +31,9 @@ decimal engine/weather.c:storm_curves rule 3.12: a table of SKULL.EXE
 decimal engine/weather.c:window_falloff rule 3.12: a table of SKULL.EXE
 decimal ui/action_area.c:coin_pile rule 3.12: coin pile offsets of SKULL.EXE
 decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by button count of SKULL.EXE
-decimal ui/fm.c:level_attenuation rule 3.12: a table of SKULL.EXE
-decimal ui/fm.c:op_carrier rule 3.12: a table of SKULL.EXE
-decimal ui/fm.c:op_modulator rule 3.12: a table of SKULL.EXE
+decimal ui/fm.c:level_attenuation rule 3.12: a driver table of HMIMDRV.386
+decimal ui/fm.c:op_carrier rule 3.12: a driver table of HMIMDRV.386
+decimal ui/fm.c:op_modulator rule 3.12: a driver table of HMIMDRV.386
 decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
@@ -79,6 +82,11 @@ engine-write ui/action_area.c:show_hand_icons rule 1.5: g_action.hand_items
 engine-write ui/action_area.c:show_hand_panel rule 1.5: g_action.mode, g_action.champion
 engine-write ui/action_area.c:show_open_panel rule 1.5: g_action.redraw_delay, g_action.flags, g_action.mode
 engine-write ui/action_area.c:show_party_hands rule 1.5: g_action.mode, g_action.flash
+engine-write ui/minion_map.c:grid_square_flags rule 1.5: g_minion_map.marker_state
+engine-write ui/minion_map.c:mmap_draw_square_icon rule 1.5: g_minion_map.clip
+engine-write ui/minion_map.c:set_marker rule 1.5: g_minion_map.marker_x, .marker_y, .marker_map, .above_map, .above_x, .above_y, .below_map, .below_x, .below_y
+engine-write ui/minion_map.c:show_grid rule 1.5: g_minion_map.x, .y, .map, .dir, .x_offset, .y_offset, .marker_state, .clip
+engine-write ui/ui.c:ui_render_hand_icon rule 1.5: g_leader_hand.cursor, .palette
 hex control/control.c:key_names rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c:g_ai_action_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_behaviors rule 3.12: a table of SKULL.EXE
@@ -116,7 +124,7 @@ hex engine/save.c:word_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
-hex ui/fm.c:note_freq_table rule 3.12: a table of SKULL.EXE
+hex ui/fm.c:note_freq_table rule 3.12: a driver table of HMIMDRV.386
 hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE

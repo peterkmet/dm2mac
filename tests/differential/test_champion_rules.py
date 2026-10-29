@@ -536,6 +536,49 @@ def test_money_and_prices_match_original(rules, lib):
     scenario.assert_equal("end")
 
 
+COIN_OF_1, COIN_OF_4 = 6, 56  # the miscellaneous item indices of the coins of value 1 and 4
+
+
+def coin_values_changed(values):
+    """GRAPHICS.DAT with other coin values: {miscellaneous item index: value}."""
+    from dm2test.save import GRAPHICS
+    data = bytearray(GRAPHICS.read_bytes())
+    rows = 8 + 2 * (int.from_bytes(data[2:4], "little") - 1) + 20  # the key table after the item sizes, its rows after 20 bytes
+    for at in range(rows, rows + 8 * int.from_bytes(data[rows - 18:rows - 16], "big"), 8):
+        category, index, kind, entry = data[at:at + 4]
+        if (category, kind, entry) == (C.CAT_MISC, C.GDAT_TYPE_VALUE, C.ATTR_VALUE) and index in values:
+            data[at + 6:at + 8] = values[index].to_bytes(2, "big")
+    return bytes(data)
+
+
+def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):  # noqa: F811
+    # regression: with a coin of value 0 (a damaged GRAPHICS.DAT) the exchange of the coins of a box looped forever
+    from dm2test.markers import ROOT
+    lib = load_lib()  # an own coin table: a library reads it once
+    path = tmp_path / "GRAPHICS.DAT"
+    path.write_bytes(coin_values_changed({COIN_OF_1: 0, COIN_OF_4: 3}))
+    damaged = ctypes.c_void_p()
+    assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    lib.gdat_select(damaged)
+    assert lib.dungeon_load(str(ROOT / "game" / "DATA" / "DUNGEON.DAT").encode()) == 1
+    lib.money_init_coin_table()
+    lib.money_coin_item.restype = ctypes.c_uint16
+    lib.item_create_by_index.restype = ctypes.c_uint16
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    assert [lib.money_coin_value(i) for i in range(3)] == [0, 3, 16]
+    box = lib.dungeon_unused_thing(C.THING_CONTAINER)
+    head = C.THING_ENDOFLIST
+    for _ in range(6):  # 18: a coin of 16, then 2 that only the coin of value 0 could take
+        coin = lib.item_create_by_index(lib.money_coin_item(1))
+        lib.thing_set_word(coin, C.THING_NEXT, head)
+        head = coin
+    lib.thing_set_word(box, C.CONTAINER_CONTENTS, head)
+    assert lib.money_normalize_coins(False, box)
+    lib.gdat_free(damaged)
+
+
 ITEM_GET_VALUE = 0x1F8A7
 
 

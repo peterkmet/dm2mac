@@ -12,10 +12,10 @@
 /* The scale of the stereo pan: 0 is the left side, PAN_FULL the right side. */
 #define PAN_FULL 0x10000
 
-/* SOS volume (0-0x7fff) from loudness, and the mixer gain shift for 8-bit samples. */
+/* SOS volume (0-0x7fff) from loudness, and the mixer gain shift; 8-bit samples scale to 16 bits. */
 #define SOS_VOLUME_SHIFT 7
 #define GAIN_SHIFT       15
-#define SAMPLE_TO_S16    8
+#define SAMPLE_SCALE     256
 
 /* The test sound of a new sound volume. */
 #define TEST_SOUND_INDEX 0
@@ -93,7 +93,7 @@ void sound_mix(int16_t *stereo, int frames)
             Voice *v = &voices[i];
             if (!v->data)
                 continue;
-            int s = (v->data[v->pos / UPSAMPLE] << SAMPLE_TO_S16) * master_volume / VOLUME_SETTING_MAX;
+            int s = v->data[v->pos / UPSAMPLE] * SAMPLE_SCALE * master_volume / VOLUME_SETTING_MAX;
             left += s * v->left >> GAIN_SHIFT;
             right += s * v->right >> GAIN_SHIFT;
             if (++v->pos == v->end)

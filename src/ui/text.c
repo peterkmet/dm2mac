@@ -54,11 +54,12 @@ static struct {
 
 bool text_init(const Gdat *gdat)
 {
-    uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &size);
+    uint32_t font_size, colors_size;
+    const uint8_t *p =
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_FONT, GFX_FONT), &font_size);
     const uint8_t *colors =
-        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &size);
-    if (!p || !colors)
+        gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, FONT_INDEX, GDAT_TYPE_DATA, GFX_UI_COLORS), &colors_size);
+    if (!p || !colors || font_size < FONT_SIZE || colors_size < UI_COLOR_COUNT) /* fix: no read past a short item */
         return false;
     memcpy(text_state.font, p, FONT_SIZE);
     gtext_gdat_set_ui_colors(colors);
@@ -243,7 +244,8 @@ void text_set_message_cursor(int column, int row)
 void text_clear_expired_rows(void)
 {
     int16_t r[RECT_SIZE];
-    zone_get_rect(ZONE_MESSAGE_AREA, r);
+    if (!zone_get_rect(ZONE_MESSAGE_AREA, r)) /* fix: no use of an unset rectangle */
+        return;
     for (int i = 0; i < MESSAGE_ROWS; i++) {
         if (g_text_message_expiry[i] == MESSAGE_NEVER || g_text_message_expiry[i] > g_game.game_time)
             continue;
@@ -259,7 +261,8 @@ void text_clear_expired_rows(void)
 static void shift_message_area(void)
 {
     int16_t r[RECT_SIZE];
-    zone_get_rect(ZONE_MESSAGE_AREA, r);
+    if (!zone_get_rect(ZONE_MESSAGE_AREA, r)) /* fix: no use of an unset rectangle */
+        return;
     /* the scroll service of the original is not in SKULL.EXE: move the rows up and keep the bottom rows */
     for (int y = r[RECT_Y]; y < r[RECT_Y] + r[RECT_H] - MESSAGE_SCROLL_HEIGHT; y++)
         memcpy(g_draw_screen.pixels + y * g_draw_screen.width + r[RECT_X],
@@ -301,7 +304,8 @@ static void new_message_line(void)
 static void show_message_line(int color, const char *line)
 {
     int16_t r[RECT_SIZE];
-    zone_get_rect(ZONE_MESSAGE_AREA, r);
+    if (!zone_get_rect(ZONE_MESSAGE_AREA, r)) /* fix: no use of an unset rectangle */
+        return;
     if (text_state.scroll_pending)
         text_draw(&text_state.line_bitmap, text_state.column, MESSAGE_LINE_BASE,
                   (TextColors){color, g_ui_colors[UI_BLACK]}, line);

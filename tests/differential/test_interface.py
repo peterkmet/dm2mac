@@ -292,11 +292,13 @@ def test_action_area_panels_match_original(port, original):
 
 
 def test_action_results_match_original(port, original):
-    # Damage numbers in the small and the large star, and the failure pictures; -2 shows the missing ammunition.
+    # Damage numbers in the small and the large star (10000: the 5 digits, a regression), and the failure pictures;
+    # -2 shows the missing ammunition.
     lib = port
     draw_game_screen(lib, original)
     pictures = set()
-    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (C.RESULT_NOTHING, 0, 0),
+    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (10000, 0, 0),
+                               (C.RESULT_NOTHING, 0, 0),
                                (C.RESULT_NO_AMMO, 0, 0x01), (C.RESULT_NO_AMMO, 1, 0x02), (C.RESULT_NO_AMMO, 0, 0x10),
                                (C.RESULT_UNKNOWN_SPELL, 0, 0), (C.RESULT_WIZARD_FAILED, 0, 0), (C.RESULT_PRIEST_FAILED, 0, 0),
                                (C.RESULT_CANT, 0, 0)):
@@ -565,6 +567,73 @@ def test_message_rows_follow_print_scroll_and_expiry(port):
     game.game_time = start + 3 + MESSAGE_SHOW_TIME
     lib.text_clear_expired_rows()
     assert [lib.text_message_row(i) for i in range(3)] == [b"", b"", b""]
+
+
+FONT_SIZE = C.FONT_GLYPH_HEIGHT * 128  # the font of text.c: 128 characters of FONT_GLYPH_HEIGHT rows
+
+
+def test_text_init_refuses_a_short_font_or_color_item(port, gdat):
+    # regression: text_init copied the font and read the 16 UI colors past the end of a shorter item (a damaged
+    # GRAPHICS.DAT)
+    from dm2test.gdat import item_sizes
+    lib = port
+    sizes = item_sizes(gdat)
+    for kind, entry, need in ((C.GDAT_TYPE_FONT, C.GFX_FONT, FONT_SIZE),
+                              (C.GDAT_TYPE_DATA, C.GFX_UI_COLORS, C.UI_COLOR_COUNT)):
+        item = lib.gdat_find(gdat, C.CAT_INTERFACE, 0, kind, entry)
+        assert item >= 0 and sizes[item] >= need
+        size = sizes[item]
+        sizes[item] = need - 1
+        try:
+            assert not lib.text_init(gdat)
+        finally:
+            sizes[item] = size
+    assert lib.text_init(gdat)
+
+
+def test_message_area_without_its_zone_draws_nothing(port, gdat):
+    # regression: the message area functions used an unset rectangle when the layout has no message area zone
+    lib = port
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    lib.text_message_row.restype = ctypes.c_char_p
+    game = Game.in_dll(lib, "g_game")
+    lib.text_set_message_cursor(0, 0)
+    lib.text_print_message(15, b"ONE\nTWO\nTHREE")
+    before = c_screen(lib)
+    lib.zone_free()
+    try:
+        lib.text_print_message(15, b"\nFOUR\nFIVE")
+        rows = [lib.text_message_row(i) for i in range(3)]
+        assert not any(b"FOUR" in row or b"FIVE" in row for row in rows), rows  # the rows hold the shown text
+        game.game_time += MESSAGE_SHOW_TIME + 1
+        lib.text_clear_expired_rows()
+        assert [lib.text_message_row(i) for i in range(3)] == rows
+        assert c_screen(lib) == before
+    finally:
+        assert lib.zone_load(gdat)
+
+
+def test_face_icon_without_a_palette_gives_black_colors(port, gdat):
+    # regression: ui_draw_champion_face_icon left the face colors unset when the face picture has no palette (a
+    # damaged GRAPHICS.DAT); the callers read them
+    from dm2test.gdat import item_sizes
+    lib = port
+    lib.ui_draw_champion_face_icon.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, u8_p]
+    pixels = (ctypes.c_uint8 * ((C.FACE_SIZE + 1) // 2 * C.FACE_SIZE))()
+    face = Bitmap(pixels, C.FACE_SIZE, C.FACE_SIZE, C.IMAGE_4BPP)
+    colors = (ctypes.c_uint8 * C.FACE_ICON_COLORS)()
+    lib.ui_draw_champion_face_icon(ctypes.byref(face), 0, colors)
+    assert any(colors)
+    item = lib.gdat_find(gdat, C.CAT_INTERFACE, C.UI_INDEX_FACES, C.GDAT_TYPE_IMAGE, 0)
+    sizes = item_sizes(gdat)
+    size = sizes[item]
+    sizes[item] = C.FACE_ICON_COLORS - 1  # shorter than the palette at the end of a 4 bpp picture
+    try:
+        ctypes.memset(colors, 0xAA, C.FACE_ICON_COLORS)
+        lib.ui_draw_champion_face_icon(ctypes.byref(face), 0, colors)
+        assert bytes(colors) == bytes(C.FACE_ICON_COLORS)
+    finally:
+        sizes[item] = size
 
 
 def test_layout_zone_helpers_match_original(port, original):

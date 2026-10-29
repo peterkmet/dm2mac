@@ -754,6 +754,8 @@ static bool transit_teleporter(Transit *t, uint8_t square)
     if (!(square & SQUARE_TELEPORTER_ON))
         return false;
     uint16_t tele = first_thing(t->x, t->y);
+    if (thing_type(tele) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
+        return false;
     int tele_scope = teleporter_scope(tele);
     int rotation = teleporter_rotation(tele);
     bool absolute = teleporter_flag(tele, TELEPORTER_ABSOLUTE);
@@ -980,7 +982,7 @@ Transition move_follow_square_transitions(uint16_t thing, MovePath route, bool c
             g_party.dest_dir =
                 (int16_t)projectile_dir(thing); /* the flight direction: bits 10-11 of the position word */
     }
-    for (int loop = TRANSITION_MAX; --loop;) {
+    for (int loop = TRANSITION_MAX; --loop;) { /* 49 passes, as in the original */
         uint8_t square = dungeon_square(g_party.cur_map, t.x, t.y);
         int square_kind = square_type(square);
         if (square_kind == SQUARE_TELEPORTER) {
@@ -1480,7 +1482,8 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
     int saved = g_party.cur_map;
     int alt = g_party.alt_view_active ? g_party.alt_view_map : -1;
     int map = g_last_discarded_map[type];
-    if (map == g_game.party_map || map == alt)
+    /* fix: the original loops forever in discard_next_map on a dungeon of one map */
+    if ((map == g_game.party_map || map == alt) && dungeon_map_count() > 1)
         map = discard_next_map(map, map, &alt);
     int start = map;
     for (bool second = false;;) {

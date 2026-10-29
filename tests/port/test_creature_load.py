@@ -1,6 +1,7 @@
 """Creature groups of a loaded save before the session activates them (src/engine/creature.c)."""
 
 import ctypes
+import struct
 
 import pytest
 
@@ -10,6 +11,8 @@ from dm2test.scenario import Location, gdat, start  # noqa: F401 (gdat and start
 
 STALE_INDEX = 200  # an active group index of the saved game, past the active groups of this session
 MOVEMENT = 10  # byte offset of CreatureInfo.movement
+MANY_GROUPS = 1000  # more groups than an active index byte can count
+THING_RECORD_SIZE = 16  # bytes of a group record
 
 
 @pytest.fixture(scope="module")
@@ -50,3 +53,18 @@ def test_a_stale_active_index_reads_no_active_group(lib, gdat, start, tmp_path):
     word = lib.thing_word(group, C.GROUP_CREATURE)
     lib.thing_set_word(group, C.GROUP_CREATURE, word & 0xFF | STALE_INDEX << 8)
     assert not lib.creature_is_flying(group)
+
+
+def test_the_active_groups_end_below_the_inactive_index(lib, gdat, tmp_path):  # noqa: F811
+    # regression: with more than 255 walking groups, active index 255 read as GROUP_NOT_ACTIVE and later ones wrapped
+    counts = [MANY_GROUPS if t == C.THING_GROUP else 0 for t in range(C.THING_TYPE_COUNT)]
+    path = tmp_path / "groups.dat"
+    path.write_bytes(struct.pack("<6H16H", 0, 0, 0, 0, 0, 0, *counts) + bytes(THING_RECORD_SIZE * MANY_GROUPS))
+    assert lib.dungeon_load(str(path).encode()) == 1
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    lib.gdat_select(gdat)
+    walker = next(t for t in range(256) if not lib.creature_info(gdat, t)[0] & C.CREATURE_STATIC)
+    for i in range(MANY_GROUPS):
+        lib.thing_set_word(C.THING_GROUP << C.THING_TYPE_SHIFT | i, C.GROUP_CREATURE, walker)
+    lib.creature_alloc_active_groups()
+    assert ctypes.c_int.in_dll(lib, "g_active_group_max").value == C.GROUP_NOT_ACTIVE

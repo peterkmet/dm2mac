@@ -8,6 +8,7 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.lib import load_lib
+from dm2test.scenario import Party, gdat  # noqa: F401 (gdat is a fixture)
 
 
 @pytest.fixture(scope="module")
@@ -166,6 +167,80 @@ def test_thing_count_cap(lib, tmp_path):
     assert ctypes.string_at(lib.dungeon_thing_record(C.THING_GROUP << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK), 2) == b"\xff\xff"
     path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 0x401] + [0] * 11))
     assert lib.dungeon_load(str(path).encode()) == 0
+
+
+def test_level_table_of_a_dungeon_without_maps(lib, tmp_path):
+    # regression: the level table of a map-less dungeon read the start square of map 0 from the empty map tables
+    path = tmp_path / "no_maps.dat"
+    path.write_bytes(synthetic_dungeon([0] * C.THING_TYPE_COUNT))
+    assert lib.dungeon_load(str(path).encode()) == 1
+    digits = [lib.dungeon_level_digit(level) for level in range(C.LEVEL_COUNT)]
+    lib.dungeon_read_level_table()
+    assert [lib.dungeon_level_digit(level) for level in range(C.LEVEL_COUNT)] == digits
+
+
+def things_on_squares(lib):
+    """(map, x, y, thing) of each thing on a square of the loaded dungeon, in the order of the link pass."""
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    out = []
+    for m in range(lib.dungeon_map_count()):
+        for x in range(lib.dungeon_map_width(m)):
+            for y in range(lib.dungeon_map_height(m)):
+                t = lib.dungeon_square_first_thing(m, x, y)
+                while t != C.THING_ENDOFLIST:
+                    out.append((m, x, y, t))
+                    t = lib.dungeon_next_thing(t)
+    return out
+
+
+def thing_type(t):
+    return t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK
+
+
+def is_door_switch(lib, t):
+    return thing_type(t) == C.THING_SENSOR and lib.thing_word(t, C.SENSOR_TYPE_DATA) & C.SENSOR_TYPE_MASK == C.SENSOR_DOOR_SWITCH
+
+
+@pytest.mark.skipif(not DUNGEON.exists(), reason="game/DATA/DUNGEON.DAT missing")
+def test_door_switch_on_a_door_square_without_a_door(lib, gdat):  # noqa: F811
+    # regression: a door switch whose door square starts with another thing wrote the door flag into that thing
+    assert lib.dungeon_load(str(DUNGEON).encode()) == 1
+    things = things_on_squares(lib)
+    lib.gdat_select(gdat)
+    first_items = [e for e in things if C.THING_WEAPON <= thing_type(e[3]) <= C.THING_MISC
+                   and lib.dungeon_square_first_thing(*e[:3]) == e[3]]
+    switches = [e for e in things if is_door_switch(lib, e[3])]
+    (m, _, _, sensor), (_, x, y, item) = next((s, e) for s in switches for e in first_items if e[0] == s[0])
+    coords = C.LOCATION_COORD_MASK << C.SENSOR_TARGET_X_SHIFT | C.LOCATION_COORD_MASK << C.SENSOR_TARGET_Y_SHIFT
+    target = lib.thing_word(sensor, C.SENSOR_TARGET) & ~coords | x << C.SENSOR_TARGET_X_SHIFT | y << C.SENSOR_TARGET_Y_SHIFT
+    lib.thing_set_word(sensor, C.SENSOR_TARGET, target)
+    square = lib.dungeon_square_byte(m, x, y)
+    square[0] = square[0] & ((1 << C.SQUARE_TYPE_SHIFT) - 1) | C.SQUARE_DOOR << C.SQUARE_TYPE_SHIFT
+    before = lib.thing_word(item, C.DOOR_DATA)
+    flags = lib.thing_word(sensor, C.SENSOR_FLAGS) & ~C.SENSOR_STATE
+    lib.thing_set_word(sensor, C.SENSOR_FLAGS, flags | (0 if before & C.DOOR_SWITCH_ON else C.SENSOR_STATE))
+    lib.dungeon_link_things_after_load()
+    assert lib.thing_word(item, C.DOOR_DATA) == before
+
+
+@pytest.mark.skipif(not DUNGEON.exists(), reason="game/DATA/DUNGEON.DAT missing")
+def test_teleporter_to_a_map_outside_the_dungeon(lib, gdat):  # noqa: F811
+    # regression: the link pass took the target map of a teleporter past the last map as the current map
+    assert lib.dungeon_load(str(DUNGEON).encode()) == 1
+    things = things_on_squares(lib)
+    lib.gdat_select(gdat)
+    moves_map = [t for *_, t in things if thing_type(t) == C.THING_TELEPORTER or is_door_switch(lib, t)]
+    teleporter = moves_map[-1]  # the last thing of the link pass that sets the current map
+    assert thing_type(teleporter) == C.THING_TELEPORTER
+    word = lib.thing_word(teleporter, C.TELEPORTER_MAP) & ~(C.TELEPORTER_MAP_MASK << C.TELEPORTER_MAP_SHIFT)
+    lib.thing_set_word(teleporter, C.TELEPORTER_MAP, word | lib.dungeon_map_count() << C.TELEPORTER_MAP_SHIFT)
+    lib.dungeon_link_things_after_load()
+    assert Party.in_dll(lib, "g_party").cur_map < lib.dungeon_map_count()
 
 
 def test_bad_files(lib, tmp_path):

@@ -1705,7 +1705,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
     uint8_t category = item_gdat_category(thing);
     uint8_t index = item_gdat_index(thing);
     ThingPicture pic = pick_object_picture(thing, at.pos, at.cell, look->open_state, look->in_alcove);
-    if (look->spot != -1) {
+    if (look->spot != -1) { /* as in the original, the alcove items get the jitter a second time */
         dx += jitter_offset[jitter[look->spot][0]];
         if (look->group == THING_NONE)
             dy += jitter_offset[jitter[look->spot][1]];
@@ -2095,6 +2095,8 @@ static void show_explosion_tint(int type, int power)
     int16_t rect[RECT_SIZE];
     int offset = (int16_t)rand_below((uint16_t)(area - TILE_TRIM));
     int width = (int16_t)(area - TILE_TRIM + (rand_next() & RANDOM_TILE_SPREAD));
+    if (width <= offset)
+        return; /* fix: the tiled blit of a tile row not longer than its start never ends */
     TileFill fill = {.tile = tint->pixels, .tile_width = width, .tile_offset = offset, .colormap = palette};
     gfx_blit_tiled_4to8(&fill, g_view_viewport.pixels, VIEWPORT_WIDTH, zone_get_rect(ZONE_DIALOG_BACK, rect));
 }
@@ -2482,20 +2484,20 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
 }
 
 /* Blits the lines of a wall text with the map font glyph, each line centered in width, from the row of r. */
-static void blit_wall_text(Blit *glyph, const char *text, int16_t *r, int width)
+static void blit_wall_text(Blit *glyph, const char *text, int16_t *r, int width, int height)
 {
     for (const char *p = text;;) {
         int n = 0;
         while (p[n] && p[n] != '\n')
             n++;
-        if (n) {
+        if (n && r[RECT_Y] >= 0 && r[RECT_Y] + r[RECT_H] <= height) { /* fix: skip a line outside the plate */
             r[RECT_X] = (int16_t)((width >> 1) - ((int16_t)(GLYPH_SIZE * n) >> 1));
             for (int i = 0; i < n && r[RECT_X] >= 0; i++, r[RECT_X] += GLYPH_SIZE) {
                 glyph->src_x = wall_text_glyph((uint8_t)p[i]) * GLYPH_SIZE;
                 gfx_blit(glyph, r);
             }
-            p += n;
         }
+        p += n;
         r[RECT_Y] = (int16_t)(r[RECT_Y] + GLYPH_SIZE + WALL_TEXT_LINE_GAP);
         if (!*p++)
             break;
@@ -2533,7 +2535,7 @@ static void show_wall_text(int pos, int entry, const PicturePlace *place)
                   .transparent = place->key,
                   .mirror = MIRROR_NONE,
                   .colormap = font_palette};
-    blit_wall_text(&glyph, text, r, plate_image->width);
+    blit_wall_text(&glyph, text, r, plate_image->width, plate_image->height);
     DrawCtx c;
     draw_ctx_init(&c, CAT_NONE, 0, 0);
     c.item = -1;
@@ -2731,6 +2733,7 @@ static int show_wall_ornament(int pos, int side, bool record_click)
     ThingPicture pic = wall_ornament_picture(ornament, side, frame);
     int entry = pic.entry;
     p.flip = pic.flip;
+    /* as in the original, the hit test (record_click false) of a wet ornament draws it and its contents */
     if (side == 0 && aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_WET)) {
         show_wet_wall_ornament(ornament, entry, &p, record_click, click_rect);
     } else {
@@ -3751,6 +3754,8 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
     uint16_t group = THING_NONE, t;
     if (click->kind == CLICK_POSSESSIONS) {
         group = creature_group_at((Position){g_party.cur_map, click->at.x, click->at.y});
+        if (group == THING_NONE) /* fix: the creature left the square; no read of the record of THING_NONE */
+            return (ObjectClickResult){OBJECT_CLICK_DONE, THING_NONE};
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
         t = dungeon_square_first_thing(g_party.cur_map, click->at.x, click->at.y);

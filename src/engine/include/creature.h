@@ -338,7 +338,7 @@ bool creature_is_flying(uint16_t group);
 int creature_cell_mask(uint16_t possessions, int16_t side);
 
 /* Active groups. */
-/* The timeline event of the next update of an active group. */
+/* The timeline event of the next update of an active group; EVENT_NO_SLOT for none or an index outside the table. */
 int creature_active_group_event(int active_index);
 /* True while the creature of a group is in the air in a fall or jump. */
 bool creature_group_jumps(uint16_t group);

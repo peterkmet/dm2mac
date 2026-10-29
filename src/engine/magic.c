@@ -321,11 +321,14 @@ const char *magic_get_rune_name(int rune)
 
 void magic_add_light(int kind, int power)
 {
+    /* fix: the original adds an event without a delay and reads past g_light_power for another kind */
+    if (kind != LIGHT_DARKNESS && kind != LIGHT_TORCH && kind != LIGHT_LIGHT)
+        return;
     int level =
         max_int(LIGHT_STRENGTH_MIN,
                 (int16_t)clamp_int(LIGHT_POWER_MIN, (int16_t)(power + 1), LIGHT_POWER_MAX) >> LIGHT_POWER_SHIFT);
     int sign = 1;
-    uint16_t ticks = 0; /* the callers use only the three kinds; the original leaves the delay of another kind unset */
+    uint16_t ticks = 0;
     if (kind == LIGHT_DARKNESS) {
         ticks = (uint16_t)((level - LIGHT_STRENGTH_MIN) * DARKNESS_TICKS + DARKNESS_TICKS);
         sign = DARKNESS_SIGN;

@@ -229,7 +229,7 @@ static void jump(int t, int id)
     tr->elapsed = 0;
     if (tr->cursor >= tr->end)
         return;
-    int ch = hmp.song[tr->cursor] & MIDI_CHANNEL_MASK;
+    int ch = hmp.song[tr->cursor] & MIDI_CHANNEL_MASK; /* the channel of the first event, as in the original */
     uint8_t program[MIDI_EVENT_SIZE] = {MIDI_PROGRAM | ch, rec[BRANCH_PROGRAM], 0};
     send_event(program);
     const uint8_t *pairs = hmp.song + le32(rec + BRANCH_CTRLS);

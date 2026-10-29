@@ -14,6 +14,7 @@
 #include "input.h"
 #include "item.h"
 #include "money.h"
+#include "os.h"
 #include "play.h"
 #include "save.h"
 #include "text.h"
@@ -449,6 +450,8 @@ void offscreen_create(Offscreen *o, int zone, bool mark_dirty)
     if (zone != ZONE_NONE)
         zone_get_rect(zone, o->rect);
     o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
+    if (!o->bitmap)
+        os_fatal("out of memory");
     o->dirty_count = 0;
     if (mark_dirty)
         add_dirty_rect(o, o->rect);
@@ -670,6 +673,8 @@ void ui_draw_champion_face_icon(Bitmap *dst, int16_t champion_index, uint8_t *fa
     const uint8_t *colors = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_FACES, champion_index);
     if (colors)
         memcpy(face_colors, colors, FACE_ICON_COLORS);
+    else
+        memset(face_colors, 0, FACE_ICON_COLORS); /* fix: defined colors without a face palette */
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     /* the original skips color 2 of the face picture */
     ui_blit_bitmap(&(BlitSource){.bitmap = draw_gdat_image(CAT_INTERFACE, UI_INDEX_FACES, champion_index),

@@ -864,9 +864,12 @@ static bool test_condition(int condition, int arg, int plan)
     case COND_STATIC_AHEAD:
         r = cond_static_ahead(x, y);
         break;
-    case COND_HEALTH_BELOW:
-        r = thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / g_ai.info->max_health <= (unsigned)a;
+    case COND_HEALTH_BELOW: {
+        /* fix: the original divides by a maximum health of 0 */
+        unsigned max = g_ai.info->max_health ? g_ai.info->max_health : 1;
+        r = thing_word(g_ai.group_thing, GROUP_HEALTH) * (unsigned)PERCENT / max <= (unsigned)a;
         break;
+    }
     case COND_FEW_OF_TYPE:
         r = cond_few_of_type(a);
         break;
@@ -2311,9 +2314,9 @@ static bool melee_attack_party(int16_t x, int16_t y, int dx, int dy)
             cell = dir_turn(cell, (d + cell) & 1 ? -1 : 1);
             if (c == -1)
                 c = move_nearest_champion_at((Location){x, y}, CELL_ANY);
-            if (c == -1)
-                continue;
         }
+        if (c == -1) /* fix: a random pick finds no champion left; the original attacks champion -1 */
+            continue;
         hit = true;
         int16_t damage = (int16_t)(projectile_attack_champion(g_ai.group_thing, c) + 1);
         Champion *ch = champion(c);
@@ -2610,6 +2613,7 @@ static bool act_pick_up_items(void)
         if (!ai_thing_matches_filter(t, g_ai.active->sub))
             continue;
         move_thing(t, ai_state.dest_x, ai_state.dest_y, MOVE_NO_SQUARE, 0);
+        /* as in the original, the next thing is the end of the possessions, so SUB_REPEAT picks up one item */
         dungeon_append_thing(t, group_possessions(g_ai.group_thing));
         n++;
         if (!(g_ai.active->sub & SUB_REPEAT))

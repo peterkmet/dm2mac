@@ -928,6 +928,8 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
 {
     ChampionAction action = g_champ_actions[index];
     int16_t hand = g_action.hand;
+    if (!action_is_hand_slot(hand)) /* fix: the hand indexes the tables of the hands; no caller passes another */
+        return false;
     Champion *c = champion(champion_index);
     if (!c->health)
         return false;

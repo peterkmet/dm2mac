@@ -872,3 +872,211 @@ def test_present_viewport_stretches_the_walking_view(lib, gdat, loaded):
 def test_present_viewport_copies_the_still_view(lib, gdat, loaded):
     view, shown, _ = present_viewport(lib, gdat, 0)
     assert b"".join(shown) == bytes(view)
+
+
+GDAT_KEYS, GDAT_KEY_ROWS, GDAT_ROW_SIZE, GDAT_ROW_VALUE = 0x2BF6, 20, 8, 6  # the key table of GRAPHICS.DAT
+ORN_KEY_FRAMES, FRAMES_FROM_ONE = 0x0D, 0x8000
+
+
+class ViewSquare(ctypes.Structure):
+    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
+    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
+                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
+
+
+def with_value(data, key, value):
+    """GRAPHICS.DAT with the value of key (category, index, type, entry) set to value."""
+    data = bytearray(data)
+    for row in range(struct.unpack_from(">H", data, GDAT_KEYS + 2)[0]):
+        at = GDAT_KEYS + GDAT_KEY_ROWS + row * GDAT_ROW_SIZE
+        if tuple(data[at:at + 4]) == key:
+            struct.pack_into(">H", data, at + GDAT_ROW_VALUE, value)
+            return bytes(data)
+    raise AssertionError(f"no key {key}")
+
+
+def test_an_ornament_frames_value_of_0x8000_shows_frame_1(lib, gdat, loaded, tmp_path):
+    # regression: a damaged GRAPHICS.DAT with the frames value 0x8000 (frames from 1, a count of 0) for an animated
+    # wall ornament divided by 0 in ornament_frame; the face shows frame 1, as a cycle of 1
+    lib.aspect_get.argtypes = [ctypes.c_void_p] + [ctypes.c_int16] * 4
+    lib.gdat_entry_index.restype = ctypes.c_uint16
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    s = ViewSquare()
+
+    def faces(map_, x, y, d):
+        lib.aspect_get(ctypes.byref(s), map_, d, x, y)
+        return [(w & 0xFF, ctypes.c_int16(w).value >> C.ORN_FRAME_SHIFT) for w in s.side]
+
+    found = next((m, x, y, d, k, ornament) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+                 for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
+                 for d in range(C.DIR_COUNT) for k, (ornament, frame) in enumerate(faces(m, x, y, d))
+                 if frame and lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, ORN_KEY_FRAMES) & FRAMES_FROM_ONE)
+    map_, x, y, d, k, ornament = found
+    assert loaded.game_time
+    path = tmp_path / "GRAPHICS.DAT"
+    path.write_bytes(with_value(GRAPHICS.read_bytes(), (C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_VALUE, ORN_KEY_FRAMES),
+                                FRAMES_FROM_ONE))
+    damaged = ctypes.c_void_p()
+    assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
+    lib.gdat_select(damaged)
+    try:
+        assert faces(map_, x, y, d)[k] == (ornament, 1)
+    finally:
+        lib.gdat_select(gdat)
+        lib.gdat_free(damaged)
+
+
+TEXT_NEWLINE, TEXT_END = 0x1C, 0x1F  # the codes of game_text.c: A to Z are 0 to 25
+
+
+def encode_text(text):
+    """The packed words of a dungeon text: 3 codes of 5 bits per word, then the end code."""
+    codes = [TEXT_NEWLINE if c == "\n" else ord(c) - ord("A") for c in text] + [TEXT_END]
+    codes += [TEXT_END] * (-len(codes) % 3)
+    return [codes[i] << 10 | codes[i + 1] << 5 | codes[i + 2] for i in range(0, len(codes), 3)]
+
+
+def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
+    # regression: a wall text with more lines than its plate holds (a damaged DUNGEON.DAT) wrote its first line above
+    # the plate bitmap; the port skips that line
+    lib.dungeon_square_first_thing.restype = lib.dungeon_next_thing.restype = lib.thing_word.restype = ctypes.c_uint16
+    lib.dungeon_square_first_thing.argtypes = [ctypes.c_int16] * 3
+    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
+    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.dungeon_text_data.restype = ctypes.POINTER(ctypes.c_uint16)
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    assert lib.zone_load(gdat) == 1
+    assert lib.pal_load_color_ramps(gdat) == 1
+    game = WeatherGame.in_dll(lib, "g_game")
+    saved_party = (game.party_x, game.party_y, game.party_dir, game.party_map)
+
+    def things(m, x, y):
+        t = lib.dungeon_square_first_thing(m, x, y)
+        while t != C.THING_ENDOFLIST:
+            yield t
+            t = lib.dungeon_next_thing(t)
+
+    def is_plate(t):
+        data = lib.thing_word(t, C.TEXT_DATA)
+        kind = data >> C.TEXT_KIND_SHIFT & C.TEXT_KIND_MASK
+        return t >> C.THING_TYPE_SHIFT == C.THING_TEXT and (
+            kind == C.TEXT_KIND_TEXT or kind == C.TEXT_KIND_ORNAMENT
+            and data >> C.TEXT_SUBTYPE_SHIFT & C.TEXT_SUBTYPE_MASK == C.SUBTYPE_PLATE)
+
+    plates = [(m, x, y, t) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+              for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
+              for t in things(m, x, y) if is_plate(t)]
+    lines, line_height = 6, 10  # the glyph size 8 and the line gap 2 of view.c
+    texts = {"over": "X\nB\nC\nD\nE\nF", "blank": "\nB\nC\nD\nE\nF", "other": "\nB\nC\nD\nE\nG"}
+    for map_, x, y, plate in plates:
+        sets = lib.dungeon_map_wallset(map_)
+        _, info = image_info(lib, gdat, lib.gdat_find(gdat, C.CAT_WALLSET, sets, C.GDAT_TYPE_IMAGE, C.GFX_MAP_PLATE_FRONT))
+        top = (info.height >> 1) - (lines * line_height >> 1)
+        if -8 < top < 0 and top + (lines - 1) * line_height + 8 <= info.height:
+            break  # the first line starts above the plate, the last line ends inside it
+    else:
+        raise AssertionError("no plate of a height for the test")
+    data = lib.thing_word(plate, C.TEXT_DATA)
+    text_at = 0  # the words of the first dungeon text take the test texts
+    words = lib.dungeon_text_data()
+    saved = [words[text_at + i] for i in range(5)]
+    lib.thing_set_word(plate, C.TEXT_DATA, C.TEXT_VISIBLE | text_at << C.TEXT_VALUE_SHIFT)
+    try:
+        views = None
+        for d in range(C.DIR_COUNT):  # the party faces the plate from an open square beside it
+            px, py = x - (d == 1) + (d == 3), y + (d == 0) - (d == 2)
+            if not (0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_)) or \
+                    lib.dungeon_square(map_, px, py) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL:
+                continue
+            drawn = {}
+            for name, text in texts.items():
+                packed = encode_text(text)
+                for i, word in enumerate(packed):
+                    words[text_at + i] = word
+                drawn[name] = c_view(lib, map_, px, py, d, 0)
+            if drawn["blank"] != drawn["other"]:
+                views = drawn
+                break
+        assert views, "no view shows the plate text"
+        assert views["over"] == views["blank"]
+    finally:
+        for i, word in enumerate(saved):
+            words[text_at + i] = word
+        lib.thing_set_word(plate, C.TEXT_DATA, data)
+        game.party_x, game.party_y, game.party_dir, game.party_map = saved_party
+        lib.view_enter_map(game.party_map)
+
+
+class ViewObjectClick(ctypes.Structure):
+    """view.h ViewObjectClick: a click on the objects of a square cell."""
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("pos", ctypes.c_int), ("at", Location),
+                ("kind", ctypes.c_int)]
+
+
+class ObjectClickResult(ctypes.Structure):
+    """view.h ObjectClickResult: the outcome of a click on the objects of a cell."""
+    _fields_ = [("kind", ctypes.c_int), ("thing", ctypes.c_uint16)]
+
+
+OBJECT_CLICK_DONE = 1  # enum ObjectClick of view.h
+
+
+def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
+    # regression: a click on the possessions of a creature that left the square read the record of THING_NONE; the
+    # click does nothing
+    lib.view_hit_test_object.argtypes = [ctypes.POINTER(ViewObjectClick), ctypes.c_uint16, ctypes.c_bool]
+    lib.view_hit_test_object.restype = ObjectClickResult
+    lib.creature_group_at.argtypes = [Position]
+    lib.creature_group_at.restype = ctypes.c_uint16
+    party = PartyHead.in_dll(lib, "g_party")
+    saved, party.cur_map = party.cur_map, loaded.party_map
+    at = Location(loaded.party_x, loaded.party_y)
+    assert lib.creature_group_at(Position(loaded.party_map, at.x, at.y)) == C.THING_NONE  # the party square
+    click = ViewObjectClick(0, 0, C.POS_PARTY, at, C.CLICK_POSSESSIONS)
+    try:
+        for placing in (False, True):
+            result = lib.view_hit_test_object(ctypes.byref(click), 0, placing)
+            assert (result.kind, result.thing) == (OBJECT_CLICK_DONE, C.THING_NONE), placing
+    finally:
+        party.cur_map = saved
+
+
+def test_an_explosion_tint_of_a_narrow_picture_draws_nothing(lib, gdat, loaded):
+    # regression: the tint of an explosion on the party square tiles a row of its picture minus 40 pixels; with a tint
+    # picture of at most 40 pixels (a damaged GRAPHICS.DAT) the row is not longer than its start and the tiled blit
+    # never ended; the port draws no tint
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.dungeon_link_thing_to_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
+    lib.dungeon_unlink_thing_from_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
+    lib.dungeon_thing_record.restype = u8_p
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    assert lib.zone_load(gdat) == 1
+    assert lib.pal_load_color_ramps(gdat) == 1
+    game = WeatherGame.in_dll(lib, "g_game")
+    map_, x, y, d = game.party_map, game.party_x, game.party_y, game.party_dir
+    tinted = [t for t in EXPLOSION_TYPES
+              if lib.gdat_find(gdat, C.CAT_EXPLOSION, t, C.GDAT_TYPE_IMAGE, C.GFX_EXPLOSION_TINT) >= 0
+              and lib.gdat_find(gdat, C.CAT_EXPLOSION, t, C.GDAT_TYPE_IMAGE, C.GFX_SPARKLE_PICTURE) < 0]
+    assert tinted
+    plain = c_view(lib, map_, x, y, d, 0)
+    thing = lib.dungeon_unused_thing(THING_EXPLOSION)
+    assert thing != C.THING_NONE
+    record = lib.dungeon_thing_record(thing)
+    for i, b in enumerate(struct.pack("<HH", THING_END, tinted[0])):  # power 0: the weak tint picture
+        record[i] = b
+    assert lib.dungeon_link_thing_to_square(thing, map_, x, y)
+    tint = lib.draw_gdat_image(C.CAT_EXPLOSION, tinted[0], C.GFX_EXPLOSION_TINT).contents
+    size = tint.width, tint.height
+    try:
+        assert c_view(lib, map_, x, y, d, 0) != plain
+        tint.width, tint.height = 3, 13  # 39 pixels: a tile row of 0 to 30 pixels from a start of up to 65534
+        assert c_view(lib, map_, x, y, d, 0) == plain
+    finally:
+        tint.width, tint.height = size
+        lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
+        record[0], record[1] = 0xFF, 0xFF  # unused again
+        game.party_x, game.party_y, game.party_dir, game.party_map = x, y, d, map_
+        lib.view_enter_map(map_)

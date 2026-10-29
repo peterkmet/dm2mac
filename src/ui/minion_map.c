@@ -194,6 +194,8 @@ static void show_icon(const MapSquare *at, const Strip *s, int icon, int mirror)
 {
     if (!s->image)
         return;
+    if (s->count && icon >= s->count)
+        return; /* fix: no icon past the end of a short strip (damaged GRAPHICS.DAT) */
     int16_t r[RECT_SIZE] = {at->x, at->y, MAP_ICON_W, MAP_ICON_H};
     IconClip c = clip_icon_rect(r, g_minion_map.clip);
     if (!c.visible)

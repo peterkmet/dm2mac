@@ -175,7 +175,7 @@ static Bitmap *make_hand_icon(int16_t champion_index, int16_t hand)
         uint32_t size;
         const uint8_t *remap = gdat_item(
             gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, GFX_ICON_SHADOW_REMAP), &size);
-        if (remap) {
+        if (remap && size >= REMAP_COLORS) { /* fix: the original reads past a short item */
             if (c.palette_count < 1) {
                 memcpy(c.palette, remap, REMAP_COLORS);
                 c.palette_count = REMAP_COLORS;
@@ -742,8 +742,8 @@ static void show_action_result(int16_t value)
     }
     offscreen_draw_ctx(&area, draw_ctx_prepare(&c), ZONE_RESULT, GFX_OPAQUE);
     if (value >= 0) {
-        char digits[RESULT_DIGITS] = {0};
-        int at = RESULT_DIGITS - 1;
+        char digits[RESULT_DIGITS + 1] = {0}; /* fix: room for 5 digits and the end byte */
+        int at = RESULT_DIGITS;
         do {
             digits[--at] = (char)('0' + value % DECIMAL_BASE);
             value = (int16_t)(value / DECIMAL_BASE);
