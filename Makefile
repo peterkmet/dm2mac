@@ -97,6 +97,10 @@ $(SDL_MINGW):
 
 test: ; tools/test-suite
 
+# Release zips: dist (macOS arm64), dist-win (Windows x64; DM_DIR names the dm folder).
+dist: ; tools/dist/make-dist.sh
+dist-win: ; tools/dist/make-dist-win.sh
+
 # Lint, the coding standard check, then the full suite.
 check:
 	uv run ruff check tests tools/dm2tools
@@ -110,7 +114,7 @@ clean:
 
 FORCE:
 
-.PHONY: all lib windows test check clean format FORCE
+.PHONY: all lib windows dist dist-win test check clean format FORCE
 
 format:
 	uv run clang-format -i $(C_FILES)
