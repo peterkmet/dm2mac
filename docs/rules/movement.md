@@ -63,7 +63,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - A move without a destination (a removal) leaves a stale register in the destination map of the original (`g_party.dest_map`). The port writes the current map; the scenario tests skip `dest_map` after a removal.
 - Kept quirks of the original:
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
-  - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
+  - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square; the stairs check of the same step (`move_follow_square_transitions`) then reads that type
   - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or else at the coordinates of the pit square
   - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds

@@ -56,6 +56,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
   - a projectile move also writes the direction into its freed event
+  - a projectile that a missile wall turns back also writes the new direction into its freed event (`enter_next_square`)
   - a projectile that flies on leaves the last square ahead that a creature can notice it on in the destination globals of the party move (`g_party.dest_x`, `g_party.dest_y`)
   - the power that the sensors test after a door spell comes from the door record
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables (`g_ai_possession_cells` in `src/engine/ai_data.c`: kinds 1 to 4 are the group cell masks, and kind 0 gives no cells without a read)
