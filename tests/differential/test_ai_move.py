@@ -775,6 +775,26 @@ def test_find_target_in_lines(ai):
         ai.end()
 
 
+def test_back_off_stops_at_the_west_edge(ai):
+    # Regression (port only): a ranged creature on x = 0 backs off to the west; the line stops on x = 0 with no read
+    # before the distance map. Map 19: the group 0x108b on (1, 5), walls on (0, 4) to (0, 6), so the square x = -1
+    # does not block the line and only the guard stops it.
+    lib = ai.lib
+    shooter, m, y = 0x1091, 19, 5
+    ai.begin(shooter, 6, 5, m)
+    column = 32 * 4
+    cells = bytearray(2 * column + 32 * column)  # 2 columns before the map: zeros, then "reached" at y
+    cells[column + y * 4] = 1
+    cells[2 * column + y * 4] = 1  # (0, y): the limit
+    buf = ctypes.create_string_buffer(bytes(cells), len(cells))
+    hit = lib.ai_find_target_in_lines(0x3F, ctypes.addressof(buf) + 2 * column, Location(0, y), DIRS.index((1, 0)), False)
+    assert hit.found and hit.location == 1 | y << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT
+    assert ctypes.string_at(ai.square, 4) == struct.pack("<hh", 0, y)  # the attack square
+    lib.ai_scratch_pop()
+    lib.ai_end(0, None)
+    ai.emu.call(AI_END, ai.begun)
+
+
 def random_candidate(rng, fs, x, y, m):
     kind = rng.randrange(C.AI_TARGET_KIND_COUNT)
     marker = rng.choice((0xFFFF, (x + rng.randrange(-4, 5)) & C.LOCATION_COORD_MASK | (y + rng.randrange(-4, 5)) % 32 << C.LOCATION_Y_SHIFT | m << C.LOCATION_MAP_SHIFT))

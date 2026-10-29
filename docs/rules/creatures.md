@@ -51,6 +51,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - an item filter value outside the class bitmap (a negative or large index of `ai_thing_matches_filter`): the original reads outside the bitmap, the port finds no match (an inverted filter matches)
   - the level counts of the cost search (`search_entered`): the original counts past its 51 levels into its own variables, the port counts in a table of 256 levels
   - the move command of the path check of `ai_plan_path`: the original reads a byte after the path buffer that nothing writes, the port uses 0 (`PATH_CHECK_COMMAND`)
+  - the back-off of a ranged attack along a line to the west from x = 0 (`back_off_line` in `src/engine/ai_move.c`): the original reads before the distance map, the port keeps the creature on its square and stops the line; any cell before the map (x below 0, and x = 0 with y = -1) stops it
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
@@ -73,5 +74,6 @@ The rules of the creatures: the creature data, the updates of the creature group
   - `dun_set_pit_teleporter_state` with `PIT_STATE_TOGGLE` closes an open pit or teleporter and opens a closed one
   - the loop schedule of a static creature (`schedule_loop` in `src/engine/creature.c`) adds the first frame of the sequence to the game time without the shift (`ANIM_START_MASK`, bits 6 to 11), so the loop phase differs from the first frame; one function in the port does the work of `0x25204` and `0x252c3`
   - the action "move two steps" in phase 2: when the fall of the group waits or the group leaves the dungeon, the AI position takes the destination of the last move inside that move (`g_party.dest_*`; for example a dropped possession or the removal of the group), not the square of the group
+  - the back-off of a ranged attack along a line (`back_off_line` in `src/engine/ai_move.c`) has no map test: a step to y = -1 with x above 0 reads the last cell of the column before, and a step to x = map width reads a cell of the next column of the distance map (the widest map of the dungeon has 30 columns)
   - `ai_free_cached_data` frees the plan state of the group whose index is the OR of the freed group and the group of the update in progress, so during a creature update it can free the plan state of another group, which then plans again
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

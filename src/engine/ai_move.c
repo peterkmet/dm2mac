@@ -633,6 +633,13 @@ static Location back_off_line(uint8_t *distance_map, Location from, int16_t back
         int16_t py = sy;
         sx += g_dir_dx[back];
         sy += g_dir_dy[back];
+        /* fix: no read before the distance map; y = -1 with x > 0 and x = width read another cell, as in the
+           original */
+        if (sx * SEARCH_COLUMN_SIZE + sy * SEARCH_CELL_SIZE < 0) {
+            sx = px;
+            sy = py;
+            break;
+        }
         uint8_t reached = *search_cell(distance_map, sx, sy);
         if (!reached || reached > limit || ai_blocks_line_to_target((Location){sx, sy})) {
             sx = px;
