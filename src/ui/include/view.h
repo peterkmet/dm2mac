@@ -54,10 +54,6 @@
 #define VIEW_DRAWS_FLOOR_ORNAMENT 0x40
 #define VIEW_DRAWS_DOOR           0x80 /* the door picture with its button */
 
-/* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
-#define SHOP_SHOWN        SENSOR_BUSY  /* the display item is chosen */
-#define SHOP_STEP_FORWARD SENSOR_STATE /* the shop: the next click goes to the next item */
-
 /* A click zone of the view: where an object, an ornament, a door button, or creature possessions show. */
 typedef struct {
     int16_t rect[RECT_SIZE];

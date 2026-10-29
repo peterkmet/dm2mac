@@ -172,6 +172,10 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
 #define TIMER_SLOW_FACTOR         8
 
+/* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
+#define SHOP_SHOWN        SENSOR_BUSY  /* the display item is chosen */
+#define SHOP_STEP_FORWARD SENSOR_STATE /* the shop: the next click goes to the next item */
+
 /* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
    the direction of a creature turn sensor, and the power (bits 0-3) and group class of an area sensor. */
 #define SENSOR_MAP_MASK   0x3f
