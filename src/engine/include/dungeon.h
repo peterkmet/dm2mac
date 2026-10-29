@@ -273,7 +273,7 @@ static inline uint16_t *container_contents(uint16_t container)
 #define DOOR_MOVING             0x0400
 #define DOOR_BUTTON_PRESSED     0x0800
 #define DOOR_MARKED             0x1000 /* a creature opened the door; the door clears it when it closes */
-#define DOOR_SWITCH_ON          0x2000 /* the state of sensor 0x46: its wall button and door spells operate the door */
+#define DOOR_SWITCH_ON 0x2000 /* the state of SENSOR_DOOR_SWITCH: its wall button and door spells operate the door */
 /* Whether a flag bit of a door is set. */
 static inline bool door_flag(uint16_t door, uint16_t bit)
 {
