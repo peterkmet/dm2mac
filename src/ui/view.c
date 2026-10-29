@@ -48,10 +48,11 @@
 #define ORN_KEY_RATIO_3          0x15
 #define ORN_KEY_OFFSCREEN_COLOR  0x11 /* transparent color of the picture in its offscreen bitmap */
 #define ORN_KEY_DAMAGE_COLOR     0x12
-#define DOOR_KEY_NO_FRAME        0x40
 #define ORN_KEY_BIG_NEAR         0x60 /* floor ornament: scale 0x60 on the squares beside the party */
 #define ORN_KEY_NOT_FAR_SIDE     0x61 /* floor ornament: not drawn at view positions 14 and 15 */
 #define ORN_KEY_WET              0x63 /* drawn wet by the rain */
+/* Value key of a door type (CAT_DOOR, door type, 0x0b, key): the door has no frame. */
+#define DOOR_KEY_NO_FRAME        0x40
 /* Wall ornament pictures of a frame. */
 #define ORN_PICTURE_SIDE         0
 #define ORN_PICTURE_FRONT        1
@@ -220,30 +221,33 @@ enum ChestState {
 #define WALK_SKY_DY        (-3)
 #define WALK_SKY_HIGH_DY   2
 
-/* GDAT categories and entries of things. */
-#define CAT_ALCOVE_KEY     0xfe /* (category, 0xfe, 0x0c, entry): offset of an object picture of the category */
-#define CREATURE_KEY_COLOR 0x04 /* creature value keys */
+/* The GDAT index of the object picture offsets of a category: (category, 0xfe, 0x0c, entry). */
+#define CAT_ALCOVE_KEY               0xfe
+/* Value keys of a creature type (CAT_CREATURE, type, 0x0b, key): transparent color, lift of its possessions. */
+#define CREATURE_KEY_COLOR           0x04
 #define CREATURE_KEY_POSSESSION_LIFT 0x41
-#define ORN_KEY_ALCOVE_ITEMS 0xfd /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offset of the items in an alcove */
-#define EXPLOSION_KEY_FLIP   0x00 /* explosion value keys: random mirror mask, fixed power, side flip of a missile */
-#define EXPLOSION_KEY_FIXED_POWER  0x41
-#define EXPLOSION_KEY_MISSILE_FLIP 0x01
+/* Value key of a wall ornament (CAT_WALL_ORNAMENT, ornament, 0x0c, key): the offset of the items in an alcove. */
+#define ORN_KEY_ALCOVE_ITEMS         0xfd
+/* Value keys of an explosion type: random mirror mask, side flip of a missile, fixed power. */
+#define EXPLOSION_KEY_FLIP           0x00
+#define EXPLOSION_KEY_MISSILE_FLIP   0x01
+#define EXPLOSION_KEY_FIXED_POWER    0x41
 /* The chests that open, and the transparent color of thing pictures. */
-#define CHEST_KINDS                8  /* container GDAT indices below 8 are chests that open */
-#define THING_KEY                  10 /* transparent color of thing pictures */
+#define CHEST_KINDS                  8  /* container GDAT indices below 8 are chests that open */
+#define THING_KEY                    10 /* transparent color of thing pictures */
 /* Animation bits of an active group: a random shift of the picture and a mirror. */
-#define ANIM_MIRROR                0x40
+#define ANIM_MIRROR                  0x40
 /* The shift of the vertical jitter in the animation bits. */
-#define ANIM_JITTER_Y_SHIFT        3
+#define ANIM_JITTER_Y_SHIFT          3
 /* Mirror bits of a creature frame: 2 bits per side, west side in bits 0-1. */
-#define FRAME_MIRROR_MASK          0x03
-#define FRAME_MIRROR_ALWAYS        0x01
-#define FRAME_MIRROR_BY_ANIM       0x02 /* mirrored when the animation bits say so */
+#define FRAME_MIRROR_MASK            0x03
+#define FRAME_MIRROR_ALWAYS          0x01
+#define FRAME_MIRROR_BY_ANIM         0x02 /* mirrored when the animation bits say so */
 /* The shift of the mirror bits from one side to the next. */
-#define FRAME_MIRROR_SHIFT         2
+#define FRAME_MIRROR_SHIFT           2
 /* A moving creature shifts by its frame shift, sideways or forward. */
-#define CREATURE_SHIFT_X           64
-#define CREATURE_SHIFT_Y           7
+#define CREATURE_SHIFT_X             64
+#define CREATURE_SHIFT_Y             7
 
 /* Explosion types with their own drawing. */
 #define EXPLOSION_GLOBAL_COUNTER   0x30 /* counts its views in global bytes 0x40 (away) and 0x41 (party square) */
