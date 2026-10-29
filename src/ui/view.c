@@ -1271,7 +1271,7 @@ static void flush_picture_or_measure(bool draw)
 }
 
 /* Adds a click zone at rect. */
-static void add_click_zone(const int16_t *rect, int kind, int16_t cell)
+static void add_click_zone(const int16_t *rect, enum ClickKind kind, int16_t cell)
 {
     if (g_view_click_zone_count >= VIEW_CLICK_ZONE_MAX)
         return; /* fix: the original has no limit */
@@ -1283,7 +1283,7 @@ static void add_click_zone(const int16_t *rect, int kind, int16_t cell)
 }
 
 /* Sets click zone index to the rectangle of the last picture (at least 14 x 11 pixels), or widens it. */
-static void set_click_zone(int index, uint16_t thing, int16_t cell, int kind)
+static void set_click_zone(int index, uint16_t thing, int16_t cell, enum ClickKind kind)
 {
     ViewClickZone *z = &g_view_click_zones[index];
     const int16_t *r = view.ctx.rect;
@@ -1921,7 +1921,7 @@ static void show_pending_possessions(int pos)
 }
 
 /* The picture kind of a missile by the pictures of its payload. */
-static int missile_picture_kind(uint16_t thing)
+static enum MissileKind missile_picture_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing);
     int index = item_gdat_index(thing);
@@ -1938,7 +1938,7 @@ static int missile_picture_kind(uint16_t thing)
 
 /* The picture of a missile of picture kind in cell (0 to 3, relative to the party) of the square at pos, and its
    mirror: by its flight direction and the parity of its square. */
-static ThingPicture missile_picture(uint16_t thing, int kind, int16_t cell, int pos, bool spell)
+static ThingPicture missile_picture(uint16_t thing, enum MissileKind kind, int16_t cell, int pos, bool spell)
 {
     int dir = projectile_dir(thing);
     int lateral = lateral_of(pos);
@@ -1988,7 +1988,7 @@ static void show_missiles(uint16_t thing, int pos, int position)
         if (get_thing_position(thing, view.party_dir) != position || thing_type(thing) != THING_PROJECTILE)
             continue;
         int zone = zone_id_for_view_cell(pos, position, 0);
-        int kind = missile_picture_kind(thing);
+        enum MissileKind kind = missile_picture_kind(thing);
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         if (kind == MISSILE_NO_PICTURE) {
             uint16_t object = thing_with_cell(payload, thing_cell(thing));

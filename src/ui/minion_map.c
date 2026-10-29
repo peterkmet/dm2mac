@@ -313,7 +313,7 @@ static void show_group(uint16_t group, const MapSquare *at)
 }
 
 /* How the pictures of a flying object show its sides: from the images that exist in its GDAT entry. */
-static int missile_image_kind(uint16_t thing)
+static enum MissileKind missile_image_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing);
     int index = item_gdat_index(thing);
