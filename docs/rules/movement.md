@@ -4,7 +4,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 ## Timing and the game step
 
-- The PIT runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
+- The programmable interval timer (PIT) runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `ui/play.c` into `step_before_input` and `step_after_input`. What `play_tick` and the two parts run is in [architecture.md](../architecture.md#the-game-step).
 - The calls of the rules into the interface: [architecture.md](../architecture.md#hooks-between-layers).
 - Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.

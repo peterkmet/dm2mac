@@ -19,14 +19,14 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## Message area
 
 - 3 rows in zone 15, 7 pixels apart, with `g_message_area_y = (zone height - 20) / 2` above the first row. A row clears 90 game steps after its last text (`g_message_expiry`).
-- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, IBMIOP service `0x105` moves the area up by one row; then the first 6 rows of the row bitmap go to the bottom 6 rows of the area.
+- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, service `0x105` of the video driver `IBMIOP.EXE` moves the area up by one row; then the first 6 rows of the row bitmap go to the bottom 6 rows of the area.
 - Text before a `\n` goes to the next row; a wrapped line goes on at column 12.
 
 ## Offscreen bitmaps
 
-- An offscreen bitmap (`offscreen_create`) holds a screen rectangle: the image cache index, the rectangle, and up to 5 changed rectangles. A changed rectangle that holds a new one keeps it; a new one that holds a changed one replaces it; a sixth one first copies the 5 to the screen. `offscreen_flush` copies the changed rectangles to the screen.
+- An offscreen bitmap (`offscreen_create`) holds a screen rectangle: the image cache index, the rectangle, and up to 5 changed rectangles. A new rectangle inside a changed one is dropped; a new rectangle that contains a changed one replaces it; with a sixth rectangle, the 5 changed ones first go to the screen. `offscreen_flush` copies the changed rectangles to the screen.
 - The status box of a champion (zones `0xa1` + champion) and the action area (zone 11) draw into offscreen bitmaps. `status_box_begin` with `clear` false draws the box background but forgets it as changed: only the parts that change later go to the screen.
-- `fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color: the dimmed hands of a busy or sleeping champion and the portrait of an invisible party.
+- `fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color. The port uses it for the dimmed hands of a busy or sleeping champion and the portrait of an invisible party.
 
 ## Slots and panels
 
