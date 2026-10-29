@@ -55,6 +55,7 @@
 #define ICON_BPP        8
 #define FACE_BPP        4
 #define JITTER_CENTER   2 /* haste_jitter: a roll of 1 to 3 moves by -1 to 1 */
+#define PICTURE_PAIR    2 /* hand backs, map action pictures: plain, then flashed or highlighted */
 
 /* The offsets of up to 32 coins in a pile, from SKULL.EXE. */
 static const int8_t coin_pile[COIN_PILE_MAX][2] = {
@@ -204,7 +205,8 @@ void area_draw_hand_icon(int champ, int hand, bool flash)
         return;
     }
     offscreen_draw_gdat_image(
-        &area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, (uint8_t)(hand * 2 + GFX_ACTION_HAND_BACK_FIRST + flash)},
+        &area,
+        (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, (uint8_t)(hand * PICTURE_PAIR + GFX_ACTION_HAND_BACK_FIRST + flash)},
         zone, GFX_OPAQUE);
     Bitmap *icon = make_hand_icon(champ, hand);
     if (icon) {
@@ -273,11 +275,11 @@ void area_draw_name(int i, bool highlight)
     begin_draw(false);
     const ChampionAction *a = &g_champ_actions[i];
     if (g_action.flags) {
-        offscreen_draw_gdat_image(
-            &area,
-            (GdatKey){CAT_CONTAINER, g_action.map_item,
-                      (uint8_t)((a->entry - GFX_ACTION_FIRST) * 2 + GFX_MAP_ACTION_PICTURE_BASE + highlight)},
-            ZONE_MAP_ACTION_FIRST + i, GFX_OPAQUE);
+        offscreen_draw_gdat_image(&area,
+                                  (GdatKey){CAT_CONTAINER, g_action.map_item,
+                                            (uint8_t)((a->entry - GFX_ACTION_FIRST) * PICTURE_PAIR +
+                                                      GFX_MAP_ACTION_PICTURE_BASE + highlight)},
+                                  ZONE_MAP_ACTION_FIRST + i, GFX_OPAQUE);
         return;
     }
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_BUTTON + highlight},
