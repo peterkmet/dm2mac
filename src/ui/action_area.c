@@ -219,6 +219,14 @@ void area_draw_hand_icon(int champ, int hand, bool flash)
         offscreen_fill_rect_dithered(&area, r, UI_BLACK);
 }
 
+/* Dims the picture that draw context d drew in the action area with a black dither. */
+static void dim_drawn(const DrawCtx *d)
+{
+    int16_t r[RECT_SIZE] = {(int16_t)(d->rect[RECT_X] + area.rect[RECT_X]),
+                            (int16_t)(d->rect[RECT_Y] + area.rect[RECT_Y]), d->rect[RECT_W], d->rect[RECT_H]};
+    offscreen_fill_rect_dithered(&area, r, UI_BLACK);
+}
+
 void area_draw_spell_icon(int champ, bool flash)
 {
     begin_draw(false);
@@ -239,19 +247,13 @@ void area_draw_spell_icon(int champ, bool flash)
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, hand);
     d.flip = mirror ? MIRROR_H : 0;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_HAND_ICON_FIRST + rel, UI_CYAN);
-    if (g_party_sleeping || c->action_delay[ACTION_SPELL]) {
-        int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
-                                (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]), d.rect[RECT_W], d.rect[RECT_H]};
-        offscreen_fill_rect_dithered(&area, s, UI_BLACK);
-    }
+    if (g_party_sleeping || c->action_delay[ACTION_SPELL])
+        dim_drawn(&d);
     draw_ctx_init(&d, CAT_INTERFACE, UI_INDEX_ACTION, rune);
     d.flip = mirror ? MIRROR_H : 0;
     offscreen_draw_ctx(&area, draw_ctx_prepare(&d), ZONE_SPELL_RUNE_ICON_FIRST + rel, UI_CYAN);
-    if (g_party_sleeping) {
-        int16_t s[RECT_SIZE] = {(int16_t)(d.rect[RECT_X] + area.rect[RECT_X]),
-                                (int16_t)(d.rect[RECT_Y] + area.rect[RECT_Y]), d.rect[RECT_W], d.rect[RECT_H]};
-        offscreen_fill_rect_dithered(&area, s, UI_BLACK);
-    }
+    if (g_party_sleeping)
+        dim_drawn(&d);
 }
 
 void area_draw_entered_runes(bool clear)
