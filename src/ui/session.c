@@ -397,7 +397,7 @@ static bool load_new_game(void)
     game_set_cheats(0);
     uint16_t start = dungeon_party_start();
     /* the party start keeps the direction in the map bits */
-    save_set_party_position(location_x(start), location_y(start), location_dir(start), 0);
+    save_set_party_position((Position){0, location_x(start), location_y(start)}, location_dir(start));
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE) +
                   dungeon_thing_count(THING_EXPLOSION));
     weather_load(gdat_current());
