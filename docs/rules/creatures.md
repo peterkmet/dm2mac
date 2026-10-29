@@ -41,6 +41,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - a path step read without a stored path (address 0 in the original)
   - the active group of a stale active index of a loaded save (`creature_is_flying`, `creature_group_jumps`, `creature_alert`); the port reads none (`creature_alert` returns)
   - `creature_deactivate_group` with an active index at or past the end of the table: the original reads one entry past it, the port returns
+  - the active group table of a dungeon with more than 155 walking groups (`creature_alloc_active_groups` in `src/engine/creature.c`; no shipped dungeon has them): the original allocates an entry for each walking group plus 100 and gives index 255 (no active group) and wrapped indices to the groups past 254, the port allocates at most 255 entries
   - `creature_deactivate_all_groups` stops at the end of the active group table: the original loops while the active group count is not 0
   - `creature_get_party_distance` with a square outside the distance map (x below 0, y outside 0 to 31): the original checks only x below the map width and reads outside the map, the port returns -1
   - `creature_current_step_acts`, `ai_begin`, and `creature_process_event` for a non-static group without an active entry: the original reads a null entry, the port returns 0 and leaves the AI context without an active group (`creature_process_event` ends the update)

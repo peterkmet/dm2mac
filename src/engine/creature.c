@@ -582,6 +582,8 @@ void creature_alloc_active_groups(void)
             n++;
     }
     g_active_group_max = n + ACTIVE_GROUP_SPARE < count ? n + ACTIVE_GROUP_SPARE : count;
+    if (g_active_group_max > GROUP_NOT_ACTIVE) /* fix: the active index is a byte; the original has no cap */
+        g_active_group_max = GROUP_NOT_ACTIVE;
     free(g_active_groups);
     g_active_groups = calloc(g_active_group_max ? g_active_group_max : 1, sizeof *g_active_groups);
     if (!g_active_groups)
