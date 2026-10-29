@@ -69,4 +69,4 @@ Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` 
 
 ## Deviations from the original
 
-- No SVGA mode: the port implements no SVGA mode for the game. It plays the SVGA movies ([movies.md](movies.md)).
+- The port plays the SVGA movie script only; the VGA script (`*.VGA`, `CREDITS.PCX`) is not used ([movies.md](movies.md#deviations-from-the-original)).

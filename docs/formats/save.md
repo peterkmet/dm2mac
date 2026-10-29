@@ -56,7 +56,7 @@ Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call s
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
 - After a load, things of types 4 to 15 can sit in other slots than in the file (reDM2 measured 492 of 941). A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
-- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`game_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
+- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original
 
@@ -116,5 +116,5 @@ The original game loads a save with the blocks: its loader stops at the last bit
 - A damage display event of a champion past the four champion records is not linked to a champion (the original writes past the last record).
 - A creature group whose creature info index lies past the table stores the bits of a group that is not static (the original reads past the table).
 - A deferred minion map or carried projectile whose link lies past the records of its target type writes the record position 0 (the original reads past its table).
-- Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`game_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, else the party stays without a leader.
+- Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`session_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, else the party stays without a leader.
 - On save, the compaction of the timeline stops at the last event when the event count is higher than the number of events in use, for example after the load of an event without a type (the original reads past the events).
