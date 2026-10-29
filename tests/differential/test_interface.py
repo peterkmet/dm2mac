@@ -591,6 +591,28 @@ def test_text_init_refuses_a_short_font_or_color_item(port, gdat):
     assert lib.text_init(gdat)
 
 
+def test_message_area_without_its_zone_draws_nothing(port, gdat):
+    # regression: the message area functions used an unset rectangle when the layout has no message area zone
+    lib = port
+    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
+    lib.text_message_row.restype = ctypes.c_char_p
+    game = Game.in_dll(lib, "g_game")
+    lib.text_set_message_cursor(0, 0)
+    lib.text_print_message(15, b"ONE\nTWO\nTHREE")
+    before = c_screen(lib)
+    lib.zone_free()
+    try:
+        lib.text_print_message(15, b"\nFOUR\nFIVE")
+        rows = [lib.text_message_row(i) for i in range(3)]
+        assert not any(b"FOUR" in row or b"FIVE" in row for row in rows), rows  # the rows hold the shown text
+        game.game_time += MESSAGE_SHOW_TIME + 1
+        lib.text_clear_expired_rows()
+        assert [lib.text_message_row(i) for i in range(3)] == rows
+        assert c_screen(lib) == before
+    finally:
+        assert lib.zone_load(gdat)
+
+
 def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
