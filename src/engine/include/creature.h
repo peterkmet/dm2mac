@@ -110,6 +110,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define SPEED_FEAR_SHIFT       4
 #define SPEED_EXPERIENCE_SHIFT 8
 #define SPEED_TURN_SHIFT       12
+/* The thinking speed of a creature type. */
 static inline uint16_t creature_think_speed(const CreatureInfo *info)
 {
     return info->speed & INFO_NIBBLE_MASK;
@@ -220,6 +221,10 @@ _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 
 /* The marker of a free active group. */
 #define ACTIVE_FREE 0xffff
 
+/* The phases of ACTION_FALL while the creature is in the air: after its first step, after its second step. */
+#define FALL_PHASE_FIRST_STEP  1
+#define FALL_PHASE_SECOND_STEP 2
+
 /* Markers of a group without an active group and of an active group without an action. */
 #define GROUP_NOT_ACTIVE   0xff
 #define ACTIVE_ACTION_NONE 0xff /* an active group without a chosen action */
@@ -301,7 +306,7 @@ const CreatureInfo *creature_group_info(uint16_t group);
 ActiveGroup *creature_active(uint16_t group);
 
 /* Animation. */
-/* The animation sequence and state words of a group record: in the record of a static creature, else in its active group. */
+/* The animation sequence and state words of a group record: in the record of a static creature, else in its active group; a non-static creature needs an active group. */
 uint16_t *creature_anim_words(uint16_t group);
 /* The current animation frame of a creature group. */
 void creature_anim_frame(const Gdat *g, uint16_t group, uint8_t frame[CREATURE_FRAME_SIZE]);

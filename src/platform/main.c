@@ -53,6 +53,11 @@
 /* The start of each command line option. */
 #define OPTION_PREFIX "--"
 
+/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
+_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
+                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
+               "filter numbers");
+
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
@@ -418,11 +423,6 @@ static void pump_mode_screen_events(void)
     plat_mouse_position(&g_input_mouse_x, &g_input_mouse_y);
 }
 
-/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
-_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
-                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
-               "filter numbers");
-
 /* Reads the values of the command line options into options; the option without a value, NULL when all have one.
    *unknown is the first argument that starts with -- and matches no option, or NULL. */
 static const char *read_options(int argc, char **argv, Options *options, const char **unknown)
@@ -672,7 +672,8 @@ int main(int argc, char **argv)
     if (!mode_given && !options.save && !getenv(RESTART_ENV))
         choose_mode();
     optmenu_start(options.filter ? factor : 0); /* --filter and DM2_FILTER go before SETTINGS.TXT */
-    if (!options.save && !getenv(RESTART_ENV))
+    /* fix: a closed mode screen starts no movie (port only). */
+    if (!options.save && !getenv(RESTART_ENV) && !g_main_loop.quit)
         run_movies(MOVIE_SCRIPT_START);
     if (!options.save && !g_main_loop.quit && !start_game(options.data)) {
         if (g_game_mode == GAME_MODE_TURNBASED) {

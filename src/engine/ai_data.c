@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* The creature AI tables of SKULL.EXE: behaviors, plan choices, plans, and targets. A copy of the data object of
    SKULL.EXE at the addresses of docs/reference/skull-symbols.csv; the records keep their original layout and link
-   each other by their address. tests/differential/test_ai_move.py runs them against the original. */
+   each other by their address. tests/differential/test_ai_move.py runs them against the original. Also the AI class
+   of a group (ai_group_class), which indexes these tables. */
 #include "ai.h"
 #include "ai_internal.h"
 #include "dungeon.h"
+#include "os.h"
 
 /* Plan steps, mood entries, plan choices, and target records from AI_SCRIPTS_BASE. */
 const uint8_t g_ai_scripts[AI_SCRIPTS_SIZE] = {
@@ -481,9 +483,7 @@ const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT] = {
     0x01, 0x03, 0x01, 0x02, 0x0a, 0x0a, 0x4f, 0x01, 0x0a, 0x4f, 0x05, 0x01, 0x02, 0x47,
 };
 
-/* The cells of the possessions of a static creature by its display kind and the side it is seen from: kinds 1 to 4
-   are g_group_cell_masks; the original returns 0 for kind 0 without a read, and kinds 5 to 15 are the data after the
-   table that the original reads. */
+/* The possession cells of a static creature by display kind and side; kinds 5 to 15 as in the original. */
 const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT] = {
     {0x00, 0x00, 0x00, 0x00},
     {0x04, 0x08, 0x01, 0x02},
@@ -503,12 +503,18 @@ const uint8_t g_ai_possession_cells[AI_POSSESSION_KINDS][DIR_COUNT] = {
     {0x00, 0x00, 0x00, 0x00},
 };
 
-/* The hit offset and hit radius tables of creature_find_group_near_point as bytes (g_creature_hit_offsets to
-   g_creature_hit_radius_sq in the symbol table); the commands from COMMAND_AFTER_GLOBALS read them as their enabled
-   byte, as in the original. */
+/* The hit tables of creature_find_group_near_point as the enabled bytes of the later commands, as in the original. */
 const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES] = {
     0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00,
     0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
     0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01, 0x00, 0x00, 0x00, 0xff,
     0xff, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x06, 0x00, 0x06, 0x00, 0x00, 0x03, 0x02, 0x01,
 };
+
+int16_t ai_group_class(uint16_t group)
+{
+    uint16_t class_index = creature_gdat_attr(group_creature(group), CREATURE_ATTR_CLASS);
+    if (class_index >= AI_CLASS_COUNT)
+        os_fatal("creature type %d has AI class %d", group_creature(group), class_index);
+    return (int16_t)class_index;
+}

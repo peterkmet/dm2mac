@@ -20,7 +20,9 @@ TESTS = ROOT / "tests"
 ALLOWLIST = Path(__file__).with_name("allowlist.txt")
 LAYERS = ["data", "engine", "ui", "control", "platform"]
 MAX_FUNCTION_LINES = 60
-EXCEPTION_RULES = {"1.5", "1.7", "3.11", "3.12", "5.8", "10.7"}  # the rules of docs/coding-standard.md that name an exception
+# the rules of docs/coding-standard.md that name an exception, and the checks whose allowlist lines may give them
+EXCEPTION_RULES = {"1.5": {"engine-write"}, "1.7": {"module"}, "3.11": {"record"}, "3.12": {"decimal", "hex"},
+                   "5.8": {"long"}, "10.7": {"byteorder"}}
 
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
 DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[5-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
@@ -35,7 +37,7 @@ CONST_DEF = re.compile(r"\s*(?:static\s+)?const\s+\w+\s+[A-Z][A-Z0-9_]*\s*=")
 ENUM = re.compile(r"\benum\b[^{};()]*\{([^}]*)\}")
 DEFINE = re.compile(r"^\s*#define\s+([A-Z][A-Z0-9_]*)\b", re.M)
 DECL = re.compile(r"^((?:(?:static|inline|const|struct|enum|unsigned|_Noreturn)\s+)*[A-Za-z_]\w*[\s*]+)([a-z_]\w*)\s*\(", re.M)
-MACRO = re.compile(r"^\s*#\s*define\s+([a-z_]\w*)\(", re.M)
+MACRO = re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\(", re.M)
 PREFIXES = re.compile(r"^/\* Prefixes: ([\w ]+?) \*/$", re.M)
 PREDICATE = re.compile(r"(?:^|_)(?:is|has|can)_")
 FUNC_START = re.compile(r"^(?:static\s+)?[A-Za-z_][\w *]*?\b([a-z_]\w*)\s*\([^;]*$")
@@ -676,7 +678,7 @@ def test_platform_code_only_in_platform():
 
 
 EXTERN = re.compile(r"\bextern\b([^;]*);")
-REDRAW_FLAG_WRITE = re.compile(r"\bredraw\s*(?:[|&]=|=(?!=))")
+REDRAW_FLAG_WRITE = re.compile(r"\bredraw\s*(?:[|&]=|=(?!=))$")
 
 
 def engine_globals():
@@ -699,7 +701,7 @@ def test_ui_does_not_write_engine_variables():
             continue
         owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
         for n, line in code_lines(path):
-            if not write.search(line) or REDRAW_FLAG_WRITE.search(line):
+            if all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line)):  # no write, or only redraw flags
                 continue
             key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
             if ("engine-write", key) not in ok:
@@ -770,17 +772,36 @@ def test_sources_are_formatted():
     assert result.returncode == 0, result.stderr[-4000:]
 
 
+def allowlist_lines():
+    """(line number, check, target, reason) of each allowlist line."""
+    return [(number, *line.split(maxsplit=2)) for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1)
+            if line.strip() and not line.startswith("#")]
+
+
 def test_allowlist_names_documented_reasons():
-    """Each allowlist line names an exception rule of the standard."""
+    """Each allowlist line names an exception rule of the standard that its check may give."""
     found = []
-    for number, line in enumerate(ALLOWLIST.read_text().splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        check, target, reason = line.split(maxsplit=2)
+    for number, check, target, reason in allowlist_lines():
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and rule.group(1) in EXCEPTION_RULES):
+        if not (rule and check in EXCEPTION_RULES.get(rule.group(1), ())):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
+
+
+def test_allowlist_lines_match_violations(monkeypatch):
+    """Each allowlist line accepts at least one violation: its target or a <target>:<part> of a violation of its check."""
+    hits = []
+    skip = {"test_allowlist_lines_match_violations", "test_allowlist_names_documented_reasons", "test_sources_are_formatted"}
+    with monkeypatch.context() as patch:
+        patch.setenv("DM2_STANDARD_IGNORE_ALLOWLIST", "1")
+        patch.setattr(sys.modules[__name__], "report", lambda check, found: hits.extend(found))
+        for name, check_function in list(globals().items()):
+            if name.startswith("test_") and name not in skip:
+                check_function()
+    keys = {tuple(hit.split("  |")[0].split(" ", 1)) for hit in hits}
+    report("allowlist", [f"allowlist {check}:{target}  | {number}: matches no violation"
+                         for number, check, target, _ in allowlist_lines()
+                         if not any(c == check and (t == target or t.startswith(target + ":")) for c, t in keys)])
 
 
 def module_files(header):
@@ -843,13 +864,18 @@ def test_header_heads():
                       if ("header", rel(path)) not in ok and (error := header_error(path))])
 
 
+FUNCTION_TYPEDEF = re.compile(r"\btypedef\b[^;{(]*?(?:\(\s*\*\s*(\w+)\s*\)\s*\(|\b(\w+)\s*\((?!\s*\*))[^;{]*\)\s*;")
+
+
 def defined_names(header, cache={}):
-    """The names that a header makes known: macros, types, tags, functions, variables, enum members."""
+    """The names that a header makes known: macros, types (also function and function pointer types), tags,
+    functions, variables, enum members."""
     if header not in cache:
         text = strip(header.read_text(errors="replace"))
         names = set(re.findall(r"^\s*#\s*define\s+(\w+)", text, re.M))
         names |= set(re.findall(r"\}\s*(\w+)\s*;", text)) | set(re.findall(r"\btypedef\b[^;{]*?(\w+)\s*;", text))
         names |= set(re.findall(r"\b(?:struct|enum|union)\s+(\w+)", text))
+        names |= {a or b for a, b in FUNCTION_TYPEDEF.findall(text)}
         names |= {f.name for f in functions(header)}
         names |= {n for decl in EXTERN_VARIABLE.findall(text) for n in extern_names(decl)}
         for body in ENUM.findall(text):
@@ -911,7 +937,7 @@ def test_function_comments():
             if c.suffix == ".c":
                 clines = c.read_text(errors="replace").splitlines()
                 bodies.update({name: (c, clines, start) for name, start, _, static in definitions(c) if not static})
-        prototypes = [f for f in functions(header) if not f.static]
+        prototypes = functions(header)
         grouped = grouped_accessors(hlines, prototypes)
         for f in prototypes:
             if ("comment", rel(header)) in ok:

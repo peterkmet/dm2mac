@@ -174,13 +174,6 @@ static uint32_t current_map_time(uint32_t time)
     return timeline_time_map(time & EVENT_TIME_MASK, g_party.cur_map);
 }
 
-/* ---- Doors and square events ---- */
-
-uint16_t sensor_door_value(uint16_t door, int key)
-{
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
-}
-
 static int holder_item(int ornament)
 {
     return gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ITEM);
@@ -228,6 +221,13 @@ static void wall_sound_square(int16_t *x, int16_t *y, int side)
         *x = dx;
         *y = dy;
     }
+}
+
+/* ---- Doors and square events ---- */
+
+uint16_t sensor_door_value(uint16_t door, int key)
+{
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
 }
 
 /* True when the party carries an item of the item index type. */
@@ -947,7 +947,7 @@ static void create_item(uint16_t sensor)
         return;
     item_set_gdat_index(thing, item_index_gdat_index(item));
     if (sensor_effect(sensor) == SENSOR_KEEP_ITEM)
-        item_set_do_not_discard(thing, 1);
+        item_set_do_not_discard(thing, true);
     SquareCell target = {sensor_target_x(sensor), sensor_target_y(sensor), sensor_target_cell(sensor)};
     transfer_object(thing, sensor, NULL, target, false);
 }
@@ -1145,7 +1145,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
     case SENSOR_GAME_END:
         g_hooks.complete_game();
         break;
-    case SENSOR_FRAME_STEP: { /* an ornament that steps its animation frame */
+    case SENSOR_FRAME_STEP: { /* steps the ornament frame; a step back from 0 gives 0xffff, as in the original */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
         sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, true));
         break;
@@ -1236,6 +1236,8 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
     int16_t tx = sensor_target_x(sensor);
     int16_t ty = sensor_target_y(sensor);
     int kind = sensor_type(sensor);
+    if (kind == SENSOR_VANISH && power != VANISH_POWER)
+        return; /* only the power VANISH_POWER makes the groups vanish */
     int rx = abs((int16_t)(x - tx));
     int ry = abs((int16_t)(y - ty));
     int left = x - rx;
@@ -1250,15 +1252,10 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
             uint16_t g = creature_get_group_at((Location){sx, sy});
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != group_class)
                 continue;
-            if (kind == SENSOR_VANISH) {
-                if (power > 1) {
-                    if (power != VANISH_POWER)
-                        return;
-                    creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
-                }
-            } else if (kind == SENSOR_ALERT) {
+            if (kind == SENSOR_VANISH)
+                creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
+            else if (kind == SENSOR_ALERT)
                 creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
-            }
         }
 }
 
@@ -1351,7 +1348,7 @@ static void fake_wall_event(TimelineEvent *e)
     uint8_t *square = current_square(x, y);
     int effect = e->data[EVENT_EFFECT];
     if (effect == EFFECT_TOGGLE)
-        effect = (*square & SQUARE_FAKE_WALL_OPEN) != 0;
+        effect = (*square & SQUARE_FAKE_WALL_OPEN) ? EFFECT_CLEAR : EFFECT_SET;
     if (effect == EFFECT_CLEAR) {
         bool blocked = dun_on_party_square((Location){x, y});
         uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
@@ -1511,7 +1508,7 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
         return;
     }
     bool wall = square_type(dun_get_square((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
-    e->time_map += (uint16_t)ornament_cycle(thing, wall);
+    timeline_delay_event(e, (uint16_t)ornament_cycle(thing, wall));
     timeline_add_event(e);
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
@@ -1531,8 +1528,8 @@ static void timer_event(TimelineEvent *e, uint16_t thing)
 {
     bool running;
     if (sensor_effect(thing) == EFFECT_HOLD) {
-        bool phase = !(e->data[SENSOR_EVENT_TIMER_PHASE] & 1);
-        e->data[SENSOR_EVENT_TIMER_PHASE] = (uint8_t)((e->data[SENSOR_EVENT_TIMER_PHASE] & ~1) | phase);
+        e->data[SENSOR_EVENT_TIMER_PHASE] ^= 1;
+        bool phase = e->data[SENSOR_EVENT_TIMER_PHASE] & 1;
         running = phase || sensor_flag(thing, SENSOR_STATE);
         sensor_trigger_target(thing, phase ? EFFECT_SET : EFFECT_CLEAR, 0);
     } else {
@@ -1543,7 +1540,7 @@ static void timer_event(TimelineEvent *e, uint16_t thing)
     if (!running) {
         sensor_set_flag(thing, SENSOR_BUSY, false);
     } else {
-        e->time_map += e->data[SENSOR_EVENT_TIMER_FACTOR] * sensor_data(thing);
+        timeline_delay_event(e, e->data[SENSOR_EVENT_TIMER_FACTOR] * sensor_data(thing));
         timeline_add_event(e);
     }
 }

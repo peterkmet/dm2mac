@@ -100,7 +100,6 @@
 /* Experience, levels, and the limits of the statistics that a level raises. */
 #define FIGHT_TIME_LONG        150
 #define FIGHT_TIME_SHORT       40
-#define LEVEL_EXPERIENCE       512
 #define MAX_MANA_LIMIT         900 /* a level gain raises the maximum mana up to this */
 #define HEALTH_MAX             999
 #define STAMINA_MAX            9999
@@ -249,7 +248,7 @@ int champ_get_party_level(void)
         for (int s = 0; s < SKILL_BASE_COUNT; s++)
             sum += champion(i)->experience[s];
     int level = 1;
-    for (; sum >= LEVEL_EXPERIENCE; sum >>= 1)
+    for (; sum >= SKILL_LEVEL_EXPERIENCE; sum >>= 1)
         level++;
     return level;
 }
@@ -601,7 +600,7 @@ static bool run_minion_command(ActionRun *a, int command)
 /* The party becomes invisible for power game steps, at least POWER_MIN. */
 static void run_invisibility(int16_t power)
 {
-    power = (int16_t)max_int(POWER_MIN, (int16_t)power);
+    power = (int16_t)max_int(POWER_MIN, power);
     if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
         champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
@@ -690,8 +689,8 @@ static void run_aura(ActionRun *a, int command)
     static const uint8_t shields[] = {AURA_SPELL_SHIELD, AURA_FIRE_SHIELD, AURA_DEFENSE};
     bool shield = command >= COMMAND_SHIELD_FIRST;
     int aura = shield ? shields[command - COMMAND_SHIELD_FIRST] : auras[command - COMMAND_AURA_FIRST];
-    a->power = (int16_t)(shield ? max_int(POWER_MIN, (int16_t)a->power) * SHIELD_POWER_FACTOR
-                                : max_int(POWER_MIN, (int16_t)a->power) << AURA_POWER_SHIFT);
+    a->power = (int16_t)(shield ? max_int(POWER_MIN, a->power) * SHIELD_POWER_FACTOR
+                                : max_int(POWER_MIN, a->power) << AURA_POWER_SHIFT);
     if (!magic_cast_party_aura(a->c, aura, (uint16_t)a->power, shield)) {
         a->experience = (int16_t)(a->experience >> 2);
         a->delay = (uint16_t)(a->delay >> 1);
@@ -770,11 +769,11 @@ static void run_party_magic(ActionRun *a, int command)
         magic_add_light(command, a->power);
         break;
     case COMMAND_EXPLOSION:
-        explosion_create(SPELL_MISSILE_WALL, (uint16_t)max_int(EXPLOSION_POWER_MIN, (int16_t)a->power), g_game.party_x,
+        explosion_create(SPELL_MISSILE_WALL, (uint16_t)max_int(EXPLOSION_POWER_MIN, a->power), g_game.party_x,
                          g_game.party_y, EXPLOSION_AT_CENTER);
         break;
     case COMMAND_HASTE:
-        a->power = (int16_t)max_int(POWER_MIN, (int16_t)a->power);
+        a->power = (int16_t)max_int(POWER_MIN, a->power);
         g_game.magic_light[MAGIC_HASTE] =
             (uint8_t)min_int(HASTE_MAX, (int16_t)(g_game.magic_light[MAGIC_HASTE] + a->power));
         break;
@@ -803,7 +802,7 @@ static void run_party_magic(ActionRun *a, int command)
 static int throw_fatigue(uint16_t thing)
 {
     int16_t left = (int16_t)((uint16_t)item_weight(thing) >> 1);
-    uint16_t fatigue = (uint16_t)clamp_int(1, (int16_t)left, THROW_FATIGUE_STEP);
+    uint16_t fatigue = (uint16_t)clamp_int(1, left, THROW_FATIGUE_STEP);
     while ((left = (int16_t)(left - THROW_FATIGUE_STEP)) > 0)
         fatigue = (uint16_t)(fatigue + (left >> 1));
     return (int16_t)fatigue;
@@ -848,7 +847,7 @@ static bool throw_object(int champ, int hand, bool right_side)
     int level = champ_get_skill_level(champ, SKILL_THROW, true);
     kinetic =
         (int16_t)(kinetic + rand_below((uint16_t)((kinetic >> THROW_KINETIC_SHIFT) + THROW_KINETIC_RANDOM)) + level);
-    kinetic = (int16_t)min_int((int16_t)kinetic, KINETIC_MAX);
+    kinetic = (int16_t)min_int(kinetic, KINETIC_MAX);
     int attack = clamp_int(ATTACK_MIN, (int16_t)((rand_next() & THROW_ATTACK_RANDOM) + level * THROW_ATTACK_PER_LEVEL),
                            ATTACK_MAX);
     int step = item_attr(thing, ATTR_STEP);
@@ -980,9 +979,7 @@ bool champ_execute_selected_action(int index)
         ChampionAction action = g_champ_actions[index];
         done = champ_perform_action(champ, index, false);
         g_champ_action_result = g_action.result;
-        ActionRepeat *r = g_action.hand == SLOT_ACTION_HAND || g_action.hand == SLOT_READY_HAND
-                              ? &g_action_repeats[champ][g_action.hand]
-                              : NULL;
+        ActionRepeat *r = action_is_hand_slot(g_action.hand) ? &g_action_repeats[champ][g_action.hand] : NULL;
         bool use = !r || !r->left || (r->fresh && !rand_below((uint16_t)(r->count + 1)));
         if (use && champ_use_action_charge(champ, action) && r) {
             r->count = 0;
@@ -1028,7 +1025,7 @@ void champ_process_repeated_actions(void)
             }
             g_action.hand = saved;
         }
-    if (g_action.champion && ran && g_action.hand >= 0 && g_action.hand <= SLOT_ACTION_HAND)
+    if (g_action.champion && ran && action_is_hand_slot(g_action.hand))
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 

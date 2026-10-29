@@ -120,13 +120,13 @@ static int16_t sum_items_value(uint16_t group, int16_t cell, ItemSum s)
 }
 
 /* The value of the coins and goods of the customer in cell, -1 when it shows none. */
-static int16_t offered_value(uint16_t group, int16_t cell, int16_t *goods)
+static int16_t offered_value(uint16_t group, int16_t cell)
 {
     int16_t coins = sum_items_value(group, cell, (ItemSum){-1, FILTER_COINS, false, false, false});
-    *goods = sum_items_value(group, cell, (ItemSum){-1, FILTER_GOODS, false, false, false});
-    if (*goods == -1)
+    int16_t goods = sum_items_value(group, cell, (ItemSum){-1, FILTER_GOODS, false, false, false});
+    if (goods == -1)
         return coins;
-    return coins == -1 ? *goods : (int16_t)(coins + *goods);
+    return coins == -1 ? goods : (int16_t)(coins + goods);
 }
 
 /* The price in whole coins of the goods of the merchant in cell. */
@@ -196,8 +196,7 @@ int shop_cmd_evaluate_offer(void)
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     a->action = MERCHANT_WAIT;
-    int16_t goods;
-    uint16_t offer = (uint16_t)offered_value(g, dir, &goods);
+    uint16_t offer = (uint16_t)offered_value(g, dir);
     if (offer == VALUE_NONE) {
         a->counters[1] = 0;
         return AI_RESULT_FAIL;
@@ -257,8 +256,7 @@ int shop_cmd_count_payment(void)
         due = (int16_t)(due + goods);
     else
         goods = 0;
-    int16_t paid_goods;
-    uint16_t paid = (uint16_t)offered_value(g, cell, &paid_goods);
+    uint16_t paid = (uint16_t)offered_value(g, cell);
     if (paid == VALUE_NONE)
         paid = 0;
     if ((int)paid < (uint16_t)goods + a->counters[0]) {

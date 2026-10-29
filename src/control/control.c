@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "control.h"
 #include <ctype.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +23,6 @@
 #include "video.h"
 
 /* Sizes and limits of the requests and the replies. */
-#define REPLY_LINE_SIZE 256 /* one piece of a reply written by put */
 #define ERROR_SIZE      64
 #define NAME_SIZE       32
 #define WAIT_MAX_TICKS  6000
@@ -305,37 +303,54 @@ uint16_t control_key_code(const char *name)
 
 /* Replies and turns: JSON text in reply. */
 
-/* Appends a short formatted piece to reply. */
-/* Each piece stays under REPLY_LINE_SIZE; text of the game or the request goes through json_strn (put_string). */
-static void put(Json *reply, const char *format, ...)
-{
-    char piece[REPLY_LINE_SIZE];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(piece, sizeof piece, format, args);
-    va_end(args);
-    json_raw(reply, piece);
-}
-
-/* A JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). The game
-   texts of GRAPHICS.DAT (701 entries) are ASCII, so only request text can bring other bytes. */
-static void put_string(Json *reply, const char *text, size_t n)
-{
-    json_strn(reply, text, n);
-}
-
 /* The reply of a request that succeeded. */
 static void put_ok(Json *reply)
 {
-    put(reply, "{\"ok\":true}");
+    json_open(reply, '{');
+    json_key(reply, "ok");
+    json_bool(reply, true);
+    json_close(reply, '}');
 }
 
 /* The reply of a request that failed, with its reason. */
 static void put_error(Json *reply, const char *error)
 {
-    put(reply, "{\"ok\":false,\"error\":");
-    put_string(reply, error, strlen(error));
-    put(reply, "}");
+    json_open(reply, '{');
+    json_key(reply, "ok");
+    json_bool(reply, false);
+    json_key(reply, "error");
+    json_str(reply, error);
+    json_close(reply, '}');
+}
+
+/* Appends "key":[value,max]. */
+static void key_pair(Json *reply, const char *key, int64_t value, int64_t max)
+{
+    json_key(reply, key);
+    json_open(reply, '[');
+    json_int(reply, value);
+    json_int(reply, max);
+    json_close(reply, ']');
+}
+
+/* The champions of the state reply: name, health, stamina, mana, load. The game texts of GRAPHICS.DAT (701 entries)
+   are ASCII, so only request text can bring bytes from 0x80 into a reply. */
+static void put_champions(Json *reply)
+{
+    json_key(reply, "champions");
+    json_open(reply, '[');
+    for (int i = 0; i < g_game.champion_count && i < CHAMPION_MAX; i++) {
+        const Champion *c = champion(i);
+        json_open(reply, '{');
+        json_key(reply, "name");
+        json_strn(reply, c->name, CHAMPION_NAME_SIZE);
+        key_pair(reply, "health", c->health, c->max_health);
+        key_pair(reply, "stamina", c->stamina, c->max_stamina);
+        key_pair(reply, "mana", c->mana, c->max_mana);
+        json_key_int(reply, "load", champ_get_load(i));
+        json_close(reply, '}');
+    }
+    json_close(reply, ']');
 }
 
 /* The state of the game: time, party, champions, input mode (`movie` while a movie plays), open dialog and panels,
@@ -344,40 +359,54 @@ static void put_state(Json *reply)
 {
     enum InputMode mode = input_get_mode();
     bool movie = movie_is_playing();
-    const char *mode_name = movie ? "movie" : state_json_mode_name(mode);
-    put(reply, "{\"ok\":true,\"time\":%u,\"ticks\":%u,\"mode\":\"%s\",\"dialog\":", g_game.game_time,
-        g_main_loop.timer_ticks, mode_name);
+    json_open(reply, '{');
+    json_key(reply, "ok");
+    json_bool(reply, true);
+    json_key_int(reply, "time", g_game.game_time);
+    json_key_int(reply, "ticks", g_main_loop.timer_ticks);
+    json_key(reply, "mode");
+    json_str(reply, movie ? "movie" : state_json_mode_name(mode));
+    json_key(reply, "dialog");
     if (movie || mode != INPUT_MODE_DIALOG)
-        put(reply, "null");
+        json_raw(reply, "null");
     else
-        put(reply, "%d", g_dialog.id);
-    put(reply,
-        ",\"party\":{\"map\":%u,\"x\":%u,\"y\":%u,\"dir\":%u},\"champion_count\":%u,\"leader\":%d,\"champions\":[",
-        g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir, g_game.champion_count, champ_leader());
-    for (int i = 0; i < g_game.champion_count && i < CHAMPION_MAX; i++) {
-        const Champion *c = champion(i);
-        put(reply, "%s{\"name\":", i ? "," : "");
-        put_string(reply, c->name, CHAMPION_NAME_SIZE);
-        put(reply, ",\"health\":[%d,%d],\"stamina\":[%d,%d],\"mana\":[%d,%d],\"load\":%d}", c->health, c->max_health,
-            c->stamina, c->max_stamina, c->mana, c->max_mana, champ_get_load(i));
-    }
-    put(reply, "],\"inventory\":%d,\"candidate\":%d,\"hand\":", g_ui.inventory - 1, g_ui.candidate - 1);
+        json_int(reply, g_dialog.id);
+    json_key(reply, "party");
+    json_open(reply, '{');
+    json_key_int(reply, "map", g_game.party_map);
+    json_key_int(reply, "x", g_game.party_x);
+    json_key_int(reply, "y", g_game.party_y);
+    json_key_int(reply, "dir", g_game.party_dir);
+    json_close(reply, '}');
+    json_key_int(reply, "champion_count", g_game.champion_count);
+    json_key_int(reply, "leader", champ_leader());
+    put_champions(reply);
+    json_key_int(reply, "inventory", g_ui.inventory - 1);
+    json_key_int(reply, "candidate", g_ui.candidate - 1);
+    json_key(reply, "hand");
     if (!g_game.champion_count || g_game.leader_hand == THING_NONE)
-        put(reply, "null");
+        json_raw(reply, "null");
     else {
-        const char *name = item_name(g_game.leader_hand);
-        put(reply, "{\"thing\":%u,\"name\":", g_game.leader_hand);
-        put_string(reply, name, strlen(name));
-        put(reply, "}");
+        json_open(reply, '{');
+        json_key_int(reply, "thing", g_game.leader_hand);
+        json_key(reply, "name");
+        json_str(reply, item_name(g_game.leader_hand));
+        json_close(reply, '}');
     }
-    put(reply, ",\"sound_volume\":%u,\"music_volume\":%u,\"end\":%d,\"quit\":%d,\"game_mode\":\"%s\",\"automap\":%d",
-        g_game.sound_volume, g_game.music_volume, g_main_loop.end, g_main_loop.quit, g_game_mode_names[g_game_mode],
-        g_advanced_screen == ADVANCED_SCREEN_AUTOMAP);
-    put(reply,
-        ",\"cheat_immortal\":%d,\"cheat_food\":%d,\"cheat_light\":%d,\"cheat_kill\":%d,\"cheat_walls\":%d,"
-        "\"cheat_map\":%d}",
-        game_has_cheat(CHEAT_IMMORTAL), game_has_cheat(CHEAT_FOOD), game_has_cheat(CHEAT_LIGHT),
-        game_has_cheat(CHEAT_KILL), game_has_cheat(CHEAT_WALLS), game_has_cheat(CHEAT_MAP));
+    json_key_int(reply, "sound_volume", g_game.sound_volume);
+    json_key_int(reply, "music_volume", g_game.music_volume);
+    json_key_int(reply, "end", g_main_loop.end);
+    json_key_int(reply, "quit", g_main_loop.quit);
+    json_key(reply, "game_mode");
+    json_str(reply, g_game_mode_names[g_game_mode]);
+    json_key_int(reply, "automap", g_advanced_screen == ADVANCED_SCREEN_AUTOMAP);
+    json_key_int(reply, "cheat_immortal", game_has_cheat(CHEAT_IMMORTAL));
+    json_key_int(reply, "cheat_food", game_has_cheat(CHEAT_FOOD));
+    json_key_int(reply, "cheat_light", game_has_cheat(CHEAT_LIGHT));
+    json_key_int(reply, "cheat_kill", game_has_cheat(CHEAT_KILL));
+    json_key_int(reply, "cheat_walls", game_has_cheat(CHEAT_WALLS));
+    json_key_int(reply, "cheat_map", game_has_cheat(CHEAT_MAP));
+    json_close(reply, '}');
 }
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
@@ -474,9 +503,12 @@ static void screenshot(const char *path, Json *reply)
         put_error(reply, "cannot write the PNG file");
         return;
     }
-    put(reply, "{\"ok\":true,\"path\":");
-    put_string(reply, absolute, strlen(absolute));
-    put(reply, "}");
+    json_open(reply, '{');
+    json_key(reply, "ok");
+    json_bool(reply, true);
+    json_key(reply, "path");
+    json_str(reply, absolute);
+    json_close(reply, '}');
 }
 
 /* A screen position of a request in at; false with an error reply when it is missing or off the screen. */
@@ -767,7 +799,11 @@ bool control_end_turn(Json *reply)
         if (ran < control.waiting.ticks)
             return false;
         control.waiting.pending = false;
-        put(reply, "{\"ok\":true,\"ticks\":%u}", ran);
+        json_open(reply, '{');
+        json_key(reply, "ok");
+        json_bool(reply, true);
+        json_key_int(reply, "ticks", ran);
+        json_close(reply, '}');
         return true;
     }
     if (!turn_poll())

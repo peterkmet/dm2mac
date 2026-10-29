@@ -111,10 +111,8 @@ void play_sleep(void)
 {
     if (g_ui.candidate)
         return;
-    g_inv_arrows_on_close = false;
     if (g_ui.inventory)
-        ui_toggle_inventory(CHAMPION_MAX);
-    g_inv_arrows_on_close = true;
+        ui_close_inventory(false);
     action_area_close();
     play_hide_view();
     champ_set_party_sleeping(true);
@@ -208,7 +206,7 @@ void play_start_session(void)
     game_start_play();
     input_set_mode(INPUT_MODE_MOVE);
     game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
-    g_dialog.progress_enabled = 0;
+    g_dialog.progress_enabled = false;
     advanced_reset();
     if (g_session.loaded) {
         ui_fill_zone_screen(ZONE_SCREEN, 0);

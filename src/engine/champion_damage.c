@@ -118,6 +118,8 @@ void champ_reset_step_state(void)
 {
     memset(g_champ_pending_damage, 0, sizeof g_champ_pending_damage);
     memset(g_champ_pending_wounds, 0, sizeof g_champ_pending_wounds);
+    memset(g_action_repeats, 0, sizeof g_action_repeats);
+    memset(g_champ_skill_raised, 0, sizeof g_champ_skill_raised);
     g_champ_regen_counter = 0;
     g_leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
     g_ui.candidate = 0;
@@ -185,7 +187,7 @@ int champ_get_dexterity(int champ)
         v = (int16_t)(v >> 1);
     int high = (int16_t)(PERCENT - (rand_next() & DEXTERITY_ROLL));
     int low = (int16_t)((rand_next() & DEXTERITY_ROLL) + 1);
-    return clamp_int((int16_t)low, (int16_t)(v >> 1), (int16_t)high);
+    return clamp_int(low, (int16_t)(v >> 1), high);
 }
 
 bool champ_test_luck(Champion *c, int chance)
@@ -459,9 +461,7 @@ static void kill_champion(int champ)
     if (champ == g_action.champion - 1)
         action_area_close();
     c->health = 0;
-    c->action_delay[SLOT_READY_HAND] = 0;
-    c->action_delay[SLOT_ACTION_HAND] = 0;
-    c->action_delay[ACTION_SPELL] = 0;
+    memset(c->action_delay, 0, sizeof c->action_delay);
     c->redraw |= REDRAW_STATUS_BOX;
     if (champ + 1 == g_ui.inventory) {
         if (g_ui.eye) {
@@ -470,7 +470,7 @@ static void kill_champion(int champ)
                 inv_show_object_name(g_game.leader_hand);
         }
         g_ui.mouth = 0;
-        g_hooks.toggle_inventory(CHAMPION_MAX);
+        g_hooks.close_inventory(true);
     }
     drop_all_objects(champ);
     int cell = c->cell;

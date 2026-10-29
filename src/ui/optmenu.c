@@ -72,7 +72,7 @@ int optmenu_get_filter(void)
     return menu.filter;
 }
 
-int optmenu_get_row(void)
+enum OptmenuRow optmenu_get_row(void)
 {
     return menu.row;
 }

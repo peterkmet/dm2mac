@@ -13,9 +13,11 @@
 extern bool (*g_optmenu_filter_hook)(int filter);
 
 /* The rows of the menu. */
-#define OPTMENU_ROW_FILTER   0
-#define OPTMENU_ROW_CONTINUE 1
-#define OPTMENU_ROW_COUNT    2
+enum OptmenuRow {
+    OPTMENU_ROW_FILTER = 0,
+    OPTMENU_ROW_CONTINUE = 1,
+    OPTMENU_ROW_COUNT = 2,
+};
 
 /* Setup */
 /* Starts the menu state at the beginning of the program, after the game mode is chosen. filter is the SETTINGS_FILTER_*
@@ -26,7 +28,7 @@ void optmenu_start(int filter);
 /* The filter in use (SETTINGS_FILTER_*); exported for the tests. */
 int optmenu_get_filter(void);
 /* The selected row (OPTMENU_ROW_*); exported for the tests. */
-int optmenu_get_row(void);
+enum OptmenuRow optmenu_get_row(void);
 
 /* Commands */
 /* Opens the menu in the viewport with the FILTER row selected. */

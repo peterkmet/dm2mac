@@ -126,7 +126,7 @@ Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `
 ## Deviations from the original
 
 - OPL chip: Nuked-OPL3 in OPL2 mode, register writes through its write buffer (2 samples per write, like the delay of the real chip). Output: 44100 Hz stereo, the same signal on both sides.
-- `fmmidi.com` computes `(note - 12) mod 12` with repeated subtraction. For a note below 12 with pitch bend, this takes about 1.4 billion instructions in the timer interrupt (song 7 has one such note). The port computes the same value directly.
+- `fmmidi.com` computes `(note - 12) mod 12` with repeated subtraction. For a note below 12 with pitch bend, this takes about 1.4 billion instructions in the timer interrupt (song 7 has one such note). The port computes the same value directly. Kept quirk: for a note below 12 the semitone is the unsigned wrap of the original (`bend_freq` in `src/ui/fm.c`).
 - The frequency table index is clamped to the table; the driver reads outside it for notes below the bend range. MIDI data bytes are cut to 7 bits before the driver tables use them.
 - A loop to an id that a track does not have does not move that track (the original searches past the loop records). A track that has no end event ends at its chunk end. A map outside `SONGLIST.DAT` keeps the song (the original reads past the buffer).
 - Not ported, because no song uses them: the HMI controllers `0x67`/`0x68` (controller enable flags), `0x72`, `0x75`, `0x76`, `0x79` (other loops), `0x77` (trigger callbacks), the HMI fade (`hmi_midi_fade_song`), tempo change, and the channel remap mode (the game turns it off). Like the original, the port does not send these controllers to the driver, but it does not run them.

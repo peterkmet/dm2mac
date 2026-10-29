@@ -55,15 +55,6 @@
 #define MOOD_AT_MASK_WORD       0
 #define MOOD_AT_CHOICES         2
 
-/* The flags of an AI class (g_ai_class_flags). */
-#define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
-#define AI_CLASS_ONE_FEAR       0x0002
-#define AI_CLASS_NO_DEATH_CLOUD 0x0008
-#define AI_CLASS_DODGES         0x0010
-#define AI_CLASS_SEARCH_NEAR    0x0020
-#define AI_CLASS_NO_FLEE        0x0040
-#define AI_CLASS_BORED          0x0400 /* class byte 1 bit 2: the creature is always bored */
-
 /* The jump byte of an animation step. */
 #define STEP_INTERRUPTIBLE 0x40 /* the step may end the animation at an interrupt */
 #define STEP_ACTS          0x80 /* the creature acts at this step */
@@ -268,6 +259,14 @@
 #define FILTER_PLACEABLE 0x10
 #define FILTER_ANY_ITEM  0x3f
 
+/* Plan command arguments: any item (a possession test; a drop that removes nothing), and the front group (a test of
+   its item). */
+#define PLAN_ARG_ANY_ITEM    (-2)
+#define PLAN_ARG_FRONT_GROUP 2
+#define STAND_VARIANT_LAST   2 /* the last of the three stands of cmd_stand_by_mood */
+#define HIT_SIZE_LARGE       2 /* creature hit size that makes the strongest death cloud */
+#define PATH_END_MARGIN      2 /* path steps that stay out of a candidate cost */
+
 /* The item skill bits of the plan commands that take and place items. */
 #define ITEM_SKILL_TAKE_CARRIED 0x08
 #define ITEM_SKILL_PLACE        0x77
@@ -299,8 +298,7 @@
 #define MODE_SPAWN   1
 #define MODE_BECOME  2
 
-/* The phases of a fall or jump after its second step: the creature lands where it stands, or the fall is done. */
-#define FALL_PHASE_LAND 2
+/* The phase of a fall or jump after its landing: the fall is done (the earlier phases are in creature.h). */
 #define FALL_PHASE_DONE 3
 
 /* The sparks of a transform. */
@@ -348,18 +346,18 @@
 
 /* A step of a plan (7 bytes). */
 typedef struct {
-    int8_t command; /* AI_CMD_* (0x3f and up), a step index, or a directive (negative) */
-    int8_t on_done; /* the next step when the command is done: index or AI_NEXT_* */
+    int8_t command; /* PLAN_CMD_* (0x3f and up), a step index, or a directive (negative) */
+    int8_t on_done; /* the next step when the command is done: index or PLAN_NEXT_* */
     int8_t on_fail; /* ... when it failed */
     int8_t arg1, arg2;
-    uint8_t scan; /* bits 0-4 scanner kind, bits 5-7 AI_SCAN_* */
+    uint8_t scan; /* bits 0-4 scanner kind, bits 5-7 PLAN_SCAN_* */
     int8_t scan_arg;
 } PlanStep;
 
 /* A target record (14 bytes): what a scanner looks for. */
 typedef struct {
     int8_t kind;       /* candidate kind */
-    uint8_t condition; /* AI_COND_*, bit 6 plan test, bit 7 negation */
+    uint8_t condition; /* COND_*, bit 6 plan test, bit 7 negation */
     int16_t condition_arg;
     uint16_t item; /* item filter or marker */
     uint16_t mask;
@@ -473,7 +471,7 @@ static uint32_t read_mood_choices(uint32_t addr)
 static int load_class(void)
 {
     if (g_ai.class_index == -1)
-        g_ai.class_index = (int16_t)creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS);
+        g_ai.class_index = ai_group_class(g_ai.group_thing);
     return g_ai.class_index;
 }
 
@@ -612,8 +610,9 @@ void ai_end(bool restored, const AiContext *saved)
 
 uint8_t *ai_scratch_push(void)
 {
-    g_ai.scratch = ai_state.scratch_blocks[ai_state.scratch_depth < SCRATCH_BLOCKS - 1 ? ai_state.scratch_depth++
-                                                                                       : ai_state.scratch_depth];
+    if (ai_state.scratch_depth >= SCRATCH_BLOCKS) /* fix: a port limit; the original has no fixed depth */
+        os_fatal("creature updates nest deeper than %d scratch blocks", SCRATCH_BLOCKS);
+    g_ai.scratch = ai_state.scratch_blocks[ai_state.scratch_depth++];
     g_ai.scratch_used = 0;
     return g_ai.scratch;
 }
@@ -780,7 +779,7 @@ static bool cond_few_of_type(int16_t creature_type)
             if (g == THING_NONE)
                 continue;
             int type = group_creature(g);
-            if (type == (uint16_t)creature_type)
+            if (type == creature_type)
                 same++;
             else if (type == MINION_CARRIER || type == MINION_SCOUT)
                 others++;
@@ -958,7 +957,7 @@ static AiItemCounts *get_item_counts(uint32_t targets, int scan)
         AiItemCounts *e = &g_ai.item_counts[i];
         if (!e->targets)
             slot = e;
-        else if (e->targets == targets && e->scan_kind == (int16_t)scan)
+        else if (e->targets == targets && e->scan_kind == scan)
             return e;
     }
     slot->targets = targets;
@@ -971,7 +970,7 @@ static AiItemCounts *get_item_counts(uint32_t targets, int scan)
     WantCount extra = {p, 0, 0};
     for (int16_t i = 0; i < AI_COUNT_TARGETS;) {
         AiTarget t = read_target(targets);
-        if (t.scan == (int16_t)scan) {
+        if (t.scan == scan) {
             if (t.item != TARGET_NO_ITEM && t.kind != TARGET_KIND_UNCOUNTED) {
                 if (t.wanted != -1) {
                     start_want_count(&wanted, p, COUNT_AT_WANTED, t.wanted);
@@ -995,6 +994,7 @@ static AiItemCounts *get_item_counts(uint32_t targets, int scan)
             break;
         targets += AI_TARGET_SIZE;
     }
+    /* as in the original: no flush of the last wanted and extra runs after the loop */
     return slot;
 }
 
@@ -1237,7 +1237,7 @@ static uint16_t change_mood(uint16_t mood)
         mood ^= MOOD_HURRY;
     if (!((uint16_t)r % (SPEED_MOOD_STEPS - creature_fear_resistance(g_ai.info))))
         mood &= ~MOOD_BORED;
-    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_BORED)
+    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_LAZY_GUARD)
         mood |= MOOD_LAZY;
     else if (!(r & ROLL_LAZY))
         mood &= ~MOOD_LAZY;
@@ -1320,8 +1320,8 @@ static void load_candidate_path(const AiCandidate *c)
     g_ai.cache.targets = c->targets;
     uint8_t *path = NULL;
     if (length > 0) {
-        path = ai_store_path(length * 2);
-        memcpy(path, g_ai.path, (size_t)length * 2);
+        path = ai_store_path(length * AI_PATH_STEP_SIZE);
+        memcpy(path, g_ai.path, (size_t)length * AI_PATH_STEP_SIZE);
     }
     g_ai.cached_path = path;
 }
@@ -1358,7 +1358,7 @@ static void compact_candidates(void)
         AiCandidate *c = candidate_at(i);
         if (c->cost > 0) {
             int16_t half = (int16_t)(c->cost >> 1);
-            int16_t limit = (int16_t)(g_ai.cache.path_length - 2);
+            int16_t limit = (int16_t)(g_ai.cache.path_length - PATH_END_MARGIN);
             c->cost = (int8_t)(half < limit ? half : limit);
         }
     }
@@ -1478,7 +1478,7 @@ static int fetch_plan_step(void)
         s = read_plan_step(a->plan, step);
         if (s.command >= 0)
             break;
-        if (s.command == PLAN_STEP_DIRECTIVE_COUNTER && s.on_done >= 0 && s.on_done < 2)
+        if (s.command == PLAN_STEP_DIRECTIVE_COUNTER && s.on_done >= 0 && s.on_done < PLAN_COUNTER_COUNT)
             a->counters[(int)s.on_done] = s.on_fail;
     }
     a->plan_step = step;
@@ -1651,14 +1651,15 @@ static uint16_t find_floor_sensor(int16_t x, int16_t y, int16_t cell, int type)
     return THING_NONE;
 }
 
-/* True when a group carries an item of index item at cell (CELL_ANY: any; item -2: any item). */
+/* True when a group carries an item of index item at cell (CELL_ANY: any; item PLAN_ARG_ANY_ITEM: any item). */
 static bool has_possession(uint16_t group, int item, int16_t cell)
 {
     if (group == THING_NONE)
         return false;
     for (uint16_t t = thing_word(group, GROUP_POSSESSIONS); t != THING_ENDOFLIST && t != THING_NONE;
          t = dungeon_next_thing(t))
-        if ((cell == CELL_ANY || thing_cell(t) == cell) && ((int16_t)item == -2 || item_get_index(t) == (uint16_t)item))
+        if ((cell == CELL_ANY || thing_cell(t) == cell) &&
+            ((int16_t)item == PLAN_ARG_ANY_ITEM || item_get_index(t) == (uint16_t)item))
             return true;
     return false;
 }
@@ -1709,7 +1710,7 @@ static int cmd_place_on_sensor(void)
     if (sensor == THING_NONE)
         return AI_RESULT_FAIL;
     uint16_t item = sensor_data(sensor);
-    if (g_ai.arg2 == 2) {
+    if (g_ai.arg2 == PLAN_ARG_FRONT_GROUP) {
         int f = facing();
         uint16_t g = creature_get_group_at(
             (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
@@ -1762,7 +1763,7 @@ int ai_cmd_front_group_carries(void)
         return AI_RESULT_FAIL;
     int cell = (uint8_t)g_ai.arg2;
     if (cell != CELL_ANY)
-        cell = dir_turn(cell, facing() + 2);
+        cell = dir_turn(cell, facing() + TURN_BACK);
     int f = facing();
     uint16_t g = creature_get_group_at(
         (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
@@ -1833,7 +1834,7 @@ static int cmd_take_from_front(void)
 static int cmd_drop_then_seek(void)
 {
     uint16_t *list = group_possessions(g_ai.group_thing);
-    if (g_ai.arg2 != -2) {
+    if (g_ai.arg2 != PLAN_ARG_ANY_ITEM) {
         int16_t filter = g_ai.arg2 == -1 ? (int16_t)g_ai.cache.mask : g_ai.arg2;
         if ((g_ai.arg2 != -1 || g_ai.cache.mask != CANDIDATE_MASK_ALL) && *list != THING_ENDOFLIST)
             ai_remove_matching_items(list, filter, CELL_ANY);
@@ -2008,7 +2009,7 @@ static int cmd_stand_by_mood(void)
     bool roams = group_mood_flag(g_ai.group_thing, MOOD_WANDERS);
     if (!roams && !g_ai.arg1)
         return AI_RESULT_FAIL;
-    int16_t v = g_ai.arg1 < 0 ? 0 : g_ai.arg1 > 2 ? 2 : g_ai.arg1;
+    int16_t v = g_ai.arg1 < 0 ? 0 : g_ai.arg1 > STAND_VARIANT_LAST ? STAND_VARIANT_LAST : g_ai.arg1;
     g_ai.active->action = (uint8_t)(v + ACTION_STAND);
     return roams && g_ai.arg1 == 1 ? AI_RESULT_ISSUED : AI_RESULT_DONE;
 }
@@ -2097,11 +2098,11 @@ static int exec_plan_command(int command)
     case PLAN_CMD_CHECK_PARTY_AHEAD:
         return cmd_check_party_ahead();
     case PLAN_CMD_SHOP_WAIT:
-        return (uint8_t)shop_cmd_wait_for_offer();
+        return shop_cmd_wait_for_offer();
     case PLAN_CMD_SHOP_EVALUATE:
-        return (uint8_t)shop_cmd_evaluate_offer();
+        return shop_cmd_evaluate_offer();
     case PLAN_CMD_SHOP_PAYMENT:
-        return (uint8_t)shop_cmd_count_payment();
+        return shop_cmd_count_payment();
     case PLAN_CMD_TURN_FRONT_GROUP:
         cmd_turn_front_group();
         return AI_RESULT_DONE;
@@ -2129,7 +2130,7 @@ static int exec_plan_command(int command)
                                         (int16_t)g_ai.cache.item)
             .result;
     case PLAN_CMD_SHOP_PAY:
-        return (uint8_t)shop_cmd_pay_change();
+        return shop_cmd_pay_change();
     case PLAN_CMD_SET_ACTION_BY_FLAG:
         return cmd_stand_by_mood();
     case PLAN_CMD_CONSUME:
@@ -2196,9 +2197,9 @@ static void run_plan(int chosen)
             g_ai.cache.path_left = 0;
         if (n++ > AI_STEP_LIMIT)
             a->action = ACTION_NONE;
-        if ((int8_t)a->action == -1 && r != (int8_t)AI_RESULT_ISSUED && a->plan == -1)
+        if (a->action == ACTIVE_ACTION_NONE && r != (int8_t)AI_RESULT_ISSUED && a->plan == -1)
             a->action = ACTION_NONE;
-    } while ((int8_t)a->action == -1);
+    } while (a->action == ACTIVE_ACTION_NONE);
 }
 
 /* The creature chooses what to do next: wander, flee, or follow the best plan. */
@@ -2245,7 +2246,7 @@ static void decide(void)
 static void act_turn(void)
 {
     int f = g_ai.active->facing;
-    if (dir_relative(facing(), f) == 2)
+    if (dir_relative(facing(), f) == TURN_BACK)
         f = dir_turn(f, (rand_next() & 2) + 1);
     group_set_dir(g_ai.group_thing, f);
 }
@@ -2358,7 +2359,7 @@ static bool act_melee_attack(void)
     } else {
         if (square_type(dun_get_square((Location){dx, dy})) == SQUARE_DOOR) {
             int strength = rand_below((uint16_t)(info->attack + (info->attack >> 1)));
-            if (sensor_door_try_destroy(dx, dy, (int16_t)strength, 0, 0))
+            if (sensor_door_try_destroy(dx, dy, (int16_t)strength, false, 0))
                 return true;
         }
         if (at_self)
@@ -2415,10 +2416,10 @@ static int act_move_two_steps(void)
         r = act_move();
         g_ai.cache.path_left = left;
         set_destination(dest_x() + g_dir_dx[a->direction], dest_y() + g_dir_dy[a->direction]);
-    } else if (a->phase == 1) {
+    } else if (a->phase == FALL_PHASE_FIRST_STEP) {
         r = act_move();
-        a->phase = r ? FALL_PHASE_LAND : FALL_PHASE_DONE;
-    } else if (a->phase == FALL_PHASE_LAND) {
+        a->phase = r ? FALL_PHASE_SECOND_STEP : FALL_PHASE_DONE;
+    } else if (a->phase == FALL_PHASE_SECOND_STEP) {
         a->phase = FALL_PHASE_DONE;
         MoveOutcome moved = move_thing_dest(g_ai.group_thing, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y],
                                             g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]);
@@ -2498,7 +2499,7 @@ static int act_turn_then_move(void)
         r = ai_state.dest_y; /* the original returns the register that still holds the destination row */
     }
     a->phase++;
-    return (int16_t)r;
+    return r;
 }
 
 /* Action: the creature shoots a missile, with a power from its attack. */
@@ -2590,7 +2591,7 @@ static bool act_trigger_square(void)
                            ai_location(ai_state.dest_x, ai_state.dest_y), facing())
             .passed &&
         g_ai.active->action == ACTION_OPERATE_DOOR) {
-        sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, 2, g_game.game_time);
+        sensor_schedule_square_event(ai_state.dest_x, ai_state.dest_y, 0, EFFECT_TOGGLE, g_game.game_time);
         return false;
     }
     return true;
@@ -2942,14 +2943,13 @@ static void start_vanish(void)
     ActiveGroup *a = g_ai.active;
     a->counters[0] = (int16_t)g_ai.anim[0];
     a->counters[1] = (int16_t)g_ai.anim[1];
-    if (g_ai_class_flags[creature_gdat_attr(group_creature(g_ai.group_thing), CREATURE_ATTR_CLASS)] &
-        AI_CLASS_NO_DEATH_CLOUD)
+    if (g_ai_class_flags[ai_group_class(g_ai.group_thing)] & AI_CLASS_NO_DEATH_CLOUD)
         return;
     int size = g_ai.info->hit_size; /* the power of the death cloud by size */
     explosion_create(EXPLOSION_DEATH_CLOUD,
-                     size == 1   ? DEATH_CLOUD_POWER_MEDIUM
-                     : size == 2 ? POWER_MAX
-                                 : DEATH_CLOUD_POWER_SMALL,
+                     size == 1                ? DEATH_CLOUD_POWER_MEDIUM
+                     : size == HIT_SIZE_LARGE ? POWER_MAX
+                                              : DEATH_CLOUD_POWER_SMALL,
                      g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y], EXPLOSION_AT_CENTER);
 }
 
@@ -3014,7 +3014,7 @@ void ai_update_group(void)
     ActiveGroup *a = g_ai.active;
     if (g_game.magic_light[MAGIC_ACTION_EFFECT] && !(g_ai.info->flags & CREATURE_FAST_VANISH) &&
         a->action != ACTION_VANISH && a->next_action != ACTION_VANISH) {
-        g_ai.event.time_map += ACTION_DELAY_EFFECT;
+        timeline_delay_event(&g_ai.event, ACTION_DELAY_EFFECT);
     } else if (!run_next_action()) {
         return;
     }

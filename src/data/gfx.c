@@ -5,9 +5,6 @@
 #include "ids.h"
 #include "le.h"
 
-/* The high nibble of a 4 bpp byte. */
-#define HIGH_NIBBLE_MASK 0xf0
-
 /* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel. */
 #define FRACTION_SHIFT      7
 #define BYTE_FRACTION_SHIFT 8
@@ -41,21 +38,16 @@ static int even(int width)
 /* The color of pixel i of a 4 bpp or 8 bpp picture. */
 static int get_pixel(const uint8_t *p, int bpp, int i)
 {
-    if (bpp == IMAGE_8BPP)
-        return p[i];
-    return i & 1 ? p[i >> 1] & NIBBLE_MASK : p[i >> 1] >> NIBBLE_BIT_COUNT;
+    return bpp == IMAGE_8BPP ? p[i] : image_nibble(p, i);
 }
 
 /* Sets pixel i of a 4 bpp or 8 bpp picture. */
 static void put_pixel(uint8_t *p, int bpp, int i, int color)
 {
-    if (bpp == IMAGE_8BPP) {
+    if (bpp == IMAGE_8BPP)
         p[i] = (uint8_t)color;
-        return;
-    }
-    uint8_t *b = p + (i >> 1);
-    *b = i & 1 ? (*b & HIGH_NIBBLE_MASK) | (color & NIBBLE_MASK)
-               : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BIT_COUNT);
+    else
+        image_set_nibble(p, i, color);
 }
 
 /* Blits */
@@ -120,7 +112,8 @@ void gfx_blit_scaled_4bpp(const Bitmap *source, Bitmap *target, const uint8_t *c
         prev = sy;
         int base = sy * src_stride;
         uint16_t acc_x = step_x >> 1;
-        /* two pixels per destination byte; an odd width also fills the pad nibble */
+        /* two pixels per destination byte; an odd width also fills the pad nibble; the source nibble index wraps
+           at 16 bits, as in the original */
         for (int i = 0; i < (dst_width + 1) / 2; i++) {
             int hi = get_pixel(src, IMAGE_4BPP, (uint16_t)((acc_x >> FRACTION_SHIFT) + base));
             acc_x += step_x;
@@ -164,7 +157,7 @@ void gfx_blit_scaled_8bpp(const Bitmap *source, Bitmap *target)
 }
 
 /* Draws count tile pixels from the cursor into an 8 bpp row and advances the cursor, wrapping at the tile end. */
-static void tile_run(const TileFill *fill, uint8_t *dst, int at, int count, TileCursor *cursor)
+static void paint_tile_run(const TileFill *fill, uint8_t *dst, int at, int count, TileCursor *cursor)
 {
     while (count > 0) {
         int n = cursor->left <= count ? cursor->left : count;
@@ -214,7 +207,7 @@ void gfx_blit_tiled_4to8_masked(const TileFill *fill, uint8_t *dst, int dst_widt
             for (int last = mask_row + w - 1; count > 0 && !mask_pixel(fill->mask, last); last--)
                 count--;
         }
-        tile_run(fill, dst, row_start + skip, count, &cursor);
+        paint_tile_run(fill, dst, row_start + skip, count, &cursor);
         if (w & 1) { /* the tile row continues like a 4 bpp row of even length */
             if (--cursor.left == 0) {
                 cursor.left = fill->tile_width;
@@ -369,9 +362,9 @@ uint8_t *pal_apply_dim_remap(uint8_t *table, uint8_t dim, int key1, int key2, in
         }
         table[i] = (uint8_t)color;
     }
-    if (key1 >= 0)
+    if (key1 >= 0 && key1 < REMAP_COLORS) /* fix: a key past the table */
         table[key1] = (uint8_t)key1;
-    if (key2 >= 0)
+    if (key2 >= 0 && key2 < REMAP_COLORS)
         table[key2] = (uint8_t)key2;
     return table;
 }

@@ -37,8 +37,8 @@ typedef struct {
     void (*refresh_input_mode)(void);            /* recomputes the active zones of the input mode */
     void (*set_wait)(int steps);                 /* the commands wait for steps timer ticks */
     void (*set_champion_cursor)(int16_t champion_index); /* the dragged champion cursor shows the face of a champion */
-    void (*toggle_inventory)(
-        int16_t champion_index); /* opens the inventory of a champion, or closes it (CHAMPION_MAX) */
+    void (*toggle_inventory)(int16_t champion_index);    /* opens the inventory of a champion, or closes it */
+    void (*close_inventory)(bool draw_arrows);           /* closes the open inventory */
     void (*draw_champion_state)(int16_t champion_index); /* draws what changed of the status box of a champion */
     void (*draw_all_champion_states)(bool tick);         /* draws all status boxes, the inventory, the action area */
     void (*draw_movement_arrows)(void);                  /* draws the movement arrows */

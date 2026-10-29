@@ -47,6 +47,8 @@ void json_strn(Json *j, const char *text, size_t n);
 void json_str(Json *j, const char *text);
 /* Appends "key": (a comma first when a value comes before). */
 void json_key(Json *j, const char *key);
+/* Appends "key":value of an integer. */
+void json_key_int(Json *j, const char *key, int64_t value);
 
 /* The game state */
 

@@ -113,7 +113,8 @@ static void send_event(const uint8_t *event)
     hmp.send(scaled);
 }
 
-static void send3(int status, int data1, int data2)
+/* Sends the event (status, data1, data2) as is: no stored or scaled channel volume. */
+static void send_raw_event(int status, int data1, int data2)
 {
     uint8_t event[MIDI_EVENT_SIZE] = {(uint8_t)status, (uint8_t)data1, (uint8_t)data2};
     hmp.send(event);
@@ -136,10 +137,10 @@ static void silence(void)
 {
     for (int t = 1; t < hmp.track_count; t++) {
         int ch = hmp.tracks[t].channel;
-        send3(MIDI_CONTROL | ch, MIDI_CTRL_NOTES_OFF, 0);
-        send3(MIDI_CONTROL | ch, MIDI_CTRL_RESET, 0);
-        send3(MIDI_PITCH_BEND | ch, BEND_CENTER, BEND_CENTER);
-        send3(MIDI_CONTROL | ch, MIDI_CTRL_VOLUME, 0);
+        send_raw_event(MIDI_CONTROL | ch, MIDI_CTRL_NOTES_OFF, 0);
+        send_raw_event(MIDI_CONTROL | ch, MIDI_CTRL_RESET, 0);
+        send_raw_event(MIDI_PITCH_BEND | ch, BEND_CENTER, BEND_CENTER);
+        send_raw_event(MIDI_CONTROL | ch, MIDI_CTRL_VOLUME, 0);
     }
 }
 

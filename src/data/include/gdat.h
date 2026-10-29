@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "le.h"
 
 /* Results of the loaders and decoders. */
 enum GdatResult {
@@ -122,6 +123,18 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
                                   size_t dst_size);
 /* An 8 bpp image stream: header, codec byte, LZSS data; exported for the tests. */
 enum GdatResult image_decode_8bpp(const uint8_t *src, size_t src_size, uint8_t *dst, size_t dst_size);
+/* The color of pixel i of 4 bpp pixels, high nibble first. */
+static inline int image_nibble(const uint8_t *pixels, size_t i)
+{
+    return i & 1 ? pixels[i / 2] & NIBBLE_MASK : pixels[i / 2] >> NIBBLE_BIT_COUNT;
+}
+/* Sets pixel i of 4 bpp pixels to the low nibble of color. */
+static inline void image_set_nibble(uint8_t *pixels, size_t i, int color)
+{
+    uint8_t *b = pixels + i / 2;
+    int nibble = color & NIBBLE_MASK;
+    *b = i & 1 ? (*b & ~NIBBLE_MASK) | nibble : (*b & NIBBLE_MASK) | nibble << NIBBLE_BIT_COUNT;
+}
 
 /* Values and texts */
 /* The original lookup: the value of a value key or 0, else the item of the key or GDAT_NO_ITEM. */
@@ -136,10 +149,12 @@ int gdat_text_int_field(const char *text, const char *key);
 int gdat_image_offset(const Gdat *g, int category, int index, int entry);
 /* The shift of x in the packed drawing offset. */
 #define GDAT_OFFSET_X_SHIFT 8
+/* The signed horizontal offset packed in a GDAT offset word. */
 static inline int8_t gdat_offset_x(int offset)
 {
     return (int8_t)(offset >> GDAT_OFFSET_X_SHIFT);
 }
+/* The signed vertical offset packed in a GDAT offset word. */
 static inline int8_t gdat_offset_y(int offset)
 {
     return (int8_t)offset;

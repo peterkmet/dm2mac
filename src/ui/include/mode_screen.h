@@ -11,9 +11,11 @@
 #include "game.h"
 
 /* The actions of the mode screen keys. */
-#define MODE_SCREEN_UP    0
-#define MODE_SCREEN_DOWN  1
-#define MODE_SCREEN_ENTER 2
+enum ModeScreenAction {
+    MODE_SCREEN_UP = 0,
+    MODE_SCREEN_DOWN = 1,
+    MODE_SCREEN_ENTER = 2,
+};
 
 /* ---- Setup ---- */
 
@@ -32,7 +34,7 @@ bool mode_screen_item_box(int16_t item, int16_t *rect); /* exported for the test
 /* ---- Commands ---- */
 
 /* A key action (MODE_SCREEN_*): up and down move the cursor and stop at the list ends; enter selects. */
-void mode_screen_key(int16_t action);
+void mode_screen_key(enum ModeScreenAction action);
 /* A left click at (x, y) of the screen: a click on an item box selects that item. */
 void mode_screen_click(int16_t x, int16_t y);
 /* Draws the screen into g_video_fb and sets the three palette colors that it uses. */

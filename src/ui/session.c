@@ -6,6 +6,7 @@
 #include <string.h>
 #include "action.h"
 #include "action_area.h"
+#include "champion.h"
 #include "creature.h"
 #include "dialog.h"
 #include "draw.h"
@@ -86,21 +87,6 @@ static char *slot_path(char *path, int16_t slot, bool bak)
 {
     snprintf(path, OS_PATH_SIZE, "%s/DATA/SKSAVE%d.%s", g_session.data_dir, slot, bak ? "BAK" : "DAT");
     return path;
-}
-
-static char *data_path(char *path, const char *name)
-{
-    snprintf(path, OS_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
-    return path;
-}
-
-/* Whether the file at path can be read. */
-static bool file_exists(const char *path)
-{
-    FILE *f = fopen(path, "rb");
-    if (f)
-        fclose(f);
-    return f != NULL;
 }
 
 /* Draws a GDAT picture placed in the screen zone, with its colors. */
@@ -192,7 +178,8 @@ static void list_slots(void)
         FILE *f = fopen(slot_path(path, i, false), "rb");
         if (f) {
             size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
-            (void)n; /* a short file keeps its zeros after what it has */
+            (void)n;                                             /* a short file keeps its zeros after what it has */
+            slots[i][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
             fclose(f);
             continue;
         }
@@ -212,8 +199,8 @@ void session_open_slot_dialog(int id, int buttons)
                            draw_gdat_image_palette(CAT_DIALOG, id, 0));
     dialog_screen_mode(true);
     text_draw_in_zone(ZONE_DIALOG_VERSION, g_ui_colors[UI_DARKEST_GRAY], DIALOG_VERSION_TEXT);
-    text_draw_in_zone(ZONE_SLOT_TEXT_1, g_ui_colors[UI_YELLOW], text[0]);
-    text_draw_in_zone(ZONE_SLOT_TEXT_2, g_ui_colors[UI_YELLOW], text[1]);
+    text_draw_in_zone(ZONE_BUTTON_TEXT_BOTTOM_LEFT, g_ui_colors[UI_YELLOW], text[0]);
+    text_draw_in_zone(ZONE_BUTTON_TEXT_BOTTOM_RIGHT, g_ui_colors[UI_YELLOW], text[1]);
     list_slots();
     g_dialog.button_count = buttons;
     input_push_mode(INPUT_MODE_DIALOG);
@@ -379,6 +366,22 @@ static int16_t choose_save_slot(void)
 
 /* ---- Load and save ---- */
 
+/* The path of the file name in the data folder. */
+static char *data_path(char *path, const char *name)
+{
+    snprintf(path, OS_PATH_SIZE, "%s/DATA/%s", g_session.data_dir, name);
+    return path;
+}
+
+/* Whether the file at path can be read. */
+static bool file_exists(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (f)
+        fclose(f);
+    return f != NULL;
+}
+
 /* Reads DUNGEON.DAT (DUNGENB.DAT when chosen and present) for a new game; returns false on a read error. */
 static bool load_new_game(void)
 {
@@ -386,6 +389,7 @@ static bool load_new_game(void)
     if (!g_session.use_dungenb || !file_exists(data_path(path, "DUNGENB.DAT")))
         data_path(path, "DUNGEON.DAT");
     save_clear_party();
+    champ_reset_step_state(); /* no step state of the last game, as at a load */
     bool first = !g_weather.dungeon_loaded;
     if (!dungeon_load(path))
         return false;
@@ -466,7 +470,7 @@ bool session_load(void)
         rename(path, bak);
     }
     dialog_draw(DIALOG_LOADING, MESSAGE_NONE);
-    g_dialog.progress_enabled = 1;
+    g_dialog.progress_enabled = true;
     game_clear_end();
     arrive_on_party_map();
     return true;

@@ -29,7 +29,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 ## Click zones of the view
 
-- The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, cell, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature stands on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones. Their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
+- The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, pos, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature stands on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones. Their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
 - A fixed zone of an object grows to hold all the objects of its cell, and is at least 14 × 11 pixels.
 - `click_in_viewport` tests the zones in order: an object or alcove zone takes or places an object ([champions.md](champions.md#the-leader-hand)), a wall ornament goes to `sensor_process_wall_click`, a door button toggles the door. A click on no zone goes to the front wall or to a creature ([creatures.md](creatures.md)).
 
@@ -57,14 +57,16 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - `creature_cell_mask` reads kinds 5 to 15 past its table: [creatures.md](creatures.md#deviations-from-the-original).
 - The fall view of a pit goes into the viewport, and the next present shows it. The original presents it in the middle of the step.
 - The push arrow under the mouse stays pressed in the arrow panel while the mouse selects it in push mode (`input_release_move_arrow`). The original draws it pressed on the screen and waits for a vertical blank, then releases it in the same game step. The port presents the screen only after the step, so the original order shows no pressed arrow.
+- A load and a new game clear the push that waits for a creature group (`g_party.push_pending_group`, `game_start_play`). The original keeps the group of the last game, and the push arrows of the new game wait for it.
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified (manual check B7).
 - The advanced mode takes the autorepeat of a held key only when no key, event, or command waits (`input_key_repeat`). In the original, the repeats of a held key fill the event ring, and the party walks on after the key goes up. The vanilla mode keeps that.
 - A move without a destination (a removal) leaves a stale register in the destination map of the original (`g_party.dest_map`). The port writes the current map; the scenario tests skip `dest_map` after a removal.
 - Kept quirks of the original:
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
-  - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square
+  - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square; the stairs check of the same step (`move_follow_square_transitions`) then reads that type
   - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or else at the coordinates of the pit square
   - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
   - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)
+  - a frame step sensor (`0x41`, `SENSOR_FRAME_STEP`) that steps back from frame 0 wraps to frame `0xffff` before the modulo by the frame count of its ornament, so it goes to the last frame only when the frame count divides 65536 (`wall_sensor_event`)
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.

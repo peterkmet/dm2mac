@@ -7,7 +7,6 @@ byteorder engine/magic.c rule 10.7: runes_of reads the single rune bytes of the 
 decimal data/hmp.c:channel_event_length rule 3.12: the event length table of the MIDI player of SKULL.EXE
 decimal engine/champion_damage.c:drop_order rule 3.12: slot drop order of SKULL.EXE
 decimal engine/champion_damage.c:wound_defense_factor rule 3.12: wound location defense factors of SKULL.EXE
-decimal engine/creature.c:creature_infos rule 3.12: a table of SKULL.EXE
 decimal engine/creature.c:hit_radius_sq rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_size rule 3.12: a table of SKULL.EXE
 decimal engine/dungeon.c:thing_slack rule 3.12: a table of SKULL.EXE
@@ -36,6 +35,7 @@ decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+decimal ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
@@ -116,7 +116,6 @@ hex engine/save.c:word_mask rule 3.12: a bit mask table of SKULL.EXE
 hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
-hex ui/dialog.c:button_text_zones rule 3.12: a table of SKULL.EXE
 hex ui/fm.c:note_freq_table rule 3.12: a table of SKULL.EXE
 hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
@@ -128,7 +127,6 @@ hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
 hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
 hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE

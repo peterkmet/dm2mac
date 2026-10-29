@@ -50,6 +50,10 @@
 #define SKILL_COUNT      20
 #define SKILL_BASE_COUNT 4 /* skills 4 to 19 are sub-skills: 4 per base skill */
 #define SUB_SKILL_COUNT  4 /* the sub-skills of each base skill */
+
+/* The skill level of a champion without experience in the skill. */
+#define SKILL_LEVEL_UNTRAINED 1
+
 /* The base skill of a skill: the skill itself, or the base skill of a sub-skill. */
 static inline int champ_base_skill(int skill)
 {
@@ -231,6 +235,7 @@ extern bool g_party_sleeping;
    and closing it takes back the counts that it showed. */
 extern uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
+/* The champion record of the party slot index. */
 static inline Champion *champion(int index)
 {
     return (Champion *)g_game.champions[index];
@@ -290,8 +295,8 @@ void champ_wake_party(void);
 extern int16_t g_champ_pending_damage[CHAMPION_MAX];
 extern uint16_t g_champ_pending_wounds[CHAMPION_MAX]; /* the wounds of this game step; exported for the tests */
 extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and health; exported for the tests */
-/* Clears the damage of the step, the regeneration counter, the leader hand cache, and the recruit candidate, as at
-   the program start. */
+/* Clears the damage of the step, the action repeats, the raised skills, the regeneration counter, the leader hand
+   cache, and the recruit candidate, as at the program start. */
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);
@@ -351,11 +356,13 @@ void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand to the left or the right side; true when it flies. */
 bool champ_throw_leader_hand_object(bool right_side);
 
-/* The leader hand, the champion slots, and the item effects (champion_inventory.c). */
+/* Load and item effects (champion_inventory.c) */
 /* Computes the load of the champion: its slots and the items of its open chest. */
 void champ_compute_load(int champ);
 /* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
 void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
+
+/* The leader hand */
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 /* Puts thing into the hand of the leader; the cursor shows it from the next frame on (inv_cursor_object). */
@@ -364,6 +371,8 @@ void champ_put_in_leader_hand(uint16_t thing);
 uint16_t champ_take_from_leader_hand(void);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
 void inv_update_hand_cursor(void);
+
+/* Slots */
 /* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
 uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
 /* Puts thing into slot of champ. */
@@ -375,6 +384,8 @@ void inv_click_slot(int16_t slot);
 void inv_store_leader_hand_object(int champ);
 /* Puts thing into the first free slot of champ that takes it. */
 void inv_put_in_free_slot(int champ, uint16_t thing);
+
+/* Eating and drinking */
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
 void champ_consume_object(int champ, uint16_t thing, int16_t slot);

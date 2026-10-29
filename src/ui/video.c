@@ -10,6 +10,8 @@
 uint8_t g_video_fb[SCREEN_H][SCREEN_W] = {0}; /* initialized: keeps it out of __common, which ld warns about */
 uint8_t g_video_palette[PALETTE_COLORS][RGB_CHANNELS];
 
+/* ---- Palette colors ---- */
+
 uint8_t video_vga_to_8bit(uint8_t v)
 {
     return (uint8_t)(v << (CHANNEL_DEPTH - VGA_DEPTH) | v >> (2 * VGA_DEPTH - CHANNEL_DEPTH));
@@ -23,6 +25,8 @@ uint32_t video_argb(uint8_t palette_color)
     uint32_t blue = video_vga_to_8bit(p[RGB_BLUE]);
     return video_argb_pack(red, green, blue);
 }
+
+/* ---- Output layout ---- */
 
 VideoLayout video_layout(int output_w, int output_h)
 {

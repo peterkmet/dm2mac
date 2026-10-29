@@ -10,18 +10,22 @@
 #include "mve.h"
 
 /* The movie scripts of the launcher. */
-#define MOVIE_SCRIPT_NONE       0
-#define MOVIE_SCRIPT_START      1
-#define MOVIE_SCRIPT_COMPLETED  2
-#define MOVIE_SCRIPT_PARTY_DEAD 3
+enum MovieScript {
+    MOVIE_SCRIPT_NONE = 0,
+    MOVIE_SCRIPT_START = 1,
+    MOVIE_SCRIPT_COMPLETED = 2,
+    MOVIE_SCRIPT_PARTY_DEAD = 3,
+};
 
 /* The steps of the movie scripts. */
-#define MOVIE_STEP_NONE    (-1)
-#define MOVIE_STEP_SPLASH  0
-#define MOVIE_STEP_FTL     1
-#define MOVIE_STEP_INTRO   2
-#define MOVIE_STEP_END     3
-#define MOVIE_STEP_CREDITS 4
+enum MovieStep {
+    MOVIE_STEP_NONE = -1,
+    MOVIE_STEP_SPLASH = 0,
+    MOVIE_STEP_FTL = 1,
+    MOVIE_STEP_INTRO = 2,
+    MOVIE_STEP_END = 3,
+    MOVIE_STEP_CREDITS = 4,
+};
 
 /* The picture of a movie and the screen of the original player that shows it. */
 typedef struct {
@@ -34,17 +38,17 @@ typedef struct {
 
 /* Scripts */
 /* The script that the launcher runs after the game ends with exit_code. */
-int movie_script_after(int exit_code);
+enum MovieScript movie_script_after(int exit_code);
 /* Stops the script: the game screen and its palette come back. */
 void movie_stop(void);
 /* Starts script with the files of data_dir at now_ns; false when no step of it can play. */
-bool movie_start(int script, const char *data_dir, uint64_t now_ns);
+bool movie_start(enum MovieScript script, const char *data_dir, uint64_t now_ns);
 
 /* Queries */
 /* True while a script plays. */
 bool movie_is_playing(void);
 /* The current step; MOVIE_STEP_NONE when no script plays. */
-int movie_current_step(void); /* exported for the tests */
+enum MovieStep movie_current_step(void); /* exported for the tests */
 /* True while the splash picture shows on the game screen; during a movie, movie_picture gives the picture. */
 bool movie_shows_splash(void);
 /* The picture of the current movie and its screen; all zero when no movie shows. */

@@ -19,21 +19,25 @@
 /* The base of decimal numbers in texts. */
 #define DECIMAL_BASE 10
 
+/* The little-endian 16-bit word at p. */
 static inline uint16_t le16(const uint8_t *p)
 {
     return p[0] | p[1] << BYTE_BIT_COUNT;
 }
+/* The little-endian 32-bit word at p. */
 static inline uint32_t le32(const uint8_t *p)
 {
     return le16(p) | (uint32_t)le16(p + 2) << LE16_BIT_COUNT;
 }
 
+/* Stores a 16-bit word at p in little-endian order. */
 static inline void put_le16(uint8_t *p, uint16_t word)
 {
     p[0] = (uint8_t)word;
     p[1] = word >> BYTE_BIT_COUNT;
 }
 
+/* Stores a 32-bit word at p in little-endian order. */
 static inline void put_le32(uint8_t *p, uint32_t dword)
 {
     put_le16(p, (uint16_t)dword);

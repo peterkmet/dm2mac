@@ -124,7 +124,7 @@ static void fill(Block *b, Rect r, uint8_t color)
 }
 
 /* Gives each cell of the grid the color that the next bits_per_cell bits select. */
-static void pattern(Block *b, Grid g, const uint8_t *colors, uint64_t bits, int bits_per_cell)
+static void paint_pattern(Block *b, Grid g, const uint8_t *colors, uint64_t bits, int bits_per_cell)
 {
     uint64_t mask = (1u << bits_per_cell) - 1;
     for (int row = 0; row < g.rows; row++)
@@ -133,15 +133,15 @@ static void pattern(Block *b, Grid g, const uint8_t *colors, uint64_t bits, int 
 }
 
 /* Draws the left and right halves (vertical) or the top and bottom halves of the block, each with its colors. */
-static void halves(Block *b, bool vertical, Palette first, Palette second, int bits_per_cell)
+static void paint_halves(Block *b, bool vertical, Palette first, Palette second, int bits_per_cell)
 {
     Grid g = vertical ? (Grid){0, 0, HALF_BLOCK, MVE_BLOCK_SIZE, 1, 1} : (Grid){0, 0, MVE_BLOCK_SIZE, HALF_BLOCK, 1, 1};
-    pattern(b, g, first.colors, first.bits, bits_per_cell);
+    paint_pattern(b, g, first.colors, first.bits, bits_per_cell);
     if (vertical)
         g.x = HALF_BLOCK;
     else
         g.y = HALF_BLOCK;
-    pattern(b, g, second.colors, second.bits, bits_per_cell);
+    paint_pattern(b, g, second.colors, second.bits, bits_per_cell);
 }
 
 /* Copies the block at (dx, dy) from its place in frame; a source outside the frame leaves the block unchanged. */
@@ -168,40 +168,41 @@ static Motion near_motion(uint8_t v)
 }
 
 /* Encoding 7: two colors, one bit per pixel, or per 2 × 2 cell when the first color is the higher one. */
-static void two_colors(Block *b)
+static void decode_two_colors(Block *b)
 {
     uint8_t p[TWO_COLORS];
     get_colors(&b->r, p, TWO_COLORS);
     if (p[0] <= p[1])
-        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, 1, 1}, p, get_bits(&b->r, sizeof(uint64_t)), 1);
+        paint_pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, MVE_BLOCK_SIZE, 1, 1}, p, get_bits(&b->r, sizeof(uint64_t)), 1);
     else
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
-                get_bits(&b->r, sizeof(uint16_t)), 1);
+        paint_pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
+                      get_bits(&b->r, sizeof(uint16_t)), 1);
 }
 
 /* Encoding 9: four colors per pixel, or per cell of 2 × 2, 2 × 1, or 1 × 2 pixels. */
-static void four_colors(Block *b)
+static void decode_four_colors(Block *b)
 {
     uint8_t p[FOUR_COLORS];
     get_colors(&b->r, p, FOUR_COLORS);
     bool second_low = p[TWO_COLORS] <= p[TWO_COLORS + 1]; /* the order of P2 and P3 */
     if (p[0] <= p[1] && second_low) {
         uint64_t top = get_bits(&b->r, sizeof(uint64_t));
-        halves(b, false, (Palette){p, top}, (Palette){p, get_bits(&b->r, sizeof(uint64_t))}, FOUR_COLOR_BIT_COUNT);
+        paint_halves(b, false, (Palette){p, top}, (Palette){p, get_bits(&b->r, sizeof(uint64_t))},
+                     FOUR_COLOR_BIT_COUNT);
     } else if (p[0] <= p[1]) {
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
-                get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BIT_COUNT);
+        paint_pattern(b, (Grid){0, 0, CELLS_PER_ROW, CELLS_PER_ROW, CELL_SIDE, CELL_SIDE}, p,
+                      get_bits(&b->r, sizeof(uint32_t)), FOUR_COLOR_BIT_COUNT);
     } else if (second_low) {
-        pattern(b, (Grid){0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, CELL_SIDE, 1}, p, get_bits(&b->r, sizeof(uint64_t)),
-                FOUR_COLOR_BIT_COUNT);
+        paint_pattern(b, (Grid){0, 0, CELLS_PER_ROW, MVE_BLOCK_SIZE, CELL_SIDE, 1}, p,
+                      get_bits(&b->r, sizeof(uint64_t)), FOUR_COLOR_BIT_COUNT);
     } else {
-        pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, CELL_SIDE}, p, get_bits(&b->r, sizeof(uint64_t)),
-                FOUR_COLOR_BIT_COUNT);
+        paint_pattern(b, (Grid){0, 0, MVE_BLOCK_SIZE, CELLS_PER_ROW, 1, CELL_SIDE}, p,
+                      get_bits(&b->r, sizeof(uint64_t)), FOUR_COLOR_BIT_COUNT);
     }
 }
 
 /* Encodings 8 and 10: count colors (2 or 4) per quadrant, or per half of the block. */
-static void color_parts(Block *b, int count, int bits_per_cell)
+static void decode_color_parts(Block *b, int count, int bits_per_cell)
 {
     int quadrant_bytes = QUADRANT_PIXELS * bits_per_cell / BYTE_BIT_COUNT;
     int half_bytes = HALF_PIXELS * bits_per_cell / BYTE_BIT_COUNT;
@@ -212,18 +213,18 @@ static void color_parts(Block *b, int count, int bits_per_cell)
             if (q)
                 get_colors(&b->r, p, count);
             Grid g = {column_quadrant_x[q], column_quadrant_y[q], HALF_BLOCK, HALF_BLOCK, 1, 1};
-            pattern(b, g, p, get_bits(&b->r, quadrant_bytes), bits_per_cell);
+            paint_pattern(b, g, p, get_bits(&b->r, quadrant_bytes), bits_per_cell);
         }
         return;
     }
     uint64_t first = get_bits(&b->r, half_bytes);
     get_colors(&b->r, p + count, count);
-    halves(b, p[count] <= p[count + 1], (Palette){p, first}, (Palette){p + count, get_bits(&b->r, half_bytes)},
-           bits_per_cell);
+    paint_halves(b, p[count] <= p[count + 1], (Palette){p, first}, (Palette){p + count, get_bits(&b->r, half_bytes)},
+                 bits_per_cell);
 }
 
 /* Encodings 11 to 15: raw pixels, 2 × 2 cells, quadrants, one color, and a checkerboard. */
-static void plain_colors(Block *b, int encoding)
+static void decode_plain_colors(Block *b, int encoding)
 {
     uint8_t p[QUADRANT_COUNT];
     switch (encoding) {
@@ -288,19 +289,19 @@ static void decode_block(Block *b, int encoding)
         m->bad_blocks++;
         break;
     case ENC_TWO_COLORS:
-        two_colors(b);
+        decode_two_colors(b);
         break;
     case ENC_TWO_COLOR_PARTS:
-        color_parts(b, TWO_COLORS, 1);
+        decode_color_parts(b, TWO_COLORS, 1);
         break;
     case ENC_FOUR_COLORS:
-        four_colors(b);
+        decode_four_colors(b);
         break;
     case ENC_FOUR_COLOR_PARTS:
-        color_parts(b, FOUR_COLORS, FOUR_COLOR_BIT_COUNT);
+        decode_color_parts(b, FOUR_COLORS, FOUR_COLOR_BIT_COUNT);
         break;
     default:
-        plain_colors(b, encoding);
+        decode_plain_colors(b, encoding);
     }
 }
 

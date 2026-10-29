@@ -47,7 +47,7 @@ uint16_t money_take_coin_from_box(uint16_t box, int coin_type); /* exported for 
 /* A click on the coin pile of slot in the open money box: a coin goes into or out of the leader hand. */
 void money_box_click_coin(int16_t slot);
 /* Exchanges the coins of box for the fewest coins of the same value; check_only: only tests. True when the coins
-   change. */
+   change. As in the original, it takes the coins out of the box one by one. */
 bool money_normalize_coins(bool check_only, uint16_t box);
 
 /* Merchant prices */

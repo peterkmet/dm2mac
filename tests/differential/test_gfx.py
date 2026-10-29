@@ -263,6 +263,27 @@ def test_dim_remap_matches_original(lib, emu):
         assert c_count.value & 0xFFFF == int.from_bytes(emu.read(COUNT, 2), "little"), case
 
 
+def test_dim_remap_key_past_the_table(lib):
+    # A key color of 256 or more (a damaged GRAPHICS.DAT) leaves the bytes after the remap table unchanged.
+    from dm2test.gdat import GDAT
+    if not GDAT.exists():
+        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    gdat = ctypes.c_void_p()
+    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+    lib.gdat_free.argtypes = [ctypes.c_void_p]
+    lib.pal_load_color_ramps.argtypes = [ctypes.c_void_p]
+    lib.pal_load_color_ramps.restype = ctypes.c_bool
+    lib.pal_apply_dim_remap.argtypes = [u8_p, ctypes.c_uint8, ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_int16)]
+    assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(gdat)) == 0
+    assert lib.pal_load_color_ramps(gdat)
+    lib.gdat_free(gdat)
+    table = buf([0xAA] * (2 * C.REMAP_COLORS))
+    count = ctypes.c_int16(0)
+    lib.pal_apply_dim_remap(table, 16, C.REMAP_COLORS + 44, C.REMAP_COLORS, ctypes.byref(count))
+    assert count.value == C.REMAP_COLORS
+    assert bytes(table)[C.REMAP_COLORS:] == b"\xaa" * C.REMAP_COLORS
+
+
 def test_ramp_lengths_past_the_item(lib, tmp_path):
     # A damaged GRAPHICS.DAT whose ramp lengths reach past the ramp item is rejected.
     from dm2test.gdat import GDAT

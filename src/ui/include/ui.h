@@ -58,9 +58,6 @@ typedef struct {
 /* The colors of a face icon. */
 #define FACE_ICON_COLORS 16
 
-/* Closing the inventory redraws the movement arrows (false while the party falls asleep). */
-extern bool g_inv_arrows_on_close;
-
 /* ---- Setup ---- */
 
 /* Clears the interface caches for a new screen. */
@@ -94,9 +91,9 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent);
 /* Draws text with its base line at (x, y) in screen coordinates. */
 void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text);
 /* Draws text placed in zone. */
-void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text);
+void offscreen_draw_text_in_zone(Offscreen *o, int zone, TextColors colors, const char *text);
 /* Draws text with a shadow placed in zone. */
-void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text);
+void offscreen_draw_shadow_text(Offscreen *o, int zone, TextColors colors, const char *text);
 
 /* ---- Interface pictures ---- */
 
@@ -122,7 +119,9 @@ void ui_draw_movement_arrows(void);
 void ui_draw_champion_state(int16_t champion_index);
 /* Draws all status boxes, the open inventory, and the action area (tick: one game tick passed). */
 void ui_draw_all_champion_states(bool tick);
-/* Opens the inventory of a champion, or closes it when it is open (CHAMPION_MAX: close). */
+/* Closes the open inventory; draw_arrows redraws the movement arrows (false while the party falls asleep). */
+void ui_close_inventory(bool draw_arrows);
+/* Opens the inventory of a champion, or closes it when it is open; an index outside 0 to 3 changes nothing. */
 void ui_toggle_inventory(int16_t champion_index);
 
 #endif /* DM2_UI_UI_H */

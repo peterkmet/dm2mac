@@ -56,6 +56,8 @@
 
 LeaderHand g_leader_hand = {.icon = HAND_ICON_NONE};
 
+/* Load and item effects */
+
 /* The magic light of the party (the first word of g_game.magic_light). */
 static void add_magic_light(int delta)
 {
@@ -186,6 +188,8 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
         champ_compute_load(champ);
 }
 
+/* The leader hand */
+
 uint16_t inv_cursor_object(void)
 {
     return g_game.leader_hand;
@@ -235,6 +239,8 @@ void inv_update_hand_cursor(void)
     g_hooks.render_hand_icon();
     g_leader_hand.icon = icon;
 }
+
+/* Slots */
 
 /* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
 static uint16_t slot_thing(int champ, int16_t slot)
@@ -344,7 +350,7 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
             }
 }
 
-/* ---- Eating and drinking ---- */
+/* Eating and drinking */
 
 /* A mana potion of gain value adds mana; above the maximum it adds only half. */
 static void drink_mana_potion(Champion *c, int16_t value)

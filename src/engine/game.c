@@ -39,6 +39,8 @@ static uint8_t cheats;
 enum GameMode g_game_mode = GAME_MODE_VANILLA;
 const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "turnbased"};
 
+/* The map changes and the timeline */
+
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
 {
     if (leaving)
@@ -190,6 +192,8 @@ void game_process_timeline(void)
     dun_set_current_map(g_game.party_map);
 }
 
+/* The game step */
+
 void game_enter_new_map(void)
 {
     game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
@@ -279,10 +283,13 @@ int game_modify_global_var(int var, int value, int op)
     return v;
 }
 
+/* The main loop */
+
 void game_start_play(void)
 {
     g_party_sleeping = false;
     g_party.push_mode = 0;
+    g_party.push_pending_group = THING_NONE; /* no push of the last game waits */
     g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;
     g_main_loop.running = true;
@@ -338,6 +345,8 @@ void game_request_quit(void)
     g_main_loop.quit = true;
 }
 
+/* The interface state */
+
 void game_clear_ui_state(void)
 {
     memset(&g_ui, 0, sizeof g_ui);
@@ -374,6 +383,8 @@ void game_release_eye_and_mouth(void)
     g_ui.mouth = false;
 }
 
+/* The input state */
+
 void game_set_command_stop(bool on)
 {
     g_input_command_stop = on;
@@ -388,6 +399,8 @@ void game_set_mouse_buttons(int pressed)
 {
     g_input_mouse_buttons = pressed;
 }
+
+/* The session */
 
 void game_set_new_game(int choice)
 {
@@ -457,6 +470,8 @@ void game_restore_session(const Session *session)
 {
     g_session = *session;
 }
+
+/* The cheats */
 
 uint8_t game_get_cheats(void)
 {

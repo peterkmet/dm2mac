@@ -75,12 +75,18 @@ _Static_assert(sizeof(SkyObject) == SKY_OBJECT_RECORD_SIZE, "the original sky ob
 /* The end mark of the sky objects. */
 #define SKY_OBJECT_END 0xff
 
+/* Sky */
 /* The weather sky objects that the view draws, ended by SKY_OBJECT_END (world_update_day_night fills them). */
 SkyObject *weather_sky_objects(void);
 /* The sky set of the party map has rain pictures. */
 bool weather_sky_has_rain(void);
 /* The sky set of the party map has cloud pictures. */
 bool weather_sky_has_clouds(void);
+/* True when the sky state of the map graphics (value key MAP_KEY_SKY_STATE) shows the weather: rain, clouds,
+   lightning. */
+bool weather_is_shown(uint16_t sky_state);
+
+/* Weather and day */
 /* Starts a new weather cycle (keep_state false) or keeps the loaded weather (true); sets the light of the hour.
    exported for the tests */
 void weather_init(bool keep_state);
@@ -88,6 +94,8 @@ void weather_init(bool keep_state);
 void weather_load(const Gdat *g);
 /* The weather of a game step (storm_step false): hour, rain, clouds, sky objects, lightning; or a storm step (true). */
 void world_update_day_night(bool storm_step);
+
+/* Light */
 /* Computes the party light level (g_view_light_level) from the hand lights, the square lights, magic, the map, the
    hour, and the weather. */
 void light_update_party_light(void);

@@ -52,18 +52,19 @@
 #define SQUARE_FAKE_WALL_OPEN     0x04
 #define SQUARE_FLAG_3             0x08 /* bit 3 of any square: one floor text ornament shows it */
 #define SQUARE_LEVEL_LINK         0x02 /* a square with a link to another level */
-#define SQUARE_FLAG_0         0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
-#define SQUARE_HAS_THINGS     0x10 /* bit 4 of any square: things lie on it */
+#define SQUARE_FLAG_0          0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
+#define SQUARE_FAKE_WALL_BLINK SQUARE_FLAG_0 /* the flag of a fake wall that blinks with MAP_OPTION_DETAILS */
+#define SQUARE_HAS_THINGS      0x10          /* bit 4 of any square: things lie on it */
 /* The values of SQUARE_DOOR_STATE. */
-#define DOOR_STATE_OPEN       0
-#define DOOR_STATE_ONE_FOURTH 1 /* a door one step down: the party passes under it */
-#define DOOR_STATE_HALF       2
+#define DOOR_STATE_OPEN        0
+#define DOOR_STATE_ONE_FOURTH  1 /* a door one step down: the party passes under it */
+#define DOOR_STATE_HALF        2
 #define DOOR_STATE_THREE_FOURTHS 3
 #define DOOR_STATE_CLOSED        4
 #define DOOR_STATE_BROKEN        5
 #define square_flag(s, bit)      (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
-#define WALL_FACE(dir)           (1 << (DIR_WEST - (dir)))
+#define square_wall_face(dir)    (1 << (DIR_WEST - (dir)))
 
 /* Directions, clockwise from north, and the cells of a square, numbered like the directions. */
 #define DIR_NORTH               0
@@ -215,23 +216,28 @@ static inline uint8_t thing_byte(uint16_t thing, int field)
 {
     return dungeon_thing_record(thing)[field];
 }
+/* Sets one byte of a thing record. */
 static inline void thing_set_byte(uint16_t thing, int field, uint8_t byte)
 {
     dungeon_thing_record(thing)[field] = byte;
 }
+/* A bit field of a thing record word: shifted and masked. */
 static inline uint16_t thing_field(uint16_t thing, int field, int shift, uint16_t mask)
 {
     return (uint16_t)(thing_word(thing, field) >> shift & mask);
 }
+/* Sets a bit field of a thing record word. */
 static inline void thing_set_field(uint16_t thing, int field, int shift, uint16_t mask, unsigned bits)
 {
     uint16_t w = thing_word(thing, field);
     thing_set_word(thing, field, (uint16_t)((w & ~(mask << shift)) | (bits & mask) << shift));
 }
+/* Whether a flag bit of a thing record word is set. */
 static inline bool thing_bit(uint16_t thing, int field, uint16_t bit)
 {
     return (thing_word(thing, field) & bit) != 0;
 }
+/* Sets or clears a flag bit of a thing record word. */
 static inline void thing_set_bit(uint16_t thing, int field, uint16_t bit, bool on)
 {
     uint16_t w = thing_word(thing, field);
@@ -240,6 +246,7 @@ static inline void thing_set_bit(uint16_t thing, int field, uint16_t bit, bool o
 /* The head word of a thing list in a record: possessions, contents, or the link to the next thing. The callers
    read it natively, so the port needs a little-endian host. */
 _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "thing_list reads the record words natively");
+/* The list-head word of a thing that holds other things. */
 static inline uint16_t *thing_list(uint16_t holder, int field)
 {
     return (uint16_t *)(void *)(dungeon_thing_record(holder) + field);
@@ -267,11 +274,13 @@ static inline uint16_t *container_contents(uint16_t container)
 #define DOOR_MOVING             0x0400
 #define DOOR_BUTTON_PRESSED     0x0800
 #define DOOR_MARKED             0x1000 /* a creature opened the door; the door clears it when it closes */
-#define DOOR_SWITCH_ON          0x2000 /* the state of sensor 0x46: its wall button and door spells operate the door */
+#define DOOR_SWITCH_ON 0x2000 /* the state of SENSOR_DOOR_SWITCH: its wall button and door spells operate the door */
+/* Whether a flag bit of a door is set. */
 static inline bool door_flag(uint16_t door, uint16_t bit)
 {
     return thing_bit(door, DOOR_DATA, bit);
 }
+/* Sets or clears a flag bit of a door. */
 static inline void door_set_flag(uint16_t door, uint16_t bit, bool on)
 {
     thing_set_bit(door, DOOR_DATA, bit, on);
@@ -330,14 +339,17 @@ static inline bool door_has_button(uint16_t door)
 #define SUBTYPE_WARP               0x10 /* a warp marker that finds the set marker */
 #define SUBTYPE_SQUARE_SWITCH      0x11 /* frame from SQUARE_FLAG_3 */
 #define SUBTYPE_SHOP_STAND         0x14 /* clears SIDE_SHOP_DISPLAY */
+/* Whether a text record is visible. */
 static inline bool textrec_is_visible(uint16_t text)
 {
     return thing_bit(text, TEXT_DATA, TEXT_VISIBLE);
 }
+/* Sets whether a text record is visible. */
 static inline void textrec_set_visible(uint16_t text, bool visible)
 {
     thing_set_bit(text, TEXT_DATA, TEXT_VISIBLE, visible);
 }
+/* The kind of a text record. */
 static inline uint16_t textrec_kind(uint16_t text)
 {
     return thing_field(text, TEXT_DATA, TEXT_KIND_SHIFT, TEXT_KIND_MASK);
@@ -409,14 +421,17 @@ static inline uint16_t textrec_offset(uint16_t text)
 #define TELEPORTER_MAP_MASK        0x00ff
 /* The position of the target map (bits 8-15) in TELEPORTER_MAP. */
 #define TELEPORTER_MAP_SHIFT       8
+/* The target column of a teleporter. */
 static inline uint16_t teleporter_x(uint16_t teleporter)
 {
     return location_x(thing_word(teleporter, TELEPORTER_TARGET));
 }
+/* The target row of a teleporter. */
 static inline uint16_t teleporter_y(uint16_t teleporter)
 {
     return location_y(thing_word(teleporter, TELEPORTER_TARGET));
 }
+/* The target map of a teleporter. */
 static inline uint16_t teleporter_map(uint16_t teleporter)
 {
     return thing_field(teleporter, TELEPORTER_MAP, TELEPORTER_MAP_SHIFT, TELEPORTER_MAP_MASK);
@@ -444,10 +459,12 @@ static inline bool teleporter_is_fixed(uint16_t teleporter)
     return thing_field(teleporter, TELEPORTER_MAP, 0, TELEPORTER_FIXED) == TELEPORTER_FIXED;
 }
 
+/* The creature type of a group. */
 static inline uint8_t group_creature(uint16_t group)
 {
     return thing_byte(group, GROUP_CREATURE);
 }
+/* Sets the creature type of a group. */
 static inline void group_set_creature(uint16_t group, uint8_t type)
 {
     thing_set_byte(group, GROUP_CREATURE, type);
@@ -457,6 +474,7 @@ static inline uint8_t group_active(uint16_t group)
 {
     return thing_byte(group, GROUP_ACTIVE);
 }
+/* Sets the index of the active creature of a group. */
 static inline void group_set_active(uint16_t group, uint8_t index)
 {
     thing_set_byte(group, GROUP_ACTIVE, index);
@@ -478,18 +496,22 @@ static inline uint16_t *group_anim_words(uint16_t group)
 #define MOOD_LAZY     0x2000
 #define MOOD_HURRY    0x4000
 #define MOOD_FAR      0x8000 /* the creature is not on the party map: it moves slowly */
+/* The mood of a group. */
 static inline uint16_t group_mood(uint16_t group)
 {
     return thing_word(group, GROUP_FLAGS);
 }
+/* Sets the mood of a group. */
 static inline void group_set_mood(uint16_t group, uint16_t mood)
 {
     thing_set_word(group, GROUP_FLAGS, mood);
 }
+/* Whether a mood flag of a group is set. */
 static inline bool group_mood_flag(uint16_t group, uint16_t bit)
 {
     return thing_bit(group, GROUP_FLAGS, bit);
 }
+/* Sets or clears a mood flag of a group. */
 static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
 {
     thing_set_bit(group, GROUP_FLAGS, bit, on);
@@ -500,10 +522,12 @@ static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
 #define GROUP_DO_NOT_DISCARD 0x0400 /* the record stays when the dungeon needs free records */
 /* The position of the direction (bits 8-9) in GROUP_DIR. */
 #define GROUP_DIR_SHIFT      8
+/* The facing direction of a group. */
 static inline uint16_t group_dir(uint16_t group)
 {
     return thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK);
 }
+/* Sets the facing direction of a group. */
 static inline void group_set_dir(uint16_t group, int16_t dir)
 {
     thing_set_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK, dir);
@@ -513,6 +537,7 @@ static inline bool group_flag(uint16_t group, uint16_t bit)
 {
     return thing_bit(group, GROUP_DIR, bit);
 }
+/* Sets or clears a flag bit of a group. */
 static inline void group_set_flag(uint16_t group, uint16_t bit, bool on)
 {
     thing_set_bit(group, GROUP_DIR, bit, on);
@@ -565,14 +590,17 @@ static inline uint16_t weapon_charges(uint16_t weapon)
 {
     return thing_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK);
 }
+/* Sets the charges of a weapon. */
 static inline void weapon_set_charges(uint16_t weapon, uint16_t charges)
 {
     thing_set_field(weapon, ITEM_DATA, WEAPON_CHARGES_SHIFT, CHARGES_MASK, charges);
 }
+/* The charges of an armour piece. */
 static inline uint16_t armour_charges(uint16_t armour)
 {
     return thing_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK);
 }
+/* Sets the charges of an armour piece. */
 static inline void armour_set_charges(uint16_t armour, uint16_t charges)
 {
     thing_set_field(armour, ITEM_DATA, ARMOUR_CHARGES_SHIFT, CHARGES_MASK, charges);
@@ -582,6 +610,7 @@ static inline uint16_t misc_charges(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK);
 }
+/* Sets the charges of a miscellaneous item. */
 static inline void misc_set_charges(uint16_t misc, uint16_t charges)
 {
     thing_set_field(misc, ITEM_DATA, MISC_CHARGES_SHIFT, MISC_CHARGES_MASK, charges);
@@ -591,22 +620,27 @@ static inline uint16_t misc_stack(uint16_t misc)
 {
     return thing_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK);
 }
+/* Sets the stack count of a miscellaneous item. */
 static inline void misc_set_stack(uint16_t misc, uint16_t count)
 {
     thing_set_field(misc, ITEM_DATA, MISC_STACK_SHIFT, MISC_STACK_MASK, count);
 }
+/* The power of a potion. */
 static inline uint16_t potion_power(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, 0, POTION_POWER_MASK);
 }
+/* Sets the power of a potion. */
 static inline void potion_set_power(uint16_t potion, uint16_t power)
 {
     thing_set_field(potion, ITEM_DATA, 0, POTION_POWER_MASK, power);
 }
+/* The type of a potion. */
 static inline uint16_t potion_type(uint16_t potion)
 {
     return thing_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK);
 }
+/* Sets the type of a potion. */
 static inline void potion_set_type(uint16_t potion, uint16_t type)
 {
     thing_set_field(potion, ITEM_DATA, POTION_TYPE_SHIFT, POTION_TYPE_MASK, type);
@@ -623,18 +657,22 @@ static inline void potion_set_type(uint16_t potion, uint16_t type)
 #define CONTAINER_MINION_MAP 1
 /* a creature placed the money box: creatures take it as empty until the party moves it */
 #define MONEYBOX_PLACED      0x0400
+/* Whether a container is open. */
 static inline bool container_is_open(uint16_t container)
 {
     return thing_bit(container, CONTAINER_KIND, CONTAINER_OPEN);
 }
+/* Sets whether a container is open. */
 static inline void container_set_open(uint16_t container, bool open)
 {
     thing_set_bit(container, CONTAINER_KIND, CONTAINER_OPEN, open);
 }
+/* The kind of a container. */
 static inline uint16_t container_kind(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK);
 }
+/* Sets the kind of a container. */
 static inline void container_set_kind(uint16_t container, uint16_t kind)
 {
     thing_set_field(container, CONTAINER_KIND, CONTAINER_KIND_SHIFT, CONTAINER_KIND_MASK, kind);
@@ -644,25 +682,30 @@ static inline uint16_t container_type(uint16_t container)
 {
     return thing_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK);
 }
+/* Sets the type of a container. */
 static inline void container_set_type(uint16_t container, uint16_t type)
 {
     thing_set_field(container, CONTAINER_KIND, CONTAINER_TYPE_SHIFT, CONTAINER_TYPE_MASK, type);
 }
 /* The GDAT index of a container: its kind in bits 3-4, its type in bits 0-2. */
 #define CONTAINER_INDEX_KIND_SHIFT 3
+/* The GDAT index of a container. */
 static inline uint16_t container_gdat_index(uint16_t container)
 {
     return (uint16_t)(container_type(container) | container_kind(container) << CONTAINER_INDEX_KIND_SHIFT);
 }
+/* Sets the GDAT index of a container. */
 static inline void container_set_gdat_index(uint16_t container, uint16_t index)
 {
     container_set_kind(container, index >> CONTAINER_INDEX_KIND_SHIFT);
     container_set_type(container, index);
 }
+/* Whether a money box is placed. */
 static inline bool moneybox_is_placed(uint16_t box)
 {
     return thing_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED);
 }
+/* Sets whether a money box is placed. */
 static inline void moneybox_set_placed(uint16_t box, bool placed)
 {
     thing_set_bit(box, MONEYBOX_FLAGS, MONEYBOX_PLACED, placed);

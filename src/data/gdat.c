@@ -55,6 +55,7 @@
 #define OFFSET_IN_KEYS      (-32) /* x offset bits: the offset is the value key (category, index, 0x0c, entry) */
 #define IMAGE_8BPP_OFFSET_X 4
 #define IMAGE_8BPP_OFFSET_Y 5
+#define IMAGE_HEADER_SIZE   8 /* the shortest item that holds the header of each image format */
 
 /* Mask of the width and height in an image header. */
 #define IMAGE_DIM_MASK 0x03ff
@@ -260,7 +261,7 @@ static enum GdatResult read_image_header(const Gdat *g, int item, ImageHeader *h
     h->data = gdat_item(g, item, &h->size);
     if (!h->data)
         return GDAT_ERR_ITEM;
-    if (h->size < LZSS_DATA)
+    if (h->size < IMAGE_HEADER_SIZE)
         return GDAT_ERR_NOT_IMAGE;
     h->format = h->data[IMAGE_FORMAT_BYTE] >> IMAGE_FORMAT_SHIFT;
     h->width = read_dimension(h->data, IMAGE_WIDTH);
@@ -326,7 +327,7 @@ enum GdatResult gdat_palette_color(const Gdat *g, int color, uint8_t rgb[GDAT_RG
         return GDAT_ERR_FORMAT;
     if (color < 0 || color >= GDAT_PALETTE_COLORS)
         return GDAT_ERR_ITEM;
-    for (int i = 0; i < PALETTE_ENTRY_SIZE - PALETTE_RED; i++)
+    for (int i = 0; i < GDAT_RGB_SIZE; i++)
         rgb[i] = palette[color * PALETTE_ENTRY_SIZE + PALETTE_RED + i] >> VGA_DAC_SHIFT;
     return GDAT_OK;
 }
@@ -356,17 +357,6 @@ static unsigned run_length(Nibbles *n)
     for (int i = 0; i < RUN_HUGE_NIBBLES; i++)
         v = v << NIBBLE_BIT_COUNT | next_nibble(n);
     return v;
-}
-
-static int get_pixel(const uint8_t *buf, size_t pos)
-{
-    return pos & 1 ? buf[pos / 2] & NIBBLE_MASK : buf[pos / 2] >> NIBBLE_BIT_COUNT;
-}
-
-static void set_pixel(uint8_t *buf, size_t pos, int color)
-{
-    uint8_t *p = buf + pos / 2;
-    *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BIT_COUNT;
 }
 
 enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst,
@@ -401,10 +391,10 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
             if (pos >= total || (kind == CMD_COPY_ABOVE && pos < row))
                 return GDAT_ERR_DATA;
             if (kind == CMD_COPY_ABOVE)
-                color = get_pixel(dst, pos - row);
+                color = image_nibble(dst, pos - row);
             else if (base && kind == CMD_COPY_BASE)
-                color = get_pixel(base, pos);
-            set_pixel(dst, pos++, color);
+                color = image_nibble(base, pos);
+            image_set_nibble(dst, pos++, color);
             if (++x == width) {
                 x = 0;
                 pos += row - width;
@@ -530,7 +520,7 @@ int gdat_image_offset(const Gdat *g, int category, int index, int entry)
 {
     uint32_t size;
     const uint8_t *data = gdat_item(g, gdat_find(g, category, index, GDAT_TYPE_IMAGE, entry), &size);
-    if (!data || size < LZSS_DATA)
+    if (!data || size < IMAGE_HEADER_SIZE)
         return 0;
     int x = (int16_t)le16(data + IMAGE_WIDTH) >> IMAGE_OFFSET_SHIFT;
     int y = (int16_t)le16(data + IMAGE_HEIGHT) >> IMAGE_OFFSET_SHIFT;

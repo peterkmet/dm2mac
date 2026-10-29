@@ -4,10 +4,13 @@
 #include "le.h"
 #include "mve_internal.h"
 
-/* The file header: the signature and three magic words. */
-#define MVE_SIGNATURE    "Interplay MVE File\x1a"
-#define SIGNATURE_SIZE   (sizeof MVE_SIGNATURE) /* with its 0 byte */
-#define FILE_HEADER_SIZE 26                     /* the signature and three magic words */
+/* The file header: the signature, then three magic words at their offsets. */
+#define MVE_SIGNATURE     "Interplay MVE File\x1a"
+#define SIGNATURE_SIZE    (sizeof MVE_SIGNATURE) /* with its 0 byte */
+#define FILE_HEADER_SIZE  26                     /* the signature and three magic words */
+#define HEADER_LENGTH_AT  SIGNATURE_SIZE
+#define HEADER_VERSION_AT (HEADER_LENGTH_AT + sizeof(uint16_t))
+#define HEADER_CHECK_AT   (HEADER_VERSION_AT + sizeof(uint16_t))
 
 /* The values of the three magic words. */
 #define HEADER_WORD_LENGTH  0x001a
@@ -68,9 +71,9 @@ enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
         const uint8_t *header = file + at;
         if (memcmp(header, MVE_SIGNATURE, SIGNATURE_SIZE))
             continue;
-        if (le16(header + SIGNATURE_SIZE) != HEADER_WORD_LENGTH ||
-            le16(header + SIGNATURE_SIZE + sizeof(uint16_t)) != HEADER_WORD_VERSION ||
-            le16(header + SIGNATURE_SIZE + 2 * sizeof(uint16_t)) != HEADER_WORD_CHECK)
+        if (le16(header + HEADER_LENGTH_AT) != HEADER_WORD_LENGTH ||
+            le16(header + HEADER_VERSION_AT) != HEADER_WORD_VERSION ||
+            le16(header + HEADER_CHECK_AT) != HEADER_WORD_CHECK)
             return MVE_ERROR;
         m->data = header + FILE_HEADER_SIZE;
         m->size = size - at - FILE_HEADER_SIZE;
@@ -82,7 +85,7 @@ enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
 /* Playback */
 
 /* Enters the next chunk; false when the stream ends inside its header or its data. */
-static bool next_chunk(MveStream *m)
+static bool enter_next_chunk(MveStream *m)
 {
     if (m->size - m->pos < CHUNK_HEADER_SIZE)
         return false;
@@ -123,7 +126,7 @@ static enum MveResult init_video(MveStream *m, const uint8_t *body, int size)
 }
 
 /* An audio frame or a silent frame: MVE_AUDIO for track 0, else nothing. */
-static enum MveResult audio_frame(MveStream *m, int type, const uint8_t *body, int size)
+static enum MveResult read_audio_frame(MveStream *m, int type, const uint8_t *body, int size)
 {
     if (size < AUDIO_FRAME_HEADER_SIZE)
         return MVE_ERROR;
@@ -175,7 +178,7 @@ static enum MveResult run_opcode(MveStream *m, int type, int version, const uint
         return MVE_SHOW;
     case OP_AUDIO_FRAME:
     case OP_AUDIO_SILENCE:
-        return audio_frame(m, type, body, size);
+        return read_audio_frame(m, type, body, size);
     case OP_VIDEO_MODE:
         if (size < MODE_SIZE)
             return MVE_ERROR;
@@ -198,7 +201,7 @@ static enum MveResult run_opcode(MveStream *m, int type, int version, const uint
 enum MveResult mve_step(MveStream *m)
 {
     for (;;) {
-        if (m->pos == m->chunk_end && !next_chunk(m))
+        if (m->pos == m->chunk_end && !enter_next_chunk(m))
             return MVE_ERROR;
         if (m->chunk_end - m->pos < OPCODE_HEADER_SIZE)
             return MVE_ERROR;

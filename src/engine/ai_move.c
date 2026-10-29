@@ -52,45 +52,38 @@
 /* The payload of a missile that is an explosion: this plus the explosion type. */
 #define EXPLOSION_THING_BASE    0xff80
 
-/* The AI class flags (g_ai_class_flags). */
-#define AI_CLASS_SEES_ALL_SIDES     0x0100
-#define AI_CLASS_SEES_BEHIND        0x0400
-#define AI_CLASS_TURNS_TO_TAKE      0x1000
-#define AI_CLASS_STAYS_ON_MAPS      0x2000 /* targets only on its own map and on the party map */
-#define AI_CLASS_AVOIDS_CLOUDS      0x0200
-#define AI_CLASS_AVOIDS_PARTY_DOORS 0x4000
 /* g_ai.attack_flags. */
-#define ATTACK_HIT                  0x0001
-#define ATTACK_HIT_2                0x0002
-#define ATTACK_THROW                0x0008
-#define ATTACK_FIREBALL             0x0010
-#define ATTACK_HARM_NON_MATERIAL    0x0020
-#define ATTACK_LIGHTNING            0x0040
-#define ATTACK_POISON_CLOUD         0x0080
-#define ATTACK_POISON_BOLT          0x0100
-#define ATTACK_SLIME                0x0200
-#define ATTACK_PUSH                 0x0400
-#define ATTACK_PULL                 0x0800
-#define ATTACK_MELEE_MASK           0x0007
-#define ATTACK_RANGED_MASK          0x0ff8
-#define ATTACK_STEAL                0x0004
+#define ATTACK_HIT               0x0001
+#define ATTACK_HIT_2             0x0002
+#define ATTACK_THROW             0x0008
+#define ATTACK_FIREBALL          0x0010
+#define ATTACK_HARM_NON_MATERIAL 0x0020
+#define ATTACK_LIGHTNING         0x0040
+#define ATTACK_POISON_CLOUD      0x0080
+#define ATTACK_POISON_BOLT       0x0100
+#define ATTACK_SLIME             0x0200
+#define ATTACK_PUSH              0x0400
+#define ATTACK_PULL              0x0800
+#define ATTACK_MELEE_MASK        0x0007
+#define ATTACK_RANGED_MASK       0x0ff8
+#define ATTACK_STEAL             0x0004
 /* g_ai.item_flags. */
-#define ITEM_SKILL_SAME_SQUARE      0x0001
-#define ITEM_SKILL_WALL             0x0004
-#define ITEM_SKILL_STATIC           0x0008
-#define ITEM_SKILL_CHESTS           0x0010
-#define ITEM_SKILL_GROUPS           0x0020
-#define ITEM_SKILL_OTHER_SQUARE     0x002a
+#define ITEM_SKILL_SAME_SQUARE   0x0001
+#define ITEM_SKILL_WALL          0x0004
+#define ITEM_SKILL_STATIC        0x0008
+#define ITEM_SKILL_CHESTS        0x0010
+#define ITEM_SKILL_GROUPS        0x0020
+#define ITEM_SKILL_OTHER_SQUARE  0x002a
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
-#define SHOT_STEAL                  0x0b
+#define SHOT_STEAL               0x0b
 /* The flags of the search target kinds (g_ai_kind_flags). */
-#define KIND_TESTS_OPEN             0x01 /* the kind tests the squares that the search enters */
-#define KIND_TESTS_BLOCKED          0x02 /* ... the squares that it cannot enter */
-#define KIND_FIRST_BEST             0x04 /* a found target may still get a nearer better one */
-#define KIND_CACHES_SQUARE          0x08
-#define KIND_NO_LOCATION            0x10 /* the found target keeps its location */
-#define KIND_PARTY_LOCATION         0x20 /* the found target is the party square; also: needs the party seen */
-#define KIND_NO_BONUS               0x40
+#define KIND_TESTS_OPEN          0x01 /* the kind tests the squares that the search enters */
+#define KIND_TESTS_BLOCKED       0x02 /* ... the squares that it cannot enter */
+#define KIND_FIRST_BEST          0x04 /* a found target may still get a nearer better one */
+#define KIND_CACHES_SQUARE       0x08
+#define KIND_NO_LOCATION         0x10 /* the found target keeps its location */
+#define KIND_PARTY_LOCATION      0x20 /* the found target is the party square; also: needs the party seen */
+#define KIND_NO_BONUS            0x40
 
 /* The item filters of the AI (the filter argument of the item tests). */
 #define FILTER_INVERT              0x80
@@ -127,6 +120,7 @@
 #define HIDDEN_DISTANCE        4 /* beyond it an invisible party or a party in the dark stays hidden */
 #define FLEE_LINE_DISTANCE     5 /* a flee target nearer to the party must be out of its line of sight */
 #define MISSILE_WATCH_RANGE    3 /* the squares in which a creature sees the missiles that fly toward it */
+#define PARTY_RANGE_DISTANCE   2 /* TARGET_PARTY_RANGE_2: the distance to the party along the axes */
 #define PATH_CHECK_STEPS       5 /* the steps of a stored path that the path check tests */
 /* The feedback of the shift register of the first search direction. */
 #define SEARCH_DIRECTION_TAPS  0xb400
@@ -1077,7 +1071,7 @@ bool ai_projectile_incoming(Location at)
     int16_t x = at.x;
     int16_t y = at.y;
     for (int16_t d = 0; d < DIR_COUNT; d++) {
-        if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
+        if (!(class_flags() & AI_CLASS_LAZY_GUARD)) {
             bool wanders = group_mood_flag(g_ai.group_thing, MOOD_WANDERS);
             bool behind = !(g_ai.info->flags & CREATURE_FACES_PARTY) && at_group(x, y) &&
                           d == dir_opposite(group_dir(g_ai.group_thing));
@@ -1722,7 +1716,7 @@ static int16_t give_place(ItemTest *it)
         return give_cell(it->d);
     int r = rand_bit();
     if (!it->same)
-        r += 2;
+        r += TURN_BACK;
     it->action = drop_actions[r];
     return (int16_t)dir_turn(it->d, r);
 }
@@ -2375,7 +2369,7 @@ static bool test_entered(Search *s, int i)
     case TARGET_ACTIVATION:
         return at_place(s, s->act_x, s->act_y, s->act_map);
     case TARGET_PARTY_RANGE_2:
-        return on_party_map && axis_distance(x, y, g_ai_party.x, g_ai_party.y) == 2;
+        return on_party_map && axis_distance(x, y, g_ai_party.x, g_ai_party.y) == PARTY_RANGE_DISTANCE;
     case TARGET_FLEE:
         return entered_flee(s, c, m, on_party_map);
     case TARGET_SHOOT_PARTY:
@@ -2807,7 +2801,7 @@ static bool search_next_square(Search *s)
     return true;
 }
 
-/* Writes the steps from the start to the found candidate into path (2 bytes per step). */
+/* Writes the steps from the start to the found candidate into path. */
 static void search_write_path(Search *s, uint8_t *path)
 {
     AiCandidate *c = &s->cands[s->result];
@@ -2817,13 +2811,13 @@ static void search_write_path(Search *s, uint8_t *path)
     for (int16_t n = (int16_t)(c->path_length - 1); n >= 0; n--) {
         uint8_t *cell = search_map_cell(s, map, x, y);
         uint16_t from = le16(cell + SEARCH_AT_FROM);
-        uint16_t step = le16(path + n * 2) & PATH_KEEP_BITS;
+        uint16_t step = le16(path + n * AI_PATH_STEP_SIZE) & PATH_KEEP_BITS;
         step |= path_step_pack(cell[SEARCH_AT_DIR], x, y);
         if (location_map(from) != map) {
             map = location_map(from);
             step |= PATH_MAP_CHANGE;
         }
-        put_le16(path + n * 2, step);
+        put_le16(path + n * AI_PATH_STEP_SIZE, step);
         x = location_x(from);
         y = location_y(from);
     }
@@ -2942,7 +2936,7 @@ void ai_load_cached_path(void)
 /* A step of the stored path. */
 static uint16_t stored_step(int index)
 {
-    return le16(g_ai.cached_path + index * 2);
+    return le16(g_ai.cached_path + index * AI_PATH_STEP_SIZE);
 }
 
 int ai_next_path_step(void)
@@ -2966,7 +2960,7 @@ static bool path_holds(int16_t saved)
 {
     int16_t x = location_x(g_ai.cache.found);
     int16_t y = location_y(g_ai.cache.found);
-    uint8_t path[AI_PATH_MAX * 2];
+    uint8_t path[AI_PATH_BYTES];
     /* the search of the one candidate (index 0) from the found square: the target must be on that square */
     if (ai_search_area(ai_location(x, y), MOVE_KIND_NONE, 1, g_ai.candidates, path) != 0 ||
         g_ai.candidates[0].path_length)
@@ -3022,7 +3016,7 @@ void ai_refresh_party_maps(void)
     int16_t saved = g_party.cur_map;
     dun_set_current_map(g_game.party_map);
     AiCandidate target;
-    uint8_t path[AI_PATH_MAX * 2];
+    uint8_t path[AI_PATH_BYTES];
     memset(&target, 0, sizeof target);
     if (g_party.redraw & PARTY_REDRAW_SQUARES) {
         g_party_distance.map = (int16_t)g_game.party_map;

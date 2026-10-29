@@ -21,22 +21,27 @@
 #define POS_FRONT 3
 
 /* Picture kinds of a missile, by the pictures of its payload. */
-#define MISSILE_NO_PICTURE (-1)
-#define MISSILE_MIRRORED   0 /* front pictures 8 and 9, mirrored by the cell */
-#define MISSILE_FRONT_BACK 1 /* front picture 8, back picture 10 */
-#define MISSILE_FRONT      2 /* front picture 8 only */
-#define MISSILE_NO_SIDE    3 /* no side picture 12 */
+enum MissileKind {
+    MISSILE_NO_PICTURE = -1,
+    MISSILE_MIRRORED = 0,   /* front pictures 8 and 9, mirrored by the cell */
+    MISSILE_FRONT_BACK = 1, /* front picture 8, back picture 10 */
+    MISSILE_FRONT = 2,      /* front picture 8 only */
+    MISSILE_NO_SIDE = 3     /* no side picture 12 */
+};
 
-/* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward. */
+/* Thing grids of 21 x 17 cells (4 x 4 per square) around the party, at (lateral + 10) * 17 + forward; 358 bytes, one
+   more than 21 x 17, as the original allocates (0x166). */
 #define VIEW_GRID_SIZE 358
 
 /* Kinds of a click zone of the view. */
-#define CLICK_NONE          0
-#define CLICK_OBJECT        1
-#define CLICK_POSSESSIONS   2
-#define CLICK_ALCOVE        3
-#define CLICK_DOOR_BUTTON   4
-#define CLICK_WALL_ORNAMENT 6
+enum ClickKind {
+    CLICK_NONE = 0,
+    CLICK_OBJECT = 1,
+    CLICK_POSSESSIONS = 2,
+    CLICK_ALCOVE = 3,
+    CLICK_DOOR_BUTTON = 4,
+    CLICK_WALL_ORNAMENT = 6
+};
 
 /* Click zones of the view: zones 0 to 7 are the cells of the party square and of the square in front, 8 an alcove. */
 #define VIEW_CLICK_ZONE_MAX    32
@@ -53,25 +58,21 @@
 #define VIEW_DRAWS_FLOOR_ORNAMENT 0x40
 #define VIEW_DRAWS_DOOR           0x80 /* the door picture with its button */
 
-/* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
-#define SHOP_SHOWN        SENSOR_BUSY  /* the display item is chosen */
-#define SHOP_STEP_FORWARD SENSOR_STATE /* the shop: the next click goes to the next item */
-
 /* A click zone of the view: where an object, an ornament, a door button, or creature possessions show. */
 typedef struct {
     int16_t rect[RECT_SIZE];
     uint16_t thing; /* THING_NONE: the zone is not set */
-    uint8_t cell;   /* view position or cell, by kind */
-    uint8_t kind;   /* CLICK_* */
+    uint8_t pos;    /* the view position of the square */
+    uint8_t kind;   /* enum ClickKind */
 } ViewClickZone;
 
 /* A click on the objects of a square cell: the click at (x, y) of the viewport, the view position of the square, the
-   square at, and the click zone kind (CLICK_*). */
+   square at, and the click zone kind. */
 typedef struct {
     int16_t x, y;
     int pos;
     Location at;
-    int kind;
+    enum ClickKind kind;
 } ViewObjectClick;
 
 /* A pixel point of the viewport. */
@@ -106,9 +107,14 @@ void view_mark_hidden_squares(void); /* exported for the tests */
 /* ---- Rain ---- */
 
 /* Falling rain shows over the view: its slant shows the wind. */
-bool view_rain_shows(void);
+bool view_shows_rain(void);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else color_key. */
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key); /* exported for the tests */
+
+/* ---- Things ---- */
+
+/* The picture kind of a flying object (a missile) by the pictures of its payload in its GDAT entry. */
+enum MissileKind view_missile_kind(uint16_t thing);
 
 /* ---- The view ---- */
 

@@ -400,7 +400,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
             what = ("remove",)
         elif count:
             if rng.random() < 0.5:
-                mine, theirs = lib.magic_cast_entered_runes(), emu.call(MAGIC_CAST_ENTERED_RUNES)
+                mine, theirs = lib.magic_cast_entered_runes_failed(), emu.call(MAGIC_CAST_ENTERED_RUNES)
             else:
                 if clicks.random() < 0.5:
                     click_feedback(lib, original, CMD_CAST_SPELL, n)  # it queues the command

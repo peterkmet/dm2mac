@@ -30,6 +30,28 @@ static inline uint16_t ai_marker_level(uint16_t text)
 /* The flags of the AI classes (ai_data.c). */
 #define AI_CLASS_COUNT 47
 extern const uint32_t g_ai_class_flags[AI_CLASS_COUNT];
+/* The AI class of the creature of a group; a class at or above AI_CLASS_COUNT (a damaged GRAPHICS.DAT) is fatal. */
+int16_t ai_group_class(uint16_t group);
+
+/* The flags of an AI class (g_ai_class_flags). */
+#define AI_CLASS_ALWAYS_SCANS       0x00001 /* the creature scans for plans on each update */
+#define AI_CLASS_ONE_FEAR           0x00002
+#define AI_CLASS_NO_HOME_EVENT      0x00004 /* the home square gets no event when the creature is hurt */
+#define AI_CLASS_NO_DEATH_CLOUD     0x00008
+#define AI_CLASS_DODGES             0x00010
+#define AI_CLASS_SEARCH_NEAR        0x00020
+#define AI_CLASS_NO_FLEE            0x00040
+#define AI_CLASS_NO_TURN            0x00080 /* an alert does not turn the creature */
+#define AI_CLASS_SEES_ALL_SIDES     0x00100
+#define AI_CLASS_AVOIDS_CLOUDS      0x00200
+#define AI_CLASS_LAZY_GUARD         0x00400 /* always lazy; does not look away from the missiles behind it */
+#define AI_CLASS_DIES_NEAR_PARTY    0x00800 /* the creature dies only in front of the party; the commands wait */
+#define AI_CLASS_TURNS_TO_TAKE      0x01000
+#define AI_CLASS_STAYS_ON_MAPS      0x02000 /* targets only on its own map and on the party map */
+#define AI_CLASS_AVOIDS_PARTY_DOORS 0x04000
+#define AI_CLASS_SCREAMS            0x08000 /* the creature screams when it is hurt */
+#define AI_CLASS_STAYS_FAR          0x10000 /* a creature on another map than the party keeps its pace */
+#define AI_CLASS_WAKES              (AI_CLASS_DODGES | AI_CLASS_LAZY_GUARD) /* a mood alert stops a ranged action */
 
 /* The cells of the possessions of a static creature by display kind and side (ai_data.c; creature_cell_mask reads
    it). */
@@ -59,11 +81,12 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKULL.EXE have 22 bytes");
 
 /* The sizes of the candidates, the path, and the item filters of a creature update. */
-#define AI_CANDIDATE_MAX 16
-#define AI_PATH_BYTES    100 /* a path buffer: 2 bytes per step */
-#define FILTER_SLOTS     42  /* the item filters of a creature update */
+#define AI_CANDIDATE_MAX  16
+#define AI_PATH_BYTES     100 /* a path buffer of AI_PATH_STEP_SIZE bytes per step */
+#define AI_PATH_STEP_SIZE 2   /* a path step: a 16-bit word */
+#define FILTER_SLOTS      42  /* the item filters of a creature update */
 /* The bits of a shift count that the x86 shift uses: the low 5 bits. */
-#define BIT_INDEX_MASK   0x1f
+#define BIT_INDEX_MASK    0x1f
 
 /* The plan state of a group that lasts from one update to the next: 14 bytes with the layout of the original. */
 typedef struct __attribute__((packed)) {
@@ -112,7 +135,7 @@ typedef struct {
     bool counts_dirty;
     bool alert;
     AiItemCounts item_counts[AI_COUNT_LISTS];
-    uint8_t path[AI_PATH_BYTES]; /* the path of the search (2 bytes per step) */
+    uint8_t path[AI_PATH_BYTES]; /* the path of the search */
     uint8_t candidate_count;
     int8_t chosen;
     AiCandidate candidates[AI_CANDIDATE_MAX];

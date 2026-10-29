@@ -518,17 +518,17 @@ static void cast_other(Champion *c, int type, int skill, int power)
     }
     case OTHER_FIRE_SHIELD:
     case OTHER_SPELL_SHIELD:
-        magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps + AURA_STRONG_BASE), 0);
+        magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps + AURA_STRONG_BASE), false);
         return;
     case OTHER_PARTY_SHIELD:
-        magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps), 0);
+        magic_cast_party_aura(c, aura_types[type], (uint16_t)(steps * steps), false);
         return;
     case OTHER_AURA_STRENGTH:
     case OTHER_AURA_DEXTERITY:
     case OTHER_AURA_WISDOM:
     case OTHER_AURA_VITALITY:
         magic_cast_party_aura(c, aura_types[type], (uint16_t)((steps + AURA_STEPS_BASE) * (steps + AURA_STEPS_BASE)),
-                              0);
+                              false);
         return;
     case OTHER_HASTE:
         g_game.magic_light[MAGIC_HASTE] =
@@ -666,7 +666,7 @@ static void report_cast_failure(CastResult result, const Spell *spell)
     g_action.redraw_delay = (int16_t)max_int(min_delay, (int16_t)(FAILURE_DELAY_BASE - count));
 }
 
-bool magic_cast_entered_runes(void)
+bool magic_cast_entered_runes_failed(void)
 {
     int champ = g_action.champion - 1;
     Champion *c = champion(champ);

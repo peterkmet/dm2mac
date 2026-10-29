@@ -169,7 +169,8 @@ extern uint8_t g_last_discarded_map[THING_TYPE_COUNT];
    any) that may go, away from the party; THING_NONE when there is none. */
 uint16_t dun_get_discarded_thing(int type, int subtype);
 
-/* Level links, pits, and teleporters. */
+/* ---- Level links, pits, and teleporters ---- */
+
 /* The modes of the pit or teleporter change. */
 #define PIT_STATE_OPEN   0
 #define PIT_STATE_CLOSED 1
@@ -186,15 +187,18 @@ LevelLink dun_find_adjacent_level_link(Location at, int level_delta);
    opened one moves the square contents through it. True when the state changed. */
 bool dun_set_pit_teleporter_state(Location at, int mode);
 
-/* Pushing creature groups. */
+/* ---- Pushing creature groups ---- */
+
 /* True when the champions push the group; the push costs stamina. */
 bool move_party_can_push_group(uint16_t group);
 
-/* The warp of the party. */
+/* ---- The warp of the party ---- */
+
 /* The party on a warp marker text moves to the marker of its id; true when it moved. */
 bool move_party_warp_to_marker(void);
 
-/* Party state that the interface sets. */
+/* ---- Party state that the interface sets ---- */
+
 /* The movement arrows show the push arrows (on) or the move arrows: the party and the interface flag. */
 void move_set_push_mode(bool on);
 /* The push arrow under the mouse, PUSH_ARROW_NONE for none. */

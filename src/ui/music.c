@@ -66,6 +66,8 @@ static bool load_bank(const char *data_dir, const char *name, int bank)
 
 bool music_init(const Gdat *g, const char *data_dir)
 {
+    g_music = (Music){.requested_song = -1, .current_song = MUSIC_NO_SONG};
+    tick_phase = 0;
     gdat = g;
     fm_reset(MUSIC_SAMPLE_RATE);
     if (!load_bank(data_dir, "MELODIC.BNK", FM_BANK_MELODIC) || !load_bank(data_dir, "DRUM.BNK", FM_BANK_DRUM)) {

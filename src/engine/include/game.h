@@ -135,6 +135,7 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 /* The largest value of a byte variable. */
 #define GLOBAL_BYTE_MAX     255
 
+/* The map changes and the timeline */
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
 void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving);
 /* Runs the due timeline events. */

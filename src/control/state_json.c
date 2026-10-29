@@ -252,6 +252,12 @@ void json_key(Json *j, const char *key)
     put(j, ":", 1);
 }
 
+void json_key_int(Json *j, const char *key, int64_t value)
+{
+    json_key(j, key);
+    json_int(j, value);
+}
+
 /* ---- The game state ---- */
 
 const char *state_json_mode_name(enum InputMode mode)
@@ -271,11 +277,7 @@ static void put_null(Json *j)
     json_raw(j, "null");
 }
 
-static void key_int(Json *j, const char *key, int64_t value)
-{
-    json_key(j, key);
-    json_int(j, value);
-}
+/* Appends "key": and its value: a string or a truth value. */
 static void key_str(Json *j, const char *key, const char *text)
 {
     json_key(j, key);
@@ -390,7 +392,7 @@ static void skills_json(Json *j, int champ)
         char text[TEXT_SIZE];
         json_key(j, skill_names[s]);
         json_open(j, '{');
-        key_int(j, "level", level);
+        json_key_int(j, "level", level);
         json_key(j, "rank");
         if (level < RANK_LEVEL_MIN)
             put_null(j);
@@ -419,7 +421,7 @@ static void slots_json(Json *j, const Champion *c)
         if (c->slots[s] == THING_NONE)
             continue;
         json_open(j, '{');
-        key_int(j, "slot", s);
+        json_key_int(j, "slot", s);
         key_str(j, "where", slot_names[s]);
         json_key(j, "object");
         object_json(j, c->slots[s]);
@@ -481,8 +483,8 @@ static void put_champion_values(Json *j, int champ)
     pair(j, "health", c->health, c->max_health);
     pair(j, "stamina", c->stamina / STAMINA_DISPLAY_UNIT, c->max_stamina / STAMINA_DISPLAY_UNIT);
     pair(j, "mana", c->mana, c->max_mana);
-    key_int(j, "food", c->food);
-    key_int(j, "water", c->water);
+    json_key_int(j, "food", c->food);
+    json_key_int(j, "water", c->water);
     json_key(j, "load_kg");
     json_open(j, '[');
     tenths(j, champ_get_load(champ));
@@ -497,7 +499,7 @@ static void put_champion(Json *j, int champ)
 {
     Champion *c = champion(champ);
     json_open(j, '{');
-    key_int(j, "index", champ);
+    json_key_int(j, "index", champ);
     json_key(j, "name");
     trimmed(j, c->name, CHAMPION_NAME_SIZE);
     json_key(j, "title");
@@ -536,7 +538,7 @@ static void put_dialog(Json *j, enum InputMode mode)
         return;
     }
     json_open(j, '{');
-    key_int(j, "id", g_dialog.id);
+    json_key_int(j, "id", g_dialog.id);
     json_key(j, "buttons");
     json_open(j, '[');
     for (int e = 0; e < DIALOG_TEXT_COUNT; e++) {
@@ -552,12 +554,12 @@ static void put_dialog(Json *j, enum InputMode mode)
 static void party_json(Json *j, enum InputMode mode)
 {
     json_open(j, '{');
-    key_int(j, "map", g_game.party_map);
-    key_int(j, "level", dungeon_map_level(g_game.party_map));
-    key_int(j, "x", g_game.party_x);
-    key_int(j, "y", g_game.party_y);
+    json_key_int(j, "map", g_game.party_map);
+    json_key_int(j, "level", dungeon_map_level(g_game.party_map));
+    json_key_int(j, "x", g_game.party_x);
+    json_key_int(j, "y", g_game.party_y);
     key_str(j, "facing", direction_names[g_game.party_dir & DIR_MASK]);
-    key_int(j, "darkness", g_view_light_level);
+    json_key_int(j, "darkness", g_view_light_level);
     key_bool(j, "can_move",
              !g_game.party_move_cooldown && !g_party.move_steps && !input_is_waiting() &&
                  (mode == INPUT_MODE_MOVE || mode == INPUT_MODE_PUSH));
@@ -600,7 +602,7 @@ static void put_action_menu(Json *j)
         return;
     }
     json_open(j, '{');
-    key_int(j, "champion", g_action.champion - 1);
+    json_key_int(j, "champion", g_action.champion - 1);
     key_str(j, "hand", hand_names[g_action.hand]);
     json_key(j, "actions");
     put_action_names(j);
@@ -617,7 +619,7 @@ static void spell_json(Json *j)
     int caster = g_action.champion - 1;
     const Champion *c = champion(caster);
     json_open(j, '{');
-    key_int(j, "caster", caster);
+    json_key_int(j, "caster", caster);
     json_key(j, "chosen");
     runes_json(j, c);
     json_key(j, "available");
@@ -625,9 +627,9 @@ static void spell_json(Json *j)
     if (c->rune_count < CHAMPION_RUNES_SIZE)
         for (int r = 0; r < SPELL_RUNES_PER_SET; r++) {
             json_open(j, '{');
-            key_int(j, "rune", r);
+            json_key_int(j, "rune", r);
             key_str(j, "name", magic_get_rune_name(c->rune_count * SPELL_RUNES_PER_SET + r));
-            key_int(j, "mana", magic_rune_mana_cost(caster, r));
+            json_key_int(j, "mana", magic_rune_mana_cost(caster, r));
             json_close(j, '}');
         }
     json_close(j, ']');
@@ -658,7 +660,7 @@ static void inventory_json(Json *j)
     json_key(j, "inventory");
     if (g_ui.inventory) {
         json_open(j, '{');
-        key_int(j, "champion", g_ui.inventory - 1);
+        json_key_int(j, "champion", g_ui.inventory - 1);
         key_str(j, "panel", panel_name());
         json_close(j, '}');
     } else {
@@ -674,7 +676,7 @@ static void inventory_json(Json *j)
         if (g_action.open_items[i] == THING_NONE)
             continue;
         json_open(j, '{');
-        key_int(j, "slot", SLOT_CONTAINER_FIRST + i);
+        json_key_int(j, "slot", SLOT_CONTAINER_FIRST + i);
         json_key(j, "object");
         object_json(j, g_action.open_items[i]);
         json_close(j, '}');
@@ -700,11 +702,11 @@ static void put_money_box(Json *j)
         uint16_t item = money_coin_item(type);
         char name[TEXT_SIZE];
         json_open(j, '{');
-        key_int(j, "slot", slot);
+        json_key_int(j, "slot", slot);
         json_key(j, "coin");
         trimmed(j, gtext_gdat(item_index_gdat_category(item), item_index_gdat_index(item), GFX_ITEM_NAME, name),
                 TEXT_SIZE);
-        key_int(j, "count", counts[type]);
+        json_key_int(j, "count", counts[type]);
         json_close(j, '}');
     }
     json_close(j, ']');
@@ -724,7 +726,7 @@ static void put_minion_map(Json *j)
     if (g_action.flags & MAP_HAS_OPTIONS)
         for (int i = 0; i < MAP_OPTION_COUNT; i++) {
             json_open(j, '{');
-            key_int(j, "option", i);
+            json_key_int(j, "option", i);
             key_str(j, "name", map_option_names[i]);
             key_bool(j, "on", (g_action.flags & MAP_OPTION_CREATURES << i) != 0);
             json_close(j, '}');
@@ -752,7 +754,7 @@ static void outdoor_json(Json *j)
     const char *rain = amount_name(g_game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY);
     key_str(j, "clouds", weather_sky_has_clouds() ? clouds : amount_names[0]);
     key_str(j, "rain", weather_sky_has_rain() ? rain : amount_names[0]);
-    if (view_rain_shows())
+    if (view_shows_rain())
         key_str(j, "wind", direction_names[g_game.wind_dir & DIR_MASK]);
     json_close(j, '}');
     key_str(j, "day_time",
@@ -766,7 +768,7 @@ void state_json_state(Json *j)
     uint32_t seed = g_random_seed; /* a stat aura draws a random number in champ_get_stat: the read changes no game */
     enum InputMode mode = input_get_mode();
     json_open(j, '{');
-    key_int(j, "time", g_game.game_time);
+    json_key_int(j, "time", g_game.game_time);
     key_str(j, "game_mode", g_game_mode_names[g_game_mode]);
     key_str(j, "mode", state_json_mode_name(mode));
     json_key(j, "dialog");
@@ -959,7 +961,7 @@ static void flying_json(Json *j, uint16_t thing)
             json_str(j, "spell");
     } else {
         key_str(j, "kind", "explosion");
-        key_int(j, "type", explosion_type(thing));
+        json_key_int(j, "type", explosion_type(thing));
         json_key(j, "name");
         state_json_explosion_name(j, explosion_type(thing));
     }
@@ -993,7 +995,7 @@ static void put_square_things(Json *j, unsigned draws, Location at, int16_t dir)
             json_open(&creatures, '{');
             json_key(&creatures, "type");
             state_json_creature_name(&creatures, group_creature(t));
-            key_int(&creatures, "count", 1);
+            json_key_int(&creatures, "count", 1);
             json_close(&creatures, '}');
         } else if (is_object(t)) {
             json_open(&objects, '{');
@@ -1083,7 +1085,7 @@ static bool wall_sensors_json(Json *j, int ornament, int face, Location at)
     if (click)
         key_bool(j, "switch", true);
     if (takes)
-        key_int(j, "lock", ornament);
+        json_key_int(j, "lock", ornament);
     return click || takes;
 }
 
@@ -1102,7 +1104,7 @@ static void wall_ornament_json(Json *j, const ViewWall *w, int k, int face)
     else if (aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORNAMENT_KEY_TOUCH))
         key_bool(j, "fountain", true);
     else if (!wall_sensors_json(j, ornament, face, w->at))
-        key_int(j, "ornament", ornament);
+        json_key_int(j, "ornament", ornament);
 }
 
 /* The wall face k of w (a view side word: TURN_RIGHT, SIDE_FRONT, TURN_LEFT) under key, when it shows something. A
@@ -1156,10 +1158,10 @@ static void put_view_square(Json *j, const SeenSquare *q, int16_t dir)
     int pos = view_position(q->depth, q->side);
     Location at = at_of(q);
     json_open(j, '{');
-    key_int(j, "depth", q->depth);
-    key_int(j, "side", q->side);
-    key_int(j, "x", q->x);
-    key_int(j, "y", q->y);
+    json_key_int(j, "depth", q->depth);
+    json_key_int(j, "side", q->side);
+    json_key_int(j, "x", q->x);
+    json_key_int(j, "y", q->y);
     Element element = element_at(at);
     key_str(j, "element", element_names[element]);
     if (element == ELEMENT_WALL) {
@@ -1170,7 +1172,7 @@ static void put_view_square(Json *j, const SeenSquare *q, int16_t dir)
             put_door(j, draws, at);
         int ornament = floor_ornament(dir, at);
         if (view_shows_floor_ornament(pos, ornament))
-            key_int(j, "floor_ornament", ornament);
+            json_key_int(j, "floor_ornament", ornament);
         put_square_things(j, draws, at, dir);
     }
     json_close(j, '}');
@@ -1182,11 +1184,11 @@ static ZoneTop top_of_zone(const ViewClickZone *z)
 {
     Viewer v = viewer_place();
     ZoneTop found = {v.at, THING_NONE};
-    if (z->cell == POS_FRONT) {
+    if (z->pos == POS_FRONT) {
         found.at.x += g_dir_dx[v.dir];
         found.at.y += g_dir_dy[v.dir];
     }
-    if (z->thing == THING_NONE || (z->cell != POS_PARTY && z->cell != POS_FRONT) || !on_party_map(found.at))
+    if (z->thing == THING_NONE || (z->pos != POS_PARTY && z->pos != POS_FRONT) || !on_party_map(found.at))
         return found;
     for (uint16_t t = dungeon_square_first_thing(g_game.party_map, found.at.x, found.at.y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
@@ -1211,7 +1213,7 @@ static void pile_json(Json *j, const ViewClickZone *z, int16_t cell)
     ZoneTop pile = top_of_zone(z);
     uint16_t first = dungeon_square_first_thing(g_game.party_map, pile.at.x, pile.at.y);
     json_open(j, '{');
-    key_int(j, "cell", cell);
+    json_key_int(j, "cell", cell);
     json_key(j, "top");
     trimmed(j, item_name(pile.top), TEXT_SIZE);
     json_key(j, "objects");
@@ -1244,7 +1246,7 @@ static void piles_json(Json *j)
     if (shown)
         for (int i = VIEW_CLICK_ZONE_FIXED; i < g_view_click_zone_count; i++) {
             const ViewClickZone *z = &g_view_click_zones[i];
-            clickable |= z->cell == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
+            clickable |= z->pos == POS_FRONT && (z->kind == CLICK_WALL_ORNAMENT || z->kind == CLICK_DOOR_BUTTON);
         }
     key_bool(j, "wall_ahead_clickable", clickable);
 }
@@ -1256,7 +1258,7 @@ void state_json_view(Json *j)
     int16_t dir = viewer_place().dir;
     json_open(j, '{');
     key_str(j, "facing", direction_names[dir]);
-    key_int(j, "darkness", g_view_light_level);
+    json_key_int(j, "darkness", g_view_light_level);
     json_key(j, "squares");
     json_open(j, '[');
     for (int i = 0; i < count; i++)
@@ -1333,10 +1335,10 @@ static void map_rows_json(Json *j, const char *key, bool grid)
 void state_json_map(Json *j)
 {
     json_open(j, '{');
-    key_int(j, "map", g_game.party_map);
-    key_int(j, "level", dungeon_map_level(g_game.party_map));
-    key_int(j, "width", dungeon_map_width(g_game.party_map));
-    key_int(j, "height", dungeon_map_height(g_game.party_map));
+    json_key_int(j, "map", g_game.party_map);
+    json_key_int(j, "level", dungeon_map_level(g_game.party_map));
+    json_key_int(j, "width", dungeon_map_width(g_game.party_map));
+    json_key_int(j, "height", dungeon_map_height(g_game.party_map));
     pair(j, "party", g_game.party_x, g_game.party_y);
     key_str(j, "facing", direction_names[g_game.party_dir & DIR_MASK]);
     key_str(j, "legend",

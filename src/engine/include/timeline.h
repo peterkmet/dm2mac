@@ -79,6 +79,12 @@ static inline int16_t timeline_event_map(const TimelineEvent *e)
     return (int8_t)(e->time_map >> EVENT_MAP_SHIFT);
 }
 
+/* Moves an event delay ticks later on its map; a game time stays below EVENT_TIME_MASK, so the map stays. */
+static inline void timeline_delay_event(TimelineEvent *e, uint32_t delay)
+{
+    e->time_map += delay;
+}
+
 /* Moves an event to map and keeps its time. */
 static inline void timeline_set_event_map(TimelineEvent *e, int16_t map)
 {

@@ -63,8 +63,10 @@
 
 /* Sizes of the sky, the storm curves, and the light tables. */
 #define SKY_LIGHTNING_KINDS 3 /* the number of lightning pictures from GFX_SKY_LIGHTNING */
+#define SKY_STATE_COUNT     5 /* the sky states (MAP_KEY_SKY_STATE) of the map graphics */
 #define SKY_OBJECT_MAX      5 /* sky objects of the weather, with the end mark */
 #define STORM_STEPS         32
+#define STORM_CURVE_COUNT   4 /* rand_2bits picks the curve of a storm cycle */
 #define LIGHT_LEVEL_MAX     5
 #define FALLOFF_WEATHER_MAX 8
 #define FALLOFF_MAX         5
@@ -118,12 +120,12 @@ typedef struct {
 } SquareLight;
 
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
-static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
+static const bool sky_state_weather[SKY_STATE_COUNT] = {false, true, false, false, true};
 /* The darkness of each hour of the day. */
 static const int8_t light_by_hour[HOURS_PER_DAY] = {5, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1,
                                                     1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 5};
 /* The storm curves: the change of the storm intensity in each of the 32 storm steps. */
-static const int8_t storm_curves[][STORM_STEPS] = {
+static const int8_t storm_curves[STORM_CURVE_COUNT][STORM_STEPS] = {
     {1,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5, -5,  -5,  -5,  -1 },
     {1,  2,  2,  2,  4,  4,  6,  6,  6,  7,  8,  9,  7,  5,  4,  3,  -3, -4, -5, -7, -9, -8, -7, -6, -6, -6, -4, -4, -2,  -2,  -2,  -1 },
     {10, 18, 22, 26, -4, -4, -4, -4, -4, -4, -4, -4, -3, -3, -3, -3,
@@ -160,6 +162,8 @@ static bool sky_has(int entry)
     return gdat_exists(gdat_current(), CAT_SKY, dungeon_map_wallset(g_game.party_map), GDAT_TYPE_IMAGE, entry);
 }
 
+/* Sky */
+
 SkyObject *weather_sky_objects(void)
 {
     return sky_objects;
@@ -173,6 +177,13 @@ bool weather_sky_has_clouds(void)
 {
     return sky_has(GFX_SKY_CLOUDS_LIGHT);
 }
+
+bool weather_is_shown(uint16_t sky_state)
+{
+    return sky_state < SKY_STATE_COUNT && sky_state_weather[sky_state]; /* fix: no read past the table */
+}
+
+/* Weather and day */
 
 /* Reads the sky object entry of the map graphics into object; false when the map has none. */
 static bool load_sky_object(SkyObject *object)
@@ -189,12 +200,6 @@ static bool load_sky_object(SkyObject *object)
     object->scale_x = SCALE_FULL;
     object->scale_y = SCALE_FULL;
     return true;
-}
-
-/* The daylight in % that a window lets in now. */
-static int daylight(void)
-{
-    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 static void set_hour_light(void)
@@ -284,8 +289,10 @@ static bool update_rain(void)
     int chance = (int16_t)g_game.storm_intensity >= STORM_STRONG ? LIGHTNING_CHANCE_STRONG : LIGHTNING_CHANCE_WEAK;
     g_game.sky_darkness = (uint8_t)g_game.storm_intensity;
     /* rain starts by chance, then follows the storm */
-    g_game.rain_intensity =
-        g_game.rain_intensity ? (uint8_t)g_game.storm_intensity : rand_below(span) <= RAIN_CHANCE_MAX;
+    if (g_game.rain_intensity)
+        g_game.rain_intensity = (uint8_t)g_game.storm_intensity;
+    else
+        g_game.rain_intensity = rand_below(span) <= RAIN_CHANCE_MAX;
     int rain = g_game.rain_intensity;
     if (rain && g_game.cloud_cover < CLOUDS_MAX) {
         bool even = !(g_game.game_time & 1);
@@ -402,8 +409,7 @@ static int sky_entry(int amount, int medium, int heavy, int first)
 
 void world_update_day_night(bool storm_step)
 {
-    uint16_t sky = map_value(MAP_KEY_SKY_STATE);
-    g_game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
+    g_game.weather_visible = weather_is_shown(map_value(MAP_KEY_SKY_STATE));
     if (storm_step) {
         step_storm();
         return;
@@ -437,6 +443,14 @@ void world_update_day_night(bool storm_step)
     if (lightning)
         o = show_lightning(o);
     o->entry = SKY_OBJECT_END;
+}
+
+/* Light */
+
+/* The daylight in % that a window lets in now. */
+static int daylight(void)
+{
+    return light_levels[clamp_int(0, g_game.heavy_rain + g_weather.hour_light, LIGHT_LEVEL_MAX)];
 }
 
 void light_update_party_light(void)

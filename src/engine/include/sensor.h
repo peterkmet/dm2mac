@@ -11,6 +11,7 @@
 #include "timeline.h"
 
 /* Record fields of the things of this module; dungeon.h holds the record layout. */
+/* The type and data word. */
 static inline uint16_t sensor_type(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TYPE_DATA, 0, SENSOR_TYPE_MASK);
@@ -20,22 +21,29 @@ static inline uint16_t sensor_data(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK);
 }
+/* Sets the data word of a sensor. */
 static inline void sensor_set_data(uint16_t sensor, uint16_t data)
 {
     thing_set_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
 }
+/* The frame of a sensor. */
 static inline uint16_t sensor_frame(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK;
 }
+/* Whether a sensor plays its sound. */
 static inline bool sensor_sound_on(uint16_t sensor)
 {
     return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0;
 }
+
+/* The flags word. */
+/* Whether a flag bit of a sensor is set. */
 static inline bool sensor_flag(uint16_t sensor, uint16_t bit)
 {
     return thing_bit(sensor, SENSOR_FLAGS, bit);
 }
+/* Sets or clears a flag bit of a sensor. */
 static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
 {
     thing_set_bit(sensor, SENSOR_FLAGS, bit, on);
@@ -56,6 +64,7 @@ static inline int16_t sensor_ornament_index(uint16_t sensor)
 {
     return (int16_t)(thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK) - 1);
 }
+/* The target word: the target square and cell, or the energy and step of a launched missile. */
 static inline uint16_t sensor_target_x(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
@@ -164,6 +173,10 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The period factor of the slow timers SENSOR_TIMER_8 to SENSOR_TIMER_128. */
 #define TIMER_SLOW_FACTOR         8
 
+/* SENSOR_FLAGS of a wall shop sensor and its display sensor. */
+#define SHOP_SHOWN        SENSOR_BUSY  /* the display item is chosen */
+#define SHOP_STEP_FORWARD SENSOR_STATE /* the shop: the next click goes to the next item */
+
 /* Sensor data sub-fields: the target map (bits 0-5) and wall cell (bits 6-7) of a map relay and a teleport button,
    the direction of a creature turn sensor, and the power (bits 0-3) and group class of an area sensor. */
 #define SENSOR_MAP_MASK   0x3f
@@ -171,18 +184,24 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The positions of the wall cell and the group class in the sensor data. */
 #define SENSOR_CELL_SHIFT 6
 #define AREA_CLASS_SHIFT  4
+
+/* The sub-fields of the data word. */
+/* The map in the data word of a sensor. */
 static inline uint16_t sensor_data_map(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_MAP_MASK;
 }
+/* The cell in the data word of a sensor. */
 static inline uint16_t sensor_data_cell(uint16_t sensor)
 {
     return sensor_data(sensor) >> SENSOR_CELL_SHIFT & CELL_MASK;
 }
+/* The turn direction in the data word of a sensor. */
 static inline uint16_t sensor_turn_dir(uint16_t sensor)
 {
     return sensor_data(sensor) & DIR_MASK;
 }
+/* The area power in the data word of a sensor. */
 static inline uint16_t sensor_area_power(uint16_t sensor)
 {
     return sensor_data(sensor) & AREA_POWER_MASK;

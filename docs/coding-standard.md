@@ -84,7 +84,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    `.c`); C standard headers; third-party headers; project headers, alphabetical. `.clang-format` sorts them by the
    angle-bracket and quote forms. There is no umbrella header per layer. [format, include]
 4. The one-line comment of a public function is in the header above its prototype. [comment]
-5. A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration.
+5. A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration or `; exported for the tests.` at the end of the comment above it.
    [dead-api]
 
 ## 3. Constants
@@ -111,7 +111,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    line, with the same digit width. A block of ids from the data files and from `SKULL.EXE` is hex too: GDAT
    categories and entries, sound entries, priorities and volumes, event types, command codes, key codes. A
    block of counts, sizes, ticks, percentages, coordinates, distances, divisors and thresholds is decimal in
-   every line. A block never mixes the two. A table row uses one notation. [notation; the table row review
+   every line. A block never mixes the two. A shift count is a count: it stands in its own decimal block next to its mask block (`GLOBAL_BIT_SHIFT` and `GLOBAL_BIT_MASK`). A table row uses one notation. [notation; the table row review
    only]
 
    ```c
@@ -128,7 +128,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    ```
 
 5. Each constant has one definition, in the header of the module that owns it; other modules include that
-   header. They do not define the value again under the same or another name. The check compares names; equal values under different names are review only. [duplicate]
+   header. A constant that only one `.c` file uses stays file-private in that file. They do not define the value again under the same or another name. The check compares names in headers and `.c` files; equal values under different names are review only. [duplicate]
 6. No rule in dm2: the port reads no engine image, so it has no image addresses (`KAOS_`) and no image
    tables.
 7. Graphic, zone, icon and string numbers live in `data/ids.h`, grouped by kind (`GFX_` for the graphic entry
@@ -161,7 +161,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 ## 4. Naming
 
-1. Functions: `<prefix><verb>_<object>` in `snake_case`, at most four words after the prefix, at most 40
+1. Functions: `<prefix><verb>_<object>` in `snake_case` (a query may be a noun phrase, rule 4.3), at most four words after the prefix, at most 40
    characters for the whole name. [name; `<verb>_<object>` review only]
 2. A static function has no module prefix. [static-prefix]
 3. Record accessors are nouns after the prefix of the thing type: `<type>_<field>` and `<type>_set_<field>`
@@ -250,7 +250,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 ## 8. File order
 
 1. A `.c` file has this order: includes; constants; types; file-static state; functions. An `enum` is a constant
-   (rule 3.2); a `static const` table is state, so it stands after the type of its elements. [order for the first
+   (rule 3.2); a `static const` table is state, so it stands after the type of its elements. A `static const` table of static function pointers stands after its functions (rule 8.3 allows no forward declaration); its place is review only. [order for the first
    constant, type, file-scope variable and function; the place of the includes review only]
 2. The public functions are in the order of the header. The header lists them by topic: setup and reset
    first, then queries, then commands; a one-line section comment names each topic in the header and in the
@@ -359,17 +359,17 @@ their allowlist key:
 | `module` | a `.c` file without its header, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |
-| `include` | a header the file does not use |
+| `include` | a project header the file does not use |
 | `comment` | a public prototype or a static definition with more than 5 body lines without a comment line above it, or a comment on both; a getter with one parameter or a `_set_` setter with two in a group under one comment line needs none |
 | `dead-api` | an exported name with no use outside its module and no test marker; a name of `<module>_internal.h` with no use outside the file that defines it and no test marker |
 | `hex`, `decimal` | a number outside a constant definition, also a single digit in `[N]` (except `[2]`, `[3]` and `[4]`) and `< N;`, a digit 3–9 after an operator, a comma, `(`, `?`, `:` or `=` and a space (not before `]`), and an array size on the declaration line of a table; not a mask `0xf`, `0x0f`, `0xff`, `0xffff` next to a bit operator |
 | `enum` | an anonymous `enum` at file scope, an `enum` whose members do not share one first word |
 | `block` | a constant block without a comment line above it |
 | `notation` | a block that mixes hex and decimal, a flag block in decimal, a count block in hex |
-| `duplicate` | a constant name defined in more than one header |
+| `duplicate` | a constant name defined in more than one header or `.c` file |
 | `numbered` | an event number, a byte offset or an address in a name |
 | `packed` | a shift by 8, 16, 24 or a foreign `*_SHIFT` at a call site, a double integer cast |
-| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)` or `(const uint8_t *)` cast outside `data/` |
+| `byteorder` | a byte order helper (`le16`, `le32`, `put_le16`, `put_le32`, `put_be32`, `be16`, `read_u32`) or a shift by 8, 16, 24 of bytes outside `data/le.h`; a packed struct; `fread(&`, `fwrite(&` or `memcpy(&` of a struct variable; a `(uint8_t *)` or `(const uint8_t *)` cast outside `data/` |
 | `record` | a `dungeon_thing_record(` call outside `engine/dungeon.c` and `engine/include/dungeon.h` |
 | `name` | a function name above four words after the prefix or above 40 characters |
 | `static-prefix` | a static function with a module prefix |
@@ -390,4 +390,4 @@ their allowlist key:
 | `todo` | a TODO marker in code |
 | `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |
 | `format` | a file that `clang-format --dry-run --Werror` reports |
-| `allowlist` | an allowlist line with a reason that this document does not name |
+| `allowlist` | an allowlist line with a reason that this document does not name, a rule whose exception does not cover its check, or a line that accepts no violation of its check |

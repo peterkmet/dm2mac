@@ -131,6 +131,8 @@ void timeline_free(void)
     g_timeline.capacity = 0;
     g_timeline.count = 0;
     g_timeline.used_end = 0;
+    g_timeline.first_free = END_OF_FREE_LIST; /* fix: a freed timeline keeps no stale free list or queue slot */
+    g_timeline.fix_slot = TIMELINE_NO_SLOT;
 }
 
 /* Queries */
@@ -268,7 +270,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         return;
     case REBIRTH_SMOKE:
         explosion_create(EXPLOSION_SMOKE, 0, x, y, cell);
-        e->time_map += SMOKE_TIME;
+        timeline_delay_event(e, SMOKE_TIME);
         break;
     case REBIRTH_BONES: {
         uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);

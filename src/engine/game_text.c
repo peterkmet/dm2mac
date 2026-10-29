@@ -28,6 +28,25 @@
 #define FORMAT_TITLE_INDEX   0xfe
 #define FORMAT_TEXT_CATEGORY 0x07
 
+/* The characters of a padded number; a longer number goes on into the spare bytes. */
+#define NUMBER_WIDTH 4
+#define NUMBER_SPARE 4
+
+/* Dungeon texts: 3 codes of 5 bits per word. */
+#define TEXT_CODE_WIDTH     5
+#define TEXT_CODES_PER_WORD 3
+#define TEXT_ESCAPE_WORDS   10
+/* The mask of a code, and the codes with a special meaning. */
+#define TEXT_CODE_MASK      0x1f
+#define TEXT_SPACE          0x1a
+#define TEXT_PERIOD         0x1b
+#define TEXT_NEWLINE        0x1c
+#define TEXT_ESCAPE_CHAR    0x1d
+#define TEXT_ESCAPE_WORD    0x1e
+#define TEXT_END            0x1f
+/* The ornament value of a text without an ornament. */
+#define NO_ORNAMENT_TEXT    0xff
+
 TextArgs g_text_args = {-1, {0}, 0};
 char g_text_drive_path[TEXT_SIZE];
 const uint8_t *g_ui_colors;
@@ -35,16 +54,18 @@ const uint8_t *g_ui_colors;
 /* The two-letter name of each field of an action text, by FIELD_* number. */
 static const char field_names[FIELD_COUNT][3] = {"SK", "LV", "CM", "BZ", "TR", "ST", "PA", "TA", "NC",
                                                  "EX", "PB", "DM", "MS", "SD", "RP", "HN", "AT", "WH"};
-
-/* The characters of a padded number; a longer number goes on into the spare bytes. */
-#define NUMBER_WIDTH 4
-#define NUMBER_SPARE 4
+/* The words and the characters that the escape codes of a dungeon text insert. */
+static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z",
+                                                                 "{", "|", "}",    "~",    "\x7f"};
+static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
 
 /* The texts that gtext_format_number and gtext_gdat_label return. */
 static struct {
     char number[NUMBER_SPARE + NUMBER_WIDTH + 1];
     char label[TEXT_SIZE];
 } gtext;
+
+/* Formatted texts */
 
 const char *gtext_format_number(int value, bool pad, int width)
 {
@@ -84,11 +105,13 @@ char *gtext_format(const char *fmt, char *dst)
         }
         int code = 0;
         if (c == FORMAT_CODE_BYTE) {
+            if (!fmt[1])
+                break; /* fix: the original reads its code past a cut text */
             code = (unsigned char)fmt[1] - FORMAT_CODE_BASE;
             fmt += FORMAT_CODE_PREFIX;
         } else {
             fmt += FORMAT_CODE_PREFIX;
-            for (int i = 0; i < FORMAT_CODE_DIGITS; i++)
+            for (int i = 0; i < FORMAT_CODE_DIGITS && *fmt; i++) /* fix: the original reads past a cut code */
                 code = code * DECIMAL_BASE + (*fmt++ - '0');
         }
         *out = '\0';
@@ -149,23 +172,7 @@ int16_t gtext_gdat_field(int category, int index, int entry, int field)
     return (int16_t)gdat_text_int_field(text, field_names[field]);
 }
 
-/* Dungeon texts: 3 codes of 5 bits per word. */
-#define TEXT_CODE_WIDTH     5
-#define TEXT_CODES_PER_WORD 3
-#define TEXT_ESCAPE_WORDS   10
-/* The mask of a code, and the codes with a special meaning. */
-#define TEXT_CODE_MASK      0x1f
-#define TEXT_SPACE          0x1a
-#define TEXT_PERIOD         0x1b
-#define TEXT_NEWLINE        0x1c
-#define TEXT_ESCAPE_CHAR    0x1d
-#define TEXT_ESCAPE_WORD    0x1e
-#define TEXT_END            0x1f
-static const char *const text_escape_words[TEXT_ESCAPE_WORDS] = {"x", "y", "THE ", "YOU ", "z",
-                                                                 "{", "|", "}",    "~",    "\x7f"};
-static const char text_escape_chars[] = "abcdefghijklmnopqrstuvwx01234567";
-/* The ornament value of a text without an ornament. */
-#define NO_ORNAMENT_TEXT 0xff
+/* Dungeon texts */
 
 /* The characters of the packed text at text, into out up to end; returns the end of the output. */
 static char *decode_words(uint16_t text, char *o, char *end)
@@ -245,6 +252,8 @@ char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, bool new_line
     snprintf(dst, size, "%s", formatted);
     return dst;
 }
+
+/* The UI colors and the text arguments */
 
 void gtext_gdat_set_ui_colors(const uint8_t *colors)
 {

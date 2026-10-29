@@ -16,42 +16,52 @@ static inline uint8_t projectile_energy(uint16_t projectile)
 {
     return thing_byte(projectile, PROJECTILE_ENERGY);
 }
+/* Sets the energy of a projectile. */
 static inline void projectile_set_energy(uint16_t projectile, int energy)
 {
     thing_set_byte(projectile, PROJECTILE_ENERGY, energy);
 }
+/* The hit chance of a projectile. */
 static inline uint8_t projectile_hit_chance(uint16_t projectile)
 {
     return thing_byte(projectile, PROJECTILE_HIT_CHANCE);
 }
+/* Sets the hit chance of a projectile. */
 static inline void projectile_set_hit_chance(uint16_t projectile, int chance)
 {
     thing_set_byte(projectile, PROJECTILE_HIT_CHANCE, chance);
 }
+/* Sets whether a projectile waits for its holder. */
 static inline void projectile_set_holder_waits(uint16_t projectile, bool waits)
 {
     thing_set_bit(projectile, PROJECTILE_CARRIED, PROJECTILE_HOLDER_WAITS, waits);
 }
+/* The type of an explosion. */
 static inline uint16_t explosion_type(uint16_t explosion)
 {
     return thing_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK);
 }
+/* Sets the type of an explosion. */
 static inline void explosion_set_type(uint16_t explosion, int type)
 {
     thing_set_field(explosion, EXPLOSION_DATA, 0, EXPLOSION_TYPE_MASK, type);
 }
+/* Whether an explosion is centered on its cell. */
 static inline bool explosion_is_centered(uint16_t explosion)
 {
     return thing_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED);
 }
+/* Sets whether an explosion is centered on its cell. */
 static inline void explosion_set_centered(uint16_t explosion, bool centered)
 {
     thing_set_bit(explosion, EXPLOSION_DATA, EXPLOSION_CENTERED, centered);
 }
+/* The power of an explosion. */
 static inline uint16_t explosion_power(uint16_t explosion)
 {
     return thing_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK);
 }
+/* Sets the power of an explosion. */
 static inline void explosion_set_power(uint16_t explosion, int power)
 {
     thing_set_field(explosion, EXPLOSION_DATA, EXPLOSION_POWER_SHIFT, EXPLOSION_POWER_MASK, power);

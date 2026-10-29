@@ -162,69 +162,67 @@ static const struct {
     uint16_t zone;
     uint8_t empty_icon;
 } slot_layout[SLOT_ENTRY_COUNT] = {
-    {0xd1,  0x38},
-    {0xd2,  0x34},
-    {0xd3,  0x38},
-    {0xd4,  0x34},
-    {0xd5,  0x38},
-    {0xd6,  0x34},
-    {0xd7,  0x38},
-    {0xd8,  0x34},
-    {0x1fb, 0x38},
-    {0x1fc, 0x34},
-    {0x1fd, 0x28},
-    {0x1fe, 0x30},
-    {0x1ff, 0x3c},
-    {0x200, 0x40},
-    {0x201, 0xff},
-    {0x202, 0xff},
-    {0x203, 0xff},
-    {0x204, 0xff},
-    {0x205, 0x2c},
-    {0x206, 0x44},
-    {0x207, 0x45},
-    {0x208, 0x46},
-    {0x209, 0xff},
-    {0x20a, 0xff},
-    {0x20b, 0xff},
-    {0x20c, 0xff},
-    {0x20d, 0xff},
-    {0x20e, 0xff},
-    {0x20f, 0xff},
-    {0x210, 0xff},
-    {0x211, 0xff},
-    {0x212, 0xff},
-    {0x213, 0xff},
-    {0x214, 0xff},
-    {0x215, 0xff},
-    {0x216, 0xff},
-    {0x217, 0xff},
-    {0x218, 0xff},
-    {0xe5,  0xff},
-    {0xe6,  0xff},
-    {0xe7,  0xff},
-    {0xe8,  0xff},
-    {0xe9,  0xff},
-    {0xea,  0xff},
-    {0xeb,  0xff},
-    {0xec,  0xff},
-    {0x1f9, 0xff},
-    {0x219, 0xff},
-    {0x21a, 0xff},
-    {0x21b, 0xff},
-    {0x21c, 0xff},
-    {0x21d, 0xff},
-    {0x21e, 0xff},
-    {0x21f, 0xff},
-    {0x220, 0xff}
+    {0xd1,  0x38   },
+    {0xd2,  0x34   },
+    {0xd3,  0x38   },
+    {0xd4,  0x34   },
+    {0xd5,  0x38   },
+    {0xd6,  0x34   },
+    {0xd7,  0x38   },
+    {0xd8,  0x34   },
+    {0x1fb, 0x38   },
+    {0x1fc, 0x34   },
+    {0x1fd, 0x28   },
+    {0x1fe, 0x30   },
+    {0x1ff, 0x3c   },
+    {0x200, 0x40   },
+    {0x201, NO_ICON},
+    {0x202, NO_ICON},
+    {0x203, NO_ICON},
+    {0x204, NO_ICON},
+    {0x205, 0x2c   },
+    {0x206, 0x44   },
+    {0x207, 0x45   },
+    {0x208, 0x46   },
+    {0x209, NO_ICON},
+    {0x20a, NO_ICON},
+    {0x20b, NO_ICON},
+    {0x20c, NO_ICON},
+    {0x20d, NO_ICON},
+    {0x20e, NO_ICON},
+    {0x20f, NO_ICON},
+    {0x210, NO_ICON},
+    {0x211, NO_ICON},
+    {0x212, NO_ICON},
+    {0x213, NO_ICON},
+    {0x214, NO_ICON},
+    {0x215, NO_ICON},
+    {0x216, NO_ICON},
+    {0x217, NO_ICON},
+    {0x218, NO_ICON},
+    {0xe5,  NO_ICON},
+    {0xe6,  NO_ICON},
+    {0xe7,  NO_ICON},
+    {0xe8,  NO_ICON},
+    {0xe9,  NO_ICON},
+    {0xea,  NO_ICON},
+    {0xeb,  NO_ICON},
+    {0xec,  NO_ICON},
+    {0x1f9, NO_ICON},
+    {0x219, NO_ICON},
+    {0x21a, NO_ICON},
+    {0x21b, NO_ICON},
+    {0x21c, NO_ICON},
+    {0x21d, NO_ICON},
+    {0x21e, NO_ICON},
+    {0x21f, NO_ICON},
+    {0x220, NO_ICON}
 };
 /* The UI color of the status bars of each champion. */
 static const uint8_t champion_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
 /* The text entry (7, 0, entry) of each skill level 0 to 16. */
 static const uint8_t skill_level_texts[SKILL_LEVEL_MAX + 1] = {0x01, 0x00, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
                                                                0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12};
-
-bool g_inv_arrows_on_close = true;
 
 static struct {
     struct {
@@ -432,7 +430,7 @@ static void add_dirty_rect(Offscreen *o, const int16_t *rect)
     delta = (int16_t)(d[RECT_Y] - o->rect[RECT_Y]);
     if (delta < 0) {
         d[RECT_H] = (int16_t)(d[RECT_H] + delta);
-        if (d[RECT_H] < 1) {
+        if (d[RECT_H] <= 0) {
             o->dirty_count--;
             return;
         }
@@ -441,7 +439,7 @@ static void add_dirty_rect(Offscreen *o, const int16_t *rect)
     delta = (int16_t)((o->rect[RECT_X] + o->rect[RECT_W] - 1) - (d[RECT_X] + d[RECT_W] - 1));
     if (delta < 0)
         d[RECT_W] = (int16_t)(d[RECT_W] + delta);
-    delta = (int16_t)((o->rect[RECT_H] + o->rect[RECT_Y] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
+    delta = (int16_t)((o->rect[RECT_Y] + o->rect[RECT_H] - 1) - (d[RECT_Y] + d[RECT_H] - 1));
     if (delta < 0)
         d[RECT_H] = (int16_t)(d[RECT_H] + delta);
 }
@@ -501,13 +499,13 @@ static void fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, 
 {
     if (!rect || !rect[RECT_W] || !rect[RECT_H])
         return;
-    uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
+    int start = rect[RECT_Y] * dst_width + rect[RECT_X];
     int phase = ((start / dst_width) ^ start) & 1;
     uint8_t color = g_ui_colors[ui_color & DITHER_COLOR_MASK];
-    for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
-        uint16_t at = (uint16_t)(start + row * dst_width);
-        for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2)
-            dst[(uint16_t)(at + col)] = color;
+    for (int row = 0; row < rect[RECT_H]; row++, phase ^= 1) {
+        uint8_t *line = dst + start + row * dst_width;
+        for (int col = phase; col < rect[RECT_W]; col += 2)
+            line[col] = color;
     }
 }
 
@@ -604,25 +602,25 @@ static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
     return zone_compute_rect(NULL, r, zone, &size.w, &size.h);
 }
 
-void offscreen_draw_text_in_zone(Offscreen *o, int zone, int color, int bg, const char *text)
+void offscreen_draw_text_in_zone(Offscreen *o, int zone, TextColors colors, const char *text)
 {
     int16_t r[RECT_SIZE];
     if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]), (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]),
-              (TextColors){color, bg}, text);
+              colors, text);
     add_dirty_rect(o, r);
 }
 
-void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const char *text)
+void offscreen_draw_shadow_text(Offscreen *o, int zone, TextColors colors, const char *text)
 {
     int16_t r[RECT_SIZE];
     if (!zoned_text_rect(zone, text, r))
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
     text_draw_with_shadow(&dst, (int16_t)(r[RECT_X] - o->rect[RECT_X]),
-                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), (TextColors){color, bg}, text);
+                          (int16_t)(r[RECT_Y] + r[RECT_H] - 1 - o->rect[RECT_Y]), colors, text);
     add_dirty_rect(o, r);
 }
 
@@ -631,6 +629,8 @@ void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const
 void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect)
 {
     const Bitmap *src = source->bitmap;
+    if (!src)
+        return; /* fix: a picture missing from GRAPHICS.DAT draws nothing */
     Blit blit = {.src = src->pixels,
                  .dst = dst->pixels,
                  .src_x = source->x,
@@ -785,7 +785,8 @@ static void show_damage_number(int champ)
 {
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
                               ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
-    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ, g_ui_colors[UI_WHITE], g_ui_colors[UI_RED],
+    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ,
+                                (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_RED]},
                                 gtext_format_number(champion(champ)->damage, false, NUMBER_DIGITS));
 }
 
@@ -793,9 +794,9 @@ static void show_damage_number(int champ)
 static void show_value_pair(int zone, int16_t value, int16_t maximum)
 {
     char s[TEXT_SIZE];
-    strcpy(s, gtext_format_number(value, true, NUMBER_DIGITS));
-    strcat(s, "/");
-    strcat(s, gtext_format_number(maximum, true, NUMBER_DIGITS));
+    /* two calls: gtext_format_number reuses one buffer */
+    int n = snprintf(s, sizeof s, "%s/", gtext_format_number(value, true, NUMBER_DIGITS));
+    snprintf(s + n, sizeof s - (size_t)n, "%s", gtext_format_number(maximum, true, NUMBER_DIGITS));
     text_draw_in_zone_shadowed(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
@@ -965,6 +966,7 @@ static void show_description(const char *text)
     snprintf(buf, sizeof buf, "%s", text);
     for (char *line = buf; *line;) {
         char *next = line + strlen(line);
+        char kept = '\0'; /* the character that a break inside a word cuts off, put back after the draw */
         if (strlen(line) > DESCRIPTION_LINE) {
             char *brk = line + DESCRIPTION_BREAK;
             while (brk > line && *brk != ' ')
@@ -975,17 +977,14 @@ static void show_description(const char *text)
             } else {
                 /* fix: a word without a space breaks at the line width; the original scans before the buffer */
                 next = line + DESCRIPTION_LINE;
-                char kept = *next;
+                kept = *next;
                 *next = '\0';
-                text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
-                cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
-                *next = kept;
-                line = next;
-                continue;
             }
         }
         text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
         cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
+        if (kept)
+            *next = kept;
         line = next;
     }
 }
@@ -1210,7 +1209,7 @@ static void show_skills_and_stats(void)
     int16_t x = skills_at.x;
     int16_t y = skills_at.y;
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
-        if (champ_get_skill_level(champ, skill, true) == 1)
+        if (champ_get_skill_level(champ, skill, true) == SKILL_LEVEL_UNTRAINED)
             continue;
         ui_skill_rank_text(champ, skill, text);
         text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
@@ -1226,8 +1225,7 @@ static void show_skills_and_stats(void)
         int maximum = champ_get_stat(c, stat, STAT_MAXIMUM);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
         text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number(current, true, NUMBER_DIGITS));
-        strcpy(text, "/");
-        strcat(text, gtext_format_number(maximum, true, NUMBER_DIGITS));
+        snprintf(text, sizeof text, "/%s", gtext_format_number(maximum, true, NUMBER_DIGITS));
         text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, g_ui_colors[UI_LIGHT_GRAY], text);
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
@@ -1361,8 +1359,8 @@ static void show_champion_name(int champ, ChampionRedraw *d)
     if (!d->inv) {
         status_box_begin(champ, false);
         d->box_drawn = true;
-        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ, color,
-                                   g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ,
+                                   (TextColors){color, g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT}, c->name);
         return;
     }
     char title[TEXT_SIZE];
@@ -1427,8 +1425,9 @@ void ui_draw_champion_state(int16_t champion_index)
             d.flags |= d.inv ? REDRAW_BARS : REDRAW_BARS | REDRAW_NAME;
             d.force_slots = true;
         } else {
-            offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champion_index, g_ui_colors[UI_WHITE],
-                                       g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, c->name);
+            offscreen_draw_shadow_text(
+                &status_box, ZONE_STATUS_NAME + champion_index,
+                (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT}, c->name);
         }
     }
     if (c->health)
@@ -1460,35 +1459,65 @@ void ui_draw_all_champion_states(bool tick)
     area_update(tick);
 }
 
-void ui_toggle_inventory(int16_t champion_index)
+/* Resets the panel and the shown object of the inventory; false when the push arrows, the mouth or the eye keep the
+   inventory as it is. */
+static bool begin_inventory_change(void)
 {
     game_set_panel_mode(PANEL_MODE_NONE);
     cache.shown_object = THING_NONE;
-    if ((champion_index < CHAMPION_MAX && !champion(champion_index)->health) || g_ui.push_mode || g_ui.mouth ||
-        g_ui.eye)
+    return !g_ui.push_mode && !g_ui.mouth && !g_ui.eye;
+}
+
+/* Takes the open inventory away from its champion; its status box comes back. */
+static void release_inventory(int16_t open)
+{
+    game_set_open_inventory(0);
+    Champion *c = champion(open);
+    if (c->health && !g_ui.candidate) {
+        c->redraw |= REDRAW_STATUS_BOX;
+        ui_draw_champion_state(open);
+    }
+    /* the raised skills that the player saw no longer show green */
+    champ_forget_shown_raises(open, cache.shown_raised);
+}
+
+/* Closes the open inventory of a champion; an awake party sees the view again, with the movement arrows when
+   draw_arrows. */
+static void close_inventory(int16_t open, bool draw_arrows)
+{
+    release_inventory(open);
+    if (!g_party_sleeping) {
+        if (draw_arrows)
+            ui_draw_movement_arrows();
+        view_clear_viewport();
+    }
+    input_refresh_mode();
+}
+
+void ui_close_inventory(bool draw_arrows)
+{
+    if (!begin_inventory_change())
         return;
     game_set_command_stop(true);
     int16_t open = inventory_champion();
-    if (champion_index == open)
-        champion_index = CHAMPION_MAX;
+    if (open >= 0)
+        close_inventory(open, draw_arrows);
+}
+
+void ui_toggle_inventory(int16_t champion_index)
+{
+    if (champion_index < 0 || champion_index >= CHAMPION_MAX)
+        return;
+    if (!begin_inventory_change() || !champion(champion_index)->health)
+        return;
+    game_set_command_stop(true);
+    int16_t open = inventory_champion();
     if (open >= 0) {
-        game_set_open_inventory(0);
-        Champion *c = champion(open);
-        if (c->health && !g_ui.candidate) {
-            c->redraw |= REDRAW_STATUS_BOX;
-            ui_draw_champion_state(open);
-        }
-        /* the raised skills that the player saw no longer show green */
-        champ_forget_shown_raises(open, cache.shown_raised);
-        if (g_party_sleeping || champion_index == CHAMPION_MAX) {
-            if (!g_party_sleeping) {
-                if (g_inv_arrows_on_close)
-                    ui_draw_movement_arrows();
-                view_clear_viewport();
-            }
-            input_refresh_mode();
+        if (champion_index == open || g_party_sleeping) {
+            close_inventory(open, true);
             return;
         }
+        release_inventory(open);
     }
     game_set_open_inventory(champion_index + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);

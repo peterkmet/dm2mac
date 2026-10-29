@@ -159,7 +159,7 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
     uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
-        g_hooks.toggle_inventory(CHAMPION_MAX);
+        g_hooks.close_inventory(true);
         if (g_game.champion_count == 1)
             champ_set_leader(-1);
         if (g_ui.candidate >= g_game.champion_count)
@@ -199,7 +199,7 @@ void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int command)
         char text[TEXT_SIZE];
         g_hooks.print_message(message_colors[champ], gtext_gdat(CAT_INTERFACE, 0, TEXT_JOINED, text));
         if (g_ui.inventory) {
-            g_hooks.toggle_inventory(CHAMPION_MAX);
+            g_hooks.close_inventory(true);
             g_hooks.show_view();
         }
     }

@@ -777,7 +777,7 @@ address,name,signature,subsystem
 0x000421fd,magic_find_spell,uint32_t *magic_find_spell(const uint8_t *runes),magic
 0x0004225e,find_flask_in_hands,int16_t find_flask_in_hands(uint8_t *champ),magic
 0x000422f5,magic_cast_spell,"uint16_t magic_cast_spell(uint16_t champ, const uint8_t *spell, int16_t power)",magic
-0x000428a2,magic_cast_entered_runes,int magic_cast_entered_runes(void),magic
+0x000428a2,magic_cast_entered_runes_failed,int magic_cast_entered_runes_failed(void),magic
 0x00042924,magic_add_rune,void magic_add_rune(int16_t symbol),magic
 0x000429f5,magic_remove_last_rune,void magic_remove_last_rune(void),magic
 0x00042a35,money_box_click_coin,void money_box_click_coin(int16_t coin_type),money and shops

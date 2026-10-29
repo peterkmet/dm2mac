@@ -1,4 +1,5 @@
 import ctypes
+import resource
 import struct
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.markers import ROOT
+from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import (
     HEADER_SIZE, RECORD_GLOBALS, SAVE_ERR_DATA, SAVE_ERR_FORMAT, SAVE_OK, GRAPHICS, START, Event, Game, Timeline,
     c_round_trip, original_load, original_save,
@@ -137,6 +139,38 @@ def test_damaged_save(lib, gdat, start, tmp_path, name):
 
 def test_missing_file(lib, gdat, tmp_path):
     assert lib.save_load(str(tmp_path / "none.DAT").encode(), gdat) == C.SAVE_ERR_IO
+
+
+def failed_save(lib, gdat, path, bak, failure):
+    """Runs save_write with the slot file open failing ("open": no file handle left) or the write failing ("write":
+    the advanced mode without the seen storage)."""
+    if failure == "open":
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (0, hard))
+        try:
+            return lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat)
+        finally:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+    lib.seen_free()
+    set_mode(lib, ADVANCED)
+    try:
+        return lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat)
+    finally:
+        set_mode(lib, VANILLA)
+
+
+@pytest.mark.parametrize("failure", ["open", "write"])
+def test_failed_save_keeps_slot_file(lib, gdat, start, tmp_path, failure):
+    # Regression: a failed save left the old save only in the .BAK file.
+    path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
+    path.write_bytes(start)
+    assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
+    assert failed_save(lib, gdat, path, bak, failure) == C.SAVE_ERR_IO
+    assert path.read_bytes() == start
+    assert not bak.exists()
+    path.unlink()
+    assert failed_save(lib, gdat, path, bak, failure) == C.SAVE_ERR_IO
+    assert not path.exists() and not bak.exists()
 
 
 def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):

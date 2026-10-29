@@ -653,6 +653,57 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
     lib.view_enter_map(game.party_map)
 
 
+def test_shop_with_an_empty_price_table_steps_through_the_item_indices(lib, gdat, loaded, original_view, tmp_path):
+    # A damaged GRAPHICS.DAT whose price table of a shop ornament has 1 byte: the display steps through the item
+    # indices as for an ornament without a table, and shows an item that the merchant sells.
+    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
+    lib.dungeon_next_thing.restype = ctypes.c_uint16
+    lib.thing_word.restype = ctypes.c_uint16
+    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
+    lib.gdat_select.argtypes = [ctypes.c_void_p]
+    lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, u8_p, ctypes.c_bool]
+    shop = next((m, x, y, t) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+                for y in range(lib.dungeon_map_height(m)) for t in thing_list(lib, lib.dungeon_square_first_thing(m, x, y))
+                if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR
+                and lib.thing_word(t, 2) & 0x7F == C.WALL_CLICK_RESET and lib.thing_word(t, 4) >> 12
+                and lib.gdat_entry_index(gdat, C.CAT_WALL_ORNAMENT, lib.dungeon_map_wall_ornaments(m)[
+                    (lib.thing_word(t, 4) >> 12) - 1], C.GDAT_TYPE_VALUE, C.ORN_KEY_KIND) == C.KIND_SHOP)
+    map_, x, y, thing = shop
+    ornament = lib.dungeon_map_wall_ornaments(map_)[(lib.thing_word(thing, 4) >> 12) - 1]
+    item = lib.gdat_find(gdat, C.CAT_WALL_ORNAMENT, ornament, C.GDAT_TYPE_TABLE, C.GFX_ORN_SHOP_TABLE)
+    assert item > 0
+    data = bytearray(GRAPHICS.read_bytes())
+    count = int.from_bytes(data[2:4], "little")
+    size_at = 8 + 2 * (item - 1)
+    sizes = [int.from_bytes(data[8 + 2 * (i - 1):10 + 2 * (i - 1)], "little") for i in range(1, item)]
+    at = 8 + 2 * (count - 1) + int.from_bytes(data[4:8], "little") + sum(sizes)
+    del data[at + 1:at + int.from_bytes(data[size_at:size_at + 2], "little")]
+    data[size_at:size_at + 2] = (1).to_bytes(2, "little")
+    path = tmp_path / "GRAPHICS.DAT"
+    path.write_bytes(data)
+    damaged = ctypes.c_void_p()
+    assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
+    game = WeatherGame.in_dll(lib, "g_game")
+    saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
+    lib.gdat_select(damaged)
+    try:
+        cell = thing >> 14
+        lib.thing_set_word(thing, 4, lib.thing_word(thing, 4) & ~C.SHOP_SHOWN)
+        c_view(lib, map_, x + (0, 1, 0, -1)[cell], y + (-1, 0, 1, 0)[cell], (cell + 2) & C.DIR_MASK, 0)
+    finally:
+        lib.gdat_select(gdat)
+        lib.gdat_free(damaged)
+    target = lib.thing_word(thing, 6)
+    display = lib.dungeon_square_first_thing(map_, target >> 6 & 31, target >> 11)
+    shown = lib.thing_word(display, 2) >> 7
+    merchant, price_list = lib.thing_word(thing, 2) >> 7 & 0xFF, lib.thing_word(thing, 4) >> 7 & 0xF
+    sold = (ctypes.c_uint8 * C.ITEM_CLASS_SET_SIZE)()
+    assert lib.money_parse_item_class_set(merchant, 0x10 + 3 * price_list, sold, False)  # the class text of the list
+    assert sold[shown // 8] >> shown % 8 & 1, shown
+    game.party_x, game.party_y, game.party_dir, game.party_map = saved
+    lib.view_enter_map(game.party_map)
+
+
 def test_wet_image_matches_original(lib, loaded, original_view):
     # The rain background of wet ornaments of all widths, with small widths where the tile row of the rain bitmap
     # (rect width x rain height - 16 - 0 to 31 pixels) is shorter than its random start. There the original tiles

@@ -84,45 +84,6 @@ static struct {
     int16_t (*records)[ZONE_FIELDS]; /* owned: the zone records of all ranges */
 } layout;
 
-bool zone_load(const Gdat *gdat)
-{
-    uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
-    zone_free();
-    if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
-        return false;
-    int count = le16(p + LAYOUT_RANGE_COUNT);
-    int zones = 0;
-    if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size)
-        return false;
-    for (int i = 0; i < count; i++) {
-        layout.first[i] = le16(p + LAYOUT_RANGES + RANGE_SIZE * i);
-        layout.last[i] = le16(p + LAYOUT_RANGES + RANGE_LAST + RANGE_SIZE * i);
-        layout.start[i] = zones;
-        if (layout.last[i] < layout.first[i])
-            return false;
-        zones += layout.last[i] - layout.first[i] + 1;
-    }
-    const uint8_t *r = p + LAYOUT_RANGES + RANGE_SIZE * count;
-    if (r + WORD_SIZE * ZONE_FIELDS * (size_t)zones > p + size)
-        return false;
-    layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
-    if (!layout.records)
-        return false;
-    for (int i = 0; i < zones; i++)
-        for (int f = 0; f < ZONE_FIELDS; f++)
-            layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
-    layout.count = count;
-    return true;
-}
-
-void zone_free(void)
-{
-    free(layout.records);
-    layout.records = NULL;
-    layout.count = 0;
-}
-
 /* The record of zone, NULL for zone 0 or an unknown zone; the first range that holds it wins. */
 static const int16_t *find_zone(int16_t zone)
 {
@@ -132,6 +93,12 @@ static const int16_t *find_zone(int16_t zone)
         if (layout.first[i] <= zone && zone <= layout.last[i])
             return layout.records[layout.start[i] + zone - layout.first[i]];
     return NULL;
+}
+
+/* The anchor type of a zone record, read unsigned: a negative type of a damaged record fails every anchor test. */
+static int anchor_type(const int16_t *rec)
+{
+    return (uint16_t)rec[ZONE_TYPE];
 }
 
 /* Clips rect to clip; returns NULL when nothing is left. */
@@ -196,7 +163,7 @@ static const int16_t *place_relative(const int16_t *rec, int child, Placement *a
         return NULL;
     int16_t dx = p[ZONE_X];
     int16_t dy = p[ZONE_Y];
-    int parent_anchor = (uint16_t)p[ZONE_TYPE];
+    int parent_anchor = anchor_type(p);
     at->last_parent = p[ZONE_PARENT];
     const int16_t *size = find_zone(p[ZONE_PARENT]);
     if (!size)
@@ -226,7 +193,7 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
     bool pending = false;
     at->last_parent = 0;
     while (rec[ZONE_PARENT]) {
-        int child = (uint16_t)rec[ZONE_TYPE];
+        int child = anchor_type(rec);
         if (child >= ANCHOR_RELATIVE && child <= ANCHOR_RELATIVE_LAST) {
             bool bad = false;
             rec = place_relative(rec, child, at, &bad);
@@ -242,7 +209,7 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
         at->last_parent = rec[ZONE_PARENT];
         int16_t dx = p[SIZE_W];
         int16_t dy = p[SIZE_H];
-        int parent_type = (uint16_t)p[ZONE_TYPE];
+        int parent_type = anchor_type(p);
         if (parent_type == ANCHOR_TOP_LEFT) {
             at->x += dx;
             at->y += dy;
@@ -301,20 +268,16 @@ static int16_t *clip_placed(int16_t *rect, const int16_t *clip, int16_t *w, int1
     return rect[RECT_W] > 0 && rect[RECT_H] > 0 ? rect : NULL;
 }
 
-int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h)
-{
-    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
-}
-
-int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
-                                    int16_t *out_h)
+/* Places the *out_w x *out_h box (0: the size of image) of anchored: its top left corner and its clip go to *at_out;
+   false when the zone places nothing. */
+static bool place_zone(const Bitmap *image, AnchoredZone anchored, int16_t *out_w, int16_t *out_h, Placement *at_out)
 {
     if (anchored.zone == ZONE_NONE)
-        return NULL;
+        return false;
     bool relative = anchored.zone & ZONE_RELATIVE;
     const int16_t *rec = find_zone(anchored.zone & ~ZONE_RELATIVE);
     if (!rec)
-        return NULL;
+        return false;
     Placement at = {
         .clip = {CLIP_FAR, CLIP_FAR, CLIP_SIZE, CLIP_SIZE}
     };
@@ -325,13 +288,13 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         local[ZONE_TYPE] = anchored.anchor;
         rec = local;
     }
-    int type = rec[ZONE_TYPE];
+    int type = anchor_type(rec);
     if (type <= ANCHOR_LEFT) {
         at.x = rec[ZONE_X];
         at.y = rec[ZONE_Y];
     } else {
         if (type == ANCHOR_SIZE)
-            return NULL;
+            return false;
         type -= ANCHOR_RELATIVE;
     }
     if (relative) {
@@ -341,21 +304,88 @@ int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, Anchored
         *out_h = 0;
     }
     if (!image && (*out_w <= 0 || *out_h <= 0))
-        return NULL;
+        return false;
     if (!place_in_parents(rec, &at))
-        return NULL;
-    if ((unsigned)type > ANCHOR_LEFT)
-        return NULL;
+        return false;
+    if (type > ANCHOR_LEFT)
+        return false;
     *out_w = *out_w ? *out_w : image->width;
     *out_h = *out_h ? *out_h : image->height;
     ScreenPoint offset = anchor_offset(type, *out_w, *out_h);
-    rect[RECT_X] = (int16_t)(at.x - offset.x);
-    rect[RECT_Y] = (int16_t)(at.y - offset.y);
+    at.x = (int16_t)(at.x - offset.x);
+    at.y = (int16_t)(at.y - offset.y);
     if (g_zone_clip_rect[RECT_W]) {
         for (int i = 0; i < RECT_SIZE; i++)
             at.clip[i] = g_zone_clip_rect[i];
     }
-    if (g_party.move_steps && at.last_parent == WALK_PARENT && !clip_rect(at.clip, g_zone_walk_view_rect))
+    *at_out = at;
+    return true;
+}
+
+/* Cuts the clip of at to the walk view while the party walks; false when nothing is left. */
+static bool clip_to_walk_view(Placement *at)
+{
+    return !g_party.move_steps || at->last_parent != WALK_PARENT || clip_rect(at->clip, g_zone_walk_view_rect);
+}
+
+/* ---- Setup ---- */
+
+bool zone_load(const Gdat *gdat)
+{
+    uint32_t size;
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
+    zone_free();
+    if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
+        return false;
+    int count = le16(p + LAYOUT_RANGE_COUNT);
+    int zones = 0;
+    if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size)
+        return false;
+    for (int i = 0; i < count; i++) {
+        layout.first[i] = le16(p + LAYOUT_RANGES + RANGE_SIZE * i);
+        layout.last[i] = le16(p + LAYOUT_RANGES + RANGE_LAST + RANGE_SIZE * i);
+        layout.start[i] = zones;
+        if (layout.last[i] < layout.first[i])
+            return false;
+        zones += layout.last[i] - layout.first[i] + 1;
+    }
+    uint32_t records_at = LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count;
+    if (WORD_SIZE * ZONE_FIELDS * (size_t)zones > size - records_at) /* fix: byte counts, no pointer past the item */
+        return false;
+    const uint8_t *r = p + records_at;
+    layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
+    if (!layout.records)
+        return false;
+    for (int i = 0; i < zones; i++)
+        for (int f = 0; f < ZONE_FIELDS; f++)
+            layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
+    layout.count = count;
+    return true;
+}
+
+void zone_free(void)
+{
+    free(layout.records);
+    layout.records = NULL;
+    layout.count = 0;
+}
+
+/* ---- Rects of the zones ---- */
+
+int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h)
+{
+    return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
+}
+
+int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
+                                    int16_t *out_h)
+{
+    Placement at;
+    if (!place_zone(image, anchored, out_w, out_h, &at))
+        return NULL;
+    rect[RECT_X] = at.x;
+    rect[RECT_Y] = at.y;
+    if (!clip_to_walk_view(&at))
         return NULL;
     return clip_placed(rect, at.clip, out_w, out_h);
 }
@@ -366,7 +396,7 @@ int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, ui
     if (!rec || !rec[ZONE_PARENT])
         return NULL;
     const int16_t *size = find_zone(rec[ZONE_PARENT]);
-    if (!size || (uint16_t)size[ZONE_TYPE] != ANCHOR_SIZE)
+    if (!size || anchor_type(size) != ANCHOR_SIZE)
         return NULL;
     int16_t w = w_scale == ZONE_SCALE_FULL ? size[SIZE_W] : (int16_t)((int)w_scale * size[SIZE_W] / ZONE_SCALE_FULL);
     int16_t h = h_scale == ZONE_SCALE_FULL ? size[SIZE_H] : (int16_t)((int)h_scale * size[SIZE_H] / ZONE_SCALE_FULL);
@@ -405,6 +435,8 @@ bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPo
     return true;
 }
 
+/* ---- Clip ---- */
+
 void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom)
 {
     g_zone_clip_rect[RECT_X] = left;
@@ -413,13 +445,21 @@ void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bot
     g_zone_clip_rect[RECT_H] = (int16_t)(VIEWPORT_HEIGHT - bottom - top);
 }
 
-/* Zones of the interface */
+/* ---- Zones of the interface ---- */
 
 int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect)
 {
     int16_t w = ICON_SIZE;
     int16_t h = ICON_SIZE;
-    zone_compute_rect(NULL, rect, zone, &w, &h);
+    Placement at;
+    if (!place_zone(NULL, (AnchoredZone){(uint16_t)zone, ZONE_NO_ANCHOR}, &w, &h, &at) || !clip_to_walk_view(&at)) {
+        for (int i = 0; i < RECT_SIZE; i++) /* fix: the original widens the rect that it did not set */
+            rect[i] = 0;
+        return rect;
+    }
+    rect[RECT_X] = at.x;
+    rect[RECT_Y] = at.y;
+    clip_placed(rect, at.clip, &w, &h); /* as in the original, an icon that the clip hides keeps its cut rect */
     rect[RECT_X] -= ICON_FRAME;
     rect[RECT_Y] -= ICON_FRAME;
     rect[RECT_W] += 2 * ICON_FRAME;

@@ -65,6 +65,7 @@ extern char g_text_drive_path[TEXT_SIZE];
 #define FIELD_MELEE_KIND 16 /* 1: full damage to creatures that take half damage from other hits */
 #define FIELD_HAND       17
 
+/* Formatted texts */
 /* A number as decimal text; pad right-aligns it in width characters with spaces. The text stays valid until the
    next call. */
 const char *gtext_format_number(int value, bool pad, int width);
@@ -78,6 +79,7 @@ const char *gtext_gdat_label(int category, int index, int entry);
 /* The number of field (0 SK, 1 LV, 2 CM, ... 17 WH) of a text entry, 0 when it is absent. */
 int16_t gtext_gdat_field(int category, int index, int entry, int field);
 
+/* Dungeon texts */
 /* The text of a scroll or a text thing as stored, without the format pass; new_line and hidden as in
    gtext_decode_dungeon. */
 void gtext_decode_raw(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden);
@@ -85,6 +87,7 @@ void gtext_decode_raw(char *dst, size_t size, uint16_t thing, bool new_line, boo
    also gives a hidden text. */
 char *gtext_decode_dungeon(char *dst, size_t size, uint16_t thing, bool new_line, bool hidden);
 
+/* The UI colors and the text arguments */
 /* The UI colors that the font item of the interface GDAT gives (text_init). */
 void gtext_gdat_set_ui_colors(const uint8_t *colors);
 /* The number that format code 10 + index inserts. */

@@ -37,7 +37,7 @@
 typedef struct {
     int screen_mode;  /* 1: the dialogs draw on a black screen; 0: in the game viewport */
     int button_count; /* the buttons of the open dialog (7 for the volume dialog) */
-    int progress_enabled;
+    bool progress_enabled;
     int16_t progress_width;
     int id;           /* the dialog of the last dialog_draw */
     int right_choice; /* the advanced mode: the choice of a right click in the open dialog, 0 for none */
