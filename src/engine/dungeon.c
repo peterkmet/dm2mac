@@ -83,16 +83,6 @@ static struct {
     uint8_t level_digits[LEVEL_COUNT]; /* the level digit of each level (dungeon_level_digit) */
 } dun;
 
-static const uint8_t *map_desc(int16_t map)
-{
-    return dun.map_descs + map * MAP_DESC_SIZE;
-}
-
-static uint16_t map_size_and_level(int16_t map)
-{
-    return le16(dun.map_descs + map * MAP_DESC_SIZE + MAP_SIZE_AND_LEVEL);
-}
-
 static int map_data_offset(int16_t map)
 {
     return le16(dun.map_descs + map * MAP_DESC_SIZE + MAP_DATA_OFFSET);
@@ -556,6 +546,16 @@ void dungeon_read_level_table(void)
 }
 
 /* The dungeon header, the maps and the levels */
+
+static const uint8_t *map_desc(int16_t map)
+{
+    return dun.map_descs + map * MAP_DESC_SIZE;
+}
+
+static uint16_t map_size_and_level(int16_t map)
+{
+    return le16(dun.map_descs + map * MAP_DESC_SIZE + MAP_SIZE_AND_LEVEL);
+}
 
 uint16_t dungeon_party_start(void)
 {
