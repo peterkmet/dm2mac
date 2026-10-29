@@ -42,7 +42,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
 - Sleep doubles the use of food and water.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
-- Before you go to a new level, each champion has food above a quarter (512), or the packs hold food for each champion below that.
+- Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
@@ -195,7 +195,7 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Several actions | `uv run dm2-play --brief act_many '["move_forward", "turn_left", "move_forward"]'` |
 | Pass time | `uv run dm2-play --brief wait '{"ticks": 50}'` |
 | Save, load | `uv run dm2-play save`, `uv run dm2-play load` |
-| Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake` |
+| Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake`, then `uv run dm2-play --brief act close_inventory` |
 | See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
 
 ### View a screenshot as an LLM
@@ -268,7 +268,7 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 
 After a batch, `action_damage` is a list with one value for each `choose_action`, and `look` has the text of the last `look` only.
 
-`health_lost`: a list with one value for each champion: the health that the champion lost since the start of the request. It is only in the response when a champion lost health.
+`health_lost`: a list with one value for each champion (the health that the champion lost since the start of the request). It is only in the response when a champion lost health.
 
 ### Bump
 
@@ -276,24 +276,24 @@ When a move action (`move_forward`, `move_back`, `move_left`, `move_right`) does
 
 ### Displacement
 
-The game informs; it does not play. After each `act` turn and each batch step, the game compares the party facing, square, and map with what the action does:
+After each `act` turn and each batch step, the game compares the party facing, square, and map with what the action does:
 
 - A move action changes the square by one step in its direction, or nothing (a bump).
 - `turn_left` and `turn_right` change the facing by 90 degrees.
 - All other actions change neither.
 
-When the dungeon changes the party in another way, the turn has a displacement:
+When the dungeon changes the party in a different way, the turn has a displacement:
 
 | `stopped` | Reason |
 |---|---|
-| `moved` | The square or the map changed in another way: a teleporter, a pit, stairs. |
-| `turned` | The facing changed in another way: a spinner. |
+| `moved` | The square or the map changed in a different way: a teleporter, a pit, stairs. |
+| `turned` | The facing changed in a different way: a spinner. |
 
 `moved` comes before `turned` when both happen. An `act` response has `stopped` only after a displacement.
 
 ### Wait
 
-A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends at once when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, else the news. `ticks` gives the ticks that ran. This also works while the party sleeps: damage wakes the party.
+A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends immediately when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, otherwise the news. `ticks` gives the ticks that ran. This also works while the party sleeps: damage wakes the party.
 
 Example: rest until something happens, at most 5000 ticks.
 
@@ -308,7 +308,7 @@ An explosion lasts only a few ticks. It can be gone before the turn ends, so the
 The response has `seen: {explosions, creature_changes}` when the record is not empty. Without a record, the response has no `seen` field.
 
 - `explosions[]`: `{name, x, y, depth, side}`, one entry for each explosion type on each square. `depth` and `side` give the place in the view where the party first saw it. Here `side` is a word: `center`, `left`, `right`, `left_2`, `right_2`, `left_3`, `right_3`.
-- `creature_changes[]`: `{type, x, y, depth, side, before, after}` for each creature group in view that was killed. A DM2 group is one creature: `before` is 1, `after` is 0. A group that only leaves the view is not in the list.
+- `creature_changes[]`: `{type, x, y, depth, side, before, after}` for each creature group in view that was killed. In this game, a group is one creature: `before` is 1, `after` is 0. A group that only leaves the view is not in the list.
 
 ### Game over
 
@@ -322,7 +322,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 |---|---|---|
 | `move_forward`, `move_back`, `move_left`, `move_right` | none | Left and right step to the side. The inventory must be closed. |
 | `turn_left`, `turn_right` | none | The inventory must be closed. |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); else touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
+| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. The leader hand must be empty. See `view.piles`. |
 | `drop_object` | `cell` 0-4 | The leader drops the hand object: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
@@ -394,17 +394,17 @@ The response of `look` has `look: {name, lines}`: the texts of the eye panel. `n
 ### State fields
 
 - `time`: game steps. `game_mode`: `turnbased`. `mode`: the input mode (`move`, `inventory`, `recruit`, `sleep`, `dialog`, `menu`, `picture`, `pause`, `push`, `name`).
-- `dialog`: `{id, buttons}` while a dialog shows, else `null`. Answer it with `act click` or `act key`.
+- `dialog`: `{id, buttons}` while a dialog shows, otherwise `null`. Answer it with `act click` or `act key`.
 - `party`: `map`, `level`, `x`, `y`, `facing`, `darkness` (0 bright to 5 dark), `can_move`, `sleeping`, `dead`.
 - `leader` (index, or `null`), `leader_hand` (object or `null`).
 - `candidate`: the champion that a mirror shows, with the fields of a champion, or `null`. The candidate is not in `champions[]` and is never the `leader`.
 - `champions[]`: `index`, `name`, `title`, `alive`, `health`, `stamina`, `mana` (each `[current, maximum]`), `food`, `water`, `load_kg` (`[current, maximum]` in kg), `position`, `poisoned`, `statistics` (each `[current, maximum]`), `skills` (`{level, rank}` for `fighter`, `ninja`, `priest`, `wizard`), `wounds`, `slots[]`, `hands` (`{ready, action}`: the action names of each hand), `runes` (the chosen rune names), `busy` (`[ready, action, spell]`).
 - The values use the units of the game screen. `stamina` is the stored value divided by 10. `food` and `water` are the stored values (the screen shows them only as bars).
 - `rank` is the rank text of the skills panel, for example `LO MASTER FIGHTER`. It is `null` below level 2.
-- `action_menu`: `{champion, hand, actions}` while a menu is open, else `null`.
+- `action_menu`: `{champion, hand, actions}` while a menu is open, otherwise `null`.
 - `spell`: `{caster, chosen, available[{rune, name, mana}]}`, or `null`.
 - `inventory`: `{champion, panel}`, or `null`. `panel` is `food`, `skills`, `object`, `scroll`, `mouth`, or `none`.
-- `chest`, `money_box`, `minion_map`: the open panel, else `null`.
+- `chest`, `money_box`, `minion_map`: the open panel, otherwise `null`.
 - `messages`: the rows of the message area that hold text.
 - `outdoor`; outdoors also `weather` (`clouds`, `rain`, `wind`) and `day_time`.
 
@@ -416,8 +416,8 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
 - A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` when it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
-- A `flying` entry is `{kind, name}`. A projectile has `kind` `projectile` and the object name, or `spell`. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. Another type gives its number as `name`.
-- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of another picture). `facing` is the direction that the face points to.
+- A `flying` entry is `{kind, name}`. A projectile has `kind` `projectile` and the object name, or `spell`. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
+- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of a different picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists every object of the pile, top first. `take_object` takes `objects[0]`, the same object as `top`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
@@ -452,7 +452,7 @@ The view shows what a player sees. Creature health is not in the view, because t
  2 ####D#####
 ```
 
-The map shows the squares that the party saw. It shows no wall features: a wall is `#`. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map. The map shows the squares as they are now, also when they changed after you saw them.
+The map shows the squares that the party saw. It shows no wall features: a wall is `#`. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map. The map shows the squares as they are now, even when they changed after you saw them.
 
 ### End of a session
 
