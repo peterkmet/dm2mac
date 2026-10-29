@@ -605,19 +605,9 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
 
 
 
-@pytest.mark.parametrize("new_game", [False, True])
-def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
-    # A load or a new game after a repeated action, a raised skill and pending damage starts with no repeats, no
-    # raised skills and no pending damage.
+def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
+    """Loads start.DAT, or starts a new game from DUNGEON.DAT (session_load), in the session of the fixture."""
     from dm2test.dialog import Session
-    path = tmp_path / "SKSAVE0.DAT"
-    path.write_bytes(start)
-    repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
-    raised = (ctypes.c_uint8 * 16).in_dll(lib, "g_champ_skill_raised")
-    damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
-    ctypes.memset(repeats, 0x5A, ctypes.sizeof(repeats))
-    ctypes.memset(raised, 1, ctypes.sizeof(raised))
-    ctypes.memset(damage, 1, ctypes.sizeof(damage))
     if new_game:
         (tmp_path / "DATA").mkdir()
         (tmp_path / "DATA" / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
@@ -630,5 +620,32 @@ def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir,
         finally:
             state.new_game = 0
     else:
+        path = tmp_path / "SKSAVE0.DAT"
+        path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0
+
+
+@pytest.mark.parametrize("new_game", [False, True])
+def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+    # A load or a new game after a repeated action, a raised skill and pending damage starts with no repeats, no
+    # raised skills and no pending damage.
+    repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
+    raised = (ctypes.c_uint8 * 16).in_dll(lib, "g_champ_skill_raised")
+    damage = (ctypes.c_int16 * 4).in_dll(lib, "g_champ_pending_damage")
+    ctypes.memset(repeats, 0x5A, ctypes.sizeof(repeats))
+    ctypes.memset(raised, 1, ctypes.sizeof(raised))
+    ctypes.memset(damage, 1, ctypes.sizeof(damage))
+    load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game)
     assert not any(repeats) and not any(raised) and not any(damage)
+
+
+@pytest.mark.parametrize("new_game", [False, True])
+def test_load_and_new_game_clear_pending_push(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+    # A push that waits for a creature group in the last game does not wait in a loaded or a new game: the start of
+    # its play clears the group.
+    from dm2test.scenario import Party
+    party = Party.in_dll(lib, "g_party")
+    party.push_pending_group = 0x1000  # group 0 of the last game
+    load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game)
+    lib.play_start_session()
+    assert party.push_pending_group == 0xFFFF
