@@ -49,7 +49,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](..
    - `--save FILE`: optional. The game loads this save slot file on startup, as in the other modes.
    - Without `--save`, the game starts a new game immediately: no start menu and no movie. The new game has one champion (Torham). The player recruits the other champions at the mirrors.
    - The keyboard and the mouse do not control the game. A closed window quits. The request `quit` quits and the exit code is 0.
-   - `--mode turnbased` and the mode `advanced` use the same `QUICK.DAT` format. The advanced mode loads a file of the turn-based mode with F9 when it runs with the same `--saves DIR`.
+   - The `turnbased` and `advanced` modes use the same `QUICK.DAT` format. The advanced mode loads a file of the turn-based mode with F9 when it runs with the same `--saves DIR`.
 
 3. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
 
@@ -302,7 +302,7 @@ A `wait` turn runs `ticks` game steps (`TURN_WAIT_MAX_TICKS` is 5000). It ends e
 | Value | Meaning |
 |---|---|
 | `done` | All `ticks` ran. |
-| `game_over` | The party died or the game was finished. |
+| `game_over` | The party died or the game is complete. |
 | `damage` | A champion lost health. |
 | `creature` | A creature group came into view that was not in view before. |
 | `message` | The game printed a new message. |
@@ -343,7 +343,7 @@ The reply of a batch has `ran` (the turns that ran), `stopped`, `error` (only wi
 | `stopped` | see above | The stop of the turn, the batch, or the wait. |
 | `ran` | batch | The turns that ran. |
 | `error` | batch, `failed` | The reason. |
-| `game_over` | always | `true` when the party died or the game was finished. |
+| `game_over` | always | `true` when the party died or the game is complete. |
 | `bumped` | after a bump | `true`. |
 | `action_damage` | `choose_action` | The damage of the action (a number; a list in a batch). |
 | `health_lost` | a champion lost health | A list: the health that each champion lost since the start of the request. |
@@ -499,7 +499,12 @@ Each line lists the names of one table of the protocol, in table order.
   - `wind`: the direction of `g_game.wind_dir`.
 - The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind).
 - `day_time` comes from the darkness of the hour (`g_weather.hour_light`, 1 to 5): 1 is `day`, 5 is `night`, otherwise `dawn_dusk`.
-- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as in the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
+- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`):
+  - wall faces as in the wall face table of the view (`side_face`, `front_face`);
+  - creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them: no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks;
+  - a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key;
+  - a door button only to depth 3;
+  - no limit: the element, door state, and map glyph show at every depth, as the automap shows them.
 - A wall face gives what its ornament (the one that `aspect_get` gives the face) holds, by the ornament kind and value keys: `mirror` (portrait kind), `alcove`, `shop`, `fountain` (the touch key). Otherwise `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item that the display shows, `true` before the display chose an item.
 - Each creature group of a square is one entry with `count` 1: a DM2 group record holds one creature. The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
 - `piles` and `alcove` are the cells of [Cells](#cells) in the last drawn view. While the inventory hides the view, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is false.
