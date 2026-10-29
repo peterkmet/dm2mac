@@ -549,7 +549,7 @@ static void cast_other(Champion *c, int type, int skill, int power)
 }
 
 /* The hand (1, then 0) that holds an empty flask, -1 none. */
-static int find_flask_in_hands(const Champion *c)
+static int16_t find_flask_in_hands(const Champion *c)
 {
     for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
         uint16_t t = c->slots[hand];

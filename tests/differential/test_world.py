@@ -289,6 +289,7 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
     offset = ScreenPoint()
+    lib.zone_interpolate_offset.argtypes = [ctypes.c_uint16, ctypes.c_uint16, ctypes.c_int16, ctypes.POINTER(ScreenPoint)]
     lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)

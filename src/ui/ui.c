@@ -1082,7 +1082,7 @@ static void show_object_gauge(int zone, int16_t value, int16_t high, uint8_t gly
     if (!zone_get_rect(zone, r))
         return;
     show_gauge_bar(value, zone, color, (GaugeRange){0, high}, GAUGE_REST_COLOR);
-    int16_t y = r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE;
+    int16_t y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE);
     int bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[GLYPH_TEXT_SIZE] = {(char)glyph, '\0'};
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,

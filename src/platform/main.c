@@ -288,8 +288,8 @@ static void pump_events(void)
     if (x != program.window_x || y != program.window_y) {
         program.window_x = x;
         program.window_y = y;
-        g_input_mouse_x = x;
-        g_input_mouse_y = y;
+        g_input_mouse_x = (int16_t)x;
+        g_input_mouse_y = (int16_t)y;
     }
     transport_poll();
 }

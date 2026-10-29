@@ -288,7 +288,7 @@ bool champ_list_actions(int16_t champion_index, uint16_t thing, int16_t hand)
                     continue;
             }
         }
-        uint16_t skill = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_SKILL);
+        int16_t skill = gtext_gdat_field(category, index, entry, FIELD_SKILL);
         uint16_t level = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_LEVEL);
         if (level <= (uint16_t)champ_get_skill_level(champion_index, skill, true))
             g_champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
