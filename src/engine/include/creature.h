@@ -110,6 +110,7 @@ _Static_assert(sizeof(CreatureInfo) == CREATURE_INFO_SIZE, "the creature info re
 #define SPEED_FEAR_SHIFT       4
 #define SPEED_EXPERIENCE_SHIFT 8
 #define SPEED_TURN_SHIFT       12
+/* The thinking speed of a creature type. */
 static inline uint16_t creature_think_speed(const CreatureInfo *info)
 {
     return info->speed & INFO_NIBBLE_MASK;

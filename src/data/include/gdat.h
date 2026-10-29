@@ -136,10 +136,12 @@ int gdat_text_int_field(const char *text, const char *key);
 int gdat_image_offset(const Gdat *g, int category, int index, int entry);
 /* The shift of x in the packed drawing offset. */
 #define GDAT_OFFSET_X_SHIFT 8
+/* The signed horizontal offset packed in a GDAT offset word. */
 static inline int8_t gdat_offset_x(int offset)
 {
     return (int8_t)(offset >> GDAT_OFFSET_X_SHIFT);
 }
+/* The signed vertical offset packed in a GDAT offset word. */
 static inline int8_t gdat_offset_y(int offset)
 {
     return (int8_t)offset;

@@ -231,6 +231,7 @@ extern bool g_party_sleeping;
    and closing it takes back the counts that it showed. */
 extern uint8_t g_champ_skill_raised[CHAMPION_MAX][SKILL_BASE_COUNT];
 
+/* The champion record of the party slot index. */
 static inline Champion *champion(int index)
 {
     return (Champion *)g_game.champions[index];

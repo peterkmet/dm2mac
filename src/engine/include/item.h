@@ -15,6 +15,7 @@ static inline uint16_t item_type(uint16_t item)
 {
     return thing_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK);
 }
+/* Sets the type of an item. */
 static inline void item_set_type(uint16_t item, int type)
 {
     thing_set_field(item, ITEM_DATA, 0, ITEM_TYPE_MASK, type);
@@ -24,6 +25,7 @@ static inline bool item_is_kept(uint16_t item)
 {
     return thing_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD);
 }
+/* Sets whether an item is kept. */
 static inline void item_set_kept(uint16_t item, bool kept)
 {
     thing_set_bit(item, ITEM_DATA, thing_type(item) == THING_POTION ? POTION_DO_NOT_DISCARD : ITEM_DO_NOT_DISCARD,

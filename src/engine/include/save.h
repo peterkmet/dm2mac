@@ -73,6 +73,7 @@ static inline int16_t save_magic_light(void)
 {
     return (int16_t)le16(g_game.magic_light);
 }
+/* Sets the magic light of the saved party. */
 static inline void save_set_magic_light(int16_t light)
 {
     put_le16(g_game.magic_light, (uint16_t)light);

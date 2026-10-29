@@ -20,22 +20,27 @@ static inline uint16_t sensor_data(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK);
 }
+/* Sets the data word of a sensor. */
 static inline void sensor_set_data(uint16_t sensor, uint16_t data)
 {
     thing_set_field(sensor, SENSOR_TYPE_DATA, SENSOR_DATA_SHIFT, SENSOR_DATA_MASK, data);
 }
+/* The frame of a sensor. */
 static inline uint16_t sensor_frame(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_DATA_FRAME_MASK;
 }
+/* Whether a sensor plays its sound. */
 static inline bool sensor_sound_on(uint16_t sensor)
 {
     return (sensor_data(sensor) & SENSOR_DATA_SOUND) != 0;
 }
+/* Whether a flag bit of a sensor is set. */
 static inline bool sensor_flag(uint16_t sensor, uint16_t bit)
 {
     return thing_bit(sensor, SENSOR_FLAGS, bit);
 }
+/* Sets or clears a flag bit of a sensor. */
 static inline void sensor_set_flag(uint16_t sensor, uint16_t bit, bool on)
 {
     thing_set_bit(sensor, SENSOR_FLAGS, bit, on);
@@ -171,18 +176,22 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 /* The positions of the wall cell and the group class in the sensor data. */
 #define SENSOR_CELL_SHIFT 6
 #define AREA_CLASS_SHIFT  4
+/* The map in the data word of a sensor. */
 static inline uint16_t sensor_data_map(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_MAP_MASK;
 }
+/* The cell in the data word of a sensor. */
 static inline uint16_t sensor_data_cell(uint16_t sensor)
 {
     return sensor_data(sensor) >> SENSOR_CELL_SHIFT & CELL_MASK;
 }
+/* The turn direction in the data word of a sensor. */
 static inline uint16_t sensor_turn_dir(uint16_t sensor)
 {
     return sensor_data(sensor) & DIR_MASK;
 }
+/* The area power in the data word of a sensor. */
 static inline uint16_t sensor_area_power(uint16_t sensor)
 {
     return sensor_data(sensor) & AREA_POWER_MASK;
