@@ -84,46 +84,6 @@ static struct {
     int16_t (*records)[ZONE_FIELDS]; /* owned: the zone records of all ranges */
 } layout;
 
-bool zone_load(const Gdat *gdat)
-{
-    uint32_t size;
-    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
-    zone_free();
-    if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
-        return false;
-    int count = le16(p + LAYOUT_RANGE_COUNT);
-    int zones = 0;
-    if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size)
-        return false;
-    for (int i = 0; i < count; i++) {
-        layout.first[i] = le16(p + LAYOUT_RANGES + RANGE_SIZE * i);
-        layout.last[i] = le16(p + LAYOUT_RANGES + RANGE_LAST + RANGE_SIZE * i);
-        layout.start[i] = zones;
-        if (layout.last[i] < layout.first[i])
-            return false;
-        zones += layout.last[i] - layout.first[i] + 1;
-    }
-    uint32_t records_at = LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count;
-    if (WORD_SIZE * ZONE_FIELDS * (size_t)zones > size - records_at) /* fix: byte counts, no pointer past the item */
-        return false;
-    const uint8_t *r = p + records_at;
-    layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
-    if (!layout.records)
-        return false;
-    for (int i = 0; i < zones; i++)
-        for (int f = 0; f < ZONE_FIELDS; f++)
-            layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
-    layout.count = count;
-    return true;
-}
-
-void zone_free(void)
-{
-    free(layout.records);
-    layout.records = NULL;
-    layout.count = 0;
-}
-
 /* The record of zone, NULL for zone 0 or an unknown zone; the first range that holds it wins. */
 static const int16_t *find_zone(int16_t zone)
 {
@@ -362,6 +322,50 @@ static bool clip_to_walk_view(Placement *at)
     return !g_party.move_steps || at->last_parent != WALK_PARENT || clip_rect(at->clip, g_zone_walk_view_rect);
 }
 
+/* ---- Setup ---- */
+
+bool zone_load(const Gdat *gdat)
+{
+    uint32_t size;
+    const uint8_t *p = gdat_item(gdat, gdat_find(gdat, CAT_INTERFACE, LAYOUT_INDEX, LAYOUT_TYPE, GFX_LAYOUT), &size);
+    zone_free();
+    if (!p || size < LAYOUT_RANGES || (uint16_t)le16(p) != LAYOUT_SIGNATURE)
+        return false;
+    int count = le16(p + LAYOUT_RANGE_COUNT);
+    int zones = 0;
+    if (count < 0 || count > RANGE_MAX || LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count > size)
+        return false;
+    for (int i = 0; i < count; i++) {
+        layout.first[i] = le16(p + LAYOUT_RANGES + RANGE_SIZE * i);
+        layout.last[i] = le16(p + LAYOUT_RANGES + RANGE_LAST + RANGE_SIZE * i);
+        layout.start[i] = zones;
+        if (layout.last[i] < layout.first[i])
+            return false;
+        zones += layout.last[i] - layout.first[i] + 1;
+    }
+    uint32_t records_at = LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count;
+    if (WORD_SIZE * ZONE_FIELDS * (size_t)zones > size - records_at) /* fix: byte counts, no pointer past the item */
+        return false;
+    const uint8_t *r = p + records_at;
+    layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
+    if (!layout.records)
+        return false;
+    for (int i = 0; i < zones; i++)
+        for (int f = 0; f < ZONE_FIELDS; f++)
+            layout.records[i][f] = le16(r + WORD_SIZE * (ZONE_FIELDS * i + f));
+    layout.count = count;
+    return true;
+}
+
+void zone_free(void)
+{
+    free(layout.records);
+    layout.records = NULL;
+    layout.count = 0;
+}
+
+/* ---- Rects of the zones ---- */
+
 int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h)
 {
     return zone_compute_anchored_rect(image, rect, (AnchoredZone){zone, ZONE_NO_ANCHOR}, out_w, out_h);
@@ -425,6 +429,8 @@ bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPo
     return true;
 }
 
+/* ---- Clip ---- */
+
 void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom)
 {
     g_zone_clip_rect[RECT_X] = left;
@@ -433,7 +439,7 @@ void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bot
     g_zone_clip_rect[RECT_H] = (int16_t)(VIEWPORT_HEIGHT - bottom - top);
 }
 
-/* Zones of the interface */
+/* ---- Zones of the interface ---- */
 
 int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect)
 {
