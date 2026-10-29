@@ -7,7 +7,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The programmable interval timer (PIT) runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), every timer tick while the party sleeps.
 - `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `src/ui/play.c` into `step_before_input` and `step_after_input`. What `play_tick` and the two parts run is in [architecture.md](../architecture.md#the-game-step).
 - The calls of the rules into the interface: [architecture.md](../architecture.md#hooks-between-layers).
-- Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop running and clears `g_main_loop.running`.
+- Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop alive and clears `g_main_loop.running`, the flag that lets the game time run.
 
 ## The input tree
 
@@ -18,9 +18,9 @@ The rules of the main loop, the input, and the movement: the timing and the game
   - The zones (7 bytes): layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor area.
   - The command lists at `0x72388` (6 bytes): command with bit 15 to start a list, zone, mouse buttons, flags.
   - The key lists at `0x729b8` (4 bytes): command with bit 15 to start a list, key code.
-- A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c`, left `0x4b`, right `0x4d`, down `0x50`, shift and left `0x4f`, shift and right `0x51`. Esc (`0x01`) pauses.
+- A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c` (forward), left `0x4b` (turn left), right `0x4d` (turn right), down `0x50` (backward), shift and left `0x4f` (sidestep left), shift and right `0x51` (sidestep right). Esc (`0x01`) pauses.
 - A click goes down the tree from the root node of the input mode. The first command whose zone holds the click and whose buttons match wins. The matched zone rectangle and the click position stay for the click feedback.
-- The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released left button and for the area events). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released left buttons.
+- The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released left button and for the area events, the enter and leave events of the cursor zones). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released left buttons.
 
 ## Click feedback
 
@@ -28,10 +28,10 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The port runs the opcodes 0 to `0x10`. Opcode `8` draws the spell icon, `9` the hand icon, `0xc` the action name, `0xf` and `0x10` the dialog buttons.
 - Opcode `0xa` (rune commands `0x65` to `0x6a`) has no argument. It draws the pressed rune button ([GDAT](../formats/graphics.md#gdat-items) `(1, 5, 8)`, opaque) centered in the button rectangle. Then it draws the rune character of the button in the next rune set (`0x60` + 6 × rune count + command - `0x65`), centered, black on UI color 4 (`gfx_offscreen_draw_text_at`). The changed rectangle of that text starts at its base line.
 - Opcode `0xb` (cast command `0x6c`) has no argument. It draws the entered runes with their background (`area_draw_entered_runes(true)`).
-- Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 ticks, and draws the buttons with argument 0.
+- Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 timer ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
 - The movement arrows show pressed (`show_move_arrow`) until the move is done (`input_release_move_arrow`).
-- Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; otherwise it gives no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; otherwise it keeps the command when the spell is ready, or gives no command when it is not.
+- Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; otherwise it gives no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; otherwise it keeps the command when the spell action of that champion has no delay, or gives no command when it has one.
 
 ## Click zones of the view
 

@@ -27,13 +27,13 @@ The rules of the creatures: the creature data, the updates of the creature group
 
 ## Deviations from the original
 
-- The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`): a creature attack wakes the party, and the original then sets the input mode.
+- The scenario tests stub `mouse_area_add` and `mouse_area_remove` (the mouse areas of an input mode): when a creature attack wakes the party, the original sets the input mode, and the stub does nothing.
 - Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
 - The scratch blocks of the AI (last-in, first-out allocations of the original memory layer) are ordinary buffers in the port. The port has 4 blocks (`SCRATCH_BLOCKS`): a fifth nested creature update calls `os_fatal` (`ai_scratch_push`); the original has no such limit.
 - No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
-- The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
+- The original tests the address of `rand_2bits` instead of calling it, so the extra wait before a group acts (the alert test of the creature update in `src/engine/ai.c`) always applies. The port keeps this.
 - Bounds fixes:
   - reads past the creature info table, the animation frames, the item filter table, the search target kind flags (`g_ai_kind_flags`), and the candidate records
   - a creature type without its [GDAT](../formats/graphics.md#gdat-items) animation data (a damaged GRAPHICS.DAT): the original reads a null entry, the port calls `os_fatal` (`read_creature_data` in `src/engine/creature.c`)
