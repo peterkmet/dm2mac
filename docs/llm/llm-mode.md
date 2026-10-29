@@ -128,10 +128,10 @@ Reads the game state.
 
 | Field | Meaning |
 | --- | --- |
-| `time` | Game time in game steps (`g_game.game_time`). It stands still during a pause and in dialogs. |
-| `ticks` | Timer ticks at 60 Hz since the program start (`g_main_loop.timer_ticks`). `wait` counts these. |
+| `time` | Game time in game steps. It does not advance during a pause and in dialogs. |
+| `ticks` | Timer ticks at 60 Hz since the program start. `wait` counts these. |
 | `mode` | Input mode: `menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`; `movie` while the splash picture or a movie plays (see [Movies](#movies)). |
-| `dialog` | The dialog id (`DialogState.id`, `src/ui/include/dialog.h`) while `mode` is `dialog`, otherwise `null`. |
+| `dialog` | The dialog id while `mode` is `dialog`, otherwise `null`. |
 | `party` | Map, x, y, and direction (0 north, 1 east, 2 south, 3 west). |
 | `champion_count`, `leader` | Champions in the party; the leader index, -1 for none. |
 | `champions` | Per champion: name, `[current, maximum]` of health, stamina, and mana (stored values; the screen shows stamina in tenths), and the load in 1/10 kg. |
@@ -195,7 +195,7 @@ Both reply `{"ok":true}`.
 
 ### command
 
-Clicks the zone of a command of the current input mode, as `input_simulate_command_click` does. Use it for a button whose position you do not know. `id` is the command number. The example clicks the first button of an open dialog (`CMD_DIALOG_BUTTON_FIRST`, `0xdb`).
+Clicks the zone of a command of the current input mode. Use it for a button whose position you do not know. `id` is the command number. The example clicks the first button of an open dialog (`0xdb`).
 
 ```json
 {"cmd": "command", "id": 219}
@@ -291,9 +291,9 @@ An `act` turn does these steps:
 
 1. It gives the inputs of the action to the input queue, one after the other (at most 4). This is the path of a player: a key, a click on a command zone, or a click at a screen point. The next input goes when the input pipeline is idle.
 2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
-3. It ends when at least `TURN_MIN_TICKS` (2) steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after `TURN_MAX_TICKS` (64) steps, and immediately when the game is over.
+3. It ends when at least 2 steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after 64 steps, and immediately when the game is over.
 
-A game that does not tick (a dialog) ends a turn after `FRAMES_PER_TICK_LIMIT` (16) frames for each step of the maximum of the turn (`TURN_MAX_TICKS`, or the `ticks` of `wait`). The game rules do not change.
+A game that does not tick (a dialog) ends a turn after 16 frames for each step of the maximum of the turn (64 steps, or the `ticks` of `wait`). The game rules do not change.
 
 A `wait` turn runs `ticks` game steps (`TURN_WAIT_MAX_TICKS` is 5000). It ends early when news arrives. The real-time [wait](#wait) keeps its own limit of 6000 timer ticks.
 
@@ -460,7 +460,7 @@ The errors of the real-time commands:
 - The socket path must be shorter than about 100 bytes.
 - The game takes one client at a time ([Protocol](#protocol)).
 - The game sends a reply with a blocking write. A client that sends requests but never reads the replies can stop the game. The socket is a local test tool.
-- The Windows build (`make windows`, `build/dm2.exe`) has no control socket (`src/platform/transport_none.c`): `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS` and exit code 1.
+- The Windows build (`make windows`, `build/dm2.exe`) has no control socket: `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS` and exit code 1.
 
 ## Protocol vocabulary
 

@@ -1,6 +1,6 @@
 # Development
 
-How to build, test, and check the port. For the structure of the code, see [Architecture](architecture.md).
+The port builds with `make`, tests with `make test`, and checks with `make check`. For the structure of the code, see [Architecture](architecture.md).
 
 ## Build
 

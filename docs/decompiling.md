@@ -1,6 +1,6 @@
 # Decompiling
 
-How to decompile `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of the game with Ghidra. The output is `reference/decomp/SKULL.c`, the reference for the port.
+`tools/decompile-skull.sh` decompiles `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of the game with Ghidra. The output is `reference/decomp/SKULL.c`, the reference for the port.
 
 ## Prerequisites
 
