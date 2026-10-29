@@ -10,7 +10,7 @@ from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import Event, Timeline
-from dm2test.scenario import Location, Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location, Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -83,7 +83,8 @@ def enter(lib, game, m, x, y, d):
     party = Party.in_dll(lib, "g_party")
     game.party_dir = d
     party.move_steps, party.cur_map = 0, -1  # the party square follows on the map change
-    lib.game_enter_map(x, y, m, 0)
+    lib.game_enter_map.argtypes = [Position, ctypes.c_bool]
+    lib.game_enter_map(Position(m, x, y), False)
 
 
 def unhurt_creature(lib, gdat):  # noqa: F811

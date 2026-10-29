@@ -587,7 +587,7 @@ void move_party_to(Position at, int16_t dir)
     if (other) {
         dun_set_current_map(g_game.party_map);
         move_thing(THING_NONE, g_game.party_x, g_game.party_y, MOVE_NO_SQUARE, 0);
-        game_enter_map(x, y, map, 1);
+        game_enter_map((Position){map, x, y}, true);
         sx = MOVE_NO_SQUARE;
         sy = 0;
     }

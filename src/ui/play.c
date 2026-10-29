@@ -205,7 +205,7 @@ void play_start_session(void)
 {
     game_start_play();
     input_set_mode(INPUT_MODE_MOVE);
-    game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
+    game_enter_map((Position){g_game.party_map, g_game.party_x, g_game.party_y}, false);
     g_dialog.progress_enabled = false;
     advanced_reset();
     if (g_session.loaded) {
