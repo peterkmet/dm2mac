@@ -54,19 +54,19 @@ void magic_add_party_aura(int champion_mask, int type, int value, uint16_t durat
 bool magic_cast_party_aura(Champion *c, int type, int power, bool pay);
 
 /* Casting */
-/* Champion champ shoots the missile thing with power for cost mana; returns false without the mana. */
-bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost);
-/* Champion champ casts spell with power 1 to 6; returns the cast result. */
-CastResult magic_cast_spell(int champ, const Spell *spell, int power); /* exported for the tests */
-/* Champion champ casts spell from the cheat screen at the power of its power rune (POWER_MON for any power), without
+/* Champion champion_index shoots the missile thing with power for cost mana; returns false without the mana. */
+bool magic_cast_projectile_spell(int16_t champion_index, uint16_t thing, int power, int cost);
+/* Champion champion_index casts spell with power 1 to 6; returns the cast result. */
+CastResult magic_cast_spell(int16_t champion_index, const Spell *spell, int power); /* exported for the tests */
+/* Champion champion_index casts spell from the cheat screen at the power of its power rune (POWER_MON for any power), without
    the failure roll and without experience; a potion still needs an empty flask. Returns the cast result. */
-CastResult magic_cast_cheat_spell(int champ, const Spell *spell);
+CastResult magic_cast_cheat_spell(int16_t champion_index, const Spell *spell);
 /* The champion of the open spell panel casts the entered runes; returns true when the cast failed. */
 bool magic_cast_entered_runes_failed(void);
 
 /* Runes */
-/* The mana that rune (0 to 5) of the next rune set costs champion champ now. */
-uint16_t magic_rune_mana_cost(int champ, int rune);
+/* The mana that rune (0 to 5) of the next rune set costs champion champion_index now. */
+uint16_t magic_rune_mana_cost(int16_t champion_index, int rune);
 /* Adds rune 0 to 5 of the next rune set to the runes of the open spell panel when the mana suffices. */
 void magic_add_rune(int rune);
 /* The champion who casts takes back the last rune. */

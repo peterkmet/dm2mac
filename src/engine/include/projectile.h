@@ -162,7 +162,7 @@ void explosion_process_event(TimelineEvent *e);
 /* The 4 cells of the party on party_at that a creature on at attacks first to last; cell 0xff: random order. */
 void projectile_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell);
 /* A melee attack of the creature of group on a champion; returns the damage that the champion takes. */
-int projectile_attack_champion(uint16_t group, int champ);
+int projectile_attack_champion(uint16_t group, int16_t champion_index);
 
 /* ---- Missiles that the party walks into ---- */
 
@@ -174,6 +174,6 @@ void projectile_check_missiles_hit_party(Location from, Location to);
 /* A missile launcher sensor shoots the objects of its square or new objects or spells. */
 void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e);
 /* A champion throws or casts payload from the party square. */
-void projectile_launch_from_champion(int champ, uint16_t payload, int energy, int attack, int step);
+void projectile_launch_from_champion(int16_t champion_index, uint16_t payload, int energy, int attack, int step);
 
 #endif /* DM2_ENGINE_PROJECTILE_H */

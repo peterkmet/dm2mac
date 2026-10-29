@@ -41,7 +41,7 @@ def lib():
     lib.cheats_get_cursor.restype = Cursor
     lib.cheats_move_selection.argtypes = [ctypes.c_int16]
     lib.cheats_process_click.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.magic_cast_cheat_spell.argtypes = [ctypes.c_int, ctypes.c_void_p]
+    lib.magic_cast_cheat_spell.argtypes = [ctypes.c_int16, ctypes.c_void_p]
     lib.game_has_cheat.argtypes = [ctypes.c_uint8]
     lib.game_has_cheat.restype = ctypes.c_bool
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]

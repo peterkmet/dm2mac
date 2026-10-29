@@ -370,6 +370,7 @@ def test_missile_launchers(pj, lib):
 
 def test_champions_throw(pj, lib):
     # projectile_launch_from_champion: champions throw objects and cast spells from the party square.
+    lib.projectile_launch_from_champion.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int]
     rng = random.Random(165)
     things = objects(lib)
     rng.shuffle(things)
@@ -393,6 +394,7 @@ def test_creature_attacks_champions(pj, lib):
     # projectile_attack_champion for every creature group of the dungeon on random champions, awake and asleep,
     # visible and invisible, in light and darkness: the damage hook arguments and the random numbers.
     from dm2test.interface import set_magic
+    lib.projectile_attack_champion.argtypes = [ctypes.c_uint16, ctypes.c_int16]
     rng = random.Random(166)
     light = ctypes.c_int.in_dll(lib, "g_view_light_level")
     sleeping = ctypes.c_bool.in_dll(lib, "g_party_sleeping")

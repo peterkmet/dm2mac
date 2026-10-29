@@ -114,6 +114,7 @@ def test_reading_the_state_keeps_the_random_seed(lib, game):
 
 def test_hand_menus_do_not_change_the_open_menu(lib, game):
     """Listing the action menus of both hands for the state keeps the open menu of the action area."""
+    lib.action_area_open_hand.argtypes = [ctypes.c_int16, ctypes.c_int16]
     lib.action_area_open_hand(0, SLOT_READY_HAND)
     lib.area_update(0)
     action = ActionArea.in_dll(lib, "g_action")

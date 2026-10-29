@@ -138,7 +138,7 @@ void timeline_compact(void);
 void timeline_event_altar_rebirth(TimelineEvent *e);
 /* Runs a due group move event: the group moves to the square that it could not enter before. */
 void timeline_event_move_group(TimelineEvent *e);
-/* The timed effect of an eaten item (EVENT_ITEM_EFFECT) changes champ: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
+/* The timed effect of an eaten item (EVENT_ITEM_EFFECT) changes a champion: mode EFFECT_MODE_CONSUME_END, or EFFECT_MODE_RESTORE
    for a loaded game. */
 void timeline_event_apply_item_effect(const TimelineEvent *e, enum EffectMode mode);
 

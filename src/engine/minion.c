@@ -20,9 +20,9 @@ MinionMap g_minion_map;
 /* The mana of each option button. */
 static const uint8_t option_mana[MAP_OPTION_COUNT] = {2, 3, 1, 1};
 
-void minion_map_open(int champ)
+void minion_map_open(int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     g_minion_map.mana_divisor = 1;
     g_minion_map.mana_timer = MINION_MAP_MANA_TICKS;
     if (!c->mana) {

@@ -581,8 +581,8 @@ static bool hit_creature(Hit *h, int16_t cell)
 /* The projectile hits the champion in cell; false when no champion stands there. */
 static bool hit_champion(Hit *h, int16_t cell)
 {
-    int champ = champ_get_index_in_cell(cell);
-    if (champ < 0)
+    int16_t champion_index = champ_get_index_in_cell(cell);
+    if (champion_index < 0)
         return false;
     h->hit = true;
     HitAttack a = roll_attack(h->projectile, h->payload);
@@ -592,11 +592,11 @@ static bool hit_champion(Hit *h, int16_t cell)
     if (h->payload == SPELL_POISON_BOLT)
         a.extra_damage = (uint16_t)(a.extra_damage * 2);
     /* the original compares without a wrap: only flights to the north and east can face a champion */
-    if (champion(champ)->dir == projectile_dir(h->projectile) + TURN_BACK)
+    if (champion(champion_index)->dir == projectile_dir(h->projectile) + TURN_BACK)
         a.type |= ATTACK_BLOCKABLE; /* the champion faces it */
-    if ((int16_t)champ_take_damage(champ, (int16_t)attack, WOUND_PROJECTILE, a.type) && a.extra_damage &&
+    if ((int16_t)champ_take_damage(champion_index, (int16_t)attack, WOUND_PROJECTILE, a.type) && a.extra_damage &&
         rand_next() & ROLL_POISON_CHAMPION)
-        champ_poison(champ, a.extra_damage);
+        champ_poison(champion_index, a.extra_damage);
     return true;
 }
 
@@ -1016,7 +1016,7 @@ static int wound_nibble(const CreatureInfo *info, int location)
 }
 
 /* True when the champion dodges the melee attack of a creature with dexterity. */
-static bool attack_missed(const CreatureInfo *info, int champ, uint16_t dexterity, int difficulty)
+static bool attack_missed(const CreatureInfo *info, int16_t champion_index, uint16_t dexterity, int difficulty)
 {
     int visibility;
     if (g_game.magic_light[MAGIC_INVISIBILITY] && !(info->flags & CREATURE_SEES_INVISIBLE))
@@ -1028,8 +1028,8 @@ static bool attack_missed(const CreatureInfo *info, int champ, uint16_t dexterit
     if (g_party_sleeping || dexterity == DEXTERITY_ALWAYS_HITS)
         return false;
     int threshold = (uint16_t)visibility + (int16_t)((rand_next() & ROLL_MELEE) + dexterity + difficulty);
-    return ((uint16_t)champ_get_dexterity(champ) >= threshold - DEXTERITY_DODGE_MARGIN && rand_2bits()) ||
-           champ_test_luck(champion(champ), LUCK_DODGE);
+    return ((uint16_t)champ_get_dexterity(champion_index) >= threshold - DEXTERITY_DODGE_MARGIN && rand_2bits()) ||
+           champ_test_luck(champion(champion_index), LUCK_DODGE);
 }
 
 /* The wounds of a melee hit: the hands, or a location by the wound chances of the creature. */
@@ -1047,11 +1047,11 @@ static uint16_t attack_wounds(const CreatureInfo *info)
     return melee_wounds[location];
 }
 
-int projectile_attack_champion(uint16_t group, int champ)
+int projectile_attack_champion(uint16_t group, int16_t champion_index)
 {
-    if ((uint16_t)champ >= g_game.champion_count)
+    if ((uint16_t)champion_index >= g_game.champion_count)
         return 0;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     if (!c->health)
         return 0;
     int16_t damage = 0;
@@ -1063,13 +1063,13 @@ int projectile_attack_champion(uint16_t group, int champ)
         dexterity = (uint16_t)min_int(DEXTERITY_ALWAYS_HITS, (int16_t)(dexterity * 2));
     else if (kind == ATTACK_KIND_ALWAYS_HITS)
         dexterity = DEXTERITY_ALWAYS_HITS;
-    if (!attack_missed(info, champ, dexterity, difficulty)) {
+    if (!attack_missed(info, champion_index, dexterity, difficulty)) {
         uint16_t wounds = attack_wounds(info);
         int16_t power = (int16_t)(info->attack + min_int((int16_t)info->attack,
                                                          (int16_t)((rand_next() & ROLL_MELEE_POWER) + difficulty)));
         bool skipped = false;
         if (kind != ATTACK_KIND_ALWAYS_HITS) {
-            power = (int16_t)(power - champ_get_skill_level(champ, SKILL_PARRY, 1) * 2);
+            power = (int16_t)(power - champ_get_skill_level(champion_index, SKILL_PARRY, 1) * 2);
             if (power <= 1) {
                 if (rand_bit())
                     skipped = true;
@@ -1086,7 +1086,7 @@ int projectile_attack_champion(uint16_t group, int champ)
             power = (int16_t)(power + rand_2bits() + 1);
             if (rand_bit())
                 power = (int16_t)(power - (rand_below((uint16_t)((power >> 1) + 1)) - 1));
-            damage = (int16_t)champ_take_damage(champ, power, wounds, kind);
+            damage = (int16_t)champ_take_damage(champion_index, power, wounds, kind);
             if (damage) {
                 sndreq_request_after(sndreq_cue_with_fallback((SoundCue){CAT_CHAMPION, c->portrait, SOUND_HURT,
                                                                          SOUND_PRIORITY_HURT, SOUND_VOLUME_LOUD},
@@ -1094,9 +1094,9 @@ int projectile_attack_champion(uint16_t group, int champ)
                                      g_game.party_x, g_game.party_y, SOUND_DELAY_HURT);
                 int16_t poison;
                 if (info->poison && rand_bit() &&
-                    (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champ), STAT_VITALITY, info->poison)) !=
-                        0)
-                    champ_poison(champ, (uint16_t)poison);
+                    (poison = (int16_t)champ_get_stat_adjusted_attack(champion(champion_index), STAT_VITALITY,
+                                                                      info->poison)) != 0)
+                    champ_poison(champion_index, (uint16_t)poison);
             }
         }
     }
@@ -1224,9 +1224,9 @@ void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e)
     }
 }
 
-void projectile_launch_from_champion(int champ, uint16_t payload, int energy, int attack, int step)
+void projectile_launch_from_champion(int16_t champion_index, uint16_t payload, int energy, int attack, int step)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int dir = c->dir;
     int cell = dir_side_cell(c->cell, (int16_t)dir);
     projectile_create(&(ProjectileLaunch){.payload = payload,

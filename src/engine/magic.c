@@ -428,9 +428,9 @@ bool magic_cast_party_aura(Champion *c, int type, int power, bool pay)
     return paid;
 }
 
-bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
+bool magic_cast_projectile_spell(int16_t champion_index, uint16_t thing, int power, int cost)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     if (c->mana < cost)
         return false;
     c->mana = (int16_t)(c->mana - cost);
@@ -440,7 +440,7 @@ bool magic_cast_projectile_spell(int champ, uint16_t thing, int power, int cost)
         power += MISSILE_POWER_PER_STEP;
         step = (int16_t)power >> MISSILE_POWER_STEP_SHIFT;
     }
-    projectile_launch_from_champion(champ, thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
+    projectile_launch_from_champion(champion_index, thing, (uint16_t)power, MISSILE_ATTACK, (uint16_t)step);
     return true;
 }
 
@@ -566,21 +566,21 @@ static int spell_delay(const Spell *spell, int power)
            SPELL_DELAY_DIVISOR;
 }
 
-/* The effect of a spell that champion champ casts with power and skill: a potion in a flask, a missile, another
+/* The effect of a spell that champion champion_index casts with power and skill: a potion in a flask, a missile, another
    spell, or a summon. Returns the cast result: CAST_NEEDS_FLASK for a potion without an empty flask. */
-static CastResult cast_effect(int champ, const Spell *spell, int power, int skill)
+static CastResult cast_effect(int16_t champion_index, const Spell *spell, int power, int skill)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int type = spell_type(spell);
     switch (spell_kind(spell)) {
     case SPELL_POTION: {
-        int hand = find_flask_in_hands(c);
+        int16_t hand = find_flask_in_hands(c);
         if (hand < 0)
             return CAST_NEEDS_FLASK;
-        uint16_t flask = champ_remove_object_from_slot(champ, hand);
+        uint16_t flask = champ_remove_object_from_slot(champion_index, hand);
         item_set_gdat_index(flask, type);
         potion_set_power(flask, (unsigned)(power * POTION_POWER_PER_POWER + (int)(rand_next() & POTION_ROLL_MASK)));
-        champ_add_object_to_slot(champ, flask, hand);
+        champ_add_object_to_slot(champion_index, flask, hand);
         break;
     }
     case SPELL_MISSILE: {
@@ -588,7 +588,7 @@ static CastResult cast_effect(int champ, const Spell *spell, int power, int skil
         int strength =
             clamp_int(MISSILE_POWER_MIN, (int16_t)((s * 2 + MISSILE_SKILL_BASE) * (power + MISSILE_POWER_BASE)),
                       MISSILE_POWER_MAX);
-        magic_cast_projectile_spell(champ, (uint16_t)(MISSILE_THING_BASE + type), strength, 0);
+        magic_cast_projectile_spell(champion_index, (uint16_t)(MISSILE_THING_BASE + type), strength, 0);
         break;
     }
     case SPELL_OTHER:
@@ -601,42 +601,43 @@ static CastResult cast_effect(int champ, const Spell *spell, int power, int skil
     return CAST_OK;
 }
 
-CastResult magic_cast_spell(int champ, const Spell *spell, int power)
+CastResult magic_cast_spell(int16_t champion_index, const Spell *spell, int power)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int delay = spell_delay(spell, power);
     int level = power + spell->difficulty;
     uint16_t experience =
         (uint16_t)(spell->difficulty * (power - 1) * EXPERIENCE_PER_DIFFICULTY + level * EXPERIENCE_PER_LEVEL +
                    (int)(rand_next() & EXPERIENCE_ROLL_MASK) + level * level);
-    int skill = champ_get_skill_level(champ, spell->skill, 1);
+    int skill = champ_get_skill_level(champion_index, spell->skill, 1);
     for (int16_t tries = (int16_t)(level - skill); tries > 0; tries--) {
         int roll = (int)(rand_next() & CAST_ROLL_MASK);
         if (min_int(champ_get_stat(c, STAT_WISDOM, 0) + WISDOM_BONUS, WISDOM_CHANCE_MAX) < roll) {
-            champ_add_experience(champ, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
+            champ_add_experience(champion_index, spell->skill, experience >> ((level - skill) & BIT_INDEX_MASK));
             return CAST_FAILED;
         }
     }
-    CastResult result = cast_effect(champ, spell, power, skill);
+    CastResult result = cast_effect(champion_index, spell, power, skill);
     if (result != CAST_OK)
         return result;
     if ((int16_t)delay) {
-        champ_add_experience(champ, spell->skill, experience);
-        champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
+        champ_add_experience(champion_index, spell->skill, experience);
+        champ_add_action_delay(champion_index, (uint16_t)delay, ACTION_SPELL);
     }
     return CAST_OK;
 }
 
-CastResult magic_cast_cheat_spell(int champ, const Spell *spell)
+CastResult magic_cast_cheat_spell(int16_t champion_index, const Spell *spell)
 {
-    if (!champion(champ)->health)
+    if (!champion(champion_index)->health)
         return CAST_FAILED;
     uint8_t power_rune = magic_get_spell_rune(spell, 0);
     int power = power_rune ? power_rune - POWER_RUNE_BASE : POWER_MON;
-    CastResult result = cast_effect(champ, spell, power, champ_get_skill_level(champ, spell->skill, 1));
+    CastResult result =
+        cast_effect(champion_index, spell, power, champ_get_skill_level(champion_index, spell->skill, 1));
     int delay = spell_delay(spell, power);
     if (result == CAST_OK && (int16_t)delay)
-        champ_add_action_delay(champ, (uint16_t)delay, ACTION_SPELL);
+        champ_add_action_delay(champion_index, (uint16_t)delay, ACTION_SPELL);
     return result;
 }
 
@@ -668,12 +669,12 @@ static void report_cast_failure(CastResult result, const Spell *spell)
 
 bool magic_cast_entered_runes_failed(void)
 {
-    int champ = g_action.champion - 1;
-    Champion *c = champion(champ);
+    int16_t champion_index = g_action.champion - 1;
+    Champion *c = champion(champion_index);
     uint8_t *runes = runes_of(c);
     const Spell *spell = magic_find_spell(runes);
     CastResult result =
-        spell ? magic_cast_spell(champ, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
+        spell ? magic_cast_spell(champion_index, spell, (int16_t)(runes[0] - POWER_RUNE_BASE)) : CAST_UNKNOWN_SPELL;
     report_cast_failure(result, spell);
     if (result != CAST_NEEDS_FLASK) {
         runes[0] = 0;
@@ -683,9 +684,9 @@ bool magic_cast_entered_runes_failed(void)
     return result != CAST_OK;
 }
 
-uint16_t magic_rune_mana_cost(int champ, int rune)
+uint16_t magic_rune_mana_cost(int16_t champion_index, int rune)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     uint8_t *runes = runes_of(c);
     int n = c->rune_count;
     uint16_t mana = rune_mana[n * SPELL_RUNES_PER_SET + rune];
