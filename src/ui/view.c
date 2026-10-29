@@ -407,7 +407,7 @@ typedef struct {
 /* The eye of the party in the thing grid: the direction it looks to and its grid point. */
 typedef struct {
     int16_t dir;
-    int16_t x, y;
+    GridPoint point;
 } ViewEye;
 
 /* A door picture to put together: the door type, its ornament (an ordinal of the map door ornaments, 0 none), its
@@ -1095,9 +1095,8 @@ static void load_square_things(int pos, const ViewEye *eye, int16_t x, int16_t y
             /* this adds the cell of the push arrow for a creature in front of the party */
             GridPoint c = aspect_cell_to_xy(x, y, (uint16_t)get_thing_position(thing, DIR_NORTH));
             if (pos != POS_PARTY)
-                c = view_offset_toward_party((GridPoint){eye->x, eye->y}, c,
-                                             creature_info(gdat_current(), group_creature(thing))->size);
-            RelativeOffset offset = relative_offset(dir, c.x - eye->x, c.y - eye->y);
+                c = view_offset_toward_party(eye->point, c, creature_info(gdat_current(), group_creature(thing))->size);
+            RelativeOffset offset = relative_offset(dir, c.x - eye->point.x, c.y - eye->point.y);
             int16_t forward = offset.forward;
             if (forward >= GRID_FORWARD_LIMIT || abs(offset.lateral) >= GRID_LATERAL_LIMIT)
                 continue;
@@ -1163,8 +1162,7 @@ void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
     aspect_get(s, view.map, dir, square.x, square.y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
-    GridPoint point = aspect_cell_to_xy(x, y, eye_cell[dir]);
-    ViewEye eye = {.dir = dir, .x = point.x, .y = point.y};
+    ViewEye eye = {.dir = dir, .point = aspect_cell_to_xy(x, y, eye_cell[dir])};
     load_square_things(pos, &eye, square.x, square.y);
 }
 
