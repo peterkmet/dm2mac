@@ -469,6 +469,7 @@ AnimStep creature_anim_next_step(int creature_type, uint16_t sequence, uint16_t 
 AnimStep creature_anim_start(int creature_type, int action, uint16_t start)
 {
     const uint8_t *table = read_creature_data(creature_type, GDAT_TYPE_TABLE, GFX_CREATURE_SEQUENCES, NULL);
+    /* action -1 equals SEQUENCE_END and takes the end entry, as an action without an entry; no caller passes -1 */
     for (;; table += SEQUENCE_ENTRY_SIZE) {
         int16_t a = (int16_t)le16(table);
         if (a == SEQUENCE_END || a == (int16_t)action)
@@ -655,7 +656,8 @@ void creature_cancel_update(uint16_t group)
     }
 }
 
-/* Schedules the next update of the group on at for the next game step. */
+/* Schedules the next update of the group on at for the next game step. The group must have an active group (each
+   caller activates it or tests it first); there is no NULL check here. */
 static void schedule_update(Location at)
 {
     uint16_t group = creature_get_group_at(at);
