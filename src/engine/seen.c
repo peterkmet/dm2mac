@@ -167,7 +167,9 @@ bool seen_read(FILE *f)
     int count = dungeon_map_count();
     size_t size = AMAP_HEADER_SIZE + AMAP_MAP_SIZE * (size_t)count + seen_size;
     uint8_t *block = malloc(size);
-    bool ok = block && fread(block, 1, size, f) == size && !memcmp(block, AMAP_MAGIC, AMAP_MAGIC_SIZE) &&
+    if (!block)
+        os_fatal("out of memory");
+    bool ok = fread(block, 1, size, f) == size && !memcmp(block, AMAP_MAGIC, AMAP_MAGIC_SIZE) &&
               block[AMAP_MAGIC_SIZE] == AMAP_VERSION && block[AMAP_COUNT_AT] == count;
     const uint8_t *p = block + AMAP_HEADER_SIZE;
     for (int16_t map = 0; ok && map < count; map++, p += AMAP_MAP_SIZE)
