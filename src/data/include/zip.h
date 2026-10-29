@@ -25,21 +25,19 @@ typedef struct {
 } ZipEntry;
 
 /* Opening */
-/* Opens the archive and reads its central directory; NULL when the file is no ZIP archive or is damaged;
-   exported for the tests. */
+/* Opens the archive and reads its central directory; NULL when the file is no ZIP archive or is damaged. */
 Zip *zip_open(const char *path);
-/* Closes the archive and frees it; exported for the tests. */
+/* Closes the archive and frees it. */
 void zip_close(Zip *zip);
 
 /* Entries */
 /* Writes the root folder of the game files into root ("" or "<folder>/"): the prefix of the first entry in name
-   order whose name is marker or ends with "/" marker, without case; false when no entry has it;
-   exported for the tests. */
+   order whose name is marker or ends with "/" marker, without case; false when no entry has it. */
 bool zip_find_root(const Zip *zip, const char *marker, char *root, size_t size);
-/* Finds the entry with the name, without case; false when it is missing; exported for the tests. */
+/* Finds the entry with the name, without case; false when it is missing. */
 bool zip_find(const Zip *zip, const char *name, ZipEntry *entry);
 /* Reads the entry into data; false unless it is stored or deflated, its size is size, and it decodes to exactly
-   size bytes; exported for the tests. */
+   size bytes. */
 bool zip_read(const Zip *zip, const ZipEntry *entry, uint8_t *data, uint32_t size);
 
 #endif /* DM2_DATA_ZIP_H */

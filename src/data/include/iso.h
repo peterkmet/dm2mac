@@ -20,17 +20,15 @@ typedef struct {
 } IsoFile;
 
 /* Setup */
-/* Opens the image; *iso is NULL unless the result is ISO_OPEN_OK; exported for the tests. */
+/* Opens the image; *iso is NULL unless the result is ISO_OPEN_OK. */
 IsoOpenResult iso_open(const char *path, Iso **iso);
-/* Closes the image and frees it; exported for the tests. */
+/* Closes the image and frees it. */
 void iso_close(Iso *iso);
 
 /* Queries */
-/* Finds the file at a path below the root ("DATA/GRAPHICS.DAT"), without case and without a ";1" suffix;
-   exported for the tests. */
+/* Finds the file at a path below the root ("DATA/GRAPHICS.DAT"), without case and without a ";1" suffix. */
 bool iso_find(const Iso *iso, const char *path, IsoFile *file);
-/* Reads the file into data; false unless its size is size and all its sectors are inside the image;
-   exported for the tests. */
+/* Reads the file into data; false unless its size is size and all its sectors are inside the image. */
 bool iso_read(const Iso *iso, const IsoFile *file, uint8_t *data, uint32_t size);
 
 #endif /* DM2_DATA_ISO_H */
