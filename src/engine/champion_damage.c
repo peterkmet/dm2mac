@@ -436,6 +436,7 @@ static void drag_click(int16_t cell, bool finish)
     }
     int from = g_input_drag_state - 1;
     g_input_drag_state = 0;
+    /* a champion holds cell from: a drag starts on a champion, and kill_champion cancels the drag of its cell */
     int16_t dragged = champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
     if (finish)
         champion(dragged)->dir = (uint8_t)g_game.party_dir;
