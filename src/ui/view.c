@@ -181,6 +181,202 @@
 /* ATTR_SLOTS: no container takes the item. */
 #define ATTR_SLOTS_NO_CONTAINER 0x8000
 
+/* The wall faces that a wall square shows (wall_faces). */
+#define WALL_SHOWS_FRONT   VIEW_DRAWS_FRONT_FACE
+#define WALL_SHOWS_SIDE    VIEW_DRAWS_SIDE_FACE
+#define WALL_SHOWS_BOTH    (WALL_SHOWS_FRONT | WALL_SHOWS_SIDE)
+/* The neighbours of a view position in linked_squares: left, right, ahead, behind. */
+#define NEIGHBOUR_LEFT     0
+#define NEIGHBOUR_RIGHT    1
+#define NEIGHBOUR_AHEAD    2
+#define NEIGHBOUR_BEHIND   3
+#define NEIGHBOUR_COUNT    4
+/* The wall patterns of a view row: the walls of a row (center, left, right) give 8 patterns. */
+#define ROW_PATTERNS       8
+/* The wall bits of a row, and the far squares that the corner walls hide. */
+#define ROW_WALLS          7 /* row wall bits: center, left, right */
+#define ROW_SIDE_WALLS     6
+#define HIDE_FAR_LEFT      (POS_BIT(19) | POS_BIT(21)) /* far squares hidden behind the corner walls */
+#define HIDE_FAR_RIGHT     (POS_BIT(20) | POS_BIT(22))
+/* The view positions of the door tables and of the door top frame tables. */
+#define DOOR_POSITIONS     14
+#define DOOR_TOP_POSITIONS 9
+/* Door frame parts together. */
+#define DOOR_FRAME_SIDES   (DOOR_FRAME_LEFT | DOOR_FRAME_RIGHT)
+#define DOOR_FRAME_ALL     (DOOR_FRAME_TOP | DOOR_FRAME_SIDES)
+/* Glyphs of the wall text font after the letters: space and period. */
+#define GLYPH_SPACE        0x1a
+#define GLYPH_PERIOD       0x1b
+/* The wall text font has 8 x 8 glyphs. */
+#define GLYPH_SIZE         8
+/* The walking view: floor and ceiling shift, and the shift of the sky. */
+#define WALK_FLOOR_DY      3
+#define WALK_CEILING_DY    (-2)
+#define WALK_SKY_DY        (-3)
+#define WALK_SKY_HIGH_DY   2
+
+/* GDAT categories and entries of things. */
+#define CAT_ALCOVE_KEY     0xfe /* (category, 0xfe, 0x0c, entry): offset of an object picture of the category */
+#define CREATURE_KEY_COLOR 0x04 /* creature value keys */
+#define CREATURE_KEY_POSSESSION_LIFT 0x41
+#define ORN_KEY_ALCOVE_ITEMS 0xfd /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offset of the items in an alcove */
+#define EXPLOSION_KEY_FLIP   0x00 /* explosion value keys: random mirror mask, fixed power, side flip of a missile */
+#define EXPLOSION_KEY_FIXED_POWER  0x41
+#define EXPLOSION_KEY_MISSILE_FLIP 0x01
+/* The chests that open, and the transparent color of thing pictures. */
+#define CHEST_KINDS                8  /* container GDAT indices below 8 are chests that open */
+#define THING_KEY                  10 /* transparent color of thing pictures */
+/* Animation bits of an active group: a random shift of the picture and a mirror. */
+#define ANIM_MIRROR                0x40
+/* The shift of the vertical jitter in the animation bits. */
+#define ANIM_JITTER_Y_SHIFT        3
+/* Mirror bits of a creature frame: 2 bits per side, west side in bits 0-1. */
+#define FRAME_MIRROR_MASK          0x03
+#define FRAME_MIRROR_ALWAYS        0x01
+#define FRAME_MIRROR_BY_ANIM       0x02 /* mirrored when the animation bits say so */
+/* The shift of the mirror bits from one side to the next. */
+#define FRAME_MIRROR_SHIFT         2
+/* A moving creature shifts by its frame shift, sideways or forward. */
+#define CREATURE_SHIFT_X           64
+#define CREATURE_SHIFT_Y           7
+
+/* Explosion types with their own drawing. */
+#define EXPLOSION_GLOBAL_COUNTER   0x30 /* counts its views in global bytes 0x40 (away) and 0x41 (party square) */
+#define EXPLOSION_ALCOVE_STILL     0x64 /* in an alcove: the still picture 0x0c */
+#define EXPLOSION_ALCOVE_SCALED    0x65 /* in an alcove: the explosion picture */
+/* The global byte variables that count the views of EXPLOSION_GLOBAL_COUNTER. */
+#define GLOBAL_EXPLOSIONS_AWAY     0x40
+#define GLOBAL_EXPLOSIONS_NEAR     0x41
+/* Explosion pictures: size, growth, and the tint levels of an explosion on the party square. */
+#define EXPLOSION_POWER_BIG        160 /* stronger explosions grow and rise */
+#define EXPLOSION_POWER_SIZE       48  /* smallest power for the picture size */
+#define EXPLOSION_SIZE_SHIFT       8   /* the picture size is the scale times (power + 1) / 256 */
+#define EXPLOSION_GROW_BASE        192
+#define EXPLOSION_GROW_NEAR        30
+#define EXPLOSION_SPREAD_MIN       10
+#define EXPLOSION_RISE_FACTOR      8 /* the rise and the spread: the viewport size * 8 / the growth */
+#define EXPLOSION_SCALE_MIN        8
+#define EXPLOSION_SCALE_MAX        64
+#define EXPLOSION_TINT_LEVEL_SHIFT 5
+#define EXPLOSION_TINT_LEVELS      3
+#define TINT_ENTRY_WEAK            1 /* the tint picture after GFX_EXPLOSION_TINT of a weak and of a strong explosion */
+#define TINT_ENTRY_STRONG          2
+
+/* Missiles: the lift above the floor, the scales, and the base power of the half power spell. */
+#define MISSILE_DY               (-92) /* missiles fly above the floor */
+#define MISSILE_SCALE_MIN        8
+#define MISSILE_HALF_POWER_BASE  128
+/* The missile spell that shows half its power plus MISSILE_HALF_POWER_BASE. */
+#define MISSILE_HALF_POWER_SPELL 0xff82
+
+/* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
+#define GRID_STRIDE            17
+#define GRID_LATERAL_CENTER    10
+#define GRID_LATERAL_LIMIT     10
+#define GRID_FORWARD_LIMIT     17
+#define PARTY_CELL_LAST        14 /* the party square draws the things of its 3 far rows */
+#define PARTY_ROWS_BELOW_VIEW  2  /* the near rows of the party square are below the view */
+#define CREATURE_COVERED_CELLS 7  /* a creature covers the missiles of the 7 cells drawn before its cell */
+#define JITTER_COUNT           16
+#define ALCOVE_FIRST_SPOT      2 /* the jitter spots of the items in an alcove */
+#define ALCOVE_SPOT_END        14
+#define CELL_COLUMN_LAST       (CELL_GRID_SIDE - 1)
+#define CELL_ROW_STEP          (CELL_GRID_SIDE * GRID_SQUARE_CELLS) /* cell offset of the square ahead or behind */
+/* No view position in a thing grid cell. */
+#define NO_POSITION            0xff
+
+/* Possessions of a static creature (CreatureInfo.possessions). */
+#define POSSESSIONS_CELLS_MASK 0x00f0
+/* The last possession kind of the creatures that carry their possessions low. */
+#define POSSESSIONS_LOW_KIND   1
+
+/* The view positions that show missiles and possessions, and explosions. */
+#define MISSILE_POSITIONS   0x0000f9f9u /* positions 0, 3 to 8, 11 to 15: missiles and possessions */
+#define EXPLOSION_POSITIONS 0x0007f9ffu /* positions 0 to 8, 11 to 18 */
+#define ALCOVE_EXPLOSION_POSITIONS                                                                                     \
+    (POS_BIT(POS_FRONT) | POS_BIT(POS_DEPTH2_CENTER) | POS_BIT(POS_DEPTH2_LEFT) | POS_BIT(POS_DEPTH2_RIGHT) |          \
+     POS_BIT(POS_DEPTH3_CENTER) | POS_BIT(POS_DEPTH3_LEFT) | POS_BIT(POS_DEPTH3_RIGHT))
+/* The rows of thing_cell_order: squares left of, on, and right of the view axis. */
+#define ORDER_LEFT                 0
+#define ORDER_AXIS                 1
+#define ORDER_RIGHT                2
+/* The sizes of thing_scale, missile_scale, and jitter_offset. */
+#define THING_SCALE_COUNT          19
+#define MISSILE_SCALE_COUNT        (2 * DEPTH_FAR + 1)
+#define JITTER_OFFSET_COUNT        8
+/* The first thing_scale index of objects and of explosions. */
+#define OBJECT_SCALE_START         2
+#define EXPLOSION_SCALE_START      3
+/* The explosion cells in drawing order: the far left and right cells, the whole square, the near left and right
+   cells. */
+#define EXPLOSION_ORDER_COUNT      5
+#define EXPLOSION_ORDER_LAST       (EXPLOSION_ORDER_COUNT - 1)
+#define EXPLOSION_ORDER_FAR_RIGHT  1
+#define EXPLOSION_ORDER_NEAR_LEFT  3
+#define EXPLOSION_ORDER_NEAR_RIGHT 4
+/* The cell of an explosion on the whole square. */
+#define EXPLOSION_CELL_SQUARE      (-1)
+/* The largest creature size of the steps toward the party. */
+#define CREATURE_SIZE_MAX          3
+/* The bits of the octant of a diagonal step toward the party. */
+#define OCTANT_SAME_SHIFT          1
+#define OCTANT_RIGHT_SHIFT         2
+#define OCTANT_COUNT               8
+
+/* The fields of a sparkle field row, and the step of the tile start in pixels. */
+#define SPARKLE_TILE          0
+#define SPARKLE_MASK_PICTURE  1
+#define SPARKLE_WIDTH         2
+#define SPARKLE_HEIGHT        3
+#define SPARKLE_TILE_STEP     16
+/* The mask picture byte of a sparkle field: none, the mirror bit, and the picture entry. */
+#define SPARKLE_MASK_NONE     0xff
+#define SPARKLE_MASK_MIRRORED 0x80
+#define SPARKLE_MASK_ENTRY    0x7f
+
+/* The sky pictures of the rain. */
+#define RAIN_ALONG         0x71 /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
+#define RAIN_ACROSS        0x6d
+/* The rain picture after RAIN_ALONG or RAIN_ACROSS by the rain intensity; 0 for a drizzle. */
+#define RAIN_LEVEL_LIGHT   1
+#define RAIN_LEVEL_MEDIUM  2
+#define RAIN_LEVEL_STRONG  3
+/* The tile rows of the rain and of a wet picture: the picture size minus a trim and a random spread. */
+#define TILE_TRIM          40 /* rain and explosion tint: the tile row is the picture minus 40 pixels and a spread */
+#define WET_TILE_TRIM      60
+#define WET_TILE_EXTRA     16
+/* The random bits of a tile start and of a tile spread. */
+#define RANDOM_BYTE        0xff
+#define RANDOM_TILE_SPREAD 0x1f
+
+/* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
+#define SKY_LANDMARK_MAX      100
+#define SKY_LANDMARK_DISTANCE 210 /* screen offset per square of lateral distance */
+/* The mirror kinds of a sky object: by the floor or the ceiling parity. */
+#define SKY_FLIP_FLOOR        0x08
+#define SKY_FLIP_CEILING      0x02
+#define SKY_FLIP_FLOOR_2      0x40
+#define SKY_FLIP_CEILING_2    0x20
+/* The move kinds of a sky object: fixed, or a landmark at its place on the map. */
+#define SKY_FIXED             0
+#define SKY_LANDMARK          1
+
+/* Flip parity kinds and the map flip flags (value key MAP_KEY_FLIP_FLAGS). */
+#define PARITY_SQUARE          0x00
+#define PARITY_FLOOR           0x01
+#define PARITY_CEILING         0x20
+/* The map flip flags. */
+#define FLIP_CEILING_PITS      0x01
+#define FLIP_CEILING_BY_SQUARE 0x02
+#define FLIP_CEILING_BY_TIME   0x04
+#define FLIP_FLOOR_BY_SQUARE   0x08
+#define FLIP_FLOOR_BY_TIME     0x10
+#define FLIP_CEILING_BY_PARTY  0x20
+#define FLIP_FLOOR_BY_PARTY    0x40
+
+/* The projectiles of one view whose flight the views between game steps show. */
+#define FLIGHT_TRACK_MAX 32
+
 /* Where and how a view picture shows: its mirror, scale, shift, depth shade, zone and anchor, the transparent
    colors of its color remap, and its draw mode. */
 typedef struct {
@@ -285,9 +481,6 @@ static const int8_t walk_back_light[POS_DEPTH_MAX + 1] = {-1, 0, -7, -9, -10};
 /* The far squares in drawing order. */
 static const uint8_t far_order[POS_DRAWN] = {19, 20, 17, 18, 16, 14, 15, 12, 13, 11, 9, 10, 7, 8, 6, 4, 5, 3, 1, 2};
 /* The wall faces that a wall square shows. */
-#define WALL_SHOWS_FRONT VIEW_DRAWS_FRONT_FACE
-#define WALL_SHOWS_SIDE  VIEW_DRAWS_SIDE_FACE
-#define WALL_SHOWS_BOTH  (WALL_SHOWS_FRONT | WALL_SHOWS_SIDE)
 static const uint8_t wall_faces[VIEW_SQUARE_COUNT] = {
     0,
     WALL_SHOWS_SIDE,
@@ -315,11 +508,6 @@ static const uint8_t wall_faces[VIEW_SQUARE_COUNT] = {
 };
 /* The neighbour squares of each position: left, right, ahead, behind (LINK_NONE: none). A seamless passage shows them
    again, and the possessions of a creature can lie on them. */
-#define NEIGHBOUR_LEFT   0
-#define NEIGHBOUR_RIGHT  1
-#define NEIGHBOUR_AHEAD  2
-#define NEIGHBOUR_BEHIND 3
-#define NEIGHBOUR_COUNT  4
 static const uint8_t linked_squares[VIEW_SQUARE_COUNT][NEIGHBOUR_COUNT] = {
     {1,         2,         3,         LINK_NONE},
     {LINK_NONE, 0,         4,         LINK_NONE},
@@ -345,20 +533,13 @@ static const uint8_t linked_squares[VIEW_SQUARE_COUNT][NEIGHBOUR_COUNT] = {
     {LINK_NONE, 19,        LINK_NONE, LINK_NONE},
     {20,        LINK_NONE, LINK_NONE, LINK_NONE},
 };
-/* Hidden square masks by the wall pattern of the rows (bit n: view position n); the walls of a row (center, left,
-   right) give 8 patterns. */
-#define ROW_PATTERNS 8
+/* Hidden square masks by the wall pattern of the rows (bit n: view position n). */
 static const uint32_t hide_row1[4] = {0, 0x200, 0x400, 0x600};
 static const uint32_t hide_row2[ROW_PATTERNS] = {0,        0x10840,  0x204200, 0x2b5ac0,
                                                  0x408400, 0x55ad40, 0x60c600, 0x7fffc0};
 static const uint32_t hide_row3[ROW_PATTERNS] = {0,        0x10800,  0x204000, 0x2b5800,
                                                  0x408000, 0x55a800, 0x60c000, 0x7ff800};
 static const uint32_t hide_row4[ROW_PATTERNS] = {0, 0x10000, 0x20000, 0xb0000, 0x40000, 0x50000, 0x60000, 0x70000};
-/* The wall bits of a row, and the far squares that the corner walls hide. */
-#define ROW_WALLS      7 /* row wall bits: center, left, right */
-#define ROW_SIDE_WALLS 6
-#define HIDE_FAR_LEFT  (POS_BIT(19) | POS_BIT(21)) /* far squares hidden behind the corner walls */
-#define HIDE_FAR_RIGHT (POS_BIT(20) | POS_BIT(22))
 /* Zones of the side wall ornaments by position. */
 static const int16_t side_ornament_zone[POS_FAR_ROW] = {
     -1, 4425, 4450, -1, 4500, 4525, -1, 4575, 4600, 4625, 4650, -1, 4700, 4725, 4750, 4775,
@@ -385,7 +566,6 @@ static const uint8_t floor_pit_entry[POS_FAR_ROW] = {
     107, 108, 108, 110, 111, 111, 113, 114, 114, ENTRY_NONE, ENTRY_NONE, 118, 119, 119, 121, 121,
 };
 /* Doors. */
-#define DOOR_POSITIONS 14
 static const int8_t door_ornament_row[DOOR_POSITIONS] = {4, -1, -1, 3, -1, -1, 2, -1, -1, -1, -1, 1, -1, 0};
 static const uint8_t door_side_frame[DOOR_POSITIONS][2] = {
     {211,        212       },
@@ -404,7 +584,6 @@ static const uint8_t door_side_frame[DOOR_POSITIONS][2] = {
     {15,         16        },
 };
 /* Door top frames by position. */
-#define DOOR_TOP_POSITIONS 9
 static const int8_t door_top_frame[DOOR_TOP_POSITIONS] = {-1, -1, -1, 18, 19, 20, 21, 22, 23};
 static const int16_t door_top_zone[DOOR_TOP_POSITIONS] = {0, 0, 0, 754, 753, 755, 751, 750, 752};
 static const int8_t door_depth_row[POS_DEPTH_MAX + 1] = {3, 2, 1, 0, -1};
@@ -413,8 +592,6 @@ static const int16_t door_zone[POS_FAR_ROW] = {
 };
 static const uint8_t door_front_shown[POS_FAR_ROW] = {1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1};
 /* The frame parts (DOOR_FRAME_*) of a door seen from the front, drawn before and after the door. */
-#define DOOR_FRAME_SIDES (DOOR_FRAME_LEFT | DOOR_FRAME_RIGHT)
-#define DOOR_FRAME_ALL   (DOOR_FRAME_TOP | DOOR_FRAME_SIDES)
 static const uint8_t door_front_frames[POS_FAR_ROW][2] = {
     {DOOR_FRAME_SIDES, 0               },
     {0,                0               },
@@ -510,106 +687,12 @@ static const int16_t stairs_front_zone[POS_CEILING_PIT_LAST + 1][2] = {
     {826, 826},
     {827, 827},
 };
-/* Glyphs of the wall text font after the letters: space and period. */
-#define GLYPH_SPACE      0x1a
-#define GLYPH_PERIOD     0x1b
-/* The wall text font has 8 x 8 glyphs. */
-#define GLYPH_SIZE       8
-/* The walking view: floor and ceiling shift, and the shift of the sky. */
-#define WALK_FLOOR_DY    3
-#define WALK_CEILING_DY  (-2)
-#define WALK_SKY_DY      (-3)
-#define WALK_SKY_HIGH_DY 2
 
 /* ---- Things in the view ---- */
 
-/* GDAT categories and entries of things. */
-#define CAT_ALCOVE_KEY     0xfe /* (category, 0xfe, 0x0c, entry): offset of an object picture of the category */
-#define CREATURE_KEY_COLOR 0x04 /* creature value keys */
-#define CREATURE_KEY_POSSESSION_LIFT 0x41
-#define ORN_KEY_ALCOVE_ITEMS 0xfd /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offset of the items in an alcove */
-#define EXPLOSION_KEY_FLIP   0x00 /* explosion value keys: random mirror mask, fixed power, side flip of a missile */
-#define EXPLOSION_KEY_FIXED_POWER  0x41
-#define EXPLOSION_KEY_MISSILE_FLIP 0x01
-/* The chests that open, and the transparent color of thing pictures. */
-#define CHEST_KINDS                8  /* container GDAT indices below 8 are chests that open */
-#define THING_KEY                  10 /* transparent color of thing pictures */
-/* Animation bits of an active group: a random shift of the picture and a mirror. */
-#define ANIM_MIRROR                0x40
-/* The shift of the vertical jitter in the animation bits. */
-#define ANIM_JITTER_Y_SHIFT        3
-/* Mirror bits of a creature frame: 2 bits per side, west side in bits 0-1. */
-#define FRAME_MIRROR_MASK          0x03
-#define FRAME_MIRROR_ALWAYS        0x01
-#define FRAME_MIRROR_BY_ANIM       0x02 /* mirrored when the animation bits say so */
-/* The shift of the mirror bits from one side to the next. */
-#define FRAME_MIRROR_SHIFT         2
-/* A moving creature shifts by its frame shift, sideways or forward. */
-#define CREATURE_SHIFT_X           64
-#define CREATURE_SHIFT_Y           7
-
-/* Explosion types with their own drawing. */
-#define EXPLOSION_GLOBAL_COUNTER   0x30 /* counts its views in global bytes 0x40 (away) and 0x41 (party square) */
-#define EXPLOSION_ALCOVE_STILL     0x64 /* in an alcove: the still picture 0x0c */
-#define EXPLOSION_ALCOVE_SCALED    0x65 /* in an alcove: the explosion picture */
-/* The global byte variables that count the views of EXPLOSION_GLOBAL_COUNTER. */
-#define GLOBAL_EXPLOSIONS_AWAY     0x40
-#define GLOBAL_EXPLOSIONS_NEAR     0x41
-/* Explosion pictures: size, growth, and the tint levels of an explosion on the party square. */
-#define EXPLOSION_POWER_BIG        160 /* stronger explosions grow and rise */
-#define EXPLOSION_POWER_SIZE       48  /* smallest power for the picture size */
-#define EXPLOSION_SIZE_SHIFT       8   /* the picture size is the scale times (power + 1) / 256 */
-#define EXPLOSION_GROW_BASE        192
-#define EXPLOSION_GROW_NEAR        30
-#define EXPLOSION_SPREAD_MIN       10
-#define EXPLOSION_RISE_FACTOR      8 /* the rise and the spread: the viewport size * 8 / the growth */
-#define EXPLOSION_SCALE_MIN        8
-#define EXPLOSION_SCALE_MAX        64
-#define EXPLOSION_TINT_LEVEL_SHIFT 5
-#define EXPLOSION_TINT_LEVELS      3
-#define TINT_ENTRY_WEAK            1 /* the tint picture after GFX_EXPLOSION_TINT of a weak and of a strong explosion */
-#define TINT_ENTRY_STRONG          2
-
-/* Missiles: the lift above the floor, the scales, and the base power of the half power spell. */
-#define MISSILE_DY               (-92) /* missiles fly above the floor */
-#define MISSILE_SCALE_MIN        8
-#define MISSILE_HALF_POWER_BASE  128
-/* The missile spell that shows half its power plus MISSILE_HALF_POWER_BASE. */
-#define MISSILE_HALF_POWER_SPELL 0xff82
-
-/* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
-#define GRID_STRIDE            17
-#define GRID_LATERAL_CENTER    10
-#define GRID_LATERAL_LIMIT     10
-#define GRID_FORWARD_LIMIT     17
-#define PARTY_CELL_LAST        14 /* the party square draws the things of its 3 far rows */
-#define PARTY_ROWS_BELOW_VIEW  2  /* the near rows of the party square are below the view */
-#define CREATURE_COVERED_CELLS 7  /* a creature covers the missiles of the 7 cells drawn before its cell */
-#define JITTER_COUNT           16
-#define ALCOVE_FIRST_SPOT      2 /* the jitter spots of the items in an alcove */
-#define ALCOVE_SPOT_END        14
-#define CELL_COLUMN_LAST       (CELL_GRID_SIDE - 1)
-#define CELL_ROW_STEP          (CELL_GRID_SIDE * GRID_SQUARE_CELLS) /* cell offset of the square ahead or behind */
-/* No view position in a thing grid cell. */
-#define NO_POSITION            0xff
-
-/* Possessions of a static creature (CreatureInfo.possessions). */
-#define POSSESSIONS_CELLS_MASK 0x00f0
-/* The last possession kind of the creatures that carry their possessions low. */
-#define POSSESSIONS_LOW_KIND   1
-
 /* Positions whose things the drawing shows; 9 and 10 show none, the explosions show to depth 4. */
 static const uint8_t square_things_shown[POS_FAR_ROW] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1};
-/* The view positions that show missiles and possessions, and explosions. */
-#define MISSILE_POSITIONS   0x0000f9f9u /* positions 0, 3 to 8, 11 to 15: missiles and possessions */
-#define EXPLOSION_POSITIONS 0x0007f9ffu /* positions 0 to 8, 11 to 18 */
-#define ALCOVE_EXPLOSION_POSITIONS                                                                                     \
-    (POS_BIT(POS_FRONT) | POS_BIT(POS_DEPTH2_CENTER) | POS_BIT(POS_DEPTH2_LEFT) | POS_BIT(POS_DEPTH2_RIGHT) |          \
-     POS_BIT(POS_DEPTH3_CENTER) | POS_BIT(POS_DEPTH3_LEFT) | POS_BIT(POS_DEPTH3_RIGHT))
 /* The order of the cells of a square in the things drawing, for squares left of, on, and right of the view axis. */
-#define ORDER_LEFT  0
-#define ORDER_AXIS  1
-#define ORDER_RIGHT 2
 static const uint8_t thing_cell_order[3][CELL_GRID_COUNT] = {
     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24},
     {0, 4, 1, 3, 2, 5, 9, 6, 8, 7, 10, 14, 11, 13, 12, 15, 19, 16, 18, 17, 20, 24, 21, 23, 22},
@@ -640,15 +723,10 @@ static const uint8_t eye_cell[DIR_COUNT] = {22, 10, 2, 14};
 static const uint8_t cell_view_position[DIR_COUNT] = {6, 8, 18, 16};
 /* The scale of things by depth * 4 + row (row 0 is the near row), from index 1. Index 0 is the byte before the
    table in SKULL.EXE, the last depth scale: the explosions in the near cells of the party square use it. */
-#define THING_SCALE_COUNT 19
 static const uint8_t thing_scale[THING_SCALE_COUNT] = {
     0x13, 0x60, 0x57, 0x4e, 0x47, 0x40, 0x3a, 0x34, 0x2f, 0x2b, 0x27, 0x23, 0x1f, 0x1c, 0x1a, 0x17, 0x15, 0x13, 0x11,
 };
-/* The first thing_scale index of objects and of explosions. */
-#define OBJECT_SCALE_START    2
-#define EXPLOSION_SCALE_START 3
 /* The scale of missiles by depth * 2 - (1 for the near cells). */
-#define MISSILE_SCALE_COUNT   (2 * DEPTH_FAR + 1)
 static const uint8_t missile_scale[MISSILE_SCALE_COUNT] = {0x40, 0x34, 0x2b, 0x23, 0x1c, 0x17, 0x13};
 /* Small offsets that keep the objects of a cell apart: an x and a y index into jitter_offset by spot. */
 static const uint8_t jitter[JITTER_COUNT][2] = {
@@ -670,7 +748,6 @@ static const uint8_t jitter[JITTER_COUNT][2] = {
     {5, 3},
 };
 /* The pixel offsets of the jitter spots. */
-#define JITTER_OFFSET_COUNT 8
 static const int8_t jitter_offset[JITTER_OFFSET_COUNT] = {0, 1, 2, 3, 0, -3, -2, -1};
 /* Object pictures by the open state of a chest (closed, open, and the click states lid and inside): side view, front
    view. The original keeps rows 2 and 3 in the 4 bytes after its 2-row table. */
@@ -699,15 +776,6 @@ static const uint8_t possession_cells[2][4] = {
 /* The explosions in an alcove: scale of the still picture and size of the explosion picture by depth. */
 static const uint8_t alcove_explosion_scale[POS_DEPTH_MAX] = {0, 0x40, 0x28, 0x1e};
 static const uint8_t alcove_explosion_size[POS_DEPTH_MAX] = {0, 0x30, 0x20, 0x18};
-/* The explosion cells in drawing order: the far left and right cells, the whole square, the near left and right
-   cells. */
-#define EXPLOSION_ORDER_COUNT      5
-#define EXPLOSION_ORDER_LAST       (EXPLOSION_ORDER_COUNT - 1)
-#define EXPLOSION_ORDER_FAR_RIGHT  1
-#define EXPLOSION_ORDER_NEAR_LEFT  3
-#define EXPLOSION_ORDER_NEAR_RIGHT 4
-/* The cell of an explosion on the whole square. */
-#define EXPLOSION_CELL_SQUARE      (-1)
 /* The order of the explosion cells by the party direction. */
 static const int8_t explosion_cell_order[DIR_COUNT][EXPLOSION_ORDER_COUNT] = {
     {0, 1, EXPLOSION_CELL_SQUARE, 3, 2},
@@ -717,11 +785,6 @@ static const int8_t explosion_cell_order[DIR_COUNT][EXPLOSION_ORDER_COUNT] = {
 };
 /* A creature stands nearer to the party by its size: straight ahead or beside, and diagonally (lateral, forward
    by the octant). */
-#define CREATURE_SIZE_MAX  3
-/* The bits of the octant of a diagonal step toward the party. */
-#define OCTANT_SAME_SHIFT  1
-#define OCTANT_RIGHT_SHIFT 2
-#define OCTANT_COUNT       8
 static const int8_t toward_party_step[CREATURE_SIZE_MAX] = {1, 1, 2};
 static const int8_t toward_party_diagonal[CREATURE_SIZE_MAX][OCTANT_COUNT][2] = {
     {{0, -1}, {1, 0},  {1, 0}, {0, 1}, {0, 1},  {-1, 0}, {-1, 0},  {0, -1} },
@@ -751,59 +814,6 @@ static const uint8_t sparkle_field[POS_FAR_ROW][4] = {
     {0x3f, 0x00, 36,  49 },
     {0x3f, 0x80, 36,  49 },
 };
-/* The fields of a sparkle field row, and the step of the tile start in pixels. */
-#define SPARKLE_TILE          0
-#define SPARKLE_MASK_PICTURE  1
-#define SPARKLE_WIDTH         2
-#define SPARKLE_HEIGHT        3
-#define SPARKLE_TILE_STEP     16
-/* The mask picture byte of a sparkle field: none, the mirror bit, and the picture entry. */
-#define SPARKLE_MASK_NONE     0xff
-#define SPARKLE_MASK_MIRRORED 0x80
-#define SPARKLE_MASK_ENTRY    0x7f
-
-/* The sky pictures of the rain. */
-#define RAIN_ALONG         0x71 /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
-#define RAIN_ACROSS        0x6d
-/* The rain picture after RAIN_ALONG or RAIN_ACROSS by the rain intensity; 0 for a drizzle. */
-#define RAIN_LEVEL_LIGHT   1
-#define RAIN_LEVEL_MEDIUM  2
-#define RAIN_LEVEL_STRONG  3
-/* The tile rows of the rain and of a wet picture: the picture size minus a trim and a random spread. */
-#define TILE_TRIM          40 /* rain and explosion tint: the tile row is the picture minus 40 pixels and a spread */
-#define WET_TILE_TRIM      60
-#define WET_TILE_EXTRA     16
-/* The random bits of a tile start and of a tile spread. */
-#define RANDOM_BYTE        0xff
-#define RANDOM_TILE_SPREAD 0x1f
-
-/* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
-#define SKY_LANDMARK_MAX      100
-#define SKY_LANDMARK_DISTANCE 210 /* screen offset per square of lateral distance */
-/* The mirror kinds of a sky object: by the floor or the ceiling parity. */
-#define SKY_FLIP_FLOOR        0x08
-#define SKY_FLIP_CEILING      0x02
-#define SKY_FLIP_FLOOR_2      0x40
-#define SKY_FLIP_CEILING_2    0x20
-/* The move kinds of a sky object: fixed, or a landmark at its place on the map. */
-#define SKY_FIXED             0
-#define SKY_LANDMARK          1
-
-/* Flip parity kinds and the map flip flags (value key MAP_KEY_FLIP_FLAGS). */
-#define PARITY_SQUARE          0x00
-#define PARITY_FLOOR           0x01
-#define PARITY_CEILING         0x20
-/* The map flip flags. */
-#define FLIP_CEILING_PITS      0x01
-#define FLIP_CEILING_BY_SQUARE 0x02
-#define FLIP_CEILING_BY_TIME   0x04
-#define FLIP_FLOOR_BY_SQUARE   0x08
-#define FLIP_FLOOR_BY_TIME     0x10
-#define FLIP_CEILING_BY_PARTY  0x20
-#define FLIP_FLOOR_BY_PARTY    0x40
-
-/* The projectiles of one view whose flight the views between game steps show. */
-#define FLIGHT_TRACK_MAX 32
 
 static struct {
     int16_t map; /* the map of the squares that the view reads now */
