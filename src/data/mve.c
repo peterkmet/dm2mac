@@ -4,10 +4,13 @@
 #include "le.h"
 #include "mve_internal.h"
 
-/* The file header: the signature and three magic words. */
-#define MVE_SIGNATURE    "Interplay MVE File\x1a"
-#define SIGNATURE_SIZE   (sizeof MVE_SIGNATURE) /* with its 0 byte */
-#define FILE_HEADER_SIZE 26                     /* the signature and three magic words */
+/* The file header: the signature, then three magic words at their offsets. */
+#define MVE_SIGNATURE     "Interplay MVE File\x1a"
+#define SIGNATURE_SIZE    (sizeof MVE_SIGNATURE) /* with its 0 byte */
+#define FILE_HEADER_SIZE  26                     /* the signature and three magic words */
+#define HEADER_LENGTH_AT  SIGNATURE_SIZE
+#define HEADER_VERSION_AT (HEADER_LENGTH_AT + sizeof(uint16_t))
+#define HEADER_CHECK_AT   (HEADER_VERSION_AT + sizeof(uint16_t))
 
 /* The values of the three magic words. */
 #define HEADER_WORD_LENGTH  0x001a
@@ -68,9 +71,9 @@ enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
         const uint8_t *header = file + at;
         if (memcmp(header, MVE_SIGNATURE, SIGNATURE_SIZE))
             continue;
-        if (le16(header + SIGNATURE_SIZE) != HEADER_WORD_LENGTH ||
-            le16(header + SIGNATURE_SIZE + sizeof(uint16_t)) != HEADER_WORD_VERSION ||
-            le16(header + SIGNATURE_SIZE + 2 * sizeof(uint16_t)) != HEADER_WORD_CHECK)
+        if (le16(header + HEADER_LENGTH_AT) != HEADER_WORD_LENGTH ||
+            le16(header + HEADER_VERSION_AT) != HEADER_WORD_VERSION ||
+            le16(header + HEADER_CHECK_AT) != HEADER_WORD_CHECK)
             return MVE_ERROR;
         m->data = header + FILE_HEADER_SIZE;
         m->size = size - at - FILE_HEADER_SIZE;
