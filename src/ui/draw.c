@@ -162,7 +162,7 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->dst = &g_draw_screen;
     ctx->transparent = GFX_OPAQUE;
     const Gdat *gdat = gdat_current();
-    if ((uint8_t)category == CAT_NONE || !gdat)
+    if (ctx->category == CAT_NONE || !gdat)
         return ctx;
     ctx->item = (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_IMAGE, entry);
     add_offset(ctx, (int16_t)gdat_entry_index(gdat, category, index, GDAT_TYPE_VALUE2, OFFSET_ENTRY));
