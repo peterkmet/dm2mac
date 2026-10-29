@@ -95,6 +95,12 @@ static const int16_t *find_zone(int16_t zone)
     return NULL;
 }
 
+/* The anchor type of a zone record, read unsigned: a negative type of a damaged record fails every anchor test. */
+static int anchor_type(const int16_t *rec)
+{
+    return (uint16_t)rec[ZONE_TYPE];
+}
+
 /* Clips rect to clip; returns NULL when nothing is left. */
 static int16_t *clip_rect(int16_t *rect, const int16_t *clip)
 {
@@ -157,7 +163,7 @@ static const int16_t *place_relative(const int16_t *rec, int child, Placement *a
         return NULL;
     int16_t dx = p[ZONE_X];
     int16_t dy = p[ZONE_Y];
-    int parent_anchor = (uint16_t)p[ZONE_TYPE];
+    int parent_anchor = anchor_type(p);
     at->last_parent = p[ZONE_PARENT];
     const int16_t *size = find_zone(p[ZONE_PARENT]);
     if (!size)
@@ -187,7 +193,7 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
     bool pending = false;
     at->last_parent = 0;
     while (rec[ZONE_PARENT]) {
-        int child = (uint16_t)rec[ZONE_TYPE];
+        int child = anchor_type(rec);
         if (child >= ANCHOR_RELATIVE && child <= ANCHOR_RELATIVE_LAST) {
             bool bad = false;
             rec = place_relative(rec, child, at, &bad);
@@ -203,7 +209,7 @@ static bool place_in_parents(const int16_t *rec, Placement *at)
         at->last_parent = rec[ZONE_PARENT];
         int16_t dx = p[SIZE_W];
         int16_t dy = p[SIZE_H];
-        int parent_type = (uint16_t)p[ZONE_TYPE];
+        int parent_type = anchor_type(p);
         if (parent_type == ANCHOR_TOP_LEFT) {
             at->x += dx;
             at->y += dy;
@@ -282,7 +288,7 @@ static bool place_zone(const Bitmap *image, AnchoredZone anchored, int16_t *out_
         local[ZONE_TYPE] = anchored.anchor;
         rec = local;
     }
-    int type = rec[ZONE_TYPE];
+    int type = anchor_type(rec);
     if (type <= ANCHOR_LEFT) {
         at.x = rec[ZONE_X];
         at.y = rec[ZONE_Y];
@@ -301,7 +307,7 @@ static bool place_zone(const Bitmap *image, AnchoredZone anchored, int16_t *out_
         return false;
     if (!place_in_parents(rec, &at))
         return false;
-    if ((unsigned)type > ANCHOR_LEFT)
+    if (type > ANCHOR_LEFT)
         return false;
     *out_w = *out_w ? *out_w : image->width;
     *out_h = *out_h ? *out_h : image->height;
@@ -390,7 +396,7 @@ int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, ui
     if (!rec || !rec[ZONE_PARENT])
         return NULL;
     const int16_t *size = find_zone(rec[ZONE_PARENT]);
-    if (!size || (uint16_t)size[ZONE_TYPE] != ANCHOR_SIZE)
+    if (!size || anchor_type(size) != ANCHOR_SIZE)
         return NULL;
     int16_t w = w_scale == ZONE_SCALE_FULL ? size[SIZE_W] : (int16_t)((int)w_scale * size[SIZE_W] / ZONE_SCALE_FULL);
     int16_t h = h_scale == ZONE_SCALE_FULL ? size[SIZE_H] : (int16_t)((int)h_scale * size[SIZE_H] / ZONE_SCALE_FULL);
