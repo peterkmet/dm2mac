@@ -11,14 +11,14 @@ The rules of the world: day and night, the weather, the party light, the object 
 ## Weather
 
 - The sky state of a map is GDAT value `(8, graphics set, 0x0b, 0x66)`. `g_sky_state_table` (`0x75be2`, 4 bytes per state): byte 0 tells that the weather shows (states 1 and 4 in `GRAPHICS.DAT`), byte 2 that rain shows in the view.
-- A weather cycle (`weather_init(false)`) clears script byte `0x40`, selects a storm curve (0 to 3) and a multiplier (1 to 3), and queues the first storm step (event `0x54`) after 500 to 8499 game steps. The first cycle of a run uses curve 3, multiplier 1, and 0 to 499 game steps.
+- A weather cycle (`weather_init(false)`) clears script variable `0x40` ([script variables](../reference/skull-map.md#global-variables-script-variables)), selects a storm curve (0 to 3) and a multiplier (1 to 3), and queues the first storm step (event `0x54`) after 500 to 8499 game steps. The first cycle of a run uses curve 3, multiplier 1, and 0 to 499 game steps.
 - A storm step (event `0x54`, `world_update_day_night(true)`) adds multiplier × the curve value of the step to the storm intensity (0 to 255) and queues the next step after 50 to 305 game steps. After 32 steps a new cycle starts.
 - Each game step (`world_update_day_night(false)`): without a storm, the clouds thin out and lightning comes with a chance of 1 in 64. With a storm, the sky darkness is the storm intensity; rain starts by chance and then follows the storm intensity; rain grows the clouds; lightning comes more often from intensity `0xcd` on.
 - Sky objects (`g_sky_objects`, 10-byte records, ended by `0xff`): rain (`0x67` to `0x69` by sky darkness from `0x10`, `0x40`, `0x80`; `0x80` sets heavy rain), clouds (`0x6a` to `0x6c` by cloud cover from `0x40`, `0x80`, `0xc0`), and a lightning bolt (`0x64` to `0x66`) at a random place between its zone and the next zone. The weather update builds them again in each step while the weather shows.
 - Lightning:
-  - In a storm from intensity 60 (random), it strikes 1 to 8 random floor squares of the map. A strike creates explosion `0xffb0` ([creatures.md](creatures.md#projectiles-explosions-and-magic)). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script byte `0x41`.
+  - A storm strikes 1 to 8 random floor squares of the map when a random number from 0 to the storm intensity is at least 60. A strike creates explosion `0xffb0` ([creatures.md](creatures.md#projectiles-explosions-and-magic)). A strike near the party, seen while the inventory is open or the party sleeps, adds 1 to script variable `0x41`.
   - A creature is struck only when it is near the party or in front of it (creature info byte `+2` not `0xff`).
-  - The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script byte `0x40` is above a random threshold (4 to 7).
+  - The party square is struck only from game time 12000 on, in a strong storm (`0xb6`), and when script variable `0x40` is above a random threshold (4 to 7).
   - The graphics set of map 1 gives a fixed square instead (value key `0x6c`: x high byte, y low byte), which gets a square event.
   - Without a strike, a bolt shows in the sky; every second bolt thunders after a delay. The flash sets the light level to 0 for one step.
 
@@ -26,7 +26,7 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 - `light_update_party_light` sets `g_light_level` (0 bright to 5 dark). A map without bits 12 to 15 in its object counts word is always at level 1.
 - The light sum: the torches (items with attribute flag `0x10`) in the leader hand and in the champion hands, by charges through `g_light_power_table`, the first fully and each next one half as much; the square light sum; the magic light (`g_magic_light`); the map value `0x67`; and the daylight (`0x7570e`, by hour light + heavy rain) while the weather shows.
-- The level is the first of `99, 75, 50, 25, 1` that the sum is above, at least the map value `0x68`. An explosion light sum above 12 makes the view one level darker.
+- The level is the index of the first of `99, 75, 50, 25, 1` that the sum is above; it is never below the map value `0x68`. An explosion light sum above 12 makes the view one level darker.
 - `light_add_square_light` adds the light of one square around the party: lit wall ornaments and windows (value keys `0xf8` and `0x63`), floor ornaments, explosions and spell missiles, and creatures, less by distance. Its caller is the creature search of `ai_refresh_party_maps`.
 
 ## Skullkeep machines: object transfer sensors
@@ -38,7 +38,7 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 - `sndreq_request` (`src/engine/sound_request.c`; in the original one delay word: 0, 1, negative, or a longer delay): `SOUND_NOW` plays immediately; `SOUND_STEP_END` goes to the queue of the game step (20 requests), which `sndreq_flush_requests(false)` plays at the end of the step; `SOUND_DEFERRED` goes to the deferred queue (6 requests, `sndreq_flush_requests(true)`). `sndreq_request_after(ticks)` with ticks 0 or 1 is `SOUND_NOW` or `SOUND_STEP_END`; a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + ticks - 1. A sound at the end of the step or after a delay plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
 - The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sndreq_party_offset` of `src/engine/sound_request.c` ([sound.md](../formats/sound.md#playback-volume-and-stereo-position)). A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
-- `start_requests` (`sound_play_requests` in the original) sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its calls to the HMI SOS digital driver (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `src/ui/sound.c` plays the voices. `sndreq_request_with_fallback` uses the sound of index fallback when index has none.
+- `start_requests` (`sound_play_requests` in the original) sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its calls to the HMI SOS digital driver ([sound.md](../formats/sound.md)) (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `src/ui/sound.c` plays the voices. `sndreq_request_with_fallback` uses the sound of index fallback when index has none.
 - The ambient sound of an animated ornament (`start_ambient_sound`) plays immediately only when the animation cycle starts now; a wall sound comes from the square in front of the wall.
 
 ## Deviations from the original

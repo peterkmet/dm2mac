@@ -14,7 +14,7 @@ The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, th
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 0x10` with `AX=0x0013`. `SKULL.EXE` has no `int 0x10` and no VESA call.
 - The script tables, the script records, and the arguments of the movie player: [movies.md](movies.md).
 
-The effect is certain. The exact use of ` +VS` is unverified, because no static trace of the switch handler exists.
+That the SVGA option changes only the movies is certain. How `IBMIOP.EXE` uses ` +VS` is unverified, because no static trace of the switch handler exists.
 
 ## PIT divisor and tick rates
 
@@ -22,7 +22,7 @@ The effect is certain. The exact use of ` +VS` is unverified, because no static 
 - `IBMIOP.EXE` programs the same divisor `0x136b`.
 - Music: the HMP song timer event runs at 120 Hz. One HMP delta tick = 1/120 s at tempo 100 %.
 - Digital driver service event: 120 Hz.
-- Game time: `IBMIOP.EXE` calls the game timer callback (`INT 0x2d`, handler `FUN_00010cc2`) on every 4th of its timer interrupts: nominal 60 Hz. Each call adds 1 to `DAT_0007f256`. A game step is due when the sum reaches `DAT_0007f268` = 8. Nominal game step rate: 7.5 Hz (133 ms). `DAT_0007f268 = 1` in one special mode (`FUN_00021d6c`, `command_execute`).
+- Game time: `IBMIOP.EXE` calls the game timer callback (`INT 0x2d`, handler `FUN_00010cc2`) on every 4th of its timer interrupts: nominal 60 Hz. Each call adds 1 to `DAT_0007f256`. A game step is due when the sum reaches `DAT_0007f268` = 8. Nominal game step rate: 7.5 Hz (133 ms). `DAT_0007f268 = 1` while the party sleeps (`FUN_00021d6c`, `command_execute`).
 
 `FUN_00062efd` and `FUN_00062f43` in the HMI timer library write the byte `0x36` (channel 0, low/high byte, mode 3) to port `0x43`, then the low and the high byte of the divisor to port `0x40`.
 

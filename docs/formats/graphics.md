@@ -47,7 +47,7 @@ The port applies the same filter when the key table loads. The default is Englis
 
 `gdat_load_index` sets `g_gdat_8bpp_marker` to 31 if bit `0x40` of the flag item `(0,0,0x0b,0)` is set, otherwise to 1000 (no gate can be 1000, so all images are 4-bit). The shipped flag item is `0x7b`, so the marker is 31.
 
-`image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is an init function (`void (*)(void)`). Only codec 1 has one, `gdat_lzw_alloc_tables`, which allocates the LZW tables. `gdat_load_index` calls it once on startup through `0x757a4` when flag `0x40` of item `(0,0,0x0b,0)` is set. The function does not check the codec value.
+`image_decode_8bpp` selects the decompressor. It reads the codec byte at item + 6, skips 8 bytes, and calls the first pointer of the entry `g_image_decoders[codec]` (`0x75798 + codec * 8`). The second pointer of the entry is an init function (`void (*)(void)`). Only codec 1 has one, `gdat_lzw_alloc_tables`, which allocates the LZW tables. `gdat_load_index` calls it once on startup through `0x757a4` when flag `0x40` of item `(0,0,0x0b,0)` is set. `image_decode_8bpp` does not check the codec value.
 
 | Codec | Function | Scheme |
 |---|---|---|
@@ -70,7 +70,7 @@ Image items:
 - The English image keys (type 1) point to 803 4-bit, 3166 8-bit, and 6 uncompressed images, and to 24 items with other gates. All 3969 compressed images decode byte-equal to the original decoders. 167 gate-0 items of types 2, 4, 7, 8, and 9 are not valid 4-bit streams.
 - The 24 image items with other gates are 4-bit images. The gate (top 6 bits of word 1, the high half of the first u32) holds the y offset and the top 6 bits of word 0 hold the x offset of the image (`gdat_get_image_offset`, `0x3eed3`). An 8-bit image holds its offset in bytes 4 and 5. When the top 6 bits of word 0 are `-32`, the offset is the value key `(category, index, 0x0c, entry)`. All 827 4-bit images decode byte-equal.
 - An uncompressed image holds u16 bits per pixel (bpp; 4 or 8) at item + 4 and the pixels at item + 10. A 4-bit image (compressed or not) ends with its 16-byte color map.
-- The palette item `(1,0,9,254)` has 256 entries of 4 bytes: color index, then 8-bit red, green, blue. The VGA DAC takes 6-bit values, so the port shifts each value right by 2 (`gdat_palette_color`).
+- The palette item `(1,0,9,254)` has 256 entries of 4 bytes: color index, then 8-bit red, green, blue. The VGA digital-to-analog converter (DAC) takes 6-bit values, so the port shifts each value right by 2 (`gdat_palette_color`).
 - The layout item `(1,0,4,0)` is raw bytes: u16 magic `0xfc0d`, u16 group count, group ranges, then `{anchor type, parent, x, y}` records (`src/ui/include/zone.h`). `zone_unpack_layout` (`0x19d0e`) reads it.
 
 ## DUNGENB.DAT and GRAPHIC2.DAT

@@ -40,7 +40,7 @@ The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads
 ## Details of the records
 
 - Order of the things: the things of the timeline events, then all squares of all maps, then the deferred containers and creatures.
-- Values between the records (the more bit, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
+- Values between the records (the 1 bit before a thing, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
 
 Game record (60 bytes, mask `0x75316`):
 
