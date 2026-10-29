@@ -45,7 +45,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../man
    ```
 
    - `--saves DIR`: the folder of the save file `QUICK.DAT`. The game does not make the folder; `save` fails when it is missing. Without it, the file is `game/DATA/QUICK.DAT` (the `--data` folder).
-   - `--control PATH`: the socket file, as in the real-time modes. Default: `~/.dm2/control.sock`.
+   - `--control PATH`: the socket file. Without it, the turn-based mode uses `~/.dm2/control.sock`.
    - `--save FILE`: optional. The game loads this save slot file at the start, as in the other modes.
    - Without `--save`, the game starts a new game immediately: no start menu and no movie. The new game has one champion (Torham). The player recruits the other champions at the mirrors.
    - The keyboard and the mouse do not control the game. A closed window quits. The request `quit` quits and the exit code is 0.

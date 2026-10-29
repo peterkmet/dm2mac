@@ -51,14 +51,14 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/crc32.h` | `crc32_` | The CRC-32 of PNG and ZIP. |
 | `data/gamefile.h` | `gamefile_` | The table of the 10 game files and the check of a file against it. |
 | `data/gdat.h` | `gdat_` `image_` | GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. |
-| `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8 bpp pictures and the screen. |
+| `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8-bit pictures and the screen. |
 | `data/hmp.h` | `hmp_` | The HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. |
 | `data/ids.h` | none | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
 | `data/iso.h` | `iso_` | ISO 9660 CD images: finds and reads the game files on a CD image. |
 | `data/le.h` | `le16` `le32` `be16` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
 | `data/mve.h` | `mve_` | Interplay MVE movies: chunks, opcodes, 8-bit video, audio; from memory only. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
-| `data/pcx.h` | `pcx_` | PCX pictures, 8 bits per pixel, RLE, palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
+| `data/pcx.h` | `pcx_` | PCX pictures, 8-bit, RLE (run-length encoded), palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
 | `data/settings.h` | `settings_` | The settings file of the advanced mode (SETTINGS.TXT in the saves folder): reads and writes the upscale filter; it does not apply the value. |
 | `data/zip.h` | `zip_` | ZIP archives: the central directory and the stored and deflated entries. |
 
@@ -152,7 +152,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.
 4. Without `--save`, it plays the start movies and starts the game: the start menu, or a new game in the
-   turn-based mode. After a RESTART it shows no mode screen and no start movie.
+   turn-based mode. After a RESTART (the RESTART choice of the save menu) it shows no mode screen and no start movie.
 5. It runs the main loop of the mode until a quit: `run_realtime` or `run_turnbased`.
 6. It plays the end movies, closes the platform, and starts the program again after a RESTART of the game.
 
@@ -161,7 +161,7 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
 
 ## The frame loop
 
-`platform/platform.c` waits for each tick of the timer interrupt of the original (PIT ticks,
+`platform/platform.c` waits for each tick of the timer interrupt of the original (ticks of the programmable interval timer, PIT;
 `plat_wait_tick`). The rates of the PIT tick, the timer tick, and the game step are in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 
