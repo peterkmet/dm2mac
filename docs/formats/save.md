@@ -10,8 +10,8 @@ The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads
 | 2 | 43443 bytes | Dungeon image in the `DUNGEON.DAT` section format |
 | 3 | rest of file | Bit-packed game state |
 
-- Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The meaning of `+0x22` to `+0x29` is unknown.
-- `session_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port keeps them byte for byte.
+- Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The u32 at `+0x26` is `0xdeadbeef` in an empty slot. The meaning of `+0x22` to `+0x25` is unknown.
+- `session_save` (`0x3502b`) reads the old header from the `.BAK` file (the old `.DAT`, renamed just before), changes `+0x00` and the name, and writes it back. Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The port keeps the old bytes byte for byte.
 - `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
 - The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with `new_game` false, and the `DUNGEON.DAT` load calls it with `new_game` true.
 - The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
@@ -40,7 +40,7 @@ The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads
 ## Details of the records
 
 - Order of the things: the things of the timeline events, then all squares of all maps, then the deferred containers and creatures.
-- Values between the records (the more bit, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
+- Values between the records (the 1 bit before a thing, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
 
 Game record (60 bytes, mask `0x75316`):
 
@@ -65,31 +65,21 @@ Game record (60 bytes, mask `0x75316`):
 - Creature groups whose creature info has flag bit 0 (static creatures, no active group) use the mask at `0x7548b` and store the cell of each possession. Minion maps (container kind 1) use the mask at `0x754b3`. A misc item inside a moneybox uses the mask at `0x754bf`. A projectile inside a creature group uses the mask at `0x754cf`. Minion maps and projectiles in groups are deferred: their link is stored after the squares as the position of the target group or container in the bit stream.
 - A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no square bits. When the target map is lower, the things of the square are stored with the target square, not here.
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
-- Header: `session_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`, so the bytes after the end mark keep the old header bytes.
+- Header: The name is copied with `str_copy`, so the bytes after the end mark keep the old header bytes.
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
 - A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again because the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
 
 ## Reader and writer of the port
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
-- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
+- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests are described in [Compatibility with the original](#compatibility-with-the-original).
 - A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original
 
 Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `restore_timed_effects`, `relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
 
-Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
-
-| Part | Bytes that differ |
-|---|---|
-| Header, dungeon header, map descriptors, column table, text, map data | 0 |
-| First-thing table | 357 |
-| Thing records of types 1, 2, 3 (link words) | 5, 93, 56 |
-| Thing records of types 4 to 10 | 1816, 490, 481, 15, 244, 115, 620 |
-| Bit-packed state | 0 |
-
-- The original round trip is not byte-equal: 4292 of 50452 bytes differ, all in the dungeon image. The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
+- The original round trip of `tests/saves/start.DAT` is not byte-equal: the dungeon image differs (first-thing table, link words, thing records). The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
 - A second round trip of the original output is byte-equal (a fixed point).
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
 - A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets a different bit stream position from its record index, so the deferred links use the written positions.

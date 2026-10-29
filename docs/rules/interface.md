@@ -13,13 +13,13 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## UI colors and text formats
 
 - GDAT `(1, 0, 13, 0xfe)` holds 16 palette indices: the UI colors (`enum ui_color` in `src/ui/include/text.h`). The interface draws with UI color indices, not palette indices.
-- `gtext_format` replaces format codes: `.Z` and 3 decimal digits, or byte 1 and the code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
+- `gtext_format` replaces format codes. A code is `.Z` followed by 3 decimal digits, or the byte 1 followed by a byte with the value code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
 - `gtext_gdat` (`gdat_get_text` in the original) decrypts a text entry and formats it. The inventory sets the numbers before it formats a text, for example `(7, 0, 5, 0x2a)` (load) and `(7, 0, 5, 0x1f)` (weight).
 
 ## Message area
 
 - 3 rows in zone 15, 7 pixels apart, with `g_message_area_y = (zone height - 20) / 2` above the first row. A row clears 90 game steps after its last text (`g_message_expiry`).
-- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, service `0x105` of the video driver `IBMIOP.EXE` moves the area up by one row; then the first 6 rows of the row bitmap go to the bottom 6 rows of the area.
+- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, function `0x105` of the runtime layer `IBMIOP.EXE` ([runtime.md](../formats/runtime.md#ibmiopexe-runtime-layer)) moves the area up by one row; then the first 6 rows of the row bitmap go to the bottom 6 rows of the area.
 - Text before a `\n` goes to the next row; a wrapped line goes on at column 12.
 
 ## Offscreen bitmaps
@@ -38,7 +38,7 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## Deviations from the original
 
 - No hardware layer: the screen bitmap is `g_video_fb`; `screen_present_*`, `mouse_hide`, `mouse_show`, and `vga_wait_retrace` have no port. Offscreen bitmaps are frame bitmaps (`draw_temp_bitmap`), not image cache entries.
-- IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`).
+- Function `0x105` is in `IBMIOP.EXE`, which is not decompiled. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`).
 - The action area reads the wall set of the party map from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
 - `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
@@ -49,7 +49,7 @@ The rules of the interface: the font and the text drawing, the UI colors and the
   - The dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon).
   - A `.Z` format code that a text cuts after fewer than 3 digits ends at the end of the text, and a text that ends in the format code byte 1 ends there (`gtext_format`; the original reads the digits or the code past the end).
   - A description line without a space breaks at 18 characters and goes on with the rest (`show_description` in `src/ui/ui.c`; the original `inv_draw_description_text` scans back before the start of the text).
-  - The hand icons of the action area draw without the shadow remap when its GDAT item (1, 0, 7, 1) is shorter than 256 bytes (a damaged GRAPHICS.DAT; `make_hand_icon` in `src/ui/action_area.c`; the original reads past it).
+  - The hand icons of the action area draw without the shadow remap when its GDAT item `(1, 0, 7, 1)` is shorter than 256 bytes (a damaged GRAPHICS.DAT; `make_hand_icon` in `src/ui/action_area.c`; the original reads past it).
 - Kept quirks of the original:
   - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
   - the minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again

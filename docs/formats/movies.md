@@ -12,7 +12,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 ## Movie player
 
 - Each SVGA movie file is the same DOS player program with the MVE data after it. The last `Interplay MVE File` signature of the file starts the data.
-- Arguments (the 32-bit code of the player): a first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen). `wide` shows the video 4/3 wider (432 → 576 pixels). `noabort` turns off the stop by the player. The player centers the video on its screen.
+- Arguments (the 32-bit code of the player): a first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen). `wide` shows the video 4/3 wider (432 to 576 pixels). `noabort` turns off the stop by the player. The player centers the video on its screen.
 - `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`). The 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play on 640 × 350, 576 × 320 wide: about 90 %.
 
 ## MVE stream
@@ -42,7 +42,7 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 
 ## Splash picture
 
-- `INTRPLAY.PCX`: PCX version 5, RLE, 8 bits per pixel, 1 plane, 320 × 200, a 256-color palette of 8-bit values after the byte `0x0c` at the end of the file. The port shows it for 3 seconds on the game screen with its palette (values shifted right by 2).
+- `INTRPLAY.PCX`: PCX version 5, run-length encoding (RLE), 8 bits per pixel, 1 plane, 320 × 200, a 256-color palette of 8-bit values after the byte `0x0c` at the end of the file. The port shows it for 3 seconds on the game screen with its palette (values shifted right by 2).
 
 ## Deviations from the original
 
@@ -50,8 +50,8 @@ The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player fi
 - The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering. The scale is not an integer, and no scale filter applies.
 - A click skips; a key does not skip. In the advanced mode a click skips each step. In the vanilla mode a click does not stop the splash picture or `FTL` because the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
 - The movie sound plays at full volume through the sound output of the port at 44100 Hz. Each sample repeats twice. A different audio format plays the movie without sound.
-- A missing file, damaged data, a splash picture of a size different from 320 × 200, or a movie whose mode is not 640 × 480 is a failed step. The script goes on with the next step. Damage in the middle of a movie stops it there.
+- A missing file, damaged data, a splash picture of a size different from 320 × 200, or a movie whose opcode `0x0a` mode is not 640 × 480 is a failed step. The script goes on with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
-- `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. A RESTART starts the program again with the environment variable `DM2_RESTARTED`. It plays no start movies because the launcher starts only the game step again.
-- A closed window or a control `quit` ends the program without the end movies; QUIT GAME plays them.
+- `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. After a RESTART the start movies do not play ([game-flow.md](../rules/game-flow.md#deviations-from-the-original)).
+- A closed window or a control `quit` ends the program without the end movies. QUIT GAME after the death of the party plays `CREDITS`; QUIT of the save menu plays nothing.
 - The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still ([llm-mode.md](../llm/llm-mode.md#movies)).
