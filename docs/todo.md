@@ -12,7 +12,14 @@
 - Check the driver offset of "Instrument to voice" in `HMIMDRV.386`: `docs/formats/music.md` has `0x1ff8` and `0x201e`.
 - `make` does not rebuild an object with the same modification time as its source (seen after scripted rebases). After a scripted rebase, build with `make -B`.
 - `long` in `src/control/control.c` and `src/control/turn.c` (38 uses, rule 5.3).
-- Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4); the in/out parameters of `zone_compute_rect` (`out_w`, `out_h`) have an `out_` name.
+- Naming: `advanced_screen_event` passes a key code in `x` for `INPUT_KEY` (rule 6.4).
+- Types and interfaces after the Gemini review (group B):
+  - Rule 5.1, returns and locals: `group_dir`, `location_dir`, `teleporter_rotation`; the dir, cell, map, x, y returns of `move.c` (casts at `move.c:325-326`, `dungeon.c:819`); the sensor target and data accessors of `sensor.h` (cast at `ui/view.c:2284`); `ornament_cycle` in `sensor.c` (5 casts); `zone_id_for_view_cell`; the `int16_t` locals of `ai.c`.
+  - The casts at `champion_action.c:936` (`a.skill`) and `champion_damage.c:159` (`(int16_t)skill >= 0`) go together with a type change of `skill`, or the sign test changes for a negative field.
+  - Rule 5.1, fields and globals: `PartyStep`, `ThingMove`, `DiscardSquare`, `PassageEnd`, `ActionRun` (`Location front`), `DrawCtx.zone` (with its mirror), the mouse globals of `main.c` (`c_int16` in the tests), the gauge values, `y` and `center_x` of `ui.c`, the `uint8_t` channels of `video_argb_pack`.
+  - Champion index sweep: `int champ` (about 145 sites) becomes `int16_t champion_index`, with `int16_t hand`, from `champion.h` through `input.c`, `ui.c`, `state_json.c`, `turn.c`, `session.c`.
+  - Rule 6.3 (a struct instead of x, y, dir, map; each with its ctypes `argtypes`): `ai_begin`, `aspect_cell_to_xy`, `manhattan`, `CreatureSummon`, `game_enter_map`, `recruit_start` and `recruit_finish`, `update_carried_missiles`, `schedule_group_retry`, `seen_*`, the (x, y) functions of `sensor.h`, `save_set_party_position`, `automap_is_pressure_pad`, `add_floor_light`, `light_add_square_light`, `view_load_square`, `view_draw_dungeon`, `load_square_things`, `get_flip_parity`.
+  - Rule 6.5: `money_split_amount` returns `{total, count}`; `zone_compute_rect` returns its size (replaces the `out_w` and `out_h` out parameters).
 - Scroll color: a scroll is white on a table and yellowish in the hand, in the inventory, and while it is read. Compare with the original.
 - Dark dots in letters: with `--filter scale2x` and `scale3x`, the "D" of READY and the "O" of TO in "GAME LOADED, READY TO PLAY" have a dark dot; the "O" of OK has none. Compare with `--filter none` to find out if the filter or the background causes it.
 - End picture: after QUIT the end picture shows until a click and goes immediately, with no fade in or fade out (the port `dm` fades). Check if `SKULL.EXE` fades it.
