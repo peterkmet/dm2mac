@@ -24,10 +24,10 @@ typedef struct {
 /* The 10 game files of the English PC DOS version of 1995. */
 const GameFile *gamefile_table(void); /* exported for the tests */
 /* Whether data holds the file: its size and its CRC-32. */
-bool gamefile_is_valid(const GameFile *file, const uint8_t *data, size_t size); /* exported for the tests */
+bool gamefile_is_valid(const GameFile *file, const uint8_t *data, size_t size);
 /* Reads folder/<file name> and checks it; false when the file is missing, has another size, or fails the CRC. */
-bool gamefile_is_valid_in(const GameFile *file, const char *folder); /* exported for the tests */
+bool gamefile_is_valid_in(const GameFile *file, const char *folder);
 /* The first file of files[GAMEFILE_COUNT] that is missing or fails in folder; NULL when all pass. */
-const GameFile *gamefile_find_bad(const GameFile *files, const char *folder); /* exported for the tests */
+const GameFile *gamefile_find_bad(const GameFile *files, const char *folder);
 
 #endif
