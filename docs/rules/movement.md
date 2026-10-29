@@ -26,7 +26,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 - Each command has a feedback script: bytecode that draws the pressed button, waits timer ticks, draws the released button, and then queues the command. The low 6 bits are the opcode, bit 6 runs the next opcode immediately, bit 7 ends the script.
 - The port runs the opcodes 0 to `0x10`. Opcode `8` draws the spell icon, `9` the hand icon, `0xc` the action name, `0xf` and `0x10` the dialog buttons.
-- Opcode `0xa` (rune commands `0x65` to `0x6a`) has no argument. It draws the pressed rune button ([GDAT](../formats/graphics.md#gdat-items) `(1, 5, 8)`, opaque) centered in the button rectangle. Then it draws the rune character of the button in the next rune set (`0x60` + 6 × rune count + command - `0x65`), centered, black on UI color 4 (`gfx_offscreen_draw_text_at`). The changed rectangle of that text starts at its base line.
+- Opcode `0xa` (rune commands `0x65` to `0x6a`) has no argument. It draws the pressed rune button ([GDAT](../formats/graphics.md#gdat-items) `(1, 5, 8)`, opaque) centered in the button rectangle. Then it draws the rune character of the button in the next rune set (`0x60` + 6 × rune count + command - `0x65`), centered, black on UI color 4 (`offscreen_draw_text_at`). The changed rectangle of that text starts at its base line.
 - Opcode `0xb` (cast command `0x6c`) has no argument. It draws the entered runes with their background (`area_draw_entered_runes(true)`).
 - Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 timer ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
@@ -42,10 +42,10 @@ The rules of the main loop, the input, and the movement: the timing and the game
 
 ## Movement
 
-- `g_cur_map` is the map of the dungeon reads (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
-- A slow party (`champ_get_move_delay`) walks: `g_party_move_steps` holds the view one square back for the steps of the walk.
+- `g_party.cur_map` is the map of the dungeon reads (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
+- A slow party (`champ_get_move_delay`) walks: `g_party.move_steps` holds the view one square back for the steps of the walk.
 - `move_follow_square_transitions` takes a thing through teleporters, open pits, and stairs until it stays on a square. A pit can lead to the map below or to a marker of the map.
-- When the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the step times of the champions, plus a random part up to half of that quarter. The step time of a champion (`champ_get_move_time`) is 0 for a dead champion, 50 when the load / 10 plus the redraw bit `0x10` is not 0, and 40 otherwise. No code of `SKULL.EXE` sets the redraw bit `0x10` (`REDRAW_SLOW_STEP`); the port keeps the test.
+- When the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the step times of the champions, plus a random part up to half of that quarter. The step time of a champion (`get_step_time` in `src/engine/move.c`) is 0 for a dead champion, 50 when the load / 10 plus the redraw bit `0x10` is not 0, and 40 otherwise. No code of `SKULL.EXE` sets the redraw bit `0x10` (`REDRAW_SLOW_STEP`); the port keeps the test.
 - A move into a wall, a closed door, or a creature gives bump damage (`move_party_bump_damage`) to the champions on the front cells.
 
 ## Sensors and square events

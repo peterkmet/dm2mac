@@ -10,12 +10,12 @@ The rules of the champions: the leader hand, damage and time effects, the action
 
 ## Damage and time effects
 
-- `champ_take_damage` adds the damage to `g_pending_damage` and the wounds to `g_pending_wounds`. `champ_apply_pending_damage` applies them at the end of the step: health, the damage star (event `0x0c`), and death (`kill_champion`, bones in the champion cell).
+- `champ_take_damage` adds the damage to `g_champ_pending_damage` and the wounds to `g_champ_pending_wounds`. `champ_apply_pending_damage` applies them at the end of the step: health, the damage star (event `0x0c`), and death (`kill_champion`, bones in the champion cell).
 - `champ_apply_time_effects` runs every game step for each living champion: food, water, stamina, health and mana regeneration (mana: maximum mana / 40 + 1 per gain), the decay of raised stats to their base, and the poison.
 
 ## Actions
 
-- `g_action_repeat` has 2 records of 8 bytes for each champion: count, steps left, a fresh flag, the action, and the thing. `champ_process_repeated_actions` runs them each step.
+- `g_action_repeats` has 2 records of 8 bytes for each champion: count, steps left, a fresh flag, the action, and the thing. `champ_process_repeated_actions` runs them each step.
 - `champ_perform_action` runs the command of an action ([GDAT](../formats/graphics.md#gdat-items) text field `CM`) with its skill, stamina cost, delay, and charges. A melee action at a closed door plays the door sound `(0x0e, door type, 0x8d)`; a hit creature plays `(0x0f, creature, 0x8d)`. Then the action plays its sound (text field 13) at the party, except after a reload and after a shot. The commands of creatures, spells, minions, and missiles call the rules of [creatures.md](creatures.md).
 - `champ_add_experience` uses the last combat time and the experience factor of the map. A level gain prints a message in the color of the skill class (green, yellow, red, blue).
 
@@ -25,11 +25,11 @@ The rules of the champions: the leader hand, damage and time effects, the action
 - A merchant creature has price lists 0 to 4. `money_parse_item_class_set(creature, n)` reads GDAT text `(0x0f, creature, 5, 0x10 + n)`: letters choose the item kind (`W` weapons, `A` clothing, `J` miscellaneous, `P` potions, `C` containers, `S` scroll), numbers and ranges choose the items. The shop display uses n = `0x10` + list × 3 (the items of the list; GDAT entry `0x20` + list × 3). The prices use n = `0x11` and `0x12` + list × 3, the item sets of two price factors (creature values `0xa1` and `0xa2` + list × 3, in percent). The margin is creature value `0xa0` + list × 3 (default 10 %).
 - A shop is a wall sensor of kind `0x3f` with a shop ornament (ornament value `0x0a` = 2). Its data byte is the merchant creature. Its flags: bit 0 "item chosen", bit 2 "step forward", bits 7 to 10 the price list. Its target square holds the display sensor (kind `0x30`). The data of the display sensor is the shown item index.
 - `show_shop_display` chooses the item when bit 0 is clear or bit 2 is set: the next item (bit 2, or a click above the center of the ornament, `g_view_hit_offset_y`) or the previous item (a click below the center) of the item order table `(9, ornament, 8, 0x13)` that is in the item set of the list. A unique item (`ATTR_FLAGS` bit 12) shows only when it lies on the square, when a creature there holds it, or when the party has it. A table word with bit 15 makes a new item on the target square when the square does not have it. Then the function draws the item (offset value `0xfd`), the empty display (entry `0x11`) when no item is there, and the overlay (entry `0x0f`). In front of the party it also draws the item name (offset `0xf2`) and the sell and buy prices as coin pictures (entry `0x10`, 8 × 7 pixels for each coin type, offsets `0xf1` and `0xf0`).
-- The map graphics load has all entries of the map ornaments, including the item order table. `gdat_get_entry_data_or_null` gives entries of other categories only when they are loaded.
+- The map graphics load has all entries of the map ornaments, including the item order table. In the original, `gdat_get_entry_data_or_null` gives entries of other categories only when they are loaded; the port has every key ([view.md](view.md#deviations-from-the-original)).
 
 ## Item creation by a sensor
 
-- A wall sensor of kind `0x3c` makes a new item when a square event reaches it: with the effect set, or with the effect clear when the sensor is inverted (flags bit 5). Its data is the item index. A new record of the thing type gets the GDAT index. Flags bits 3 and 4 both set keep the item from reuse (`dun_set_thing_do_not_discard`).
+- A wall sensor of kind `0x3c` makes a new item when a square event reaches it: with the effect set, or with the effect clear when the sensor is inverted (flags bit 5). Its data is the item index. A new record of the thing type gets the GDAT index. Flags bits 3 and 4 both set keep the item from reuse (`item_set_do_not_discard`).
 - `transfer_object` sets the charges by flags bits 3 and 4: 0 full, 1 empty, 2 random up to full, 3 an uninitialized word. Miscellaneous item 0 keeps its charges. The item goes to the target square (target word: x bits 6 to 10, y bits 11 to 15, cell bits 4 and 5), to a random cell when the target is not a wall. Flags bit 2 selects the move mode of `move_thing`.
 
 ## Merchant trading
