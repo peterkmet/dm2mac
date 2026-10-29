@@ -24,8 +24,6 @@ MAX_FUNCTION_LINES = 60
 EXCEPTION_RULES = {"1.5": {"engine-write"}, "1.7": {"module"}, "3.11": {"record"}, "3.12": {"decimal", "hex"},
                    "5.8": {"long"}, "10.7": {"byteorder"}}
 
-# removed by Task 24 of the Gemini follow-up
-BRIDGE_REASON = re.compile(r"^bridge: task \d+$")
 HEX = re.compile(r"\b0x[0-9a-fA-F]{2,}\b")
 DECIMAL = re.compile(r"(?<![\w.])[1-9][0-9]+(?![\w.])|\[\s*[5-9]\s*\]|(?<!<)<=?\s*[2-9]\s*;"
                      r"|(?<=[=,(+\-*/%<>&|?:]\s)[3-9](?![\w.\]])")
@@ -785,7 +783,7 @@ def test_allowlist_names_documented_reasons():
     found = []
     for number, check, target, reason in allowlist_lines():
         rule = re.match(r"rule (\d+\.\d+): \S", reason)
-        if not (rule and check in EXCEPTION_RULES.get(rule.group(1), ())) and not BRIDGE_REASON.match(reason):
+        if not (rule and check in EXCEPTION_RULES.get(rule.group(1), ())):
             found.append(f"allowlist {check}:{target}  | {number}: {reason}")
     report("allowlist", found)
 
