@@ -136,7 +136,7 @@ typedef struct {
 /* A value gauge of the object info: its glyph, value, scale, and the word that the text of the panel gives it. */
 typedef struct {
     uint8_t glyph;
-    int value, high;
+    int16_t value, high;
     const char *label;
 } ObjectGauge;
 
@@ -739,53 +739,55 @@ static int16_t inventory_champion(void)
     return (int16_t)(g_ui.inventory - 1);
 }
 
-static bool in_inventory(int champ)
+static bool in_inventory(int16_t champion_index)
 {
-    return champ == inventory_champion();
+    return champion_index == inventory_champion();
 }
 
-/* Opens the status box bitmap of champ with its background; clear: the whole box goes to the screen. */
-static void status_box_begin(int champ, bool clear)
+/* Opens the status box bitmap of champion_index with its background; clear: the whole box goes to the screen. */
+static void status_box_begin(int16_t champion_index, bool clear)
 {
     if (status_box.bitmap)
         return;
-    int background = !champion(champ)->health ? GFX_BOX_DEAD : in_inventory(champ) ? GFX_BOX_INVENTORY : GFX_BOX_ALIVE;
-    offscreen_create(&status_box, ZONE_STATUS_BOX + champ, clear);
+    int background = !champion(champion_index)->health ? GFX_BOX_DEAD
+                     : in_inventory(champion_index)    ? GFX_BOX_INVENTORY
+                                                       : GFX_BOX_ALIVE;
+    offscreen_create(&status_box, ZONE_STATUS_BOX + champion_index, clear);
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, background},
-                              ZONE_STATUS_BOX + champ, GFX_OPAQUE);
+                              ZONE_STATUS_BOX + champion_index, GFX_OPAQUE);
     if (!clear)
         status_box.dirty_count = 0;
 }
 
 /* Draws the health, stamina, and mana bars of a status box. */
-static void show_status_bars(int champ)
+static void show_status_bars(int16_t champion_index)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     int16_t r[RECT_SIZE];
-    add_dirty_rect(&status_box, zone_get_rect(ZONE_STATUS_BARS + champ, r));
+    add_dirty_rect(&status_box, zone_get_rect(ZONE_STATUS_BARS + champion_index, r));
     const int16_t values[BAR_COUNT] = {c->health, c->stamina, c->mana};
     const int16_t maxima[BAR_COUNT] = {c->max_health, c->max_stamina, c->max_mana > c->mana ? c->max_mana : c->mana};
     for (int i = 0; i < BAR_COUNT; i++) {
         if (!maxima[i])
             continue;
         uint16_t scale = (uint16_t)(values[i] * SCALE_PARTS / maxima[i]);
-        if (!zone_get_rect_clipped(ZONE_STATUS_BAR_FIRST + champ + CHAMPION_MAX * i, r, SCALE_PARTS, scale))
+        if (!zone_get_rect_clipped(ZONE_STATUS_BAR_FIRST + champion_index + CHAMPION_MAX * i, r, SCALE_PARTS, scale))
             continue;
         int16_t shadow[RECT_SIZE] = {(int16_t)(r[RECT_X] + BAR_SHADOW), (int16_t)(r[RECT_Y] + BAR_SHADOW), r[RECT_W],
                                      r[RECT_H]};
         offscreen_fill_rect(&status_box, shadow, g_ui_colors[UI_BLACK]);
-        offscreen_fill_rect(&status_box, r, g_ui_colors[champion_colors[champ]]);
+        offscreen_fill_rect(&status_box, r, g_ui_colors[champion_colors[champion_index]]);
     }
 }
 
 /* Draws the damage star with the last damage of a champion in its status box. */
-static void show_damage_number(int champ)
+static void show_damage_number(int16_t champion_index)
 {
     offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_INTERFACE, UI_INDEX_STATUS, GFX_BOX_DAMAGE},
-                              ZONE_STATUS_DAMAGE + champ, DAMAGE_STAR_KEY);
-    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champ,
+                              ZONE_STATUS_DAMAGE + champion_index, DAMAGE_STAR_KEY);
+    offscreen_draw_text_in_zone(&status_box, ZONE_STATUS_DAMAGE + champion_index,
                                 (TextColors){g_ui_colors[UI_WHITE], g_ui_colors[UI_RED]},
-                                gtext_format_number(champion(champ)->damage, false, NUMBER_DIGITS));
+                                gtext_format_number(champion(champion_index)->damage, false, NUMBER_DIGITS));
 }
 
 /* Draws a value and its maximum ("83/ 83") in zone of the inventory. */
@@ -818,13 +820,14 @@ static void show_state_icon(int icon, int zone)
 }
 
 /* Draws the portrait of the champion with the open inventory, dimmed while the party is invisible. */
-static void show_portrait(int champ)
+static void show_portrait(int16_t champion_index)
 {
-    offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_CHAMPION, champion(champ)->portrait, 0},
-                              ZONE_STATUS_PORTRAIT + champ, GFX_OPAQUE);
+    offscreen_draw_gdat_image(&status_box, (GdatKey){CAT_CHAMPION, champion(champion_index)->portrait, 0},
+                              ZONE_STATUS_PORTRAIT + champion_index, GFX_OPAQUE);
     if (g_game.magic_light[MAGIC_INVISIBILITY]) {
         int16_t r[RECT_SIZE];
-        offscreen_fill_rect_dithered(&status_box, zone_get_rect(ZONE_STATUS_PORTRAIT + champ, r), UI_DARKEST_GRAY);
+        offscreen_fill_rect_dithered(&status_box, zone_get_rect(ZONE_STATUS_PORTRAIT + champion_index, r),
+                                     UI_DARKEST_GRAY);
     }
 }
 
@@ -897,24 +900,24 @@ static void show_slot(uint16_t thing, int16_t slot, bool wounded, bool active, b
 }
 
 /* Draws a champion slot when it changed; true when it drew. */
-static bool show_changed_slot(int champ, int16_t slot, bool force)
+static bool show_changed_slot(int16_t champion_index, int16_t slot, bool force)
 {
     int entry;
-    if (in_inventory(champ)) {
+    if (in_inventory(champion_index)) {
         entry = slot + SLOT_INVENTORY_FIRST;
     } else {
-        if (slot >= SLOT_HAND_COUNT || g_ui.candidate == champ + 1)
+        if (slot >= SLOT_HAND_COUNT || g_ui.candidate == champion_index + 1)
             return false;
-        entry = champ * SLOT_HAND_COUNT + slot;
+        entry = champion_index * SLOT_HAND_COUNT + slot;
     }
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     uint16_t thing = c->slots[slot];
     bool redraw_frame = force;
     bool active = false;
     bool wounded = false;
     bool changed = force;
     if (slot < SLOT_HAND_COUNT) {
-        active = champ + 1 == g_action.champion && slot == g_action.hand;
+        active = champion_index + 1 == g_action.champion && slot == g_action.hand;
         if (!(cache.slots[entry].flags & SLOT_ACTIVE) != !active) {
             redraw_frame = true;
             cache.slots[entry].flags ^= SLOT_ACTIVE;
@@ -945,7 +948,7 @@ static bool show_changed_slot(int champ, int16_t slot, bool force)
     if (thing == THING_NONE || entry < SLOT_STATUS_COUNT)
         redraw_frame = true;
     if (entry < SLOT_STATUS_COUNT)
-        status_box_begin(champ, false);
+        status_box_begin(champion_index, false);
     cache.slots[entry].thing = thing;
     show_slot(thing, entry, wounded, active, redraw_frame);
     return true;
@@ -988,7 +991,7 @@ static void show_description(const char *text)
 }
 
 /* Draws a centered line of a scroll in the scroll font. */
-static void show_scroll_line(int center_x, int16_t y, const char *line)
+static void show_scroll_line(int16_t center_x, int16_t y, const char *line)
 {
     ScreenSize size = text_measure(line);
     if (!size.w)
@@ -1073,13 +1076,13 @@ static void show_gauge_bar(int16_t value, int zone, int color, GaugeRange range,
 }
 
 /* An object gauge: the bar with its glyph left of it and the end marks. */
-static void show_object_gauge(int zone, int value, int high, uint8_t glyph, int color)
+static void show_object_gauge(int zone, int16_t value, int16_t high, uint8_t glyph, int color)
 {
     int16_t r[RECT_SIZE];
     if (!zone_get_rect(zone, r))
         return;
     show_gauge_bar(value, zone, color, (GaugeRange){0, high}, GAUGE_REST_COLOR);
-    int y = (int16_t)(r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE);
+    int16_t y = r[RECT_Y] + r[RECT_H] - GAUGE_TEXT_RAISE;
     int bg = g_ui_colors[UI_BLACK] | TEXT_TRANSPARENT;
     char s[GLYPH_TEXT_SIZE] = {(char)glyph, '\0'};
     text_draw_with_shadow(&g_view_viewport, (int16_t)(r[RECT_X] - GAUGE_GLYPH_LEFT), y,
@@ -1198,8 +1201,8 @@ static void show_closed_mouth(void)
 /* Draws the skill levels and the statistics of the champion in the inventory panel. */
 static void show_skills_and_stats(void)
 {
-    int16_t champ = inventory_champion();
-    Champion *c = champion(champ);
+    int16_t champion_index = inventory_champion();
+    Champion *c = champion(champion_index);
     char text[TEXT_SIZE];
     game_set_panel_mode(PANEL_MODE_SKILLS);
     ui_draw_viewport_image(CAT_PANEL, 0, GFX_PANEL_PANEL, ZONE_INVENTORY_PANEL, GFX_OPAQUE);
@@ -1207,11 +1210,12 @@ static void show_skills_and_stats(void)
     int16_t x = skills_at.x;
     int16_t y = skills_at.y;
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
-        if (champ_get_skill_level(champ, skill, true) == SKILL_LEVEL_UNTRAINED)
+        if (champ_get_skill_level(champion_index, skill, true) == SKILL_LEVEL_UNTRAINED)
             continue;
-        ui_skill_rank_text(champ, skill, text);
-        text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);
-        cache.shown_raised[skill] = g_champ_skill_raised[champ][skill];
+        ui_skill_rank_text(champion_index, skill, text);
+        text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champion_index][skill] ? UI_GREEN : UI_LIGHT_GRAY],
+                              text);
+        cache.shown_raised[skill] = g_champ_skill_raised[champion_index][skill];
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
     ScreenPoint stats_at = zone_get_position(ZONE_STATS);
@@ -1241,11 +1245,11 @@ static uint16_t panel_object(const Champion *c)
 }
 
 /* Draws the load and the maximum load of the champion in the inventory. */
-static void show_load(int champ)
+static void show_load(int16_t champion_index)
 {
     restore_panel_back(ZONE_LOAD_BACK);
-    int load = champ_get_load(champ);
-    int max_load = champ_get_max_load(champion(champ));
+    int load = champ_get_load(champion_index);
+    int max_load = champ_get_max_load(champion(champion_index));
     int color = load > max_load                                       ? UI_RED
                 : load * LOAD_HIGH_WHOLE > max_load * LOAD_HIGH_PARTS ? UI_YELLOW
                                                                       : UI_LIGHT_GRAY;
@@ -1279,7 +1283,7 @@ static uint16_t show_changed_buttons(uint16_t changed)
     return flags;
 }
 
-/* Draws the inventory background and the changed buttons of champ; sets the redraw flags of a new inventory. */
+/* Draws the inventory background and the changed buttons of champion_index; sets the redraw flags of a new inventory. */
 static void show_inventory_frame(ChampionRedraw *d)
 {
     uint16_t buttons_changed = 0;
@@ -1349,15 +1353,15 @@ static bool show_inventory_panel(const Champion *c, uint16_t flags)
     return false;
 }
 
-/* Draws the name of champ in its status box, or its name and title in the inventory. */
-static void show_champion_name(int champ, ChampionRedraw *d)
+/* Draws the name of champion_index in its status box, or its name and title in the inventory. */
+static void show_champion_name(int16_t champion_index, ChampionRedraw *d)
 {
-    const Champion *c = champion(champ);
-    int color = g_ui_colors[champ == g_game.leader && !g_ui.candidate ? UI_GOLD : UI_WHITE];
+    const Champion *c = champion(champion_index);
+    int color = g_ui_colors[champion_index == g_game.leader && !g_ui.candidate ? UI_GOLD : UI_WHITE];
     if (!d->inv) {
-        status_box_begin(champ, false);
+        status_box_begin(champion_index, false);
         d->box_drawn = true;
-        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champ,
+        offscreen_draw_shadow_text(&status_box, ZONE_STATUS_NAME + champion_index,
                                    (TextColors){color, g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT}, c->name);
         return;
     }
@@ -1370,33 +1374,33 @@ static void show_champion_name(int champ, ChampionRedraw *d)
     d->present = true;
 }
 
-/* Draws the bars, the slots, the inventory panel, the name, and the load of a living champ. */
-static void show_living_champion(int champ, ChampionRedraw *d)
+/* Draws the bars, the slots, the inventory panel, the name, and the load of a living champion_index. */
+static void show_living_champion(int16_t champion_index, ChampionRedraw *d)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     if (d->flags & REDRAW_BARS) {
-        status_box_begin(champ, false);
+        status_box_begin(champion_index, false);
         d->box_drawn = true;
-        show_status_bars(champ);
+        show_status_bars(champion_index);
         if (c->damage_event != THING_NONE)
-            show_damage_number(champ);
+            show_damage_number(champion_index);
         if (d->inv) {
             show_inventory_values(c);
             d->present = true;
         }
     }
     if (!d->inv) {
-        for (int slot = 0; slot < SLOT_HAND_COUNT; slot++)
-            d->box_drawn |= show_changed_slot(champ, slot, d->force_slots);
+        for (int16_t slot = 0; slot < SLOT_HAND_COUNT; slot++)
+            d->box_drawn |= show_changed_slot(champion_index, slot, d->force_slots);
     } else {
         d->present |= show_inventory_panel(c, d->flags);
-        for (int slot = 0; slot < SLOT_COUNT; slot++)
-            d->present |= show_changed_slot(champ, slot, d->force_inventory);
+        for (int16_t slot = 0; slot < SLOT_COUNT; slot++)
+            d->present |= show_changed_slot(champion_index, slot, d->force_inventory);
     }
     if (d->flags & REDRAW_NAME)
-        show_champion_name(champ, d);
+        show_champion_name(champion_index, d);
     if (d->inv && d->flags & REDRAW_LOAD) {
-        show_load(champ);
+        show_load(champion_index);
         d->present = true;
     }
 }
