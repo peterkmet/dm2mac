@@ -81,11 +81,12 @@ typedef struct __attribute__((packed)) {
 _Static_assert(sizeof(AiCandidate) == AI_CANDIDATE_SIZE, "the candidates of SKULL.EXE have 22 bytes");
 
 /* The sizes of the candidates, the path, and the item filters of a creature update. */
-#define AI_CANDIDATE_MAX 16
-#define AI_PATH_BYTES    100 /* a path buffer: 2 bytes per step */
-#define FILTER_SLOTS     42  /* the item filters of a creature update */
+#define AI_CANDIDATE_MAX  16
+#define AI_PATH_BYTES     100 /* a path buffer of AI_PATH_STEP_SIZE bytes per step */
+#define AI_PATH_STEP_SIZE 2   /* a path step: a 16-bit word */
+#define FILTER_SLOTS      42  /* the item filters of a creature update */
 /* The bits of a shift count that the x86 shift uses: the low 5 bits. */
-#define BIT_INDEX_MASK   0x1f
+#define BIT_INDEX_MASK    0x1f
 
 /* The plan state of a group that lasts from one update to the next: 14 bytes with the layout of the original. */
 typedef struct __attribute__((packed)) {
@@ -134,7 +135,7 @@ typedef struct {
     bool counts_dirty;
     bool alert;
     AiItemCounts item_counts[AI_COUNT_LISTS];
-    uint8_t path[AI_PATH_BYTES]; /* the path of the search (2 bytes per step) */
+    uint8_t path[AI_PATH_BYTES]; /* the path of the search */
     uint8_t candidate_count;
     int8_t chosen;
     AiCandidate candidates[AI_CANDIDATE_MAX];

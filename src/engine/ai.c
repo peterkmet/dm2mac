@@ -1311,8 +1311,8 @@ static void load_candidate_path(const AiCandidate *c)
     g_ai.cache.targets = c->targets;
     uint8_t *path = NULL;
     if (length > 0) {
-        path = ai_store_path(length * 2);
-        memcpy(path, g_ai.path, (size_t)length * 2);
+        path = ai_store_path(length * AI_PATH_STEP_SIZE);
+        memcpy(path, g_ai.path, (size_t)length * AI_PATH_STEP_SIZE);
     }
     g_ai.cached_path = path;
 }

@@ -37,10 +37,8 @@ extern const uint8_t g_ai_command_enabled[AI_MOVE_TEST_KINDS];
 extern const uint8_t g_ai_command_enabled_overrun[AI_ENABLED_OVERRUN_BYTES];
 extern const uint8_t g_ai_kind_flags[AI_TARGET_KIND_COUNT];
 
-/* The longest path of the path search. */
-#define AI_PATH_MAX 49
 /* A candidate or plan state without a found thing or marker. */
-#define FOUND_NONE  0xffff
+#define FOUND_NONE 0xffff
 
 /* The square that the AI read last; x -1: none. */
 typedef struct {

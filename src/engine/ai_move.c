@@ -2801,7 +2801,7 @@ static bool search_next_square(Search *s)
     return true;
 }
 
-/* Writes the steps from the start to the found candidate into path (2 bytes per step). */
+/* Writes the steps from the start to the found candidate into path. */
 static void search_write_path(Search *s, uint8_t *path)
 {
     AiCandidate *c = &s->cands[s->result];
@@ -2811,13 +2811,13 @@ static void search_write_path(Search *s, uint8_t *path)
     for (int16_t n = (int16_t)(c->path_length - 1); n >= 0; n--) {
         uint8_t *cell = search_map_cell(s, map, x, y);
         uint16_t from = le16(cell + SEARCH_AT_FROM);
-        uint16_t step = le16(path + n * 2) & PATH_KEEP_BITS;
+        uint16_t step = le16(path + n * AI_PATH_STEP_SIZE) & PATH_KEEP_BITS;
         step |= path_step_pack(cell[SEARCH_AT_DIR], x, y);
         if (location_map(from) != map) {
             map = location_map(from);
             step |= PATH_MAP_CHANGE;
         }
-        put_le16(path + n * 2, step);
+        put_le16(path + n * AI_PATH_STEP_SIZE, step);
         x = location_x(from);
         y = location_y(from);
     }
@@ -2936,7 +2936,7 @@ void ai_load_cached_path(void)
 /* A step of the stored path. */
 static uint16_t stored_step(int index)
 {
-    return le16(g_ai.cached_path + index * 2);
+    return le16(g_ai.cached_path + index * AI_PATH_STEP_SIZE);
 }
 
 int ai_next_path_step(void)
@@ -2960,7 +2960,7 @@ static bool path_holds(int16_t saved)
 {
     int16_t x = location_x(g_ai.cache.found);
     int16_t y = location_y(g_ai.cache.found);
-    uint8_t path[AI_PATH_MAX * 2];
+    uint8_t path[AI_PATH_BYTES];
     /* the search of the one candidate (index 0) from the found square: the target must be on that square */
     if (ai_search_area(ai_location(x, y), MOVE_KIND_NONE, 1, g_ai.candidates, path) != 0 ||
         g_ai.candidates[0].path_length)
@@ -3016,7 +3016,7 @@ void ai_refresh_party_maps(void)
     int16_t saved = g_party.cur_map;
     dun_set_current_map(g_game.party_map);
     AiCandidate target;
-    uint8_t path[AI_PATH_MAX * 2];
+    uint8_t path[AI_PATH_BYTES];
     memset(&target, 0, sizeof target);
     if (g_party.redraw & PARTY_REDRAW_SQUARES) {
         g_party_distance.map = (int16_t)g_game.party_map;
