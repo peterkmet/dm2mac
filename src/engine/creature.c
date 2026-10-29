@@ -986,7 +986,7 @@ void creature_drop_possessions(uint16_t group, Location at, DropMode mode, bool 
             }
         }
     }
-    uint16_t t = thing_word(group, GROUP_POSSESSIONS);
+    uint16_t t = *group_possessions(group);
     while (t != THING_ENDOFLIST) {
         uint16_t next = dungeon_next_thing(t);
         if (!(creature_group_info(group)->flags & CREATURE_STATIC))
@@ -1292,6 +1292,18 @@ uint16_t creature_create_group(int creature_type, int count, int16_t dir, Locati
     return create_group(creature_type, count, dir, at, false).group;
 }
 
+/* True when a summoned group may stand on at: no wall, stairs, closed fake wall or closed door, and no group. */
+static bool summon_square_open(Location at)
+{
+    uint8_t square = dun_get_square(at);
+    int type = square_type(square);
+    return type != SQUARE_WALL && type != SQUARE_STAIRS &&
+           (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) &&
+           (type != SQUARE_DOOR || !(square & SQUARE_DOOR_STATE) ||
+            (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) &&
+           creature_get_group_at(at) == THING_NONE;
+}
+
 SummonedGroup creature_summon_group(CreatureSummon summon)
 {
     int8_t search_dir = summon.search_dir;
@@ -1304,13 +1316,7 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
     int turn = rand_bit() ? 1 : -1;
     Location at = {summon.x, summon.y};
     for (;;) {
-        uint8_t square = dun_get_square(at);
-        int type = square_type(square);
-        if (type != SQUARE_WALL && type != SQUARE_STAIRS &&
-            (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0)) &&
-            (type != SQUARE_DOOR || !(square & SQUARE_DOOR_STATE) ||
-             (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN) &&
-            creature_get_group_at(at) == THING_NONE) {
+        if (summon_square_open(at)) {
             summoned = create_group(summon.creature_type, summon.count, summon.dir, at, summon.link != THING_NONE);
             if (summoned.group != THING_NONE)
                 break;
@@ -1323,7 +1329,7 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
             break;
     }
     if (summon.link != THING_NONE && summoned.group != THING_NONE) {
-        uint16_t t = thing_word(summoned.group, GROUP_POSSESSIONS);
+        uint16_t t = *group_possessions(summoned.group);
         while (t != THING_ENDOFLIST && thing_type(t) != THING_PROJECTILE)
             t = dungeon_next_thing(t);
         thing_set_word(t, PROJECTILE_PAYLOAD, summon.link);
@@ -1432,8 +1438,9 @@ void creature_push_group(Location at, int16_t dir, int16_t strength)
                     schedule_update(at);
                 }
                 move_thing(g, at.x, at.y, next.x, next.y);
-                if (creature_get_group_at(next) != THING_NONE && !(flags & CREATURE_STATIC))
-                    creature_alert(THING_NONE, next, ALERT_PUSHED, ALERT_PUSHED_CHANCE, 0);
+                uint16_t pushed = creature_get_group_at(next);
+                if (pushed != THING_NONE && !(flags & CREATURE_STATIC))
+                    creature_alert(pushed, next, ALERT_PUSHED, ALERT_PUSHED_CHANCE, 0);
             }
         }
     }
