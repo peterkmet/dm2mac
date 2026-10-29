@@ -1991,7 +1991,7 @@ static void click_wall_sensor(int16_t cell)
         x += g_dir_dx[dir];
         y += g_dir_dy[dir];
     }
-    if (x < 0 || x >= dungeon_map_width(g_party.cur_map) || y < 0 || y >= dungeon_map_height(g_party.cur_map))
+    if (x < 0 || x >= dungeon_map_width(g_game.party_map) || y < 0 || y >= dungeon_map_height(g_game.party_map))
         return;
     game_set_command_stop(
         sensor_process_wall_click(x, y, dir_turn(dir, wall_side_turn[cell]), THING_NONE, g_game.leader_hand));
@@ -2069,7 +2069,7 @@ static void click_take_object(int16_t x, int16_t y, int index)
 static bool is_party_in_wall(void)
 {
     return game_has_cheat(CHEAT_WALLS) &&
-           dun_square_blocks_movement(dungeon_square(g_party.cur_map, g_game.party_x, g_game.party_y));
+           dun_square_blocks_movement(dungeon_square(g_game.party_map, g_game.party_x, g_game.party_y));
 }
 
 /* Drops the leader hand object into cell (relative to the party direction) of the square at: a floor cell, or with
@@ -2081,7 +2081,7 @@ static bool click_drop_object(Location at, int16_t cell, bool possession)
     if (at.x == g_game.party_x && at.y == g_game.party_y && is_party_in_wall())
         return true; /* no drop inside a wall: the object stays in the hand */
     int16_t dir_cell = dir_turn(g_game.party_dir, cell);
-    uint16_t group = creature_group_at((Position){g_party.cur_map, at.x, at.y});
+    uint16_t group = creature_group_at((Position){g_game.party_map, at.x, at.y});
     if (group != THING_NONE) {
         const CreatureInfo *info = creature_group_info(group);
         if (info->flags & CREATURE_STATIC) {
@@ -2139,7 +2139,7 @@ static void click_throw_object(int16_t x, int16_t y)
 static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z, uint16_t hand)
 {
     Location at = z->cell == POS_FRONT ? v->front : v->party;
-    uint16_t door = dungeon_square_first_thing(g_party.cur_map, at.x, at.y);
+    uint16_t door = dungeon_square_first_thing(g_game.party_map, at.x, at.y);
     if (!door_flag(door, DOOR_BUTTON)) {
         int16_t side = dir_turn(v->dir, TURN_RIGHT);
         game_set_command_stop(sensor_process_wall_click((int16_t)(at.x + g_dir_dx[side]),
@@ -2209,7 +2209,7 @@ static void click_with_object(const ViewSquares *v, int16_t x, int16_t y, bool f
         if (point_in_zone(ZONE_DROP_CELL_FIRST + k, x, y) && click_drop_object(v->front, k, false))
             return;
     }
-    uint16_t g = creature_group_at((Position){g_party.cur_map, v->front.x, v->front.y});
+    uint16_t g = creature_group_at((Position){g_game.party_map, v->front.x, v->front.y});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC) {
         const CreatureInfo *info = creature_group_info(g);
         for (int16_t k = 0; k < (info->possessions & POSSESSIONS_KIND_MASK); k++) {
@@ -2257,7 +2257,7 @@ static void click_in_viewport(int16_t x, int16_t y)
         click_front_wall(v.front);
         return;
     }
-    uint16_t g = creature_group_at((Position){g_party.cur_map, v.front.x, v.front.y});
+    uint16_t g = creature_group_at((Position){g_game.party_map, v.front.x, v.front.y});
     if (g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC)
         click_creature(g, x, y, v.front);
 }

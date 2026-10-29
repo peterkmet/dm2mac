@@ -95,8 +95,10 @@ typedef struct {
     int16_t rect[RECT_SIZE];
 } Command;
 
+/* The choice value while a dialog waits. */
+#define DIALOG_NO_CHOICE 0xff
+
 /* The last matched command entry: the dialogs read it. */
-#define DIALOG_NO_CHOICE 0xff /* a dialog waits while its choice has this value */
 typedef struct {
     uint16_t zone;           /* the zone of the entry, ZONE_NONE none */
     int16_t origin;          /* the zone that the entry zone is relative to, -1 none */
