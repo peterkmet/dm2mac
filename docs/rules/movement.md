@@ -61,6 +61,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The video driver of the original (`IBMIOP.EXE`, service 0x109, mode 0x8008) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbour while `move_steps` is not 0. The exact rounding of the driver is unverified (manual check B7).
 - The advanced mode takes the autorepeat of a held key only when no key, event, or command waits (`input_key_repeat`). In the original, the repeats of a held key fill the event ring, and the party walks on after the key goes up. The vanilla mode keeps that.
 - A move without a destination (a removal) leaves a stale register in the destination map of the original (`g_party.dest_map`). The port writes the current map; the scenario tests skip `dest_map` after a removal.
+- The search for a discarded record (`dun_get_discarded_thing` in `src/engine/move.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
 - Kept quirks of the original:
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map
   - a pit to a marker (`transit_pit_marker`) sets the thing type of the transit to the type of the last thing that it reads on the pit square; the stairs check of the same step (`move_follow_square_transitions`) then reads that type

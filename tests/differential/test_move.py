@@ -254,3 +254,17 @@ def test_teleporter_square_whose_first_thing_is_no_teleporter(scenario, lib):
         scenario.step()
     game = scenario.game
     assert (game.party_map, game.party_x, game.party_y) == (map_, x, y)
+
+
+def test_discard_search_on_a_dungeon_of_one_map(tmp_path):
+    # regression: the search for a discarded record looped forever when the party map is the only map
+    own = load_lib()  # an own dungeon of one map; the scenario keeps start.DAT in the module library
+    counts = [0] * C.THING_TYPE_COUNT
+    header = struct.pack("<HHBBHHH16H", 0, 1, 1, 0, 0, 0, 0, *counts)  # map data of 1 byte, 1 map, no square things
+    map_desc = bytes(16)  # map data at offset 0, 1 x 1 squares, level 0
+    path = tmp_path / "one_map.dat"
+    path.write_bytes(header + map_desc + struct.pack("<H", 0) + b"\0")  # column 0 starts at thing 0; a wall
+    assert own.dungeon_load(str(path).encode()) == 1
+    assert own.dungeon_map_count() == 1
+    own.dun_get_discarded_thing.restype = ctypes.c_uint16
+    assert own.dun_get_discarded_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE

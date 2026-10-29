@@ -1482,7 +1482,8 @@ uint16_t dun_get_discarded_thing(int type, int subtype)
     int saved = g_party.cur_map;
     int alt = g_party.alt_view_active ? g_party.alt_view_map : -1;
     int map = g_last_discarded_map[type];
-    if (map == g_game.party_map || map == alt)
+    /* fix: the original loops forever in discard_next_map on a dungeon of one map */
+    if ((map == g_game.party_map || map == alt) && dungeon_map_count() > 1)
         map = discard_next_map(map, map, &alt);
     int start = map;
     for (bool second = false;;) {
