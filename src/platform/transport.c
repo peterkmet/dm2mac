@@ -57,6 +57,8 @@ bool transport_open(const char *path)
     struct sockaddr_un address = {.sun_family = AF_UNIX};
     struct stat old;
     char dir[sizeof transport.socket_path];
+    if (transport.listen_fd >= 0)
+        transport_close(); /* fix: a second open does not leak the first socket */
     if (strlen(path) >= sizeof address.sun_path)
         return false;
     if (!lstat(path, &old) && !S_ISSOCK(old.st_mode))
