@@ -291,8 +291,8 @@ void champ_wake_party(void);
 extern int16_t g_champ_pending_damage[CHAMPION_MAX];
 extern uint16_t g_champ_pending_wounds[CHAMPION_MAX]; /* the wounds of this game step; exported for the tests */
 extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and health; exported for the tests */
-/* Clears the damage of the step, the regeneration counter, the leader hand cache, and the recruit candidate, as at
-   the program start. */
+/* Clears the damage of the step, the action repeats, the raised skills, the regeneration counter, the leader hand
+   cache, and the recruit candidate, as at the program start. */
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);

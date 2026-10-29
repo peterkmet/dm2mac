@@ -601,3 +601,15 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
     assert mine != before and light[2] == 2 and struct.unpack("<h", light[:2])[0] != 0
     aura = struct.unpack_from("<h", mine, CH["aura_value"])[0] - struct.unpack_from("<h", before, CH["aura_value"])[0]
     assert aura == (0 if dead else 7)
+
+
+def test_load_clears_action_repeats_and_raised_skills(lib, gdat, start, tmp_path):  # noqa: F811
+    # A load after a repeated action and a raised skill starts with no repeats and no raised skills.
+    path = tmp_path / "SKSAVE0.DAT"
+    path.write_bytes(start)
+    repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
+    raised = (ctypes.c_uint8 * 16).in_dll(lib, "g_champ_skill_raised")
+    ctypes.memset(repeats, 0x5A, ctypes.sizeof(repeats))
+    ctypes.memset(raised, 1, ctypes.sizeof(raised))
+    assert lib.save_load(str(path).encode(), gdat) == 0
+    assert not any(repeats) and not any(raised)

@@ -118,6 +118,8 @@ void champ_reset_step_state(void)
 {
     memset(g_champ_pending_damage, 0, sizeof g_champ_pending_damage);
     memset(g_champ_pending_wounds, 0, sizeof g_champ_pending_wounds);
+    memset(g_action_repeats, 0, sizeof g_action_repeats);
+    memset(g_champ_skill_raised, 0, sizeof g_champ_skill_raised);
     g_champ_regen_counter = 0;
     g_leader_hand = (LeaderHand){.icon = HAND_ICON_NONE};
     g_ui.candidate = 0;
