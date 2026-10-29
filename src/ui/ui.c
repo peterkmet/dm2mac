@@ -631,6 +631,8 @@ void offscreen_draw_shadow_text(Offscreen *o, int zone, int color, int bg, const
 void ui_blit_bitmap(const BlitSource *source, Bitmap *dst, const int16_t *rect)
 {
     const Bitmap *src = source->bitmap;
+    if (!src)
+        return; /* fix: a picture missing from GRAPHICS.DAT draws nothing */
     Blit blit = {.src = src->pixels,
                  .dst = dst->pixels,
                  .src_x = source->x,

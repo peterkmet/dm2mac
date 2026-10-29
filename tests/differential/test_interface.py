@@ -225,6 +225,21 @@ def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
         lib.champ_take_from_leader_hand()
 
 
+class BlitSource(ctypes.Structure):
+    _fields_ = [("bitmap", ctypes.POINTER(Bitmap)), ("x", ctypes.c_int16), ("y", ctypes.c_int16),
+                ("transparent", ctypes.c_int16), ("mirror", ctypes.c_uint16), ("colormap", u8_p)]
+
+
+def test_blit_of_a_missing_picture_draws_nothing(port):
+    # A picture missing from GRAPHICS.DAT comes as a NULL bitmap; the blit leaves the target as it was.
+    lib = port
+    lib.ui_blit_bitmap.argtypes = [ctypes.POINTER(BlitSource), ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16)]
+    pixels = (ctypes.c_uint8 * 64).from_buffer_copy(bytes(range(64)))
+    dst = Bitmap(ctypes.cast(pixels, u8_p), 8, 8, 8)
+    lib.ui_blit_bitmap(ctypes.byref(BlitSource()), ctypes.byref(dst), (ctypes.c_int16 * 4)(0, 0, 8, 8))
+    assert bytes(pixels) == bytes(range(64))
+
+
 CH_RUNE_COUNT, CH_RUNES, CH_ACTION_DELAY, CH_WOUNDS, CH_HEALTH, CH_SLOTS, CH_AURA = 0x1E, 0x22, 0x2A, 0x34, 0x36, 0xC3, 0x102
 CH_DIR, CH_CELL, CH_POISONED, CH_FOOD, CH_DAMAGE_EVENT, CH_REDRAW = 0x1C, 0x1D, 0x1F, 0x44, 0x2E, 0x32
 
