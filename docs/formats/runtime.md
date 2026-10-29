@@ -1,20 +1,15 @@
 # Runtime layer and timing
 
-The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, the programmable interval timer (PIT) divisor and the tick rates of the game, the music, and the digital driver, and the resident layer `IBMIOP.EXE` that the game calls for video, input, timer, and the movie script. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, the programmable interval timer (PIT) and the tick rates, and the resident layer `IBMIOP.EXE`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## SVGA option
 
 - The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320 × 200, 256 colors).
-- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, for SVGA only, the switch ` +VS` (its use is unverified, see below).
-- The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
-- `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
-
+- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie.
+- `INSTALL.EXE` writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, for SVGA only, the switch ` +VS`. How `IBMIOP.EXE` uses ` +VS` is unverified, because no static trace of the switch handler exists.
 - `INSTALL.EXE` and `IBMIOP.EXE` are LZEXE 0.91 (`LZ91`) files. The offsets on this page are in the decompressed files.
-- The MVE opcode `0x0a` (set video mode) of each movie gives its video mode ([movies.md](movies.md#mve-stream)).
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 0x10` with `AX=0x0013`. `SKULL.EXE` has no `int 0x10` and no VESA call.
-- The script tables, the script records, and the arguments of the movie player: [movies.md](movies.md).
-
-That the SVGA option changes only the movies is certain. How `IBMIOP.EXE` uses ` +VS` is unverified, because no static trace of the switch handler exists.
+- The movie files, their video modes (MVE opcode `0x0a`, [movies.md](movies.md#mve-stream)), and their video sizes: [movies.md](movies.md#movie-player). The two launch scripts of `IBMIOP.EXE`, one for SVGA and one for VGA: [movies.md](movies.md#launcher-script-ibmiopexe).
 
 ## PIT divisor and tick rates
 
@@ -24,20 +19,20 @@ That the SVGA option changes only the movies is certain. How `IBMIOP.EXE` uses `
 - Digital driver service event: 120 Hz.
 - Game time: `IBMIOP.EXE` calls the game timer callback (`INT 0x2d`, handler `FUN_00010cc2`) on every 4th of its timer interrupts: nominal 60 Hz. Each call adds 1 to `DAT_0007f256`. A game step is due when the sum reaches `DAT_0007f268` = 8. Nominal game step rate: 7.5 Hz (133 ms). `DAT_0007f268 = 1` while the party sleeps (`FUN_00021d6c`, `command_execute`).
 
-`FUN_00062efd` and `FUN_00062f43` in the HMI timer library write the byte `0x36` (channel 0, low/high byte, mode 3) to port `0x43`, then the low and the high byte of the divisor to port `0x40`.
+The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are unverified, because the real rate of the `INT 0x2d` callback is unknown ([Unknown values](#unknown-values)).
 
+The code behind these rates:
+
+- `FUN_00062efd` and `FUN_00062f43` in the HMI timer library write the byte `0x36` (channel 0, low/high byte, mode 3) to port `0x43`, then the low and the high byte of the divisor to port `0x40`.
 - `FUN_00010010` calls `FUN_0005ae04(0xf0, 0, 0)` (`sosTIMERInitSystem(240)`): divisor = `0x1234dc / 240` = 4971. It also registers a chain event to the old `INT 8` handler at the BIOS rate (`0xff00`).
 - `FUN_0005af1a` (`sosTIMERRegisterEvent`) lowers the divisor only for a rate above the current rate. Registered rates: `0x78` (120 Hz, digital driver, `FUN_00010010`) and `song[+0x38]` (`sosMIDIStartSong`, `FUN_0005fed2`). `FUN_0005f52b` registers 1500 Hz, but nothing calls it.
 - Every game song and `TEST.HMP` has `+0x38` = `0x78` (120 Hz) in its HMP header ([music.md](music.md#hmp-player)). The longest `TEST.HMP` track has 15211 delta ticks = 126.8 s at 120 Hz.
 - `IBMIOP.EXE` (decompressed `0x2c58`): `mov word [bp-2], 0x136b` → `cs:[0x125e]`. Its `INT 8` handler at `0x2c73` writes `0x36`, then the divisor to ports `0x43` and `0x40`. Every 4th interrupt (`and al, 3`) it calls the registered far callback `[0xa9d0]`. That callback (`0x3007`) executes `int 0x2d`.
 - `SKULL.EXE` `FUN_0005a8b1`: sets vector `0x2d` to `FUN_00010cc2`, then `int 0xfc` with `EAX=0x0f`. `IBMIOP.EXE` function `0x0f` stores the callback and returns 1. `FUN_00010d0f` first calls `int 0xfc` function `0x2a`, which reinstalls the `IBMIOP.EXE` timer handler.
-- `FUN_00013887` (frame wait) polls VGA port `0x3da` bit 3. It does not use the PIT.
-
-The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are unverified, because the real rate of the `INT 0x2d` callback is unknown ([Unknown values](#unknown-values)).
-
 - `IBMIOP.EXE` function `0x0f` ends with `mov ax,1; retf`. Thus `g_timer_step` (`0x7efac`) is 1: each callback adds 1 tick.
-- The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. The `DM2.BAT` of the SVGA install passes `+VS` (unverified, see above), so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with the reading above.
+- The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. The `DM2.BAT` of the SVGA install passes `+VS` ([SVGA option](#svga-option)), so the tick comes from the `INT 8` handler on every 4th interrupt.
 - Function `0x30` (shutdown) clears the flag that function `0x0f` sets. After it, no tick arrives.
+- `FUN_00013887` (frame wait) polls VGA port `0x3da` bit 3. It does not use the PIT.
 - Game code reads no clock: all `int 0x21` calls are in the Watcom library, and there is no `int 0x1a`. `g_game_time` (`0x7f22c`) counts game steps. Timeline event times are game steps (24 bits).
 
 ## Unknown values
