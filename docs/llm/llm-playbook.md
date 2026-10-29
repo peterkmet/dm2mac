@@ -308,7 +308,7 @@ An explosion lasts only a few ticks. It can be gone before the turn ends, so the
 The response has `seen: {explosions, creature_changes}` when the record is not empty. Without a record, the response has no `seen` field.
 
 - `explosions[]`: `{name, x, y, depth, side}`, one entry for each explosion type on each square. `depth` and `side` give the place in the view where the party first saw it. Here `side` is a word: `center`, `left`, `right`, `left_2`, `right_2`, `left_3`, `right_3`.
-- `creature_changes[]`: `{type, x, y, depth, side, before, after}` for each creature group in view that was killed. A DM2 group is one creature: `before` is 1, `after` is 0. A group that only leaves the view is not in the list.
+- `creature_changes[]`: `{type, x, y, depth, side, before, after}` for each creature group in view that was killed. In this game, a group is one creature: `before` is 1, `after` is 0. A group that only leaves the view is not in the list.
 
 ### Game over
 
