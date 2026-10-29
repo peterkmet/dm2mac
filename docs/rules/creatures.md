@@ -5,7 +5,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 ## Creature data
 
 - The creature info table has 36 bytes for each creature type (`creature_infos` in `src/engine/creature.c`, generated from `SKULL.EXE`): flags, defense, regeneration, maximum health, attack, poison, dexterity, traits, movement, skills of items, attacks, doors, and sensors, speed, door flags, push resistance, possessions, possession zone, size, and hit size.
-- An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the groups of the dungeon plus 100. A group is active while the party is on its map.
+- An active group has 34 bytes: the animation state, the mood, the behavior, the action, the timing of the next update, the destination, and the plan state. The table has room for the walking groups of the dungeon plus 100, and for at most 255 groups. A group is active while the party is on its map.
 - The AI script data is at `0x73020` to `0x74f7e` of `SKULL.EXE`: plan tables, behavior tables, class flags, action flags, the enabled commands, and the plan steps. The links in the data are `SKULL.EXE` addresses. `src/engine/ai_data.c` holds a copy.
 - The AI context of the group that updates (`0x7f548`, 0x350 bytes) holds the group, its info, the scan results, the candidates (22 bytes each), the plan cache (14 bytes), and the move flags.
 
