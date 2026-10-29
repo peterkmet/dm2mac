@@ -59,7 +59,7 @@ The rules of the creatures: the creature data, the updates of the creature group
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
-  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does
+  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as the original global does, with the random ornament count, the size and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
   - a projectile move also writes the direction into its freed event

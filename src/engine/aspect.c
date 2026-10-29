@@ -82,6 +82,7 @@ static uint8_t random_ornament(int16_t map, bool allowed, int count, int16_t x, 
     uint16_t b = (uint16_t)(map * HASH_MAP_STEP + HASH_MAP_BASE + map_size);
     int16_t hash = (int16_t)(((((a * HASH_MULTIPLIER) >> 1) + b * HASH_MAP_FACTOR + dungeon_ornament_seed()) >> 2) %
                              RANDOM_ORNAMENT_SLOTS);
+    /* as in the original: the list of the entered map, with the count, size and index of map */
     return hash < count ? wall_ornaments[hash] : ORNAMENT_NONE;
 }
 
@@ -428,7 +429,7 @@ void aspect_get(ViewSquare *s, int16_t map, int16_t dir, int16_t x, int16_t y)
 {
     for (int k = 0; k < VIEW_SIDE_COUNT; k++)
         s->side[k] = ORNAMENT_NONE;
-    s->text = 0;
+    s->text = 0; /* as in the original: 0 here, THING_TEXT_NONE in the wall things */
     uint8_t square = dungeon_square_edge(map, x, y);
     s->square = square;
     uint16_t thing = aspect_first_thing(map, x, y);
