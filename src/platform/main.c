@@ -672,7 +672,8 @@ int main(int argc, char **argv)
     if (!mode_given && !options.save && !getenv(RESTART_ENV))
         choose_mode();
     optmenu_start(options.filter ? factor : 0); /* --filter and DM2_FILTER go before SETTINGS.TXT */
-    if (!options.save && !getenv(RESTART_ENV))
+    /* fix: a closed mode screen starts no movie (port only). */
+    if (!options.save && !getenv(RESTART_ENV) && !g_main_loop.quit)
         run_movies(MOVIE_SCRIPT_START);
     if (!options.save && !g_main_loop.quit && !start_game(options.data)) {
         if (g_game_mode == GAME_MODE_TURNBASED) {
