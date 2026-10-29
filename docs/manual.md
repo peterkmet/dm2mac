@@ -6,9 +6,9 @@ The repository has no game files. You supply your own files of Dungeon Master II
 
 Start the game from a release zip (`DM2Mac-macos-arm64.zip` or `DM2Mac-windows-x64.zip`, see the [README](../README.md#play)), or build it (see [Development](development.md)) and start `build/dm2` on macOS or `build/dm2.exe` on Windows.
 
-The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the program folder (the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
+The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). Copy your game into the folder where you start the program (in a release: the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. On first startup the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
 
-The Windows build has no console. It writes its messages to `dm2.log` in `game/`.
+The Windows build has no console. It writes its messages to `dm2.log` in `<data>`.
 
 ## Options
 
@@ -17,9 +17,9 @@ The Windows build has no console. It writes its messages to `dm2.log` in `game/`
 | `--data DIR` | `game` | The folder of the game files (`<data>` on this page). The save slots are in `<data>/DATA`. |
 | `--save PATH` | none | Loads the save `PATH` and starts its game immediately: no mode screen, no start movies, no start menu, and no dialog after the load. |
 | `--mode NAME` | `advanced` | The game mode: `vanilla`, `advanced`, or `turnbased` (see [Modes](#modes)). The option skips the mode screen. |
-| `--filter NAME` | `none` | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
+| `--filter NAME` | `none`; the advanced mode takes the filter of [SETTINGS.TXT](#settingstxt) | The pixel-art upscale filter: `none`, `scale2x`, or `scale3x`. |
 | `--saves DIR` | `<data>/DATA` | The folder of the quick save `QUICK.DAT` and of `SETTINGS.TXT`, in all modes. The game does not make the folder. The save slots stay in the `--data` folder. |
-| `--control PATH` | none | The control socket of the LLM mode (see [llm-mode.md](llm/llm-mode.md#start-the-game)). Only on macOS. |
+| `--control PATH` | none; `~/.dm2/control.sock` in the turn-based mode | The control socket ([llm-mode.md](llm/llm-mode.md#start-the-game)), in all modes. Only on macOS. |
 
 ```sh
 build/dm2 --mode vanilla
@@ -49,7 +49,7 @@ Without `--mode` and `--save`, the program first shows the mode screen. The scre
 
 The cursor stops at the ends of the list. Close the window to end the program. The selected mode plays as with `--mode`.
 
-Then the program plays the start movies, and then shows the start menu. Click to skip a movie. The movies at the start and at the end of the game, and when a click skips them, are in [movies.md](formats/movies.md#deviations-from-the-original).
+Then the program plays the start movies and shows the start menu. Click to skip a movie. The list of the movies and the skip rules are in [movies.md](formats/movies.md#deviations-from-the-original).
 
 The start menu starts a new game, loads a save slot, shows a picture, or quits ([game-flow.md](rules/game-flow.md#start-of-a-run)).
 
@@ -61,7 +61,7 @@ Press Alt+S (Option+S on a Mac keyboard) to open the save menu, and save the gam
 
 ### Quick save and quick load
 
-The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--saves DIR` the file is `DIR/QUICK.DAT`. The file has the format of the save slots. `F5` and `F9` work only in the dungeon view (see [Advanced keys](#advanced-keys)).
+The advanced mode has one quick save slot: `<data>/DATA/QUICK.DAT`. With `--saves DIR` the file is `DIR/QUICK.DAT`. The file has the format of the save slots. `F5` and `F9` work in the dungeon view and on the cheat screen (see [Advanced keys](#advanced-keys)).
 
 `F5` writes the game to `QUICK.DAT`. The message area shows one of these lines:
 
@@ -90,7 +90,7 @@ The controls of the original game work in all modes except the turn-based mode.
 | Shift+Left, keypad 1 | Move left (strafe) |
 | Shift+Right, keypad 3 | Move right (strafe) |
 | Click on a movement arrow | Move or turn |
-| `1`–`4` | Open the inventory of champion 1–4 |
+| `1` to `4` | Open the inventory of champion 1 to 4 |
 | Alt+S (Option+S) | Open the save menu |
 | `Esc` | Pause the game. A key continues. The advanced mode opens the options menu instead (see [Advanced keys](#advanced-keys)). |
 | Click on the sleep button | Sleep. A key or a click wakes the party. |
@@ -99,7 +99,7 @@ The controls of the original game work in all modes except the turn-based mode.
 | Click on a champion hand | Open the action menu. Click an action to run it. |
 | Click on the gray triangle beside a champion in the party panel | Make the champion the leader. The hand on a triangle marks the leader. |
 | Click on the `!` beside a champion in the party panel | Open the spell panel of the champion |
-| Inventory: click on the speaker button | Open the volume dialog: the sound and music volumes 0–7 |
+| Inventory: click on the speaker button | Open the volume dialog: the sound and music volumes 0 to 7 |
 | Inventory: the name editor | Type the name and the title of the champion |
 
 ### Advanced keys
@@ -114,8 +114,8 @@ The advanced mode adds these keys:
 | `D` | Move right (strafe) | Where the arrow keys move the party |
 | `Q` | Turn left | Where the arrow keys move the party |
 | `E` | Turn right | Where the arrow keys move the party |
-| `F5` | Quick save | Dungeon view only |
-| `F9` | Quick load | Dungeon view only |
+| `F5` | Quick save | Dungeon view and cheat screen |
+| `F9` | Quick load | Dungeon view and cheat screen |
 | `Tab` or `M` | Open the automap | Dungeon view only |
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
 | `C` | Open the cheat screen | Dungeon view only |
@@ -128,11 +128,11 @@ A right click closes the automap, the cheat screen, and the options menu. In the
 
 A letter key gives its movement only when the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
-The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. In the dungeon view `Esc` opens the options menu. There the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). The vanilla mode pauses. The automap, the cheat screen, and the options menu do not open together.
+The dungeon view is the movement input mode with at least one champion: no inventory, dialog, menu, pause, sleep, or recruit. There the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either. In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use (it closes the inventory, and it pauses or resumes the game). In the vanilla mode `Esc` pauses. The automap, the cheat screen, and the options menu do not open together.
 
 ## Modes
 
-The game has three modes. Without the cheats, the game rules are the same in all modes.
+The game has three modes. The game rules are the same in all modes, except the cheats and the changes under [Advanced features](#advanced-features).
 
 | Mode | Behavior |
 |---|---|
@@ -149,6 +149,8 @@ The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#qu
 - An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)).
 - A slot save and the quick save keep the seen squares and the cheats.
 
+The automap, the cheat screen, and the options menu open in the viewport and stop the game time. The title of the cheat screen and of the options menu is cyan, their rows are white, and the selected row is yellow.
+
 ### Automap
 
 The automap shows the seen squares of all maps of the party level, each at its place on the level. It covers the viewport. The party square is in the middle of the viewport, north is up.
@@ -160,7 +162,7 @@ The automap shows the seen squares of all maps of the party level, each at its p
 - A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
 - Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the level show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
-- The game time stops while the automap is open. Keys other than the automap keys do nothing.
+- Keys other than the automap keys do nothing.
 - Drag the map with the left mouse button. The map moves in whole squares. The middle of the map stays inside the level. The next automap opens on the party again.
 
 ### Seen squares
@@ -171,7 +173,7 @@ A new game starts with an empty automap.
 
 ### Cheats
 
-The advanced mode has six cheats. They switch on the cheat screen (`C` key). A slot save and the quick save keep them. A load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
+The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on and off. A slot save and the quick save keep them. A load and a quick load take them from the file. A new game turns them all off. The vanilla and turn-based modes use no cheats.
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
@@ -182,7 +184,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 ### Cheat screen
 
-`C` in the dungeon view opens the cheat screen in the viewport. The game time stops while it is open. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen. The title is cyan, the rows are white, the selected row is yellow.
+`C` in the dungeon view opens the cheat screen in the viewport. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen.
 
 - FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
 - QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
@@ -192,7 +194,7 @@ The advanced mode has six cheats. They switch on the cheat screen (`C` key). A s
 
 A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The game files have no spell names. The names are port names. A potion spell is named by its drink effect, a missile by its explosion, a summon by its minion.
 
-A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, otherwise the leader, otherwise the first living champion. Without a living champion the message area shows `NO CHAMPION CAN CAST`. The power is the power rune of the spell, or MON for any power (all spells of the game take any power). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
+A click on a spell line (or Return) casts the spell and closes the screen. The caster is the champion of the open spell panel, otherwise the leader, otherwise the first living champion. Without a living champion the message area shows `NO CHAMPION CAN CAST`. The power is MON, the highest power, for a spell without a power rune (every spell of the game is one). The cast costs no mana, has no failure roll, and gives no experience; the action delay of the spell stays. A potion still needs an empty flask in a hand of the caster; without it the message area shows `NO EMPTY FLASK IN HAND`.
 
 ### Damage hold
 
@@ -209,7 +211,7 @@ A projectile moves one cell (half a square) per game step, as in the original ga
 
 ### Options menu
 
-`Esc` in the dungeon view opens the options menu in the viewport. The game time stops while it is open. The title is cyan, the rows are white, the selected row is yellow. The volume stays in the volume dialog of the original game.
+`Esc` in the dungeon view opens the options menu in the viewport. The volume stays in the volume dialog of the original game.
 
 - FILTER: the upscale filter of the window, `NONE`, `SCALE2X`, or `SCALE3X`. A change shows immediately.
 - CONTINUE: closes the menu.
@@ -229,4 +231,4 @@ The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--sav
 
 The advanced mode reads the file once on startup of the program and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
 
-The game writes the file only when the filter changes. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once, until a write works.
+The game writes the file only when the filter changes. When the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once. It shows again only after a write works and a later write fails.

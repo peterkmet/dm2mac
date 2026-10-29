@@ -29,25 +29,20 @@ Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAV
 ### Windows build
 
 1. Install MinGW-w64: `brew install mingw-w64`.
-2. Unpack `SDL3-devel-3.4.18-mingw.tar.gz` from the [SDL releases](https://github.com/libsdl-org/SDL/releases) into `build/sdl-mingw/`. Without it, the `make` rule copies `build/sdl-mingw` of the `dm` folder (default `../dm`):
+2. Unpack `SDL3-devel-3.4.18-mingw.tar.gz` from the [SDL releases](https://github.com/libsdl-org/SDL/releases) into `build/sdl-mingw/`. Without it, the `make` rule copies `build/sdl-mingw` of the `dm` folder (default `../dm`).
+3. Build: `make windows`, or `make windows DM_DIR=<path to the dm folder>` to copy the SDL package of the `dm` folder.
+4. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
 
-   ```sh
-   make windows DM_DIR=<path to the dm folder>
-   ```
-
-3. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
-
-The Windows program has no control socket and no turn-based mode. It writes its messages to `dm2.log` in the game folder, because it has no console.
+The Windows program has no control socket and no turn-based mode. Its log: [manual.md](manual.md#run-the-game).
 
 Test the program with Wine:
 
 ```sh
 WINE=<path to the wine binary>
-WINEPREFIX=build/wineprefix
-"$WINE" build/dm2.exe
+WINEPREFIX=build/wineprefix "$WINE" build/dm2.exe
 ```
 
-On first use, run `wineboot --init` from the folder of the wine binary.
+On first use, run `WINEPREFIX=build/wineprefix wineboot --init` from the folder of the wine binary.
 
 ## Tests
 
