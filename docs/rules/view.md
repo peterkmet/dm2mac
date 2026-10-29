@@ -56,6 +56,14 @@ The advanced and the turn-based modes mark the seen squares of the automap (`see
 - Not open: a wall, a closed fake wall, a closed door, and a square off the map.
 - In dark light the view is shorter: light level 4 shows one row less, light level 5 two rows less. The light cheat shows all rows.
 
+## Automap
+
+The automap of the advanced mode (`src/ui/automap.c`; the original game has none) draws each square with the icons of the minion map (`mmap_draw_square_icon`, [creatures.md](creatures.md#minion-map)).
+
+- A square shows what a minion map without its options shows (`MAP_STATIC_CREATURES`): the static creatures with a map icon show on the seen squares; moving creatures, merchants, and items do not. The champion icons on the party square are the icons of a minion map item (`mmap_party_icons_item`).
+- An edge wall is a square in the 1-square margin around a map (`MAP_MARGIN`), outside every other map of the level or on an unknown square of another map. There the dungeon view draws a wall (outdoors: trees) beside an open square of the map (`dungeon_square_edge`). The automap shows it when a square of that map next to it is seen (`automap_level_seen`).
+- A pressure pad (`automap_is_pressure_pad`) is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
+
 ## Deviations from the original
 
 - No image cache: each GDAT image is decoded once and kept; scaled images and offscreen bitmaps live until the end of the frame. The original cache key of a scaled image keeps only 5 bits of the height scale and 7 bits of the width scale, so two scales can share a cached image; the port always scales anew.
@@ -77,7 +85,7 @@ The advanced and the turn-based modes mark the seen squares of the automap (`see
 - The explosion tint over the view tiles a row of its picture minus 40 pixels; when the row is not longer than its start (a tint picture of at most 40 pixels, a damaged GRAPHICS.DAT), the port draws no tint.
 - Reads past tables (creature info, animation frames, creature sizes, the rain flag of a sky state above 4) and a division by 0 for a looping animation of length 0 are guarded.
 - `src/engine/save.c` reads the static flag from the creature info table of `src/engine/creature.c`.
-- The advanced mode draws views between game steps (the projectile flight); these views do not set the seen bit (`GROUP_SEEN`) of a group, because the original has no such views. The AI clears the bit at each mood update, so the bit that a save of the advanced mode stores can differ from the bit that a view of each tick would leave.
+- The advanced mode draws views between game steps (the projectile flight). These views change no game state: `show_projectile_flight` (`src/ui/play.c`) restores the random seed, explosions do not count their views again, and a shop display does not choose or create an item. They do not set the seen bit (`GROUP_SEEN`) of a group, because the original has no such views. The AI clears the bit at each mood update, so the bit that a save of the advanced mode stores can differ from the bit that a view of each tick would leave.
 - Kept quirks, as in the original:
   - In the frame text of an animated ornament (`ornament_frame`), a letter `A` to `Z` gives the frame `letter - 'K'`; the letters `A` to `J` give negative frames.
   - The landmarks of an outdoor map use the first sky object of `weather_sky_objects` as their work record. The weather update writes that record again before each use.

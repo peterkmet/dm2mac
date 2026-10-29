@@ -34,7 +34,7 @@ build/dm2 --filter scale2x
 - An unknown mode stops the program with the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. An unknown filter gives the message `unknown filter VALUE: use none, scale2x, or scale3x`.
 - A `--data` folder without `DATA/GRAPHICS.DAT` stops the program with the message `cannot read DIR/DATA/GRAPHICS.DAT`.
 - The turn-based mode and `--control` need macOS. On Windows the program stops.
-- The exit codes of the program are in [game-flow.md](rules/game-flow.md#deviations-from-the-original).
+- The exit codes of the program are in [game-flow.md](rules/game-flow.md#exit-codes).
 
 ## Start screens
 
@@ -155,11 +155,11 @@ The automap, the cheat screen, and the options menu open in the viewport and sto
 
 The automap shows the seen squares of all maps of the party level, each at its place on the level. It covers the viewport. The party square is in the middle of the viewport, north is up.
 
-- The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. The automap shows what a minion map shows without its options: the static creatures with a map icon (trees and other creatures that do not move) show on the seen squares; moving creatures, merchants, and items do not. A red frame and the champion icons of a minion map item mark the party square. The side of the frame toward the direction that the party faces is white.
-- An edge wall shows as a wall. An edge wall is a square in the 1-square margin around a map, outside every other map of the level or on an unknown square of another map. There the dungeon view draws a wall (outdoors: trees) beside an open square of the map. It shows when a square of that map next to it is seen.
+- The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. The automap shows the static creatures that have a map icon (trees and other creatures that do not move); moving creatures, merchants, and items do not show. A red frame and the champion icons mark the party square. The side of the frame toward the direction that the party faces is white.
+- A wall that the dungeon view shows at the edge of a map shows as a wall ([view.md](rules/view.md#automap)).
 - A white frame of 1 pixel surrounds the whole level with the margins of its maps, just outside its last squares. It shows the end of the level, even for squares that are not seen.
 - An imaginary wall (a closed fake wall that the party can walk through) shows as the wall icon with a light gray checkerboard, so it differs from a real wall.
-- A pressure pad shows as a small gray square in the middle of its floor square. A pressure pad is a floor square with a floor sensor whose floor ornament the dungeon view draws. The party, a creature, or an item triggers the sensor (sensor types any, party or creature, party, creature, party possesses an item, item). A floor trigger without an ornament stays hidden.
+- A pressure pad (a floor plate that the dungeon view shows) shows as a small gray square in the middle of its square. A hidden floor trigger does not show.
 - Only the seen squares show. Unseen squares stay black. With the reveal map cheat, all squares of the level show.
 - The readout at the top left shows `LEVEL n  X x  Y y` and the direction of the party (`NORTH`, `EAST`, `SOUTH`, `WEST`).
 - Keys other than the automap keys do nothing.
@@ -207,7 +207,7 @@ A projectile moves one cell (half a square) per game step, as in the original ga
 - A projectile that is new or was not in the view of the game step before shows at its place now.
 - The flight shows only when the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.
 - It does not show in the inventory, during the sleep or the pause, while the automap, the cheat screen, or the options menu is open, and in the vanilla and turn-based modes.
-- The extra views change no game state: the random seed stays, explosions do not count again, and a shop display does not choose or create an item.
+- The extra views change no game state ([view.md](rules/view.md#deviations-from-the-original)).
 
 ### Options menu
 
