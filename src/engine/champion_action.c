@@ -341,6 +341,8 @@ static void raise_level(int16_t champion_index, int base, uint16_t level)
 
 void champ_add_experience(int16_t champion_index, int skill, uint32_t experience)
 {
+    if (skill < 0 || skill >= SKILL_COUNT)
+        return; /* fix: a GDAT skill outside the table (the Kalan Gauntlet gives 186) */
     if (skill >= SKILL_BASE_COUNT && skill <= SKILL_LAST_FIGHT &&
         g_game.game_time - FIGHT_TIME_LONG > g_game.last_combat_time)
         experience >>= 1;

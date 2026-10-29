@@ -657,8 +657,10 @@ static uint16_t ornament_cycle(uint16_t sensor, bool wall)
     if (ornament == GDAT_NO_INDEX)
         return 1;
     uint16_t frames = gdat_entry_index(gdat_current(), category, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_FRAMES);
-    if (frames)
-        return frames & ORNAMENT_FRAMES_MASK;
+    if (frames) {
+        uint16_t cycle = frames & ORNAMENT_FRAMES_MASK;
+        return cycle ? cycle : 1; /* fix: a frames value of 0x8000 divides by 0 in the original */
+    }
     char text[TEXT_SIZE];
     gdat_text(gdat_current(), (GdatKey){category, ornament, ORNAMENT_KEY_FRAMES}, text, sizeof text);
     size_t length = strlen(text);

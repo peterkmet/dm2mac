@@ -122,6 +122,8 @@ int champ_get_skill_level(int16_t champion_index, int16_t skill, bool with_bonus
 {
     if (g_party_sleeping)
         return SKILL_LEVEL_UNTRAINED;
+    if (skill < 0 || skill >= SKILL_COUNT)
+        return SKILL_LEVEL_UNTRAINED; /* fix: a GDAT skill outside the table (the Kalan Gauntlet gives 186) */
     const Champion *c = champion(champion_index);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {

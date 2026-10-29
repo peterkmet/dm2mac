@@ -242,6 +242,24 @@ def restore_minion_links(rules, saved):
     saved.clear()
 
 
+KALAN_GAUNTLET_SKILL_ACTION = bytes((0x10, 3, 10))  # GDAT (category, index, entry) of the action with skill 186
+
+
+def list_actions_original(rules, champ, thing, hand):
+    """CHAMP_LIST_ACTIONS in the original, without the third action of the Kalan Gauntlet: its skill 186 reads
+    outside the experience table in the original, the port treats it as untrained (docs/rules/champions.md)."""
+    emu = rules.emu
+    result = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
+    count = struct.unpack("<H", emu.read(G_ACTION_COUNT, 2))[0]
+    entries = [emu.read(G_ACTION_LIST + 4 * i, 4) for i in range(count)]
+    kept = [e for e in entries if e[:3] != KALAN_GAUNTLET_SKILL_ACTION]
+    if len(kept) == count:
+        return result
+    emu.write(G_ACTION_LIST, b"".join(kept) + bytes(4 * (count - len(kept))))
+    emu.write(G_ACTION_COUNT, struct.pack("<H", len(kept)))
+    return int(bool(kept))
+
+
 class ActionState(ctypes.Structure):
     _fields_ = [("champion", ctypes.c_int16), ("hand", ctypes.c_int16), ("mode", ctypes.c_int16),
                 ("dirty", ctypes.c_int16), ("redraw_delay", ctypes.c_int16), ("flags", ctypes.c_uint16),
@@ -369,7 +387,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             emu.write(G_ACTION_HAND, struct.pack("<h", hand))
             thing = struct.unpack_from("<H", bytes(champion_records(lib)), champ * CHAMPION_SIZE + CH["slots"] + 2 * hand)[0]
             mine = lib.champ_list_actions(champ, thing, hand)
-            theirs = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
+            theirs = list_actions_original(rules, champ, thing, hand)
             assert mine == theirs, n
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             if count:
@@ -412,7 +430,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             hold(0, 0, t, index | C.CHARGES_MASK << C.WEAPON_CHARGES_SHIFT)
             action_state.hand = 0
             emu.write(G_ACTION_HAND, struct.pack("<h", 0))
-            assert lib.champ_list_actions(0, t, 0) == emu.call(CHAMP_LIST_ACTIONS, 0, t, 0), (index, action)
+            assert lib.champ_list_actions(0, t, 0) == list_actions_original(rules, 0, t, 0), (index, action)
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             listed |= {(index, a) for a in range(count)}
             if action < count:
