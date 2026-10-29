@@ -49,6 +49,9 @@ _Static_assert(WITNESSED_EXPLOSIONS_MAX <= STATE_JSON_VISIBLE_GROUPS_MAX, "the e
 /* The kinds of the inputs of an action. */
 typedef enum { INPUT_KEY_PRESS, INPUT_CLICK, INPUT_PRESS, INPUT_RELEASE, INPUT_COMMAND } InputKind;
 
+/* The result of reading the next item of an act_many list. */
+typedef enum { ELEMENT_FOUND, ELEMENT_END, ELEMENT_BAD } ElementResult;
+
 /* The reasons why an action cannot run. */
 #define NO_CHAMPION "no living champion with this index"
 #define PANEL_OPEN  "close the open panel first (pass)"
@@ -77,9 +80,6 @@ typedef struct {
 
 /* An action: lists its inputs, or returns the reason why it cannot run. */
 typedef const char *(*ActionFn)(const char *request);
-
-/* The result of reading the next item of an act_many list. */
-typedef enum { ELEMENT_FOUND, ELEMENT_END, ELEMENT_BAD } ElementResult;
 
 /* The turn, the batch, what the party saw, and the error text of an action. */
 static struct {
@@ -263,9 +263,9 @@ static void put_seen_place(Json *j, const StateJsonSeenThing *at)
 /* The explosions the party saw and the groups that lost creatures in view or were killed; nothing when none. */
 static void put_seen(Json *j)
 {
-    int changes = 0;
+    bool changes = false;
     for (int k = 0; k < turn.witnessed.group_count; k++)
-        changes += turn.witnessed.groups[k].killed || turn.witnessed.groups[k].after < turn.witnessed.groups[k].before;
+        changes |= turn.witnessed.groups[k].killed || turn.witnessed.groups[k].after < turn.witnessed.groups[k].before;
     if (!changes && !turn.witnessed.explosion_count)
         return;
     json_key(j, "seen");
@@ -300,7 +300,7 @@ static void put_seen(Json *j)
 }
 
 /* The health that each champion lost since the start of the request, only when one lost health. */
-static void health_lost_json(Json *j)
+static void put_health_lost(Json *j)
 {
     bool any = false;
     for (uint16_t i = 0; i < turn.witnessed.champion_count; i++)
@@ -1256,7 +1256,7 @@ bool turn_poll(void)
 
 /* The stop of the turn: the end of a batch, the news of a wait, or how the dungeon displaced the party after an
    action. */
-static void stop_json(Json *j)
+static void put_stop(Json *j)
 {
     if (turn.batch.active) {
         json_key(j, "ran");
@@ -1293,7 +1293,7 @@ static void put_action_damage(Json *j)
 }
 
 /* The eye panel text of a look action: the object name and the other lines, only when the turn looked. */
-static void look_json(Json *j)
+static void put_look(Json *j)
 {
     if (!turn.looked.shown)
         return;
@@ -1316,7 +1316,7 @@ void turn_reply(Json *j)
     json_bool(j, true);
     json_key(j, "ticks");
     json_int(j, g_game.game_time - (turn.batch.active ? turn.batch.start_time : turn.start_time));
-    stop_json(j);
+    put_stop(j);
     json_key(j, "game_over");
     json_bool(j, state_json_game_over());
     if (was_bumped()) {
@@ -1324,8 +1324,8 @@ void turn_reply(Json *j)
         json_bool(j, true);
     }
     put_action_damage(j);
-    health_lost_json(j);
-    look_json(j);
+    put_health_lost(j);
+    put_look(j);
     put_seen(j);
     json_key(j, "state");
     state_json_state(j);
