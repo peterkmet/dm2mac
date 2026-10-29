@@ -156,6 +156,8 @@ bool recruit_start(Position at, int16_t dir)
 
 void recruit_finish(Position at, int16_t dir, int command)
 {
+    if (!g_ui.candidate)
+        return; /* fix: without a candidate the original uses champion record 0xffff */
     int16_t champion_index = g_ui.candidate - 1;
     Champion *c = champion(champion_index);
     int16_t saved = g_party.cur_map;
@@ -214,7 +216,7 @@ bool recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)
 {
     recruit_silent = true;
     bool started = recruit_start((Position){map, x, y}, dir);
-    if (started) /* fix: without a candidate recruit_finish unlinks the slots of champion -1 */
+    if (started)
         recruit_finish((Position){map, x, y}, dir, CMD_RECRUIT);
     recruit_silent = false;
     return started;
