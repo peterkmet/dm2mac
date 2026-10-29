@@ -58,7 +58,7 @@ const char *state_json_mode_name(enum InputMode mode);
 bool state_json_game_over(void);
 /* The count of the actions in the action menu of a hand of a champion, as champions[].hands lists them; the open
    action menu stays as it is. */
-int state_json_hand_action_count(int champ, int hand);
+int state_json_hand_action_count(int16_t champion_index, int16_t hand);
 /* The game state as the player sees it: time, modes, party, champions, open panels, messages, weather. */
 void state_json_state(Json *j);
 
