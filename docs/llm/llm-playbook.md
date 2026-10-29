@@ -276,7 +276,7 @@ When a move action (`move_forward`, `move_back`, `move_left`, `move_right`) does
 
 ### Displacement
 
-The game informs; it does not play. After each `act` turn and each batch step, the game compares the party facing, square, and map with what the action does:
+After each `act` turn and each batch step, the game compares the party facing, square, and map with what the action does:
 
 - A move action changes the square by one step in its direction, or nothing (a bump).
 - `turn_left` and `turn_right` change the facing by 90 degrees.
