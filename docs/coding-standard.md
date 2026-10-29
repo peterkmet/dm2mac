@@ -39,9 +39,12 @@ that this port cannot use keeps its number with "No rule in dm2".
    (`redraw_delay`, `flags`, `mode`) and `redraw_changes` (`redraw_delay`, `dirty`, `mode`, `result`). The action
    area also closes the open hand and opens a chest or a minion map when the panel redraws; `haste_jitter` takes
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its allowlist
-   lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. `ui/` and `control/` do
-   not write through a pointer that an engine query returns, except into the fields that this rule allows (review
-   only). [engine-write]
+   lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. Until the engine has
+   setters for them, the minion map (`ui/minion_map.c`, `g_minion_map`) and `ui_render_hand_icon` (`ui/ui.c`,
+   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields. A write is an assignment, an
+   increment or a decrement, a `memcpy`, `memmove` or `memset` into the global, or a pointer to the global without
+   `const`. `ui/` and `control/` do not write through a pointer that an engine query returns, except into the fields
+   that this rule allows (review only). [engine-write]
 6. `control/` is a client of `ui/` and `engine/`; it holds no socket. The socket is `platform/transport.c`; it
    calls `control/`, never the reverse. [platform]
 7. A module is one public header `<module>.h`, the files `<module>.c` and `<module>_<part>.c`, and an optional
@@ -354,7 +357,7 @@ their allowlist key:
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
 | `platform` | an operating system header or `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr` or `exit(` outside `platform/` and `data/os.c` |
-| `engine-write` | a write of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
+| `engine-write` | a write (`=`, `++`, `--`, `memcpy`, `memmove`, `memset`, a pointer without `const`) of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
 | `module` | a `.c` file without its header, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
 | `header` | a header head out of order, a guard that is not `DM2_<LAYER>_<FILE>_H` |

@@ -79,6 +79,11 @@ engine-write ui/action_area.c:show_hand_icons rule 1.5: g_action.hand_items
 engine-write ui/action_area.c:show_hand_panel rule 1.5: g_action.mode, g_action.champion
 engine-write ui/action_area.c:show_open_panel rule 1.5: g_action.redraw_delay, g_action.flags, g_action.mode
 engine-write ui/action_area.c:show_party_hands rule 1.5: g_action.mode, g_action.flash
+engine-write ui/minion_map.c:grid_square_flags rule 1.5: g_minion_map.marker_state
+engine-write ui/minion_map.c:mmap_draw_square_icon rule 1.5: g_minion_map.clip
+engine-write ui/minion_map.c:set_marker rule 1.5: g_minion_map.marker_x, .marker_y, .marker_map, .above_map, .above_x, .above_y, .below_map, .below_x, .below_y
+engine-write ui/minion_map.c:show_grid rule 1.5: g_minion_map.x, .y, .map, .dir, .x_offset, .y_offset, .marker_state, .clip
+engine-write ui/ui.c:ui_render_hand_icon rule 1.5: g_leader_hand.cursor, .palette
 hex control/control.c:key_names rule 3.12: the PC keyboard scan codes of the key names
 hex engine/ai_data.c:g_ai_action_flags rule 3.12: a table of SKULL.EXE
 hex engine/ai_data.c:g_ai_behaviors rule 3.12: a table of SKULL.EXE

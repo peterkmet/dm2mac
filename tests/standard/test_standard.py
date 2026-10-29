@@ -693,10 +693,12 @@ def engine_globals():
 
 
 def test_ui_does_not_write_engine_variables():
-    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function)."""
+    """ui/ and control/ write no engine global outside the allowed files and functions (target file or file:function):
+    no assignment, increment, memcpy, memmove or memset into it, and no pointer to it without const."""
     alt = "|".join(sorted(engine_globals(), key=len, reverse=True)) or "(?!)"
     target = rf"\b(?:{alt})\b(?:\s*\[[^\]]*\]|\s*(?:\.|->)\s*\w+)*"
     write = re.compile(rf"(?:\+\+|--)\s*{target}|{target}\s*(?:\+\+|--|(?:[-+*/|&^]|<<|>>)?=(?!=))")
+    copy_or_alias = re.compile(rf"\bmem(?:cpy|move|set)\s*\(\s*&?\s*{target}|^(?![^=]*\bconst\b)[^=]*\*\s*\w+\s*=\s*&\s*{target}")
     ok = allowed()
     found = []
     for path in sorted([*(SRC / "ui").glob("*.c"), *(SRC / "control").glob("*.c")]):
@@ -704,7 +706,8 @@ def test_ui_does_not_write_engine_variables():
             continue
         owner = {n: name for name, first, last, _ in definitions(path) for n in range(first, last + 1)}
         for n, line in code_lines(path):
-            if all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line)):  # no write, or only redraw flags
+            if (all(REDRAW_FLAG_WRITE.search(m.group()) for m in write.finditer(line))  # no write, or only redraw flags
+                    and not copy_or_alias.search(line)):
                 continue
             key = f"{rel(path)}:{owner[n]}" if n in owner else rel(path)
             if ("engine-write", key) not in ok:
