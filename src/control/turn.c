@@ -149,8 +149,9 @@ void turn_drop_reply(void)
 
 static void add_input(InputKind kind, uint16_t value, int16_t x, int16_t y)
 {
-    if (turn.input_count < TURN_INPUT_MAX)
-        turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
+    if (turn.input_count >= TURN_INPUT_MAX)
+        os_fatal("an action lists more than %d inputs", TURN_INPUT_MAX); /* fix: no silent drop of an input */
+    turn.inputs[turn.input_count++] = (TurnInput){kind, value, x, y};
 }
 
 static void add_key(uint16_t code)
