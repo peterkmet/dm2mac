@@ -82,6 +82,9 @@ SkyObject *weather_sky_objects(void);
 bool weather_sky_has_rain(void);
 /* The sky set of the party map has cloud pictures. */
 bool weather_sky_has_clouds(void);
+/* True when the sky state of the map graphics (value key MAP_KEY_SKY_STATE) shows the weather: rain, clouds,
+   lightning. */
+bool weather_is_shown(uint16_t sky_state);
 
 /* Weather and day */
 /* Starts a new weather cycle (keep_state false) or keeps the loaded weather (true); sets the light of the hour.

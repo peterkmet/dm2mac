@@ -762,9 +762,6 @@ static const uint8_t sparkle_field[POS_FAR_ROW][4] = {
 #define SPARKLE_MASK_MIRRORED 0x80
 #define SPARKLE_MASK_ENTRY    0x7f
 
-/* Rain: the sky state of the map graphics (CAT_WALLSET, graphics set, 0x0b, 0x66) tells if rain shows. */
-#define SKY_STATE_COUNT 5
-static const uint8_t sky_state_rain[SKY_STATE_COUNT] = {0, 1, 0, 0, 1};
 /* The sky pictures of the rain. */
 #define RAIN_ALONG         0x71 /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
 #define RAIN_ACROSS        0x6d
@@ -996,8 +993,7 @@ void view_enter_map(int16_t map)
     view.wall_key = (int16_t)aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_WALL_COLOR);
     view.flip_flags = aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_FLIP_FLAGS);
     aspect_enter_map(map);
-    uint16_t sky_state = aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_SKY_STATE);
-    view.rain_shown = sky_state < sizeof sky_state_rain && sky_state_rain[sky_state]; /* fix: no read past the table */
+    view.rain_shown = weather_is_shown(aspect_value_key(CAT_WALLSET, view.gfx_set, MAP_KEY_SKY_STATE));
     /* floor and ceiling pictures that do not fill the viewport leave a band that is cleared */
     const Bitmap *floor = draw_gdat_image(CAT_WALLSET, view.gfx_set, GFX_MAP_FLOOR);
     const Bitmap *ceiling = draw_gdat_image(CAT_WALLSET, view.gfx_set, GFX_MAP_CEILING);

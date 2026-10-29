@@ -63,6 +63,7 @@
 
 /* Sizes of the sky, the storm curves, and the light tables. */
 #define SKY_LIGHTNING_KINDS 3 /* the number of lightning pictures from GFX_SKY_LIGHTNING */
+#define SKY_STATE_COUNT     5 /* the sky states (MAP_KEY_SKY_STATE) of the map graphics */
 #define SKY_OBJECT_MAX      5 /* sky objects of the weather, with the end mark */
 #define STORM_STEPS         32
 #define STORM_CURVE_COUNT   4 /* rand_2bits picks the curve of a storm cycle */
@@ -119,7 +120,7 @@ typedef struct {
 } SquareLight;
 
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
-static const bool sky_state_weather[] = {false, true, false, false, true};
+static const bool sky_state_weather[SKY_STATE_COUNT] = {false, true, false, false, true};
 /* The darkness of each hour of the day. */
 static const int8_t light_by_hour[HOURS_PER_DAY] = {5, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1,
                                                     1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 5};
@@ -175,6 +176,11 @@ bool weather_sky_has_rain(void)
 bool weather_sky_has_clouds(void)
 {
     return sky_has(GFX_SKY_CLOUDS_LIGHT);
+}
+
+bool weather_is_shown(uint16_t sky_state)
+{
+    return sky_state < SKY_STATE_COUNT && sky_state_weather[sky_state]; /* fix: no read past the table */
 }
 
 /* Weather and day */
@@ -403,9 +409,7 @@ static int sky_entry(int amount, int medium, int heavy, int first)
 
 void world_update_day_night(bool storm_step)
 {
-    uint16_t sky = map_value(MAP_KEY_SKY_STATE);
-    g_game.weather_visible = sky < sizeof sky_state_weather / sizeof *sky_state_weather &&
-                             sky_state_weather[sky]; /* fix: no read past the table */
+    g_game.weather_visible = weather_is_shown(map_value(MAP_KEY_SKY_STATE));
     if (storm_step) {
         step_storm();
         return;
