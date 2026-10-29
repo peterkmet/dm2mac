@@ -1236,6 +1236,8 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
     int16_t tx = sensor_target_x(sensor);
     int16_t ty = sensor_target_y(sensor);
     int kind = sensor_type(sensor);
+    if (kind == SENSOR_VANISH && power != VANISH_POWER)
+        return; /* only the power VANISH_POWER makes the groups vanish */
     int rx = abs((int16_t)(x - tx));
     int ry = abs((int16_t)(y - ty));
     int left = x - rx;
@@ -1250,15 +1252,10 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
             uint16_t g = creature_get_group_at((Location){sx, sy});
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != group_class)
                 continue;
-            if (kind == SENSOR_VANISH) {
-                if (power > 1) {
-                    if (power != VANISH_POWER)
-                        return;
-                    creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
-                }
-            } else if (kind == SENSOR_ALERT) {
+            if (kind == SENSOR_VANISH)
+                creature_set_next_action(g, (Location){sx, sy}, ACTION_VANISH, true);
+            else if (kind == SENSOR_ALERT)
                 creature_alert(g, (Location){sx, sy}, power | (effect ? ALERT_CLEAR : 0), ALERT_ALWAYS, 0);
-            }
         }
 }
 
@@ -1351,7 +1348,7 @@ static void fake_wall_event(TimelineEvent *e)
     uint8_t *square = current_square(x, y);
     int effect = e->data[EVENT_EFFECT];
     if (effect == EFFECT_TOGGLE)
-        effect = (*square & SQUARE_FAKE_WALL_OPEN) != 0;
+        effect = (*square & SQUARE_FAKE_WALL_OPEN) ? EFFECT_CLEAR : EFFECT_SET;
     if (effect == EFFECT_CLEAR) {
         bool blocked = dun_on_party_square((Location){x, y});
         uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
@@ -1531,8 +1528,8 @@ static void timer_event(TimelineEvent *e, uint16_t thing)
 {
     bool running;
     if (sensor_effect(thing) == EFFECT_HOLD) {
-        bool phase = !(e->data[SENSOR_EVENT_TIMER_PHASE] & 1);
-        e->data[SENSOR_EVENT_TIMER_PHASE] = (uint8_t)((e->data[SENSOR_EVENT_TIMER_PHASE] & ~1) | phase);
+        e->data[SENSOR_EVENT_TIMER_PHASE] ^= 1;
+        bool phase = e->data[SENSOR_EVENT_TIMER_PHASE] & 1;
         running = phase || sensor_flag(thing, SENSOR_STATE);
         sensor_trigger_target(thing, phase ? EFFECT_SET : EFFECT_CLEAR, 0);
     } else {

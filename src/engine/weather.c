@@ -119,7 +119,7 @@ typedef struct {
 } SquareLight;
 
 /* The sky kinds of the map graphics: the weather shows (rain, clouds, lightning) in kinds 1 and 4. */
-static const uint8_t sky_state_weather[] = {0, 1, 0, 0, 1};
+static const bool sky_state_weather[] = {false, true, false, false, true};
 /* The darkness of each hour of the day. */
 static const int8_t light_by_hour[HOURS_PER_DAY] = {5, 5, 4, 3, 2, 1, 1, 1, 1, 1, 1, 1,
                                                     1, 1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 5};
@@ -283,8 +283,10 @@ static bool update_rain(void)
     int chance = (int16_t)g_game.storm_intensity >= STORM_STRONG ? LIGHTNING_CHANCE_STRONG : LIGHTNING_CHANCE_WEAK;
     g_game.sky_darkness = (uint8_t)g_game.storm_intensity;
     /* rain starts by chance, then follows the storm */
-    g_game.rain_intensity =
-        g_game.rain_intensity ? (uint8_t)g_game.storm_intensity : rand_below(span) <= RAIN_CHANCE_MAX;
+    if (g_game.rain_intensity)
+        g_game.rain_intensity = (uint8_t)g_game.storm_intensity;
+    else
+        g_game.rain_intensity = rand_below(span) <= RAIN_CHANCE_MAX;
     int rain = g_game.rain_intensity;
     if (rain && g_game.cloud_cover < CLOUDS_MAX) {
         bool even = !(g_game.game_time & 1);
@@ -402,7 +404,8 @@ static int sky_entry(int amount, int medium, int heavy, int first)
 void world_update_day_night(bool storm_step)
 {
     uint16_t sky = map_value(MAP_KEY_SKY_STATE);
-    g_game.weather_visible = sky < sizeof sky_state_weather && sky_state_weather[sky]; /* fix: no read past the table */
+    g_game.weather_visible = sky < sizeof sky_state_weather / sizeof *sky_state_weather &&
+                             sky_state_weather[sky]; /* fix: no read past the table */
     if (storm_step) {
         step_storm();
         return;
