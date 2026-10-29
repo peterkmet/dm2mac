@@ -138,7 +138,7 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
     state = part(lib, STATE)
     assert state["outdoor"] is True
     assert {"clouds", "rain"} <= set(state["weather"]) <= {"clouds", "rain", "wind"}
-    assert ("wind" in state["weather"]) == lib.view_rain_shows()
+    assert ("wind" in state["weather"]) == lib.view_shows_rain()
     assert state["day_time"] in ("day", "dawn_dusk", "night")
 
 

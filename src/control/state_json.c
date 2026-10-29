@@ -752,7 +752,7 @@ static void outdoor_json(Json *j)
     const char *rain = amount_name(g_game.sky_darkness, DARKNESS_RAIN, DARKNESS_MEDIUM, DARKNESS_HEAVY);
     key_str(j, "clouds", weather_sky_has_clouds() ? clouds : amount_names[0]);
     key_str(j, "rain", weather_sky_has_rain() ? rain : amount_names[0]);
-    if (view_rain_shows())
+    if (view_shows_rain())
         key_str(j, "wind", direction_names[g_game.wind_dir & DIR_MASK]);
     json_close(j, '}');
     key_str(j, "day_time",

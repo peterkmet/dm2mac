@@ -1420,7 +1420,7 @@ static int rain_picture(int side)
     return (side == DIR_NORTH || side == DIR_SOUTH ? RAIN_ALONG : RAIN_ACROSS) + level;
 }
 
-bool view_rain_shows(void)
+bool view_shows_rain(void)
 {
     return g_game.rain_intensity && view.rain_shown;
 }
@@ -1428,7 +1428,7 @@ bool view_rain_shows(void)
 /* Draws the rain over the view: a random part of the rain picture, tiled. */
 static void show_rain(void)
 {
-    if (!view_rain_shows())
+    if (!view_shows_rain())
         return;
     int16_t rect[RECT_SIZE];
     int16_t w = VIEWPORT_WIDTH;
