@@ -453,6 +453,8 @@ static void link_door_flag(uint16_t sensor, int16_t map)
     if (square_type(dun_get_square((Location){tx, ty})) != SQUARE_DOOR)
         return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
+    if (door == THING_ENDOFLIST || thing_type(door) != THING_DOOR) /* fix: the original writes into another thing */
+        return;
     door_set_flag(door, DOOR_SWITCH_ON, sensor_flag(sensor, SENSOR_STATE));
 }
 
