@@ -18,9 +18,11 @@
 #include "draw.h"
 #include "game.h"
 #include "game_text.h"
+#include "gamefile.h"
 #include "gdat.h"
 #include "icon.h"
 #include "input.h"
+#include "install.h"
 #include "mode_screen.h"
 #include "movie.h"
 #include "music.h"
@@ -627,7 +629,6 @@ static bool open_game(const Options *options, int factor)
     if (!plat_init(WINDOW_SCALE, factor))
         return false;
     set_icon();
-    g_os_full_path_hook = full_path;
     if (options->control && !transport_open(options->control)) {
         os_log("cannot open the control socket %s", options->control);
         return false;
@@ -642,32 +643,71 @@ static bool open_game(const Options *options, int factor)
     return true;
 }
 
+/* Installs the game files below the working folder; false with a message on an error. */
+static bool first_start_install(void)
+{
+    char message[INSTALL_MESSAGE_SIZE];
+    InstallResult installed = install_game_files(".", gamefile_table(), message, sizeof message);
+    if (installed != INSTALL_NO_SOURCE && installed != INSTALL_WRITE_FAILED)
+        return true;
+    os_log("%s", message);
+    if (g_game_mode != GAME_MODE_TURNBASED)
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DM2Mac", message, NULL);
+    return false;
+}
+
+/* Plays the end movies and stops the sound. */
+static void end_game(void)
+{
+    g_main_loop.quit = 0; /* the end movies run until their end, a closed window, or a quit request */
+    sound_stop_all();
+    if (!g_main_loop.closed)
+        run_movies(movie_script_after(g_session.exit_code));
+}
+
+/* Selects the mode; the exit status (0 when the mode can run) with a message on an error. */
+static int select_runnable_mode(Options *options)
+{
+    if (!select_mode(options->mode))
+        return EXIT_USAGE;
+    if (!transport_is_available() && (g_game_mode == GAME_MODE_TURNBASED || options->control)) {
+        os_log("the turn-based mode and --control need macOS");
+        return EXIT_FAILURE;
+    }
+    if (g_game_mode == GAME_MODE_TURNBASED && !options->control && !default_control_path(&options->control))
+        return EXIT_USAGE;
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
-    Options options = {.data = "game", .filter = getenv(FILTER_ENV)};
+    Options options = {.filter = getenv(FILTER_ENV)};
     const char *unknown;
     const char *missing = read_options(argc, argv, &options, &unknown);
+    bool data_given = options.data != NULL;
     bool mode_given = options.mode != NULL;
     if (!mode_given)
         options.mode = g_game_mode_names[GAME_MODE_ADVANCED];
+    g_os_full_path_hook = full_path; /* the install message has the full path */
+    if (!data_given) {
+        options.data = INSTALL_GAME_FOLDER;
+        install_make_folder(INSTALL_GAME_FOLDER);
+    }
 #ifdef _WIN32
     open_log(options.data); /* before the first message: the Windows build has no console */
 #endif
     if (!options_are_valid(missing, unknown))
         return EXIT_USAGE;
-    if (!select_mode(options.mode))
-        return EXIT_USAGE;
-    if (!transport_is_available() && (g_game_mode == GAME_MODE_TURNBASED || options.control)) {
-        os_log("the turn-based mode and --control need macOS");
-        return EXIT_FAILURE;
-    }
-    if (g_game_mode == GAME_MODE_TURNBASED && !options.control && !default_control_path(&options.control))
-        return EXIT_USAGE;
+    int mode_status = select_runnable_mode(&options);
+    if (mode_status)
+        return mode_status;
     int factor = options.filter ? scale_filter_factor(options.filter) : SCALE_NONE_FACTOR;
     if (!factor) {
         os_log("unknown filter %s: use none, scale2x, or scale3x", options.filter);
         return EXIT_USAGE;
     }
+    if (!data_given && !first_start_install())
+        return EXIT_FAILURE;
     if (!open_game(&options, factor))
         return EXIT_FAILURE;
     g_optmenu_filter_hook = plat_set_filter;
@@ -689,10 +729,7 @@ int main(int argc, char **argv)
         run_turnbased(); /* the turn-based mode never calls session_end */
     else
         run_realtime();
-    g_main_loop.quit = 0; /* the end movies run until their end, a closed window, or a quit request */
-    sound_stop_all();
-    if (!g_main_loop.closed)
-        run_movies(movie_script_after(g_session.exit_code));
+    end_game();
     close_platform();
     if (g_session.exit_code == EXIT_RESTART)
         restart(argc, argv, mode_given);

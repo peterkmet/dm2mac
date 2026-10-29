@@ -20,13 +20,12 @@
 typedef enum { INSTALL_READY, INSTALL_DONE, INSTALL_NO_SOURCE, INSTALL_WRITE_FAILED } InstallResult;
 
 /* Setup */
-/* Creates the folder when it is missing; false when it cannot; exported for the tests. */
+/* Creates the folder when it is missing; false when it cannot. */
 bool install_make_folder(const char *path);
 
 /* Commands */
 /* Checks folder/game; when a file of files[GAMEFILE_COUNT] is missing or fails, installs it from the first source
-   below folder that passes for all files. INSTALL_NO_SOURCE and INSTALL_WRITE_FAILED write the message;
-   exported for the tests. */
+   below folder that passes for all files. INSTALL_NO_SOURCE and INSTALL_WRITE_FAILED write the message. */
 InstallResult install_game_files(const char *folder, const GameFile *files, char *message, size_t size);
 
 #endif /* DM2_PLATFORM_INSTALL_H */
