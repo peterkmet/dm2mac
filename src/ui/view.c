@@ -3010,6 +3010,8 @@ static void show_stairs_front(int pos)
 /* The scale (1/64) that makes scaled pixels at least size pixels, rounded. */
 static int inverse_scale(int16_t size, int16_t scaled)
 {
+    if (scaled <= 0)
+        return SCALE_FULL; /* fix: the original divides by the 0 width of a damaged picture */
     int scale = (size * 2 * SCALE_FULL + SCALE_FULL) / scaled >> 1;
     return gfx_scale_64(scaled, (int16_t)scale) < size ? scale + 1 : scale;
 }
