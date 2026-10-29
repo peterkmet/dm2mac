@@ -162,61 +162,61 @@ static const struct {
     uint16_t zone;
     uint8_t empty_icon;
 } slot_layout[SLOT_ENTRY_COUNT] = {
-    {0xd1,  0x38},
-    {0xd2,  0x34},
-    {0xd3,  0x38},
-    {0xd4,  0x34},
-    {0xd5,  0x38},
-    {0xd6,  0x34},
-    {0xd7,  0x38},
-    {0xd8,  0x34},
-    {0x1fb, 0x38},
-    {0x1fc, 0x34},
-    {0x1fd, 0x28},
-    {0x1fe, 0x30},
-    {0x1ff, 0x3c},
-    {0x200, 0x40},
-    {0x201, 0xff},
-    {0x202, 0xff},
-    {0x203, 0xff},
-    {0x204, 0xff},
-    {0x205, 0x2c},
-    {0x206, 0x44},
-    {0x207, 0x45},
-    {0x208, 0x46},
-    {0x209, 0xff},
-    {0x20a, 0xff},
-    {0x20b, 0xff},
-    {0x20c, 0xff},
-    {0x20d, 0xff},
-    {0x20e, 0xff},
-    {0x20f, 0xff},
-    {0x210, 0xff},
-    {0x211, 0xff},
-    {0x212, 0xff},
-    {0x213, 0xff},
-    {0x214, 0xff},
-    {0x215, 0xff},
-    {0x216, 0xff},
-    {0x217, 0xff},
-    {0x218, 0xff},
-    {0xe5,  0xff},
-    {0xe6,  0xff},
-    {0xe7,  0xff},
-    {0xe8,  0xff},
-    {0xe9,  0xff},
-    {0xea,  0xff},
-    {0xeb,  0xff},
-    {0xec,  0xff},
-    {0x1f9, 0xff},
-    {0x219, 0xff},
-    {0x21a, 0xff},
-    {0x21b, 0xff},
-    {0x21c, 0xff},
-    {0x21d, 0xff},
-    {0x21e, 0xff},
-    {0x21f, 0xff},
-    {0x220, 0xff}
+    {0xd1,  0x38   },
+    {0xd2,  0x34   },
+    {0xd3,  0x38   },
+    {0xd4,  0x34   },
+    {0xd5,  0x38   },
+    {0xd6,  0x34   },
+    {0xd7,  0x38   },
+    {0xd8,  0x34   },
+    {0x1fb, 0x38   },
+    {0x1fc, 0x34   },
+    {0x1fd, 0x28   },
+    {0x1fe, 0x30   },
+    {0x1ff, 0x3c   },
+    {0x200, 0x40   },
+    {0x201, NO_ICON},
+    {0x202, NO_ICON},
+    {0x203, NO_ICON},
+    {0x204, NO_ICON},
+    {0x205, 0x2c   },
+    {0x206, 0x44   },
+    {0x207, 0x45   },
+    {0x208, 0x46   },
+    {0x209, NO_ICON},
+    {0x20a, NO_ICON},
+    {0x20b, NO_ICON},
+    {0x20c, NO_ICON},
+    {0x20d, NO_ICON},
+    {0x20e, NO_ICON},
+    {0x20f, NO_ICON},
+    {0x210, NO_ICON},
+    {0x211, NO_ICON},
+    {0x212, NO_ICON},
+    {0x213, NO_ICON},
+    {0x214, NO_ICON},
+    {0x215, NO_ICON},
+    {0x216, NO_ICON},
+    {0x217, NO_ICON},
+    {0x218, NO_ICON},
+    {0xe5,  NO_ICON},
+    {0xe6,  NO_ICON},
+    {0xe7,  NO_ICON},
+    {0xe8,  NO_ICON},
+    {0xe9,  NO_ICON},
+    {0xea,  NO_ICON},
+    {0xeb,  NO_ICON},
+    {0xec,  NO_ICON},
+    {0x1f9, NO_ICON},
+    {0x219, NO_ICON},
+    {0x21a, NO_ICON},
+    {0x21b, NO_ICON},
+    {0x21c, NO_ICON},
+    {0x21d, NO_ICON},
+    {0x21e, NO_ICON},
+    {0x21f, NO_ICON},
+    {0x220, NO_ICON}
 };
 /* The UI color of the status bars of each champion. */
 static const uint8_t champion_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RED, UI_BLUE};
@@ -501,13 +501,13 @@ static void fill_rect_dithered(uint8_t *dst, const int16_t *rect, int ui_color, 
 {
     if (!rect || !rect[RECT_W] || !rect[RECT_H])
         return;
-    uint16_t start = (uint16_t)(rect[RECT_Y] * dst_width + rect[RECT_X]);
+    int start = rect[RECT_Y] * dst_width + rect[RECT_X];
     int phase = ((start / dst_width) ^ start) & 1;
     uint8_t color = g_ui_colors[ui_color & DITHER_COLOR_MASK];
-    for (int row = 0; row < (uint16_t)rect[RECT_H]; row++, phase ^= 1) {
-        uint16_t at = (uint16_t)(start + row * dst_width);
-        for (int col = phase; col < (uint16_t)rect[RECT_W]; col += 2)
-            dst[(uint16_t)(at + col)] = color;
+    for (int row = 0; row < rect[RECT_H]; row++, phase ^= 1) {
+        uint8_t *line = dst + start + row * dst_width;
+        for (int col = phase; col < rect[RECT_W]; col += 2)
+            line[col] = color;
     }
 }
 
@@ -1212,7 +1212,7 @@ static void show_skills_and_stats(void)
     int16_t x = skills_at.x;
     int16_t y = skills_at.y;
     for (int skill = 0; skill < SKILL_BASE_COUNT; skill++) {
-        if (champ_get_skill_level(champ, skill, true) == 1)
+        if (champ_get_skill_level(champ, skill, true) == SKILL_LEVEL_UNTRAINED)
             continue;
         ui_skill_rank_text(champ, skill, text);
         text_draw_in_viewport(x, y, g_ui_colors[g_champ_skill_raised[champ][skill] ? UI_GREEN : UI_LIGHT_GRAY], text);

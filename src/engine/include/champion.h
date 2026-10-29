@@ -50,6 +50,10 @@
 #define SKILL_COUNT      20
 #define SKILL_BASE_COUNT 4 /* skills 4 to 19 are sub-skills: 4 per base skill */
 #define SUB_SKILL_COUNT  4 /* the sub-skills of each base skill */
+
+/* The skill level of a champion without experience in the skill. */
+#define SKILL_LEVEL_UNTRAINED 1
+
 /* The base skill of a skill: the skill itself, or the base skill of a sub-skill. */
 static inline int champ_base_skill(int skill)
 {

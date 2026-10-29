@@ -121,7 +121,7 @@ int champ_get_stat(const Champion *c, int stat, int which)
 int champ_get_skill_level(int champ, int skill, bool with_bonus)
 {
     if (g_party_sleeping)
-        return 1;
+        return SKILL_LEVEL_UNTRAINED;
     const Champion *c = champion(champ);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {
@@ -129,12 +129,12 @@ int champ_get_skill_level(int champ, int skill, bool with_bonus)
         int factor = with_bonus ? c->skill_bonus[base] + 1 : 1;
         experience = (experience + (uint32_t)(factor * (int32_t)c->experience[base])) >> 1;
     }
-    int level = 1;
+    int level = SKILL_LEVEL_UNTRAINED;
     for (; experience >= SKILL_LEVEL_EXPERIENCE; experience >>= 1)
         level++;
     if (with_bonus) {
         int16_t v = (int16_t)(level + c->skill_bonus[skill]);
-        level = v > 1 ? v : 1;
+        level = v > SKILL_LEVEL_UNTRAINED ? v : SKILL_LEVEL_UNTRAINED;
     }
     return level;
 }
