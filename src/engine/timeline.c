@@ -131,6 +131,8 @@ void timeline_free(void)
     g_timeline.capacity = 0;
     g_timeline.count = 0;
     g_timeline.used_end = 0;
+    g_timeline.first_free = END_OF_FREE_LIST; /* fix: a freed timeline keeps no stale free list or queue slot */
+    g_timeline.fix_slot = TIMELINE_NO_SLOT;
 }
 
 /* Queries */
