@@ -63,7 +63,7 @@
 #define DOOR_STATE_BROKEN        5
 #define square_flag(s, bit)      (((s) & (bit)) != 0)
 /* Bits 0-3 of a wall: the faces that show a random ornament, by the direction the face looks to. */
-#define WALL_FACE(dir)           (1 << (DIR_WEST - (dir)))
+#define square_wall_face(dir)    (1 << (DIR_WEST - (dir)))
 
 /* Directions, clockwise from north, and the cells of a square, numbered like the directions. */
 #define DIR_NORTH               0

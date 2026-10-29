@@ -90,7 +90,7 @@ static void set_random_wall_ornaments(ViewSquare *s, int16_t map, int16_t dir, i
 {
     int count = dungeon_map_random_wall_count(map);
     for (int k = 0; k < VIEW_SIDE_COUNT; k++) {
-        bool allowed = (s->square & WALL_FACE(dir_turn(dir, k))) != 0;
+        bool allowed = (s->square & square_wall_face(dir_turn(dir, k))) != 0;
         s->side[k] = random_ornament(map, allowed, count, x, (((dir + k) & DIR_MASK) + 1) * (y + 1));
     }
     /* an edge wall away from the map keeps no ornament that has a kind */

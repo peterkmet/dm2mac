@@ -736,16 +736,16 @@ uint8_t dungeon_square_edge(int16_t map, int16_t x, int16_t y)
         return dungeon_square(map, x, y);
     if (in_y) {
         if (x == -1)
-            return edge_wall(map, 0, y, false, WALL_FACE(DIR_EAST));
+            return edge_wall(map, 0, y, false, square_wall_face(DIR_EAST));
         if (x == w)
-            return edge_wall(map, w - 1, y, false, WALL_FACE(DIR_WEST));
+            return edge_wall(map, w - 1, y, false, square_wall_face(DIR_WEST));
         return SQUARE_OUTSIDE;
     }
     if (in_x) {
         if (y == -1)
-            return edge_wall(map, x, 0, true, WALL_FACE(DIR_SOUTH));
+            return edge_wall(map, x, 0, true, square_wall_face(DIR_SOUTH));
         if (y == h)
-            return edge_wall(map, x, h - 1, true, WALL_FACE(DIR_NORTH));
+            return edge_wall(map, x, h - 1, true, square_wall_face(DIR_NORTH));
         return SQUARE_OUTSIDE;
     }
     int ex;
