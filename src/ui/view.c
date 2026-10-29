@@ -2482,20 +2482,20 @@ static void show_shop_display(uint16_t shop, uint8_t ornament, int pos, const Pi
 }
 
 /* Blits the lines of a wall text with the map font glyph, each line centered in width, from the row of r. */
-static void blit_wall_text(Blit *glyph, const char *text, int16_t *r, int width)
+static void blit_wall_text(Blit *glyph, const char *text, int16_t *r, int width, int height)
 {
     for (const char *p = text;;) {
         int n = 0;
         while (p[n] && p[n] != '\n')
             n++;
-        if (n) {
+        if (n && r[RECT_Y] >= 0 && r[RECT_Y] + r[RECT_H] <= height) { /* fix: skip a line outside the plate */
             r[RECT_X] = (int16_t)((width >> 1) - ((int16_t)(GLYPH_SIZE * n) >> 1));
             for (int i = 0; i < n && r[RECT_X] >= 0; i++, r[RECT_X] += GLYPH_SIZE) {
                 glyph->src_x = wall_text_glyph((uint8_t)p[i]) * GLYPH_SIZE;
                 gfx_blit(glyph, r);
             }
-            p += n;
         }
+        p += n;
         r[RECT_Y] = (int16_t)(r[RECT_Y] + GLYPH_SIZE + WALL_TEXT_LINE_GAP);
         if (!*p++)
             break;
@@ -2533,7 +2533,7 @@ static void show_wall_text(int pos, int entry, const PicturePlace *place)
                   .transparent = place->key,
                   .mirror = MIRROR_NONE,
                   .colormap = font_palette};
-    blit_wall_text(&glyph, text, r, plate_image->width);
+    blit_wall_text(&glyph, text, r, plate_image->width, plate_image->height);
     DrawCtx c;
     draw_ctx_init(&c, CAT_NONE, 0, 0);
     c.item = -1;

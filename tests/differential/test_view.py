@@ -924,3 +924,85 @@ def test_an_ornament_frames_value_of_0x8000_shows_frame_1(lib, gdat, loaded, tmp
     finally:
         lib.gdat_select(gdat)
         lib.gdat_free(damaged)
+
+
+TEXT_NEWLINE, TEXT_END = 0x1C, 0x1F  # the codes of game_text.c: A to Z are 0 to 25
+
+
+def encode_text(text):
+    """The packed words of a dungeon text: 3 codes of 5 bits per word, then the end code."""
+    codes = [TEXT_NEWLINE if c == "\n" else ord(c) - ord("A") for c in text] + [TEXT_END]
+    codes += [TEXT_END] * (-len(codes) % 3)
+    return [codes[i] << 10 | codes[i + 1] << 5 | codes[i + 2] for i in range(0, len(codes), 3)]
+
+
+def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
+    # regression: a wall text with more lines than its plate holds (a damaged DUNGEON.DAT) wrote its first line above
+    # the plate bitmap; the port skips that line
+    lib.dungeon_square_first_thing.restype = lib.dungeon_next_thing.restype = lib.thing_word.restype = ctypes.c_uint16
+    lib.dungeon_square_first_thing.argtypes = [ctypes.c_int16] * 3
+    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
+    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
+    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.dungeon_text_data.restype = ctypes.POINTER(ctypes.c_uint16)
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    assert lib.zone_load(gdat) == 1
+    assert lib.pal_load_color_ramps(gdat) == 1
+    game = WeatherGame.in_dll(lib, "g_game")
+    saved_party = (game.party_x, game.party_y, game.party_dir, game.party_map)
+
+    def things(m, x, y):
+        t = lib.dungeon_square_first_thing(m, x, y)
+        while t != C.THING_ENDOFLIST:
+            yield t
+            t = lib.dungeon_next_thing(t)
+
+    def is_plate(t):
+        data = lib.thing_word(t, C.TEXT_DATA)
+        kind = data >> C.TEXT_KIND_SHIFT & C.TEXT_KIND_MASK
+        return t >> C.THING_TYPE_SHIFT == C.THING_TEXT and (
+            kind == C.TEXT_KIND_TEXT or kind == C.TEXT_KIND_ORNAMENT
+            and data >> C.TEXT_SUBTYPE_SHIFT & C.TEXT_SUBTYPE_MASK == C.SUBTYPE_PLATE)
+
+    plates = [(m, x, y, t) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
+              for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
+              for t in things(m, x, y) if is_plate(t)]
+    lines, line_height = 6, 10  # the glyph size 8 and the line gap 2 of view.c
+    texts = {"over": "X\nB\nC\nD\nE\nF", "blank": "\nB\nC\nD\nE\nF", "other": "\nB\nC\nD\nE\nG"}
+    for map_, x, y, plate in plates:
+        sets = lib.dungeon_map_wallset(map_)
+        _, info = image_info(lib, gdat, lib.gdat_find(gdat, C.CAT_WALLSET, sets, C.GDAT_TYPE_IMAGE, C.GFX_MAP_PLATE_FRONT))
+        top = (info.height >> 1) - (lines * line_height >> 1)
+        if -8 < top < 0 and top + (lines - 1) * line_height + 8 <= info.height:
+            break  # the first line starts above the plate, the last line ends inside it
+    else:
+        raise AssertionError("no plate of a height for the test")
+    data = lib.thing_word(plate, C.TEXT_DATA)
+    text_at = 0  # the words of the first dungeon text take the test texts
+    words = lib.dungeon_text_data()
+    saved = [words[text_at + i] for i in range(5)]
+    lib.thing_set_word(plate, C.TEXT_DATA, C.TEXT_VISIBLE | text_at << C.TEXT_VALUE_SHIFT)
+    try:
+        views = None
+        for d in range(C.DIR_COUNT):  # the party faces the plate from an open square beside it
+            px, py = x - (d == 1) + (d == 3), y + (d == 0) - (d == 2)
+            if not (0 <= px < lib.dungeon_map_width(map_) and 0 <= py < lib.dungeon_map_height(map_)) or \
+                    lib.dungeon_square(map_, px, py) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL:
+                continue
+            drawn = {}
+            for name, text in texts.items():
+                packed = encode_text(text)
+                for i, word in enumerate(packed):
+                    words[text_at + i] = word
+                drawn[name] = c_view(lib, map_, px, py, d, 0)
+            if drawn["blank"] != drawn["other"]:
+                views = drawn
+                break
+        assert views, "no view shows the plate text"
+        assert views["over"] == views["blank"]
+    finally:
+        for i, word in enumerate(saved):
+            words[text_at + i] = word
+        lib.thing_set_word(plate, C.TEXT_DATA, data)
+        game.party_x, game.party_y, game.party_dir, game.party_map = saved_party
+        lib.view_enter_map(game.party_map)
