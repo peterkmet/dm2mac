@@ -414,7 +414,7 @@ def test_function_names_are_short():
                 continue
             seen.add((rel(path), f.name))
             prefix = "" if f.static and path.suffix == ".c" else next((p for p in prefixes if f.name.startswith(p)), "")
-            words = f.name[len(prefix):].split("_")
+            words = f.name[len(prefix):].strip("_").split("_")
             if len(f.name) > MAX_NAME_CHARS or len(words) > MAX_NAME_WORDS:
                 found.append(f"name {key}  | {len(f.name)} characters, {len(words)} words after {prefix or 'no prefix'}")
     report("name", found)
