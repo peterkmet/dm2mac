@@ -221,6 +221,10 @@ _Static_assert(sizeof(ActiveGroup) == ACTIVE_GROUP_SIZE, "active groups have 34 
 /* The marker of a free active group. */
 #define ACTIVE_FREE 0xffff
 
+/* The phases of ACTION_FALL while the creature is in the air: after its first step, after its second step. */
+#define FALL_PHASE_FIRST_STEP  1
+#define FALL_PHASE_SECOND_STEP 2
+
 /* Markers of a group without an active group and of an active group without an action. */
 #define GROUP_NOT_ACTIVE   0xff
 #define ACTIVE_ACTION_NONE 0xff /* an active group without a chosen action */

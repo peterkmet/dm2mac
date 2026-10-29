@@ -61,6 +61,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables (`g_ai_possession_cells` in `src/engine/ai_data.c`: kinds 1 to 4 are the group cell masks, and kind 0 gives no cells without a read)
   - `creature_find_group_near_point` reads 4 offset pairs from an offset of 2 pairs per cell, so a cell reads into the row of the next cell; the port table keeps these pairs
   - the AI commands past `g_ai_command_enabled` read their enabled byte from the data after it: the commands `0x14` to `0x1f` from the distance map and light globals, the commands `0x20` to `0x5b` from the hit offset and hit radius tables of `creature_find_group_near_point` (`g_ai_command_enabled_overrun` in `src/engine/ai_data.c`); the port gives 0 for the commands after them
+  - `get_item_counts` (`src/engine/ai.c`) does not flush the last wanted and extra run after its loop, so a reused count slot keeps the old counts of that run
   - an AI command test that sets no result keeps the result of the command before (`AiCommand` in `src/engine/ai_internal.h`)
   - the activation target of a search (`setup_target_kind`) compares the activation position with the party position in another order: its x with the party map, its y with the party x, its map with the party y
   - `ai_square_blocks_line` passes its square to `creature_find_group_near_point`: a group that the search finds next to the square moves the square that the next things of the list test

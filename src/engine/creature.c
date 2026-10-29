@@ -78,10 +78,6 @@
 #define SEQUENCE_FIRST_STEP 2
 #define SEQUENCE_END        (-1)
 
-/* The phases of ACTION_FALL while the creature is in the air: after its first step, after its second step. */
-#define FALL_PHASE_FIRST_STEP  1
-#define FALL_PHASE_SECOND_STEP 2
-
 /* Active groups and the size of a group. */
 #define ACTIVE_GROUP_SPARE   100 /* active groups beyond the acting groups of the dungeon */
 #define ACTION_TIME_LONG_AGO 127 /* a new active group acted this many game steps ago */
