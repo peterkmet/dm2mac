@@ -83,7 +83,7 @@ The tests of the control socket and the turn-based mode:
 uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
 ```
 
-`tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module loads its own copy of the library and owns its state, so the tests run in any order and in parallel.
+`tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; the library copy of each module is in [architecture.md](architecture.md#the-test-library).
 
 | Command | Result |
 |---|---|
