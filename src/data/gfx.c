@@ -164,7 +164,7 @@ void gfx_blit_scaled_8bpp(const Bitmap *source, Bitmap *target)
 }
 
 /* Draws count tile pixels from the cursor into an 8 bpp row and advances the cursor, wrapping at the tile end. */
-static void tile_run(const TileFill *fill, uint8_t *dst, int at, int count, TileCursor *cursor)
+static void paint_tile_run(const TileFill *fill, uint8_t *dst, int at, int count, TileCursor *cursor)
 {
     while (count > 0) {
         int n = cursor->left <= count ? cursor->left : count;
@@ -214,7 +214,7 @@ void gfx_blit_tiled_4to8_masked(const TileFill *fill, uint8_t *dst, int dst_widt
             for (int last = mask_row + w - 1; count > 0 && !mask_pixel(fill->mask, last); last--)
                 count--;
         }
-        tile_run(fill, dst, row_start + skip, count, &cursor);
+        paint_tile_run(fill, dst, row_start + skip, count, &cursor);
         if (w & 1) { /* the tile row continues like a 4 bpp row of even length */
             if (--cursor.left == 0) {
                 cursor.left = fill->tile_width;

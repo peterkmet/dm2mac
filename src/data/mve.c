@@ -82,7 +82,7 @@ enum MveResult mve_open(MveStream *m, const uint8_t *file, size_t size)
 /* Playback */
 
 /* Enters the next chunk; false when the stream ends inside its header or its data. */
-static bool next_chunk(MveStream *m)
+static bool enter_next_chunk(MveStream *m)
 {
     if (m->size - m->pos < CHUNK_HEADER_SIZE)
         return false;
@@ -123,7 +123,7 @@ static enum MveResult init_video(MveStream *m, const uint8_t *body, int size)
 }
 
 /* An audio frame or a silent frame: MVE_AUDIO for track 0, else nothing. */
-static enum MveResult audio_frame(MveStream *m, int type, const uint8_t *body, int size)
+static enum MveResult read_audio_frame(MveStream *m, int type, const uint8_t *body, int size)
 {
     if (size < AUDIO_FRAME_HEADER_SIZE)
         return MVE_ERROR;
@@ -175,7 +175,7 @@ static enum MveResult run_opcode(MveStream *m, int type, int version, const uint
         return MVE_SHOW;
     case OP_AUDIO_FRAME:
     case OP_AUDIO_SILENCE:
-        return audio_frame(m, type, body, size);
+        return read_audio_frame(m, type, body, size);
     case OP_VIDEO_MODE:
         if (size < MODE_SIZE)
             return MVE_ERROR;
@@ -198,7 +198,7 @@ static enum MveResult run_opcode(MveStream *m, int type, int version, const uint
 enum MveResult mve_step(MveStream *m)
 {
     for (;;) {
-        if (m->pos == m->chunk_end && !next_chunk(m))
+        if (m->pos == m->chunk_end && !enter_next_chunk(m))
             return MVE_ERROR;
         if (m->chunk_end - m->pos < OPCODE_HEADER_SIZE)
             return MVE_ERROR;
