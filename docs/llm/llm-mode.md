@@ -10,15 +10,11 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](..
 
 ## Start the game
 
+Build the port with `make`, then start the game in one of the modes.
+
 ### Real-time modes
 
-1. Build the port.
-
-   ```sh
-   make
-   ```
-
-2. Start the game with the socket. The dummy drivers run it without a window and without sound.
+1. Start the game with the socket. The dummy drivers run it without a window and without sound.
 
    ```sh
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
@@ -28,30 +24,24 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](..
    - The other options of a normal start (`--save`, `--data`, `--mode`, `--filter`) and the start movies are in [manual.md](../manual.md#options).
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
-3. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
+2. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
 
 ### Turn-based mode
 
-1. Build the port.
-
-   ```sh
-   make
-   ```
-
-2. Start the game in the turn-based mode. A run plays without sound.
+1. Start the game in the turn-based mode. `SDL_AUDIO_DRIVER=dummy` turns the sound off.
 
    ```sh
    SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves playthroughs/current/game
    ```
 
-   - `--saves DIR`: the folder of the save file `QUICK.DAT`. The game does not make the folder; `save` fails when it is missing. Without it, the file is `game/DATA/QUICK.DAT` (the `--data` folder).
+   - `--saves DIR`: the folder of the save file `QUICK.DAT` ([manual.md](../manual.md#options)). `save` fails when the folder is missing.
    - `--control PATH`: the socket file. Without it, the turn-based mode uses `~/.dm2/control.sock`.
    - `--save FILE`: optional. The game loads this save slot file on startup, as in the other modes.
    - Without `--save`, the game starts a new game immediately: no start menu and no movie. The new game has one champion (Torham). The player recruits the other champions at the mirrors.
    - The keyboard and the mouse do not control the game. A closed window quits. The request `quit` quits and the exit code is 0.
    - The `turnbased` and `advanced` modes use the same `QUICK.DAT` format. The advanced mode loads a file of the turn-based mode with F9 when it runs with the same `--saves DIR`.
 
-3. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
+2. Send requests with [dm2-play](#play-from-the-shell-dm2-play).
 
 ## Play from the shell: dm2-play
 
@@ -69,7 +59,9 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
 - The exit code is 1 when the reply has `"ok": false`, and when the game is not reachable.
 - A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in a different directory.
-- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
+- Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`.
+  - The default folder is `playthroughs/current/coordinator`, relative to the repository root: run `dm2-play` there.
+  - `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off.
 
 Python code can use `dm2tools.control_client.request(payload, path=None, timeout=150.0)`.
 
@@ -106,8 +98,8 @@ uv run dm2-play new_game
 - One client at a time. A second client gets `{"ok":false,"error":"busy"}` and the game closes its connection, unless the first client has already closed its connection and has no unread byte. A client that connects again right after a reply does not get `busy`.
 - While a turn or a wait runs, the game reads no next request.
 - A request line can have up to 4095 bytes before its newline. A longer line gets one `request line too long` error. A line with a NUL byte gets a `request line has a NUL byte` error. Replies have no size limit.
-- String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is. In the items of `act_many`, a string value cannot contain a `"` character.
-- The parser is flat: it finds `"field": value` anywhere in the line, also the keys in `args` of the turn-based mode. Nest only `args` and the items of `actions`.
+- String values can use the JSON escapes, even `\uXXXX`. The game decodes them to UTF-8. Replies send UTF-8 as it is.
+- The parser is flat: it finds `"field": value` anywhere in the line, even the keys in `args` of the turn-based mode. Nest only `args` and the items of `actions`.
 - Positions are game screen pixels: `x` 0 to 319, `y` 0 to 199.
 
 ## Commands
@@ -279,23 +271,23 @@ Ends the program the same way as a closed window, with exit code 0. The game rem
 - An unknown `cmd` gives `unknown cmd`. A request without `cmd` gives `missing cmd`.
 - `act`, `act_many`, `wait`, and `save` give `game over` after a game over. The other commands still work.
 - `save` gives `answer the candidate first (act recruit)` while a champion candidate shows, and `cannot write the save file` when the write fails. `save` is allowed with no champion.
-- `load` gives `no saved game (use save first)` when `QUICK.DAT` does not exist, `the saved game is damaged` when it does not load, and `cannot write QUICK.TMP: nothing loaded` when the game cannot keep a copy of the running game. The game goes on unchanged, except after `the saved game is damaged`: the game is then restored from `QUICK.TMP`, one game step later (see [Deviations from the original](#deviations-from-the-original)). When the copy also does not load, the game is lost (see below).
+- `load` gives `no saved game (use save first)` when `QUICK.DAT` does not exist, `the saved game is damaged` when it does not load, and `cannot write QUICK.TMP: nothing loaded` when the game cannot keep a copy of the running game. The game goes on unchanged, except after `the saved game is damaged`: the game is then restored from `QUICK.TMP`, one game step later (see [Deviations from the original](#deviations-from-the-original)). When the copy also does not load, the game is lost.
 - `load` and `new_game` also work after a game over. Each ends the old game without a question. After `load`, the game time is the time of the save plus 1 (see [Deviations from the original](#deviations-from-the-original)).
 - `new_game` gives `cannot start the new game` when `DUNGEON.DAT` does not load. The game is lost then.
 - A lost game (a failed restore or a failed new game): every command except `load`, `new_game`, and `quit` gives `no game is running: use load or new_game`.
-- `save`, `load`, and `new_game` give `close the dialog first (act click or act key)` while a modal loop of the game runs (a menu, a picture, a dialog, or the name editor). Close it with `act click` or `act key`.
+- `save`, `load`, and `new_game` give `close the dialog first (act click or act key)` while a modal loop of the game runs (a menu, a picture, a dialog, or the name editor).
 
 ### Turns
 
 An `act` turn does these steps:
 
 1. It gives the inputs of the action to the input queue, one after the other (at most 4). This is the path of a player: a key, a click on a command zone, or a click at a screen point. The next input goes when the input pipeline is idle.
-2. It runs the game one game step per frame (`g_game.game_time` grows by 1). One tick of the turn protocol is one game step.
+2. It runs the game one game step per frame. One tick of the turn protocol is one game step.
 3. It ends when at least 2 steps ran, all inputs are given, the input is idle, and the party can move again (no move cooldown, no walk in progress, no wait of the input). It also ends after 64 steps, and immediately when the game is over.
 
 While the game does not tick (a dialog shows), a turn ends after 16 frames per step of its maximum: 64 steps for `act`, the `ticks` of `wait`.
 
-A `wait` turn runs `ticks` game steps (`TURN_WAIT_MAX_TICKS` is 5000). It ends early when news arrives. The real-time [wait](#wait) keeps its own limit of 6000 timer ticks.
+A `wait` turn runs `ticks` game steps (at most 5000). It ends early on news: the `stopped` values below. The real-time [wait](#wait) keeps its own limit of 6000 timer ticks.
 
 `stopped` in the reply of `wait`:
 
@@ -320,7 +312,7 @@ The reply of `act` has `stopped` only when the dungeon displaced the party:
 
 ### Batches
 
-`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Only spaces and commas separate the items. A string holds no `"` character.
+`act_many` takes `actions`, a list. An item is an action name (`"turn_left"`) or an object (`{"action":"take_object","args":{"cell":2}}`). Only spaces and commas separate the items. A string value cannot contain a `"` character.
 
 The batch runs the items in order, one turn each. After each turn it stops when one of these is true. The checks run in this order:
 
@@ -422,7 +414,7 @@ A cell is a number from 0 to 3 in `take_object` and from 0 to 4 in `drop_object`
 | `click` | `x` 0-319, `y` 0-199, optional `button` (`left` or `right`) | A raw click at a screen point. | `x must be 0-319 and y 0-199`, `button must be left or right` |
 | `key` | `key` (a name of [key](#key) or a code) | A raw key. | `unknown key` |
 
-`click` and `key` also run during a candidate, a sleep, and a dialog.
+`click` and `key` also run while a dialog shows.
 
 ## Movies
 
@@ -458,7 +450,6 @@ The errors of the real-time commands:
 ## Known limits
 
 - The socket path must be shorter than about 100 bytes.
-- The game takes one client at a time ([Protocol](#protocol)).
 - The game sends a reply with a blocking write. A client that sends requests but never reads the replies can stop the game. The socket is a local test tool.
 - The Windows build (`make windows`, `build/dm2.exe`) has no control socket: `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS` and exit code 1.
 
@@ -512,4 +503,4 @@ Each line lists the names of one table of the protocol, in table order.
 - The map JSON (`state_json_map`) marks a floor square with `_` when the minion map draws its floor ornament without the details option (`mmap_shows_floor_ornament`). It shows no floor sensor without an ornament and no wall feature.
 - A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. Dungeon Master (DM) has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.
 - The seen record of a turn (`seen.creature_changes`) gives `before` 1 and `after` 0 for a creature group that the party saw and that the game killed: a DM2 group record holds one creature, and a group that left the view and whose record is free (its link is `THING_NONE`, as `creature_delete_group_at` leaves it) counts as killed.
-- The turn-based `load` starts the loaded game with `play_start_session`, which runs one game step: the game time after a `load` is the time of the save plus 1. A damaged `QUICK.DAT` restores the running game from `QUICK.TMP` the same way, so the failed `load` also adds one game step. It is the one failed request that changes the game; every other failed request changes nothing.
+- The turn-based `load` starts the loaded game with `play_start_session`, which runs one game step: the game time after a `load` is the time of the save plus 1. A damaged `QUICK.DAT` restores the running game from `QUICK.TMP` the same way, so the failed `load` also adds one game step.
