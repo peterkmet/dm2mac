@@ -29,6 +29,7 @@ build/dm2 --filter scale2x
 
 - An unknown argument that starts with `--` prints the usage line and ends the program.
 - The environment variable `DM2_FILTER` sets the filter as `--filter` does. `--filter` has priority.
+- You can resize the window to any size; the pixels stay even. On macOS the picture follows a resize immediately.
 - `--save` without `--mode` plays the advanced mode.
 - An option without a value stops the program with the message `OPTION needs a value`, for example `--data needs a value`.
 - An unknown mode stops the program with the message `unknown mode VALUE: use vanilla, advanced, or turnbased`. An unknown filter gives the message `unknown filter VALUE: use none, scale2x, or scale3x`.
