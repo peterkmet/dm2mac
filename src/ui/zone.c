@@ -103,9 +103,10 @@ bool zone_load(const Gdat *gdat)
             return false;
         zones += layout.last[i] - layout.first[i] + 1;
     }
-    const uint8_t *r = p + LAYOUT_RANGES + RANGE_SIZE * count;
-    if (r + WORD_SIZE * ZONE_FIELDS * (size_t)zones > p + size)
+    uint32_t records_at = LAYOUT_RANGES + RANGE_SIZE * (uint32_t)count;
+    if (WORD_SIZE * ZONE_FIELDS * (size_t)zones > size - records_at) /* fix: byte counts, no pointer past the item */
         return false;
+    const uint8_t *r = p + records_at;
     layout.records = malloc(sizeof *layout.records * (zones ? zones : 1));
     if (!layout.records)
         return false;

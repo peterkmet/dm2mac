@@ -1,5 +1,6 @@
 import ctypes
 import random
+import struct
 
 import pytest
 
@@ -103,3 +104,19 @@ def test_icon_rect_of_unknown_zone(lib, gdat):
     rect = (ctypes.c_int16 * 4)(0x55, 0x55, 0x55, 0x55)
     lib.zone_get_icon_rect(0x7FFF, rect)
     assert tuple(rect) == (0, 0, 0, 0)
+
+
+def test_zone_records_past_the_item(lib, gdat):
+    # A damaged GRAPHICS.DAT whose zone range holds more zone records than the layout item is rejected. The test
+    # damages its own copy; the gdat fixture sets the argument types.
+    g = ctypes.c_void_p()
+    assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
+    try:
+        size = ctypes.c_uint32()
+        item = lib.gdat_item(g, lib.gdat_find(g, 1, 0, 4, 0), ctypes.byref(size))
+        assert size.value < 8 * 0x7FFF
+        # one range count, then the range of zones 1 to 0x7FFF
+        ctypes.memmove(ctypes.addressof(item.contents) + 2, struct.pack("<3h", 1, 1, 0x7FFF), 6)
+        assert lib.zone_load(g) == 0
+    finally:
+        lib.gdat_free(g)
