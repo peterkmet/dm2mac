@@ -294,17 +294,7 @@ static const CreatureInfo creature_infos[CREATURE_INFO_COUNT] = {
      0x20ff, 0x3ec,  0x7f, 0xc,  0xa0, 0xfc, 0x4, 0xa,  0x0,    0x0,    0x0, 0x1},
 };
 
-/* The AI class flags of the creature of a group. */
-static uint32_t class_flags(uint16_t group)
-{
-    return g_ai_class_flags[ai_group_class(group)];
-}
-
-/* The square of the group in the AI context. */
-static Location context_square(void)
-{
-    return (Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]};
-}
+/* Creature info. */
 
 const CreatureInfo *creature_info_at(int index)
 {
@@ -334,6 +324,8 @@ ActiveGroup *creature_active(uint16_t group)
     /* after a load the records keep the stale indices of the saved game until the session activates the groups */
     return index == GROUP_NOT_ACTIVE || index >= g_active_group_max ? NULL : g_active_groups + index;
 }
+
+/* Animation. */
 
 uint16_t *creature_anim_words(uint16_t group)
 {
@@ -507,6 +499,8 @@ bool creature_current_step_acts(uint16_t group)
     uint16_t *words = creature_anim_words(group);
     return anim_current_step(group_creature(group), words[0], words + 1)[STEP_SOUND] >> STEP_ACTS_SHIFT;
 }
+
+/* Groups on squares. */
 
 uint16_t creature_get_group_at(Location at)
 {
@@ -945,6 +939,18 @@ void creature_process_event(Location at, int type)
 }
 
 /* Group life: creation, damage, death, alerts. */
+
+/* The AI class flags of the creature of a group. */
+static uint32_t class_flags(uint16_t group)
+{
+    return g_ai_class_flags[ai_group_class(group)];
+}
+
+/* The square of the group in the AI context. */
+static Location context_square(void)
+{
+    return (Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]};
+}
 
 /* A random cell for an item that a creature drops on at: beside the party on its square. */
 static int drop_cell(Location at)
