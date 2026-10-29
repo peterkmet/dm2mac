@@ -2,10 +2,10 @@
 
 `build/dm2 --control PATH` opens a Unix domain socket. A program or an LLM (for example Claude Code through Bash) sends requests over it and reads the replies: the game state, the view, and screenshots. The window shows the game, so a person can watch.
 
-The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../manual.md#modes)).
+The game has three modes: `vanilla`, `advanced`, and `turnbased` ([manual.md](../manual.md#modes)).
 
 - In the `vanilla` and `advanced` modes the game runs in real time, and the requests do not stop the game time. A client sends raw input with the [Commands](#commands). Use them for manual-style UI tests.
-- In the `turnbased` mode the game time stands still between requests. A request is one turn: the game runs until the party can act again, then the reply gives the state and the view as JSON. See [The turn-based mode](#the-turn-based-mode).
+- In the `turnbased` mode the game time does not advance between requests. A request is one turn: the game runs until the party can act again, then the reply gives the state and the view as JSON. See [The turn-based mode](#the-turn-based-mode).
 - `state`, `screenshot`, and `quit` work in all modes.
 
 ## Start the game
@@ -24,7 +24,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../man
    SDL_AUDIO_DRIVER=dummy SDL_VIDEO_DRIVER=dummy build/dm2 --control ~/.dm2/control.sock --save tests/saves/start.DAT &
    ```
 
-   - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is another file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it.
+   - `--control PATH`: the socket file. The game replaces an old socket at `PATH`. When `PATH` is a different file, the game does not start and the file stays. The game makes the last folder level of `PATH` only, not the folders above it.
    - The other options of a normal start (`--save`, `--data`, `--mode`, `--filter`) and the start movies are in [manual.md](../manual.md#options).
    - Without the two `SDL_*_DRIVER` variables, the window and the sound stay on.
 
@@ -46,7 +46,7 @@ The game has three modes: `vanilla`, `advanced`, and `turnbased` ([Modes](../man
 
    - `--saves DIR`: the folder of the save file `QUICK.DAT`. The game does not make the folder; `save` fails when it is missing. Without it, the file is `game/DATA/QUICK.DAT` (the `--data` folder).
    - `--control PATH`: the socket file. Without it, the turn-based mode uses `~/.dm2/control.sock`.
-   - `--save FILE`: optional. The game loads this save slot file at the start, as in the other modes.
+   - `--save FILE`: optional. The game loads this save slot file on startup, as in the other modes.
    - Without `--save`, the game starts a new game immediately: no start menu and no movie. The new game has one champion (Torham). The player recruits the other champions at the mirrors.
    - The keyboard and the mouse do not control the game. A closed window quits. The request `quit` quits and the exit code is 0.
    - `--mode turnbased` and the mode `advanced` use the same `QUICK.DAT` format. The advanced mode loads a file of the turn-based mode with F9 when it runs with the same `--saves DIR`.
@@ -68,7 +68,7 @@ uv run dm2-play [--socket PATH] [--brief] act_many '<json-list>'
 - `--socket PATH`: the socket path. Without it, `dm2-play` uses `$DM2_CONTROL`, otherwise `~/.dm2/control.sock`.
 - `--brief` (before the command) prints a short text summary instead of the JSON: the turn (`ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, `path`, and `BUMPED`), the `look:` line, the `seen:` line, the party position, the leader hand, the candidate, each champion, the open panels, the messages, and the squares ahead (side words: `left` and `right`, `far left` and `far right` at 2 squares from the lane, `outer left` and `outer right` at 3 squares). For `get_map`, it prints the `grid`.
 - The exit code is 1 when the reply has `"ok": false`, even when the game is not reachable.
-- A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in another directory.
+- A relative screenshot `path` becomes an absolute path before it goes to the game, because the game runs in a different directory.
 - Call log: `dm2-play` appends one tab-separated line per call (time, action or command, `ok` or `fail`, map, x, y, game time) to `calls.log` in the folder `$DM2_PLAY_LOG_DIR`. The default folder is `playthroughs/current/coordinator`. `dm2-play` writes the log only when the folder exists. `DM2_PLAY_LOG_DIR=none` turns it off. Run `dm2-play` in the repository root, otherwise the relative folder does not exist.
 
 Python code can use `dm2tools.control_client.request(payload, path=None, timeout=150.0)`.
@@ -139,9 +139,9 @@ Reads the game state.
 | `hand` | The leader hand object: `{"thing": n, "name": "..."}`, or `null`. |
 | `sound_volume`, `music_volume` | Volume settings 0 to 7. |
 | `end`, `quit` | The end flag of the game (party dead or quit) and the program end flag. |
-| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` ([Modes](../manual.md#modes), [The turn-based mode](#the-turn-based-mode)). |
+| `game_mode` | The game mode: `vanilla`, `advanced`, or `turnbased` ([manual.md](../manual.md#modes), [The turn-based mode](#the-turn-based-mode)). |
 | `automap` | 1 while the automap is open, otherwise 0. |
-| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, otherwise 0 ([Cheats](../manual.md#cheats)). |
+| `cheat_immortal`, `cheat_food`, `cheat_light`, `cheat_kill`, `cheat_walls`, `cheat_map` | 1 while the cheat is on, otherwise 0 ([manual.md](../manual.md#cheats)). |
 
 The message area text is not in the state. Use a screenshot to read it.
 
@@ -313,8 +313,8 @@ The reply of `act` has `stopped` only when the dungeon displaced the party:
 
 | Value | Meaning |
 |---|---|
-| `moved` | The party is not on the square of the step, or it is on another map (a teleporter, a pit, stairs). |
-| `turned` | The party faces another way than the turn gives (a spinner). |
+| `moved` | The party is not on the square of the step, or it is on a different map (a teleporter, a pit, stairs). |
+| `turned` | The party faces a different way than the turn gives (a spinner). |
 
 `bumped` is `true` after a step that left the party on its square: a wall, a closed door, or a creature is in the way. A teleporter that sends the party back to its square counts as a bump (see [Deviations from the original](#deviations-from-the-original)).
 
@@ -377,7 +377,7 @@ The slot names (`slots[].where`) are in slot number order in [Protocol vocabular
 
 `get_view` gives the squares that the party sees now (the seen rule), with `facing`, `darkness`, `squares` (each with `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`), `piles` (the objects of cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. It shows no creature health and nothing behind a wall.
 
-`get_map` gives the explored squares of the party map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([Seen squares](../manual.md#seen-squares)).
+`get_map` gives the explored squares of the party map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([manual.md](../manual.md#seen-squares)).
 
 ### Cells
 
@@ -426,7 +426,7 @@ A cell is a number from 0 to 4 in `take_object` and `drop_object`: cells 0 and 1
 
 ## Movies
 
-The program plays the start movies and the end movies of [Start screens](../manual.md#start-screens) ([movies.md](../formats/movies.md)). While one of them plays:
+The program plays the start movies and the end movies of [manual.md](../manual.md#start-screens) ([movies.md](../formats/movies.md)). While one of them plays:
 
 - `state` gives `"mode": "movie"` and `"dialog": null`.
 - `click` and `press` skip as a click does ([movies.md](../formats/movies.md#deviations-from-the-original)). `release`, `key`, and `command` reply `{"ok":true}` and do nothing.
@@ -434,7 +434,7 @@ The program plays the start movies and the end movies of [Start screens](../manu
 - `screenshot` saves the game screen (320 × 200), not the movie.
 - `quit` stops the movies and ends the program.
 
-To reach the start menu fast: `click` until `state` gives another mode. In the `vanilla` mode, the splash and `FTL` take about 8.5 seconds.
+To reach the start menu fast: `click` until `state` gives a different mode. In the `vanilla` mode, the splash and `FTL` take about 8.5 seconds.
 
 ## Errors
 
@@ -446,14 +446,14 @@ The errors of the real-time commands:
 | `unknown cmd` | `cmd` is not one of the commands above. |
 | `unknown key` | The key name is not known, or the code is not 1 to 65535. |
 | `x must be 0-319 and y 0-199` | A position is missing or off the screen. |
-| `button must be left or right` | Another button name. |
+| `button must be left or right` | A different button name. |
 | `missing id` | `command` without an `id`. |
 | `ticks must be 1-6000` | A wait out of range. |
 | `missing path` | `screenshot` without a `path`, or a `path` with a bad escape, a NUL character, or more than `PATH_MAX` bytes. |
 | `cannot write the PNG file` | The game cannot write the file. |
 | `request line too long` | A line of more than 4095 bytes before its newline. |
 | `request line has a NUL byte` | The line has a byte 0. |
-| `busy` | Another client is connected. |
+| `busy` | A different client is connected. |
 
 ## Known limits
 
@@ -499,11 +499,11 @@ Each line lists the names of one table of the protocol, in table order.
   - `wind`: the direction of `g_game.wind_dir`.
 - The JSON gives only the weather that the player sees: rain or clouds are `none` when the sky set of the map has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind).
 - `day_time` comes from the darkness of the hour (`g_weather.hour_light`, 1 to 5): 1 is `day`, 5 is `night`, otherwise `dawn_dusk`.
-- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
+- The view JSON (`state_json_view`) gives the squares of the seen rule (`seen_visible`), from the walk position while the party walks. It gives only what the view draws there (`view_draws`): wall faces as in the wall face table of the view (`side_face`, `front_face`); creatures, objects, missiles, and explosions only on the view positions and square aspects that draw them (no things at depth 2 side 2; at depth 4 only creatures, only on a floor, pit, teleporter, or door seen from the front, nothing at side 3; nothing on a door seen from the front beside the party; no creature on the party square while the party walks); a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key; a door button only to depth 3. The element, door state, and map glyph show at every depth, as the automap shows them.
 - A wall face gives what its ornament (the one that `aspect_get` gives the face) holds, by the ornament kind and value keys: `mirror` (portrait kind), `alcove`, `shop`, `fountain` (the touch key). Otherwise `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item that the display shows, `true` before the display chose an item.
 - Each creature group of a square is one entry with `count` 1: a DM2 group record holds one creature. The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
 - `piles` and `alcove` are the cells of [Cells](#cells) in the last drawn view. While the inventory hides the view, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is false.
-- The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (`door_has_button`, as the minion map).
+- The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (`door_has_button`, as in the minion map).
 - The map JSON (`state_json_map`) marks a floor square with `_` when the minion map draws its floor ornament without the details option (`mmap_shows_floor_ornament`). It shows no floor sensor without an ornament and no wall feature.
 - A turn tells a bump (`bumped`) from a displacement (`stopped` `moved` or `turned`) by the party square, map, and facing before and after the action. DM has a teleport counter for a teleporter that sends the party back to its square; DM2 has none, so such a teleporter counts as a bump.
 - The seen record of a turn (`seen.creature_changes`) gives `before` 1 and `after` 0 for a creature group that the party saw and that the game killed: a DM2 group record holds one creature, and a group that left the view and whose record is free (its link is `THING_NONE`, as `creature_delete_group_at` leaves it) counts as killed.

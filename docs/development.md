@@ -88,7 +88,7 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | Command | Result |
 |---|---|
 | `make check` | `ruff`, `tests/standard`, then the full suite. |
-| `make format` | `clang-format` over the C files ([Format](coding-standard.md#format)). |
+| `make format` | `clang-format` over the C files ([coding-standard.md](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
 | `uv run dm2-items docs/reference/items.md` | Regenerates [items.md](reference/items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
@@ -120,4 +120,4 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 
 ## Manual checks
 
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [section T](manual-test-checklist.md#t-turn-based-mode).
+The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [manual-test-checklist.md](manual-test-checklist.md#t-turn-based-mode).

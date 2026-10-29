@@ -7,7 +7,7 @@ The build makes the game `build/dm2` and one shared library `build/libdm2.dylib`
 ## Layers
 
 ```
-platform/   SDL window, sound output, the control socket, the scale filters, main
+platform/   SDL window, sound output, the control socket, the upscale filters, main
    │
 control/    the line protocol of the control socket and the turns of the turn-based mode
    │
@@ -203,7 +203,7 @@ A viewport screen of the advanced mode (the automap, the cheat screen, the optio
 game step. The split of the original `game_loop` into the two parts is in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 
-The rules do not draw the panels. They set redraw flags that `ui/` reads and draws:
+The rules request a redraw of the panels with redraw flags that `ui/` reads and draws:
 
 - `Champion.redraw` (`engine/champion.h`): the `REDRAW_*` bits for the name, the bars, the load, the title, the
   status box, and the inventory of one champion.
@@ -226,7 +226,7 @@ main loop, at `~/.dm2/control.sock` when `--control` is missing, and stops with 
   `control/turn.c` holds the actions of a turn and their end rules.
 
 In the vanilla and advanced modes the game runs in real time, and `pump_events` polls the socket on each PIT tick.
-In the turn-based mode the game time stands still between two turns, because only `control_frame` runs
+In the turn-based mode the game time does not advance between two turns, because only `control_frame` runs
 `play_tick`.
 
 The interface of the control code, all in `build/libdm2.dylib`:
@@ -245,7 +245,7 @@ The globals of the game:
 - The game state that the save file holds: `g_game` (`engine/save.h`; the party position, the game time, the
   champion records, the global flags), the dungeon (`engine/dungeon.h`), the timeline `g_timeline`
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
-  `static` in `engine/dungeon.c`; the other modules read and write them through the `dungeon_` and `thing_`
+  `static` in `engine/dungeon.c`; modules outside `engine/dungeon.c` read and write them through the `dungeon_` and `thing_`
   functions.
 - `g_party` (`engine/move.h`): the movement state of the party, and the current map of the square reads (`cur_map`).
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
@@ -270,7 +270,7 @@ The other hooks:
 |---|---|---|---|---|
 | `g_os_log_hook` | `data/os.h` | `platform/main.c` (Windows only) | `os_log` (`data/os.c`) | the message goes to stderr |
 | `g_os_fatal_hook` | `data/os.h` | `platform/main.c` (Windows only) | `os_fatal` (`data/os.c`) | the message goes to stderr |
-| `g_os_full_path_hook` | `data/os.h` | `platform/main.c`, `dm2test.lib` | `os_get_full_path` (`data/os.c`) | no full path; the call returns false |
+| `g_os_full_path_hook` | `data/os.h` | `platform/main.c`, `load_lib` (`tests/dm2test/lib.py`) | `os_get_full_path` (`data/os.c`) | no full path; the call returns false |
 | `g_play_frame_hook` | `ui/play.h` | `platform/main.c`, the tests | `play_wait_frames` (`ui/play.c`) | a modal loop counts the timer ticks and shows no frame |
 | `g_optmenu_filter_hook` | `ui/optmenu.h` | `platform/main.c` (`plat_set_filter`) | `ui/optmenu.c` | no window: the filter is not shown |
 
@@ -289,4 +289,4 @@ no console.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of
   [coding-standard.md](coding-standard.md#2-headers-and-includes)).
 
-The test folders are in [Tests](development.md#tests).
+The test folders are in [development.md](development.md#tests).
