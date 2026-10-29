@@ -71,7 +71,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 
 `F9` loads `QUICK.DAT` without a dialog. The message area shows one of these lines:
 
-- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks before the quit, as after a game that is not saved.
+- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks for confirmation, as after a game that is not saved.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
 - `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. If the copy in `QUICK.TMP` also does not load, the program prints an error and ends with exit code 4; `QUICK.TMP` stays.
 - `UNABLE TO SAVE`: the game cannot keep a copy of the running game in `QUICK.TMP`, next to `QUICK.DAT`, before the load, so it does not load. The game goes on.
@@ -141,7 +141,12 @@ The game has three modes. Without the cheats, the game rules are the same in all
 
 ### Advanced features
 
-The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. A left click on a status box outside the hands puts the object of the leader hand into the inventory of the champion, as a click on the bars does; with an empty leader hand it opens the inventory, as a click on the name does. The hands keep their click. A held key repeats only when the game waits for input, so the party stops when you release the key; in the vanilla mode the party walks on for the queued repeats, as in the original ([movement.md](rules/movement.md#deviations-from-the-original)). An antidote always cures the poison; in the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)). A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
+The advanced mode adds the [advanced keys](#advanced-keys), the [quick save](#quick-save-and-quick-load), the automap, the cheats and the cheat screen, the damage hold, the smooth projectile flight, and the options menu. It also changes these things:
+
+- A left click on a status box outside the hands puts the object of the leader hand into the inventory of the champion, as a click on the bars does. With an empty leader hand it opens the inventory, as a click on the name does. The hands keep their click.
+- A held key repeats only when the game waits for input, so the party stops when you release the key. In the vanilla mode the party walks on for the queued repeats, as in the original ([movement.md](rules/movement.md#deviations-from-the-original)).
+- An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](rules/champions.md#deviations-from-the-original)).
+- A slot save and the quick save keep the seen squares and the cheats ([AMAP and CHTS blocks](formats/save.md#amap-and-chts-blocks)).
 
 ### Automap
 
