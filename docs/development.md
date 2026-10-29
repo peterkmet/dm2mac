@@ -1,6 +1,6 @@
 # Development
 
-How to build, test, and check the port. For the structure of the code, see [Architecture](architecture.md).
+The port builds with `make`, tests with `make test`, and checks with `make check`. For the structure of the code, see [Architecture](architecture.md).
 
 ## Build
 
@@ -37,7 +37,7 @@ Run the game with `build/dm2`. Run a save with `build/dm2 --save game/DATA/SKSAV
 
 3. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
 
-The Windows program has no control socket and no turn-based mode. It has no console: it writes its messages to `dm2.log` in the game folder.
+The Windows program has no control socket and no turn-based mode. It writes its messages to `dm2.log` in the game folder, because it has no console.
 
 Test the program with Wine:
 
@@ -83,12 +83,12 @@ The tests of the control socket and the turn-based mode:
 uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
 ```
 
-`tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module loads its own copy of the library and owns its state, so the tests run in any order and in parallel.
+`tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; the library copy of each module is in [architecture.md](architecture.md#the-test-library).
 
 | Command | Result |
 |---|---|
 | `make check` | `ruff`, `tests/standard`, then the full suite. |
-| `make format` | `clang-format` over the C files ([Format](coding-standard.md#format)). |
+| `make format` | `clang-format` over the C files ([coding-standard.md](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
 | `uv run dm2-items docs/reference/items.md` | Regenerates [items.md](reference/items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
@@ -120,4 +120,4 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 
 ## Manual checks
 
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [section T](manual-test-checklist.md#t-turn-based-mode).
+The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [manual-test-checklist.md](manual-test-checklist.md#t-turn-based-mode).

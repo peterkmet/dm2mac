@@ -1,6 +1,6 @@
 # Decompiling
 
-How to decompile `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of the game with Ghidra. The output is `reference/decomp/SKULL.c`, the reference for the port.
+`tools/decompile-skull.sh` decompiles `SKULL.EXE` of Dungeon Master II (PC DOS) from your own copy of the game with Ghidra. The output is `reference/decomp/SKULL.c`, the reference for the port.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ The `.gitignore` file excludes `game/` and `reference/`. Do not commit game cont
 | Command | Purpose |
 |---|---|
 | `tools/decompile-skull.sh` | Run `dm2-le` and `decompile.sh` for `game/SKULL.EXE`. It uses `docs/reference/skull-symbols.csv` as `SYMBOLS`. |
-| `uv run dm2-le game/SKULL.EXE <out.bin>` | Load the LE executable into a flat memory image (`tools/dm2tools/le.py`). Prints one `object N: base ...` line per object and the `entry:` address. The addresses of the image are in the Conventions of the [SKULL.EXE map](reference/skull-map.md). |
+| `uv run dm2-le game/SKULL.EXE <out.bin>` | Load the Linear Executable (LE) file into a flat memory image (`tools/dm2tools/le.py`). Prints one `object N: base ...` line per object and the `entry:` address. The addresses of the image are in the Conventions of the [SKULL.EXE map](reference/skull-map.md). |
 | `[SYMBOLS=<csv>] tools/ghidra/decompile.sh <image.bin> <base> <data-start> <out.c> <entry> [<entry> ...]` | Decompile a flat 32-bit x86 image (Watcom register calling convention) with Ghidra headless. |
 | `dm2tools.emu` (Python) | Run a function of `SKULL.EXE` in an x86 emulator (`tools/dm2tools/emu.py`). `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
 | `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file of `game/` except the movie files into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
@@ -55,7 +55,7 @@ Ghidra runs these scripts in this order; all except step 3 are in `tools/ghidra/
 1. `Layout.java` (before the analysis) splits the image at `<data-start>` into a `code` block (read, execute) and a `data` block (read, write). It marks each `<entry>` as an entry point and a function.
 2. `FindFunctions.java` removes the functions that the analysis created outside the `code` block. It creates a function at each 4-byte aligned pointer in the `data` block that points to code outside all functions. It skips a target that starts with `NOP` (`0x90`) or a zero byte.
 3. `CreateFunctionAfterTerminals.java`, a script of Ghidra (`Ghidra/Features/Base/ghidra_scripts/`), creates a function at each instruction that follows a terminator (a return) and is in no function.
-4. `ApplySymbols.java` reads the CSV file in `SYMBOLS` (columns `address,name,signature,subsystem`, with a header line). A row with a signature in an executable block, or at an instruction, names a function; the script creates the function when needed. Any other row labels a global. The script ignores the signature text. With `SYMBOLS` empty or missing, the script does nothing.
+4. `ApplySymbols.java` reads the CSV file in `SYMBOLS` (columns `address,name,signature,subsystem`, with a header line). A row with a signature in an executable block, or at an instruction, names a function; the script creates the function when needed. Every remaining row labels a global. The script ignores the signature text. With `SYMBOLS` empty or missing, the script does nothing.
 5. `Watcall.java` adds the Watcom calling convention `__watcall` and sets it on every function. The arguments go in `EAX`, `EDX`, `EBX`, `ECX`, then on the stack. The callee removes the stack arguments.
 6. `ExportC.java` decompiles all functions to the output file. A function that fails has the line `/* failed: ... */`.
 
