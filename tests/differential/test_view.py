@@ -1040,3 +1040,43 @@ def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
             assert (result.kind, result.thing) == (OBJECT_CLICK_DONE, C.THING_NONE), placing
     finally:
         party.cur_map = saved
+
+
+def test_an_explosion_tint_of_a_narrow_picture_draws_nothing(lib, gdat, loaded):
+    # regression: the tint of an explosion on the party square tiles a row of its picture minus 40 pixels; with a tint
+    # picture of at most 40 pixels (a damaged GRAPHICS.DAT) the row is not longer than its start and the tiled blit
+    # never ended; the port draws no tint
+    lib.dungeon_unused_thing.restype = ctypes.c_uint16
+    lib.dungeon_link_thing_to_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
+    lib.dungeon_unlink_thing_from_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
+    lib.dungeon_thing_record.restype = u8_p
+    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
+    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
+    assert lib.zone_load(gdat) == 1
+    assert lib.pal_load_color_ramps(gdat) == 1
+    game = WeatherGame.in_dll(lib, "g_game")
+    map_, x, y, d = game.party_map, game.party_x, game.party_y, game.party_dir
+    tinted = [t for t in EXPLOSION_TYPES
+              if lib.gdat_find(gdat, C.CAT_EXPLOSION, t, C.GDAT_TYPE_IMAGE, C.GFX_EXPLOSION_TINT) >= 0
+              and lib.gdat_find(gdat, C.CAT_EXPLOSION, t, C.GDAT_TYPE_IMAGE, C.GFX_SPARKLE_PICTURE) < 0]
+    assert tinted
+    plain = c_view(lib, map_, x, y, d, 0)
+    thing = lib.dungeon_unused_thing(THING_EXPLOSION)
+    assert thing != C.THING_NONE
+    record = lib.dungeon_thing_record(thing)
+    for i, b in enumerate(struct.pack("<HH", THING_END, tinted[0])):  # power 0: the weak tint picture
+        record[i] = b
+    assert lib.dungeon_link_thing_to_square(thing, map_, x, y)
+    tint = lib.draw_gdat_image(C.CAT_EXPLOSION, tinted[0], C.GFX_EXPLOSION_TINT).contents
+    size = tint.width, tint.height
+    try:
+        assert c_view(lib, map_, x, y, d, 0) != plain
+        tint.width, tint.height = 3, 13  # 39 pixels: a tile row of 0 to 30 pixels from a start of up to 65534
+        assert c_view(lib, map_, x, y, d, 0) == plain
+    finally:
+        tint.width, tint.height = size
+        lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
+        record[0], record[1] = 0xFF, 0xFF  # unused again
+        game.party_x, game.party_y, game.party_dir, game.party_map = x, y, d, map_
+        lib.view_enter_map(map_)

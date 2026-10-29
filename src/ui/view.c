@@ -2095,6 +2095,8 @@ static void show_explosion_tint(int type, int power)
     int16_t rect[RECT_SIZE];
     int offset = (int16_t)rand_below((uint16_t)(area - TILE_TRIM));
     int width = (int16_t)(area - TILE_TRIM + (rand_next() & RANDOM_TILE_SPREAD));
+    if (width <= offset)
+        return; /* fix: the tiled blit of a tile row not longer than its start never ends */
     TileFill fill = {.tile = tint->pixels, .tile_width = width, .tile_offset = offset, .colormap = palette};
     gfx_blit_tiled_4to8(&fill, g_view_viewport.pixels, VIEWPORT_WIDTH, zone_get_rect(ZONE_DIALOG_BACK, rect));
 }
