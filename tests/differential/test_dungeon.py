@@ -8,7 +8,7 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.lib import load_lib
-from dm2test.scenario import gdat  # noqa: F401 (gdat is a fixture)
+from dm2test.scenario import Party, gdat  # noqa: F401 (gdat is a fixture)
 
 
 @pytest.fixture(scope="module")
@@ -226,6 +226,21 @@ def test_door_switch_on_a_door_square_without_a_door(lib, gdat):  # noqa: F811
     lib.thing_set_word(sensor, C.SENSOR_FLAGS, flags | (0 if before & C.DOOR_SWITCH_ON else C.SENSOR_STATE))
     lib.dungeon_link_things_after_load()
     assert lib.thing_word(item, C.DOOR_DATA) == before
+
+
+@pytest.mark.skipif(not DUNGEON.exists(), reason="game/DATA/DUNGEON.DAT missing")
+def test_teleporter_to_a_map_outside_the_dungeon(lib, gdat):  # noqa: F811
+    # regression: the link pass took the target map of a teleporter past the last map as the current map
+    assert lib.dungeon_load(str(DUNGEON).encode()) == 1
+    things = things_on_squares(lib)
+    lib.gdat_select(gdat)
+    moves_map = [t for *_, t in things if thing_type(t) == C.THING_TELEPORTER or is_door_switch(lib, t)]
+    teleporter = moves_map[-1]  # the last thing of the link pass that sets the current map
+    assert thing_type(teleporter) == C.THING_TELEPORTER
+    word = lib.thing_word(teleporter, C.TELEPORTER_MAP) & ~(C.TELEPORTER_MAP_MASK << C.TELEPORTER_MAP_SHIFT)
+    lib.thing_set_word(teleporter, C.TELEPORTER_MAP, word | lib.dungeon_map_count() << C.TELEPORTER_MAP_SHIFT)
+    lib.dungeon_link_things_after_load()
+    assert Party.in_dll(lib, "g_party").cur_map < lib.dungeon_map_count()
 
 
 def test_bad_files(lib, tmp_path):

@@ -401,6 +401,8 @@ static uint16_t merge_object_lists(uint16_t a, uint16_t b)
 static bool link_teleporters(uint16_t teleporter, int16_t map, int16_t x, int16_t y)
 {
     int target_map = teleporter_map(teleporter);
+    if (target_map >= dun.map_count)
+        return true; /* fix: the original uses a map outside the dungeon */
     dun_set_current_map(target_map);
     uint16_t other = dungeon_square_first_thing(target_map, teleporter_x(teleporter), teleporter_y(teleporter));
     if (other == THING_ENDOFLIST || thing_type(other) != THING_TELEPORTER)
