@@ -462,14 +462,14 @@ static void cast_summon(int type, int skill, int power)
     }
     int dir = g_game.party_dir;
     int level = (uint16_t)((rand_2bits() + skill * 2) * power / SUMMON_LEVEL_DIVISOR);
-    CreatureSummon summon = {.creature_type = type,
-                             .count = (uint16_t)level,
-                             .dir = dir_opposite(dir),
-                             .x = g_game.party_x,
-                             .y = g_game.party_y,
-                             .map = g_game.party_map,
-                             .link = SUMMON_NO_LINK,
-                             .search_dir = (int8_t)dir};
+    CreatureSummon summon = {
+        .creature_type = type,
+        .count = (uint16_t)level,
+        .dir = dir_opposite(dir),
+        .at = {g_game.party_map, g_game.party_x, g_game.party_y},
+        .link = SUMMON_NO_LINK,
+        .search_dir = (int8_t)dir
+    };
     if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_POOF, EXPLOSION_POOF_POWER, g_game.party_x, g_game.party_y, EXPLOSION_ON_SQUARE);
 }

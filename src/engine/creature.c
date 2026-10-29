@@ -1308,13 +1308,13 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
 {
     int8_t search_dir = summon.search_dir;
     int16_t saved = g_party.cur_map;
-    dun_set_current_map(summon.map);
+    dun_set_current_map(summon.at.map);
     SummonedGroup summoned = {
-        THING_NONE, {-1, summon.x, summon.y}
+        THING_NONE, {-1, summon.at.x, summon.at.y}
     };
     int tries = search_dir < 0 ? 0 : DIR_COUNT;
     int turn = rand_bit() ? 1 : -1;
-    Location at = {summon.x, summon.y};
+    Location at = {summon.at.x, summon.at.y};
     for (;;) {
         if (summon_square_open(at)) {
             summoned = create_group(summon.creature_type, summon.count, summon.dir, at, summon.link != THING_NONE);
@@ -1322,7 +1322,8 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
                 break;
         }
         if (tries) {
-            at = (Location){(int16_t)(summon.x + g_dir_dx[search_dir]), (int16_t)(summon.y + g_dir_dy[search_dir])};
+            at = (Location){(int16_t)(summon.at.x + g_dir_dx[search_dir]),
+                            (int16_t)(summon.at.y + g_dir_dy[search_dir])};
             search_dir = (int8_t)dir_turn(search_dir, turn);
         }
         if (--tries == -1)

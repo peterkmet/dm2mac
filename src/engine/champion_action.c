@@ -507,14 +507,14 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
 static void summon_minions(const ActionRun *a, int command)
 {
     static const uint8_t summoned[] = {MINION_SCOUT, MINION_CARRIER, MINION_ARMY};
-    CreatureSummon summon = {.creature_type = summoned[command - COMMAND_SUMMON_FIRST],
-                             .count = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
-                             .dir = dir_opposite(g_game.party_dir),
-                             .x = g_game.party_x,
-                             .y = g_game.party_y,
-                             .map = g_game.party_map,
-                             .link = a->item,
-                             .search_dir = (int8_t)g_game.party_dir};
+    CreatureSummon summon = {
+        .creature_type = summoned[command - COMMAND_SUMMON_FIRST],
+        .count = (uint16_t)(a->power >> SUMMON_POWER_SHIFT),
+        .dir = dir_opposite(g_game.party_dir),
+        .at = {g_game.party_map, g_game.party_x, g_game.party_y},
+        .link = a->item,
+        .search_dir = (int8_t)g_game.party_dir
+    };
     if (creature_summon_group(summon).group == THING_NONE)
         explosion_create(EXPLOSION_DEATH_CLOUD, EXPLOSION_SUMMON_POWER, g_game.party_x, g_game.party_y,
                          EXPLOSION_AT_CENTER);
@@ -543,14 +543,14 @@ static bool send_minion(ActionRun *a, int command)
         type = MINION_GUARD;
     }
     int level = champ_get_skill_level(a->champion_index, a->skill, true);
-    CreatureSummon summon = {.creature_type = type,
-                             .count = (uint16_t)level,
-                             .dir = dir,
-                             .x = x,
-                             .y = y,
-                             .map = map,
-                             .link = map_item,
-                             .search_dir = search};
+    CreatureSummon summon = {
+        .creature_type = type,
+        .count = (uint16_t)level,
+        .dir = dir,
+        .at = {map, x, y},
+        .link = map_item,
+        .search_dir = search
+    };
     SummonedGroup summoned = creature_summon_group(summon);
     if (summoned.group == THING_NONE) {
         a->experience = (int16_t)(a->experience >> 2);

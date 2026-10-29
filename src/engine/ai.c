@@ -2822,14 +2822,14 @@ static bool act_explode_or_spawn(void)
             act_vanish();
     } else if (a->mode == MODE_SPAWN) {
         int dir = rand_2bits();
-        CreatureSummon summon = {.creature_type = a->sub,
-                                 .count = GROUP_COUNT_FULL_HEALTH,
-                                 .dir = dir,
-                                 .x = g_ai.event.data[EVENT_X],
-                                 .y = g_ai.event.data[EVENT_Y],
-                                 .map = g_ai.map,
-                                 .link = THING_NONE,
-                                 .search_dir = (int8_t)facing()};
+        CreatureSummon summon = {
+            .creature_type = a->sub,
+            .count = GROUP_COUNT_FULL_HEALTH,
+            .dir = dir,
+            .at = {g_ai.map, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]},
+            .link = THING_NONE,
+            .search_dir = (int8_t)facing()
+        };
         if (creature_summon_group(summon).group == THING_NONE)
             return true;
     } else if (a->mode == MODE_BECOME) {
