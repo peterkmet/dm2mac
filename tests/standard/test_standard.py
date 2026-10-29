@@ -102,7 +102,8 @@ def code_lines(path):
             yield number, line
 
 
-TABLE_START = re.compile(r"\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{")
+TABLE_START = re.compile(r"^(?:[^\s#]|[ \t]+static\b)[^\n=;{}()]*?\b([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{"
+                         r"|^[ \t]+\}\s*([A-Za-z_]\w*)\s*(?:\[[^\]=;]*\]\s*)*=\s*\{", re.M)
 
 
 def tables(path):
@@ -121,7 +122,7 @@ def tables(path):
         first = text.count("\n", 0, equals) + 1
         end = i
         for n in range(first, text.count("\n", 0, i) + 2):
-            found.setdefault(n, (m.group(1), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
+            found.setdefault(n, (m.group(1) or m.group(2), equals - text.rfind("\n", 0, equals) - 1 if n == first else 0))
     return found
 
 
