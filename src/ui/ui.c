@@ -795,9 +795,9 @@ static void show_damage_number(int champ)
 static void show_value_pair(int zone, int16_t value, int16_t maximum)
 {
     char s[TEXT_SIZE];
-    strcpy(s, gtext_format_number(value, true, NUMBER_DIGITS));
-    strcat(s, "/");
-    strcat(s, gtext_format_number(maximum, true, NUMBER_DIGITS));
+    /* two calls: gtext_format_number reuses one buffer */
+    int n = snprintf(s, sizeof s, "%s/", gtext_format_number(value, true, NUMBER_DIGITS));
+    snprintf(s + n, sizeof s - (size_t)n, "%s", gtext_format_number(maximum, true, NUMBER_DIGITS));
     text_draw_in_zone_shadowed(zone, g_ui_colors[UI_LIGHT_GRAY], g_ui_colors[UI_DARK_GRAY] | TEXT_TRANSPARENT, s);
 }
 
@@ -1226,8 +1226,7 @@ static void show_skills_and_stats(void)
         int maximum = champ_get_stat(c, stat, STAT_MAXIMUM);
         int color = current < maximum ? UI_RED : current > maximum ? UI_GREEN : UI_LIGHT_GRAY;
         text_draw_in_viewport(stat_x, y, g_ui_colors[color], gtext_format_number(current, true, NUMBER_DIGITS));
-        strcpy(text, "/");
-        strcat(text, gtext_format_number(maximum, true, NUMBER_DIGITS));
+        snprintf(text, sizeof text, "/%s", gtext_format_number(maximum, true, NUMBER_DIGITS));
         text_draw_in_viewport((int16_t)(FONT_ADVANCE * NUMBER_DIGITS + stat_x), y, g_ui_colors[UI_LIGHT_GRAY], text);
         y = (int16_t)(y + TEXT_LINE_HEIGHT);
     }
