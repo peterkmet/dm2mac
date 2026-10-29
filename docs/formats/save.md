@@ -79,17 +79,7 @@ Game record (60 bytes, mask `0x75316`):
 
 Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu` runs the file part of `session_load` (`0x372d6` to `0x37586`: header, `dungeon_load(0)`, the packed records, `timeline_build_queue`, `save_read_dungeon_things`, `restore_timed_effects`, `relink_events`). Then it runs the file part of `session_save` (`0x35236` to `0x35674`: header, dungeon image, `creature_deactivate_all_groups`, `timeline_compact`, the packed records, the things, the last bits). The header buffer of `session_save` gets the header of the input file, as in a save into the slot that the game was loaded from. Stubs: `mem_alloc`, `weather_init`, `dungeon_read_level_table`, the file I/O wrappers, and `gdat_entry_index` (answered by the C `gdat_find`).
 
-Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
-
-| Part | Bytes that differ |
-|---|---|
-| Header, dungeon header, map descriptors, column table, text, map data | 0 |
-| First-thing table | 357 |
-| Thing records of types 1, 2, 3 (link words) | 5, 93, 56 |
-| Thing records of types 4 to 10 | 1816, 490, 481, 15, 244, 115, 620 |
-| Bit-packed state | 0 |
-
-- The original round trip is not byte-equal: 4292 of 50452 bytes differ, all in the dungeon image. The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
+- The original round trip of `tests/saves/start.DAT` is not byte-equal: the dungeon image differs (first-thing table, link words, thing records). The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
 - A second round trip of the original output is byte-equal (a fixed point).
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
 - A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets a different bit stream position from its record index, so the deferred links use the written positions.

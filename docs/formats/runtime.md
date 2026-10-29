@@ -9,7 +9,7 @@ The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, th
 - The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
 - `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
 
-- `INSTALL.EXE` and `IBMIOP.EXE` are LZEXE 0.91 (`LZ91`) files. Decompressed strings: the copy lists, the SVGA prompt, `IBMIOP SKULL.EXE`, ` +VS`, `DM2.BAT`.
+- `INSTALL.EXE` and `IBMIOP.EXE` are LZEXE 0.91 (`LZ91`) files. The offsets on this page are in the decompressed files.
 - The MVE opcode `0x0a` (set video mode) of each movie gives its video mode ([movies.md](movies.md#mve-stream)).
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 0x10` with `AX=0x0013`. `SKULL.EXE` has no `int 0x10` and no VESA call.
 - The script tables, the script records, and the arguments of the movie player: [movies.md](movies.md).
@@ -34,8 +34,6 @@ That the SVGA option changes only the movies is certain. How `IBMIOP.EXE` uses `
 - `FUN_00013887` (frame wait) polls VGA port `0x3da` bit 3. It does not use the PIT.
 
 The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are unverified, because the real rate of the `INT 0x2d` callback is unknown ([Unknown values](#unknown-values)).
-
-More facts of the `IBMIOP.EXE` timer:
 
 - `IBMIOP.EXE` function `0x0f` ends with `mov ax,1; retf`. Thus `g_timer_step` (`0x7efac`) is 1: each callback adds 1 tick.
 - The tick from the keyboard poll (function `0x02`) runs only with the `IBMIOP.EXE` option `+D`. The `DM2.BAT` of the SVGA install passes `+VS` (unverified, see above), so the tick comes from the `INT 8` handler on every 4th interrupt. This agrees with the reading above.

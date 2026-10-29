@@ -92,13 +92,9 @@ The packing routine (driver offset `0xd37`) overwrites the record in place. It s
 
 The operator offsets per channel come from the byte pairs at driver `[0x2ee5 + 2*ch]` (modulator) and `[0x2ee6 + 2*ch]` (carrier). `SKULL.EXE` passes both files to the driver unchanged: `FUN_0005f4ec(handle, 1, data)` at `0x10310` and `0x1035a`.
 
-### Standard AdLib mapping
-
-The standard AdLib mapping uses the same register formulas as in the table above, 9 melodic voices, F-number from the MIDI note with block = octave, carrier TL scaled by velocity and channel volume, and drum notes played as melodic voices with the instrument from `DRUM.BNK[note]` at the pitch from its name flag byte. The port does not use it because it reproduces the driver logic ([OPL2 driver logic](#opl2-driver-logic)).
-
 ### OPL2 driver logic
 
-Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default).
+Driver offsets below. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default). It does not use the standard AdLib mapping (9 voices, F-number from the note, TL by velocity).
 
 | Offset | Function |
 |---|---|
