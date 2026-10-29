@@ -1,6 +1,6 @@
 # ZIP archives
 
-`src/data/zip.c` reads a ZIP archive with the game files (the PKWARE APPNOTE format): the central directory and the stored and deflated entries. It opens the archive with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
+`src/data/zip.c` reads a ZIP archive with the game files (the PKWARE APPNOTE format): the central directory and the stored and deflated entries. It opens the archive with `"rb"` and writes nothing. The install uses the reader as a source ([game-files.md](game-files.md#sources)).
 
 ## Records
 

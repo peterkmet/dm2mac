@@ -1,6 +1,6 @@
 # Game files and install
 
-The port reads 10 game files of the PC DOS version of Dungeon Master II (English, 1995), checks each file, and installs them from a source on startup. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
+The port reads 10 game files of the PC DOS version of Dungeon Master II (English, 1995), checks each file, and on startup installs them from a source into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
 
 ## The files
 
@@ -38,7 +38,7 @@ A source is a folder, a ZIP archive, or a CD image that holds all 10 files. The 
 
 1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder is tried only when it holds at least one of the 10 files at its root. Other folders are searched into, but they get no log line and no message line.
 2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is found as in [zip.md](zip.md#names).
-3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image (see [cd-image.md](cd-image.md)).
+3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image ([cd-image.md](cd-image.md#directory-records)).
 
 The extensions match without case. The first source with all 10 files that pass the check is the source of the install. A folder source with at least one game file, a ZIP archive, or a CD image that fails gets a line in the log and a line in the message, and the search goes on.
 

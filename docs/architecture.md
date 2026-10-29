@@ -50,7 +50,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 |---|---|---|
 | `data/crc32.h` | `crc32_` | The CRC-32 of PNG and ZIP. |
 | `data/gamefile.h` | `gamefile_` | The table of the 10 game files and the check of a file against it. |
-| `data/gdat.h` | `gdat_` `image_` | GRAPHICS.DAT: a header with item sizes, a key table (item 0), then the items. |
+| `data/gdat.h` | `gdat_` `image_` | GRAPHICS.DAT, the [GDAT container](formats/graphics.md#graphicsdat-container): the key table and the items. |
 | `data/gfx.h` | `gfx_` `pal_` | Blitting, scaling, and palette handling of 8-bit pictures and the screen. |
 | `data/hmp.h` | `hmp_` | The HMP song player of the HMI SOS MIDI library in SKULL.EXE: tracks, delta times, HMI loops, volumes. |
 | `data/ids.h` | none | Graphic entry numbers of GRAPHICS.DAT, layout zone numbers, minion map icon numbers, and string numbers, one block per kind, sorted by value. |
@@ -185,7 +185,7 @@ A menu or a dialog waits for the player inside a rule (a modal loop). It calls `
 (`ui/play.c`), which counts one timer tick and calls the frame hook `g_play_frame_hook` per frame.
 `platform/main.c` sets the hook to `modal_frame` (the input, the screen, and the wait of one timer tick), or to
 `turnbased_modal_frame` in the turn-based mode, which polls the control socket and does not wait for a timer tick
-while a turn runs. A NULL hook counts the timer ticks and shows no frame.
+while a turn runs.
 
 ## The game step
 
@@ -214,7 +214,7 @@ The rules request a redraw of the panels with redraw flags that `ui/` reads and 
 
 A client controls the running game over a Unix domain socket (`--control PATH`). The commands and the
 turn-based mode are in [llm-mode.md](llm/llm-mode.md). In the turn-based mode `main` opens the socket before the
-main loop, at `~/.dm2/control.sock` when `--control` is missing, and stops with an error when this fails.
+main loop (the default path is in [llm-mode.md](llm/llm-mode.md#turn-based-mode)) and stops with an error when this fails.
 
 - `platform/transport.c` holds the socket. It accepts one client and gives a second client a `busy` error. It
   cuts the bytes of the client into request lines and sends one reply line per request.
@@ -284,7 +284,7 @@ no console.
 `platform/transport_none.c`. It has the control socket of `platform/transport.c`, but no window.
 
 - Each test module loads its own copy of the library (`load_lib` in `tests/dm2test/lib.py`), so each module has
-  its own C globals. `load_lib` sets `g_os_full_path_hook`.
+  its own C globals.
 - `g_game_mode` is the vanilla mode in the library.
 - A test of a modal loop sets `g_play_frame_hook` to its own frame and resets it to NULL after.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of
