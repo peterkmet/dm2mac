@@ -806,7 +806,7 @@ address,name,signature,subsystem
 0x0004565a,magic_add_party_aura,"void magic_add_party_aura(uint16_t champ_mask, uint8_t aura, int16_t amount, uint16_t duration)",magic
 0x00045815,magic_cast_party_aura,"int magic_cast_party_aura(uint8_t *champ, uint8_t aura, uint16_t power, int16_t use_mana)",magic
 0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
-0x000458f4,champ_get_index_in_cell,int16_t champ_get_index_in_cell(uint16_t cell),champions
+0x000458f4,champ_get_index_in_cell,int16_t champ_get_index_in_cell(int16_t cell),champions
 0x00045938,move_nearest_champion_at,"int16_t move_nearest_champion_at(int16_t x, int16_t y)",champions
 0x000459c8,adjust_stat,"void adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items

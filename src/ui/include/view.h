@@ -97,7 +97,7 @@ extern uint32_t g_view_missile_masks[VIEW_SQUARE_COUNT]; /* exported for the tes
 extern uint32_t g_view_object_masks[VIEW_SQUARE_COUNT];  /* exported for the tests */
 /* The place of a creature of size 1 to 3 at creature moved toward the party eye at eye; exported for the tests. */
 GridPoint view_offset_toward_party(GridPoint eye, GridPoint creature, int16_t creature_size);
-/* Loads the view square at view position pos for the party on the square at looking to dir. */
+/* Loads the view square at view position pos for the party on the square at, looking to dir. */
 void view_load_square(Location at, int pos, int16_t dir); /* exported for the tests */
 /* Shows the squares behind a seamless passage that view_mark_hidden_squares hid. */
 void view_unhide_linked_squares(void); /* exported for the tests */
@@ -132,7 +132,7 @@ unsigned view_draws(int pos, int aspect);
 bool view_shows_floor_ornament(int pos, int ornament);
 /* True when the last view picture shows the party position and direction. */
 bool view_shows_party(void);
-/* Draws the view of the party on the square at of the party map looking to dir into g_view_viewport. */
+/* Draws into g_view_viewport the view of the party on the square at of the party map, looking to dir. */
 void view_draw_dungeon(Location at, int16_t dir);
 
 /* ---- Projectile flight ---- */

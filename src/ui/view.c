@@ -974,7 +974,7 @@ static int position_to_cell(int position)
     return position == CELL_CENTER ? DIR_COUNT : -1;
 }
 
-/* True when the picture of kind should be mirrored for the party on the square at looking to dir. */
+/* True when the picture of kind should be mirrored for the party on the square at, looking to dir. */
 static bool get_flip_parity(int kind, int16_t dir, Location at)
 {
     bool parity = (at.y + at.x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) +

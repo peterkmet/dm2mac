@@ -22,7 +22,8 @@ void area_reset_champion(int16_t champion_index);
 
 /* Opens the action area bitmap (clear: it starts black) and returns it. */
 Offscreen *area_begin_draw(bool clear);
-/* Draws the hand of champion_index in the action area: its back, its item icon, dimmed while it is busy (flash: pressed). */
+/* Draws the hand of champion_index in the action area: its back, its item icon, dimmed while it is busy
+   (flash: pressed). */
 void area_draw_hand_icon(int16_t champion_index, int16_t hand, bool flash);
 /* Draws the spell hand and the rune icon of champion_index in the action area (flash: pressed). */
 void area_draw_spell_icon(int16_t champion_index, bool flash);
