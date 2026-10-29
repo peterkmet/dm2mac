@@ -23,7 +23,7 @@ folder, a ZIP archive, or a CD image; the game installs the 10 files it needs at
 ## Play
 
 Download the latest release from the releases page of this repository (`DM2Mac-macos-arm64.zip` or
-`DM2Mac-windows-x64.zip`), extract it, and copy your own DOS files into the folder: the game folder, a ZIP archive,
+`DM2Mac-windows-x64.zip`), extract it, and copy your own DOS files into the extracted folder (the program folder): the DOS folder, a ZIP archive,
 or a CD image (`.iso`, `.img`, `.bin`).
 
 - **macOS:** Remove the quarantine attribute and launch `Dungeon Master II.command` (or double-click it in

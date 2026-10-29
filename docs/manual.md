@@ -6,9 +6,9 @@ How to run DM2Mac and how to play it. The repository has no game files. You supp
 
 Start the game from a release zip (`DM2Mac-macos-arm64.zip` or `DM2Mac-windows-x64.zip`, see the [README](../README.md#play)), or build it (see [Development](development.md)) and start `build/dm2` on macOS or `build/dm2.exe` on Windows.
 
-The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the game folder as a folder, a ZIP archive, or a CD image. At the first start the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
+The game needs 10 files of the PC DOS version of Dungeon Master II (English, 1995). All 10 are required. Copy your own copy into the program folder (the folder that holds `dm2` or `dm2.exe`) as the DOS folder, a ZIP archive, or a CD image. At the first start the game checks the files and installs them into `game/`. The files, the sources, and the checks are in [Game files and install](formats/game-files.md). With `--data DIR` the game uses `DIR` and skips the check and the install.
 
-- The Windows build has no console. It writes its messages to `dm2.log` in the game folder.
+- The Windows build has no console. It writes its messages to `dm2.log` in `game/`.
 
 ## Options
 
