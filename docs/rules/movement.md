@@ -38,6 +38,7 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, pos, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature is on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones. Their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
 - A fixed zone of an object grows to hold all the objects of its cell, and is at least 14 × 11 pixels.
 - `click_in_viewport` tests the zones in order: an object or alcove zone takes or places an object ([champions.md](champions.md#the-leader-hand)), a wall ornament goes to `sensor_process_wall_click`, a door button toggles the door. A click on no zone goes to the front wall or to a creature ([creatures.md](creatures.md)).
+- `g_view_hit_offset` (`0x802d4`) is the place of the last click in a view picture: the vertical and the horizontal distance from the picture center, in percent of half the picture size. The port keeps the vertical value in `g_view_hit_offset_y`.
 
 ## Movement
 
@@ -65,7 +66,6 @@ The rules of the main loop, the input, and the movement: the timing and the game
   - An active teleporter square whose first thing is not a teleporter (a damaged dungeon) does not move the party, an object, or a creature, and the AI sees it as floor without a passage behind it (`transit_teleporter`, `needed_move_flags`, `search_square_test`; the original reads the record of that thing as a teleporter).
   - `dungeon_unlink_thing_from_square` on a square without things does nothing (the original reads before the first-thing table).
   - `dungeon_link_thing_to_square` returns false for a full first-thing table (the original stops with a system error).
-  - A create item sensor (`0x3c`) whose item index has no thing type creates nothing (the original asks for a free record of type `0xffff`).
   - When the party falls from a trap teleport text (`fall_risk`) and the random champion is dead, the hurt sound takes the portrait of the leader; without a leader the port plays no hurt sound (the original reads the portrait of champion index `0xffff`, before the champion table).
 - System errors of the timeline: when an event is not in the queue (`find_queue_slot`, `system_error(0x46)`) or the timeline is full (`timeline_add_event`, `system_error(0x2d)`), the original shows `SYSTEM ERROR 70` or `SYSTEM ERROR 45` on the screen, waits 300 vertical blanks or a key, and quits. The port calls `os_fatal` with the same text (`src/engine/timeline.c`): the fatal hook (or the error output without a hook) gets the text, then the program exits with `EXIT_FAILURE`.
 - Out of memory: a failed allocation that has no error result calls `os_fatal("out of memory")` (`src/engine/` and `src/control/`). The original has no such exit.

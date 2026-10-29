@@ -81,6 +81,7 @@ The advanced and the turn-based modes mark the seen squares of the automap (`see
   - The explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage.
   - A static creature on a door square seen from the front shows only the possessions in the near cells.
   - An item in an alcove gets the jitter of its spot twice, once in the alcove place and once as the items on the floor (`SKULL.c:52354-52358`, `52396-52401`).
+  - the random wall ornaments of a square on another map (linked squares, minion map) use the wall ornament list of the map entered last, with the random ornament count, the size, and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
   - The hit test of a wet wall ornament on the front face draws the ornament with its rain and its contents into the view, where the hit test of the other ornaments only measures them (`SKULL.c:50988-51065`).
   - `show_far_squares` keeps the cell mask from square to square; a stairs square draws its things with the mask of the square drawn before it.
   - `aspect_get` clears the wall text of a square to 0, not `THING_TEXT_NONE` (`SKULL.c:12597`); only the wall things write `THING_TEXT_NONE`.

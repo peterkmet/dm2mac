@@ -20,15 +20,18 @@ The rules of the creatures: the creature data, the updates of the creature group
 - A projectile record links its payload (an object or a spell), and its event (type `0x1d` or `0x1e`) holds the energy, the attack, and the step. Each event moves the projectile one cell. At a wall, a closed door, a creature, or a champion the projectile hits (`hit_impact`).
 - An explosion record holds its type and power. Its event (type `0x19`) applies the damage on its square and can trigger the wall sensors.
 - A spell is a sequence of up to 4 runes (power, element, form, class). `magic_find_spell` finds it in the spell table of `SKULL.EXE`. The kinds are potions, projectiles, party auras, summons, and others.
-- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes mana every 25 game steps, and a click on the grid sends the minion there.
+
+## Minion map
+
+- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes 1 mana from the champion who opened it every 25 game steps, and a click on the grid sends the minion there.
 
 ## Deviations from the original
 
 - The scenario tests stub the mouse areas of an input mode (`mouse_area_add`, `mouse_area_remove`): a creature attack wakes the party, and the original then sets the input mode.
-- Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light, invisibility, and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
+- Uninitialized data of the original: data bytes 4 and 5 of projectile and explosion events; the data bytes after the word of light and aura events. The port sets them to 0. The oracle (the original in the emulator `dm2tools.emu`) clears them with a hook on `timeline_add_event`.
 - The AI data of a group (plan state and path) stays in a store of the port for each group. The port never evicts it. A load clears it. The original can lose it when the image cache evicts it; then the group plans again.
 - The scratch blocks of the AI (last-in, first-out allocations of the original memory layer) are ordinary buffers in the port. The port has 4 blocks (`SCRATCH_BLOCKS`): a fifth nested creature update calls `os_fatal` (`ai_scratch_push`); the original has no such limit.
-- No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive. The table has room for 100 more groups than the dungeon has.
+- No free active group: the original discards a creature group of the dungeon and tries again. The port leaves the group inactive.
 - Stale registers: the action "move two steps" in phase 3 or more returns `0x100` (the original returns the low half of a pointer); the action "turn, then move" in phase 2 or more returns the destination row (the register that holds it). An `AT_COUNTER` argument out of range (not 0 or 1) reads 0: the original reads any word of the active group, and words past it; no target record of the AI tables uses the condition.
 - The original tests the address of `rand_2bits` instead of calling it, so the extra delay always applies. The port keeps this.
 - Bounds fixes:
@@ -62,7 +65,6 @@ The rules of the creatures: the creature data, the updates of the creature group
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
 - Kept quirks of the original:
   - a new group when the active group table is full (`create_group` in `src/engine/creature.c`): the group record that the creation took stays taken and is in no square, so no later creation or discard can use it
-  - the random wall ornaments of a square on another map (linked squares, minion map) use the ornament list of the map entered last, as in the original, with the random ornament count, the size and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
   - `explosion_get_attack` divides the attack on a creature that resists non-fire by 4, but each blast type that reaches a creature computes the attack again, so the division has no effect
   - a projectile compares directions without a wrap, so only flights to the north and east can face a champion
   - a projectile move also writes the direction into its freed event
