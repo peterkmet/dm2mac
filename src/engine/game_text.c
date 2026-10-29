@@ -88,7 +88,7 @@ char *gtext_format(const char *fmt, char *dst)
             fmt += FORMAT_CODE_PREFIX;
         } else {
             fmt += FORMAT_CODE_PREFIX;
-            for (int i = 0; i < FORMAT_CODE_DIGITS; i++)
+            for (int i = 0; i < FORMAT_CODE_DIGITS && *fmt; i++) /* fix: the original reads past a cut code */
                 code = code * DECIMAL_BASE + (*fmt++ - '0');
         }
         *out = '\0';
