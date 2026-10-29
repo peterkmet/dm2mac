@@ -464,7 +464,7 @@ void light_update_party_light(void)
         if (item_attr(g_game.leader_hand, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
             lights[n++] = (int16_t)item_add_charges(g_game.leader_hand, 0);
         for (int c = 0; c < g_game.champion_count; c++)
-            for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
+            for (int16_t hand = 0; hand < SLOT_HAND_COUNT; hand++) {
                 uint16_t thing = champion(c)->slots[hand];
                 if (item_attr(thing, ATTR_FLAGS) & ITEM_FLAG_LIGHT)
                     lights[n++] = (int16_t)item_add_charges(thing, 0);
@@ -541,7 +541,7 @@ static void add_missile_light(SquareLight *sum, uint16_t first_thing)
 
 /* The light of a floor ornament and of the things on the square; false when an ornament without light hides the
    other light of the square. */
-static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, int16_t y)
+static bool add_floor_light(SquareLight *sum, const ViewSquare *s, Location at)
 {
     int ornament = aspect_word_ornament(s->side[SIDE_FLOOR_ORNAMENT]);
     bool animated = aspect_word_animated(s->side[SIDE_FLOOR_ORNAMENT]);
@@ -553,7 +553,7 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, in
         if (!v && !animated_only)
             return false;
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, (Location){x, y}))
+        if (dun_get_linked_teleporter_dest(&end, at))
             sum->window = (int16_t)(sum->window + v * daylight() / PERCENT);
         else if (!animated_only || animated)
             sum->light = (int16_t)(sum->light + v);
@@ -562,11 +562,11 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, int16_t x, in
     return true;
 }
 
-void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, unsigned flags)
+void light_add_square_light(int distance, int16_t dir, Location at, unsigned flags)
 {
     SquareLight sum = {0, 0, 0};
     ViewSquare s;
-    aspect_get(&s, g_party.cur_map, dir, x, y);
+    aspect_get(&s, g_party.cur_map, dir, at.x, at.y);
     switch (s.aspect) {
     case ASPECT_WALL:
         if (flags & LIGHT_WALLS)
@@ -579,10 +579,10 @@ void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, uns
     case ASPECT_DOOR_FRONT:
     case ASPECT_STAIRS_FRONT:
     case ASPECT_STAIRS_SIDE:
-        if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, x, y))
+        if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, at))
             break;
         if (flags & LIGHT_CREATURES) {
-            uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
+            uint16_t group = creature_group_at((Position){g_party.cur_map, at.x, at.y});
             if (group != THING_NONE)
                 sum.light = (int16_t)(sum.light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }

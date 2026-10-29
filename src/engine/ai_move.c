@@ -2415,7 +2415,7 @@ static bool test_entered(Search *s, int i)
         return ai_try_move(ai_move_test((uint8_t)c->item), ai_location(x, y), ai_location(x, y), -1).passed;
     case TARGET_LIGHT:
         if (g_ai_square.square & SQUARE_HAS_THINGS)
-            light_add_square_light(s->dist, s->dir == -1 ? g_game.party_dir : s->dir, x, y,
+            light_add_square_light(s->dist, s->dir == -1 ? g_game.party_dir : s->dir, ai_location(x, y),
                                    LIGHT_FLOOR | LIGHT_CREATURES);
         return false;
     case TARGET_AI_MARKER:
@@ -2556,7 +2556,7 @@ static bool test_blocked(Search *s, int i)
     }
     case TARGET_LIGHT:
         if (g_ai_square.square & SQUARE_HAS_THINGS) {
-            light_add_square_light(s->dist, s->dir, x, y, LIGHT_WALLS);
+            light_add_square_light(s->dist, s->dir, ai_location(x, y), LIGHT_WALLS);
             s->visit = VISIT_BLOCKED;
         }
         return false;
