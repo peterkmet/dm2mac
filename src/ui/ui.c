@@ -14,6 +14,7 @@
 #include "input.h"
 #include "item.h"
 #include "money.h"
+#include "os.h"
 #include "play.h"
 #include "save.h"
 #include "text.h"
@@ -449,6 +450,8 @@ void offscreen_create(Offscreen *o, int zone, bool mark_dirty)
     if (zone != ZONE_NONE)
         zone_get_rect(zone, o->rect);
     o->bitmap = draw_temp_bitmap(o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP);
+    if (!o->bitmap)
+        os_fatal("out of memory");
     o->dirty_count = 0;
     if (mark_dirty)
         add_dirty_rect(o, o->rect);
