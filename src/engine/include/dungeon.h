@@ -52,12 +52,13 @@
 #define SQUARE_FAKE_WALL_OPEN     0x04
 #define SQUARE_FLAG_3             0x08 /* bit 3 of any square: one floor text ornament shows it */
 #define SQUARE_LEVEL_LINK         0x02 /* a square with a link to another level */
-#define SQUARE_FLAG_0         0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
-#define SQUARE_HAS_THINGS     0x10 /* bit 4 of any square: things lie on it */
+#define SQUARE_FLAG_0          0x01 /* a fake wall that blinks with MAP_OPTION_DETAILS; a pit that is not a way down */
+#define SQUARE_FAKE_WALL_BLINK SQUARE_FLAG_0 /* the flag of a fake wall that blinks with MAP_OPTION_DETAILS */
+#define SQUARE_HAS_THINGS      0x10          /* bit 4 of any square: things lie on it */
 /* The values of SQUARE_DOOR_STATE. */
-#define DOOR_STATE_OPEN       0
-#define DOOR_STATE_ONE_FOURTH 1 /* a door one step down: the party passes under it */
-#define DOOR_STATE_HALF       2
+#define DOOR_STATE_OPEN        0
+#define DOOR_STATE_ONE_FOURTH  1 /* a door one step down: the party passes under it */
+#define DOOR_STATE_HALF        2
 #define DOOR_STATE_THREE_FOURTHS 3
 #define DOOR_STATE_CLOSED        4
 #define DOOR_STATE_BROKEN        5

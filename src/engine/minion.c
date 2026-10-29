@@ -118,7 +118,7 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     uint8_t square = dun_get_square((Location){sx, sy});
     int type = square_type(square);
     if (type != SQUARE_WALL && type != SQUARE_UNKNOWN &&
-        (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0))) {
+        (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FAKE_WALL_BLINK))) {
         if (sx == g_minion_map.marker_x && sy == g_minion_map.marker_y && map == g_minion_map.marker_map) {
             /* a click on the marker of a stairs or a pit goes to the level that it leads to */
             if (g_minion_map.marker_state == MARKER_SHOWN && g_minion_map.above_map >= 0) {

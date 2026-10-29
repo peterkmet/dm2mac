@@ -2347,7 +2347,7 @@ static bool execute_party_command(const Command *c, bool idle)
     } else if (command == CMD_VIEWPORT) {
         click_in_viewport(c->x, c->y);
     } else if (command == CMD_CAST_SPELL) {
-        game_set_command_stop(magic_cast_entered_runes());
+        game_set_command_stop(magic_cast_entered_runes_failed());
     } else if (command == CMD_REMOVE_RUNE) {
         magic_remove_last_rune();
     } else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST) {

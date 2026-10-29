@@ -47,7 +47,8 @@ const char *magic_get_rune_name(int rune);
 void magic_add_light(int kind, int power);
 /* A magic light event: the light fades one level. */
 void magic_event_light(TimelineEvent *e);
-/* Gives the living champions of champion_mask aura type with value for duration game ticks. */
+/* Gives the living champions of champion_mask aura type with value for duration game ticks. As in the original, the loop
+   over the champions runs over all CHAMPION_MAX slots, also those that hold no champion. */
 void magic_add_party_aura(int champion_mask, int type, int value, uint16_t duration);
 /* A party aura from champion c; pay: it costs 4 mana (less mana halves it). Returns false when it was not paid in full. */
 bool magic_cast_party_aura(Champion *c, int type, int power, bool pay);
@@ -61,7 +62,7 @@ CastResult magic_cast_spell(int champ, const Spell *spell, int power); /* export
    the failure roll and without experience; a potion still needs an empty flask. Returns the cast result. */
 CastResult magic_cast_cheat_spell(int champ, const Spell *spell);
 /* The champion of the open spell panel casts the entered runes; returns true when the cast failed. */
-bool magic_cast_entered_runes(void);
+bool magic_cast_entered_runes_failed(void);
 
 /* Runes */
 /* The mana that rune (0 to 5) of the next rune set costs champion champ now. */
