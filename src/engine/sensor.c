@@ -1145,7 +1145,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
     case SENSOR_GAME_END:
         g_hooks.complete_game();
         break;
-    case SENSOR_FRAME_STEP: { /* an ornament that steps its animation frame */
+    case SENSOR_FRAME_STEP: { /* steps the ornament frame; a step back from 0 gives 0xffff, as in the original */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
         sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, true));
         break;
