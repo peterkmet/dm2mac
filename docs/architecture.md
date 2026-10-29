@@ -1,7 +1,7 @@
 # Architecture
 
 The port is a reimplementation of Dungeon Master II (PC DOS, `SKULL.EXE`) in C11. The game rules follow the
-decompiled original; the port does not reproduce the DOS technical layer. The source in `src/` has five layers.
+decompiled original. The port does not reproduce the DOS technical layer. The source in `src/` has five layers.
 The build makes the game `build/dm2` and one shared library `build/libdm2.dylib` for the tests.
 
 ## Layers
@@ -119,7 +119,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/view.h` | `view_` | The dungeon view: the squares in sight and their drawing. |
 | `ui/zone.h` | `zone_` | Layout zones: the GDAT record of each zone with its anchor type, parent zone, and position. |
 
-`ui/ui_hooks.c` has no header of its own: it defines `g_hooks` of `engine/hooks.h`.
+`ui/ui_hooks.c` has no header of its own, because it defines `g_hooks` of `engine/hooks.h`.
 
 ### control/
 
@@ -175,7 +175,7 @@ The turn-based mode plays no movie. The start of a run in the game rules is in
    with the mouse cursor in the window.
 4. `plat_wait_tick` mixes the audio and waits for the next PIT tick.
 
-`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event: keys and
+`run_turnbased` is the main loop of the turn-based mode. The window events keep only the quit event, because keys and
 clicks do not reach the input queue. Each frame calls `transport_poll` and `control_frame`, and shows the screen.
 While no turn is pending, the frame waits one timer tick. The loop never ends the session by itself; `load` and
 `new_game` start the next game.
