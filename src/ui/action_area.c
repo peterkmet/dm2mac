@@ -175,7 +175,7 @@ static Bitmap *make_hand_icon(int16_t champion_index, int16_t hand)
         uint32_t size;
         const uint8_t *remap = gdat_item(
             gdat_current(), gdat_find(gdat_current(), CAT_INTERFACE, 0, GDAT_TYPE_REMAP, GFX_ICON_SHADOW_REMAP), &size);
-        if (remap) {
+        if (remap && size >= REMAP_COLORS) { /* fix: the original reads past a short item */
             if (c.palette_count < 1) {
                 memcpy(c.palette, remap, REMAP_COLORS);
                 c.palette_count = REMAP_COLORS;
