@@ -31,6 +31,9 @@
 /* Nothing drawn: no drawn cell or direction of a champion, no drawn wall set. */
 #define DRAWN_NONE 0xff
 
+/* drawn.action_mode: no input zone refresh yet for the current panels. */
+#define ACTION_MODE_STALE (-1)
+
 /* Game steps that the advanced mode keeps the damage of a hit after the original delay (not in the original game). */
 #define DAMAGE_HOLD_EXTRA_TICKS 1
 

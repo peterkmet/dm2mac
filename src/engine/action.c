@@ -30,7 +30,7 @@ void action_reset_champion(int champ)
 
 uint16_t action_open_hand_item(void)
 {
-    if (g_action.champion <= 0 || g_action.hand < 0 || g_action.hand > SLOT_ACTION_HAND)
+    if (g_action.champion <= 0 || !action_is_hand_slot(g_action.hand))
         return THING_NONE;
     return g_action.hand_items[g_action.champion - 1][g_action.hand];
 }

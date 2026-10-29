@@ -979,9 +979,7 @@ bool champ_execute_selected_action(int index)
         ChampionAction action = g_champ_actions[index];
         done = champ_perform_action(champ, index, false);
         g_champ_action_result = g_action.result;
-        ActionRepeat *r = g_action.hand == SLOT_ACTION_HAND || g_action.hand == SLOT_READY_HAND
-                              ? &g_action_repeats[champ][g_action.hand]
-                              : NULL;
+        ActionRepeat *r = action_is_hand_slot(g_action.hand) ? &g_action_repeats[champ][g_action.hand] : NULL;
         bool use = !r || !r->left || (r->fresh && !rand_below((uint16_t)(r->count + 1)));
         if (use && champ_use_action_charge(champ, action) && r) {
             r->count = 0;
@@ -1027,7 +1025,7 @@ void champ_process_repeated_actions(void)
             }
             g_action.hand = saved;
         }
-    if (g_action.champion && ran && g_action.hand >= 0 && g_action.hand <= SLOT_ACTION_HAND)
+    if (g_action.champion && ran && action_is_hand_slot(g_action.hand))
         champ_list_actions(g_action.champion - 1, champion(g_action.champion - 1)->slots[g_action.hand], g_action.hand);
 }
 

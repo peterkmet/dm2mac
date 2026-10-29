@@ -19,8 +19,7 @@ enum ActionMode {
     ACTION_MODE_MONEY_BOX = 4,
     ACTION_MODE_CONTAINER = 5,
     ACTION_MODE_RESULT = 6,
-    ACTION_MODE_NONE = -1,
-    ACTION_MODE_STALE = -1 /* no input zone refresh yet for the current panels */
+    ACTION_MODE_NONE = -1
 };
 /* The spell panel: the hand index that opens it and the runes of a rune set. */
 #define ACTION_HAND_SPELL      2
@@ -68,6 +67,11 @@ void action_reset(void);
 void action_reset_champion(int champ);
 
 /* Queries */
+/* True when hand is a hand slot (SLOT_READY_HAND, SLOT_ACTION_HAND), not the spell panel or no hand. */
+static inline bool action_is_hand_slot(int hand)
+{
+    return hand >= SLOT_READY_HAND && hand < SLOT_HAND_COUNT;
+}
 /* The item in the open hand, as the action area shows it. */
 uint16_t action_open_hand_item(void);
 

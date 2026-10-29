@@ -251,12 +251,18 @@ static bool wall_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, int
     return true;
 }
 
+/* A door, teleporter, text, or sensor: the things of a thing list that stand before the items and creatures. */
+static bool is_wall_thing(uint16_t thing)
+{
+    return thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR;
+}
+
 /* Applies the wall things (texts, sensors) to the faces of s; only_front limits them to the front face.
    Returns the first thing that is not a wall thing. */
 static uint16_t apply_wall_things(ViewSquare *s, int16_t map, uint16_t thing, int16_t dir, bool only_front)
 {
     int done = 0;
-    for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
+    for (; is_wall_thing(thing); thing = dungeon_next_thing(thing)) {
         int cell = thing_cell(thing);
         int face = dir_relative(cell, dir);
         if (done & 1 << cell || (only_front && face != SIDE_FRONT))
@@ -339,7 +345,7 @@ static bool floor_sensor_ornament(ViewSquare *s, int16_t map, uint16_t thing, Or
 /* The floor ornament of the floor things of a square: texts and sensors with ornaments. */
 static uint16_t apply_floor_things(ViewSquare *s, int16_t map, uint16_t thing, uint8_t square)
 {
-    for (; thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR; thing = dungeon_next_thing(thing)) {
+    for (; is_wall_thing(thing); thing = dungeon_next_thing(thing)) {
         OrnamentState o = {.time = g_game.game_time};
         bool shows = false;
         if (thing_type(thing) == THING_TEXT)
@@ -358,7 +364,7 @@ static uint16_t apply_floor_things(ViewSquare *s, int16_t map, uint16_t thing, u
 /* The first thing after the wall things (texts, sensors) of a thing list. */
 static uint16_t skip_wall_things(uint16_t thing)
 {
-    while (thing != THING_ENDOFLIST && thing_type(thing) <= THING_SENSOR)
+    while (is_wall_thing(thing))
         thing = dungeon_next_thing(thing);
     return thing;
 }

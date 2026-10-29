@@ -461,9 +461,7 @@ static void kill_champion(int champ)
     if (champ == g_action.champion - 1)
         action_area_close();
     c->health = 0;
-    c->action_delay[SLOT_READY_HAND] = 0;
-    c->action_delay[SLOT_ACTION_HAND] = 0;
-    c->action_delay[ACTION_SPELL] = 0;
+    memset(c->action_delay, 0, sizeof c->action_delay);
     c->redraw |= REDRAW_STATUS_BOX;
     if (champ + 1 == g_ui.inventory) {
         if (g_ui.eye) {
