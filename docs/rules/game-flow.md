@@ -1,10 +1,15 @@
 # Start menu, save and load, dialogs, and end of game
 
-The rules of the game flow: the start of a run, the save and the load, the dialogs, and the end of the game. The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, and `src/engine/save.c`. The save file is in [save.md](../formats/save.md). The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, and `src/engine/save.c`. The save file is in [save.md](../formats/save.md). The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Start of a run
 
-- `session_init` shows the start menu (`run_menu`, input mode 0) until the player chooses a game, then runs `session_load` until it returns true. The menu commands: `0xd7` new game, `0xd8` new game from `DUNGENB.DAT` (the file does not exist, so `DUNGEON.DAT` loads), `0xd9` load, `0xda` the picture [GDAT](../formats/graphics.md#gdat-items) `(5, 0, 1, 1)` for up to 1800 vertical retraces or until a click (command `0xef` of input mode 1), `0xe0` quit. The title is GDAT `(5, 0, 1, 4)` with its 16 colors in screen zone 2.
+- `session_init` shows the start menu (`run_menu`, input mode 0) until the player chooses a game, then runs `session_load` until it returns true. The title is [GDAT](../formats/graphics.md#gdat-items) `(5, 0, 1, 4)` with its 16 colors in screen zone 2. The menu commands:
+  - `0xd7`: new game.
+  - `0xd8`: new game from `DUNGENB.DAT`. The file does not exist, so `DUNGEON.DAT` loads.
+  - `0xd9`: load.
+  - `0xda`: the picture GDAT `(5, 0, 1, 1)` for up to 1800 vertical retraces or until a click (command `0xef` of input mode 1).
+  - `0xe0`: quit.
 - A new game reads `DUNGEON.DAT` with free records ([save.md](../formats/save.md#container)), puts the party on the start square of the header (map 0), starts the timeline and the weather, and runs the link pass (`dungeon_link_things_after_load`):
   - A teleporter whose target is a teleporter that leads back: the link sensors (`0x27`) of both squares without a number get the map + 1. With two numbered sensors both squares share one thing list: the fixed things of the target square go in reverse order in front of the list of the source square, and the first movable thing of the target square goes to its end; the movable things after it drop out.
   - Level link marks (square bit 1): the square in front of a text ornament of subtype 6 or 7 and of a sensor `0x1c` (cell direction of the thing); the square one level down below a pit, only when the wall set value `(8, set, 0x0b, 0x6a)` is 0.
@@ -12,16 +17,19 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
   - Creature groups: full health; a moving group gets its square as home; a static group clears its animation words and gives its possessions random cells (one random number for each link), unless bit 7 of byte `0x0e` is set.
 - `dungeon_read_level_table` reads the first text (kind 0) on the party start square of map 0 into 64 bytes filled with `'1'` and takes one digit per level, skipping end marks, new lines, and spaces. The minion map of a level shows the icons of this set (`dungeon_level_digit`). It runs at the first dungeon load of a run, even when that load is a save.
 - `sensor_start_timers` (only for a new game): each timer sensor (`0x1e`, `0x33` to `0x37`) that is on starts its timer event; the others lose the busy bit. All 18 timers of `DUNGEON.DAT` are off.
-- The champion of a new game: square (0, 0) of map 0 holds a mirror sensor (`0x7e`); `champ_init_party_state` recruits its champion with the commands of a join (`recruit_start`, then `recruit_finish` with command `0x92`) while the recruit flag `0x75a29` is set: the join opens no inventory, draws no mouth, plays no sound, and prints no message. The objects on the square in front of the mirror go into the slots. Then the champion faces the party direction, takes the party direction as its cell, and becomes the leader. The leader hand is empty.
+- The champion of a new game: square (0, 0) of map 0 holds a mirror sensor (`0x7e`). `champ_init_party_state` recruits its champion with the commands of a join (`recruit_start`, then `recruit_finish` with command `0x92`) while the recruit flag `0x75a29` is set. This join opens no inventory, draws no mouth, plays no sound, and prints no message. The objects on the square in front of the mirror go into the slots. Then the champion faces the party direction, takes the party direction as its cell, and becomes the leader. The leader hand is empty.
 
 ## Save and load
 
-- Saves are `<data>/DATA/SKSAVE<n>.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the 42-byte header of each slot; an empty slot shows "n UNUSED" and has `0xdeadbeef` at byte `0x26`. A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
+- Saves are `<data>/DATA/SKSAVE<n>.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the header of each slot ([save.md](../formats/save.md#container)); an empty slot shows "n UNUSED". A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
 - The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (exit code 3), RESUME. A quit more than 100 game steps after the last load and the last save first asks dialog `0x0c`.
 - A load restores the timed effects of the save (`restore_timed_effects`, [champions.md](champions.md#the-leader-hand)). The start of the loaded game (`play_start_session`) puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - The load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion.
-- A load of a missing slot file takes the `.BAK` file and renames it back; when `.BAK` is also missing and no game is in memory, a new game starts from `DUNGEON.FTL` if that file exists; a damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
-- When the records of a thing type run out, `dun_get_discarded_thing` frees one. It searches the maps from the map after the last search, with the party map last. The party map gets a second search, in which a shop display near the party keeps one item of its kind and lets the other things of its square go. It takes a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, and not on a square with a protecting sensor or text ornament subtype 4. It removes the thing from its square (or from the possessions of a static creature).
+- A load of a missing slot file takes the `.BAK` file and renames it back. When `.BAK` is also missing and no game is in memory, a new game starts from `DUNGEON.FTL` if that file exists. A damaged file shows "THE GAME IS DAMAGED!" and ends the program when no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
+- When the records of a thing type run out, `dun_get_discarded_thing` frees one:
+  - It searches the maps from the map after the last search, with the party map last. The party map gets a second search, in which a shop display near the party keeps one item of its kind and lets the other things of its square go.
+  - It takes a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, and not on a square with a protecting sensor or text ornament subtype 4.
+  - It removes the thing from its square (or from the possessions of a static creature).
 
 ## Dialogs
 
@@ -40,7 +48,9 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 ## End of game
 
 - The end sensor (wall sensor `0x12`) completes the game: the screen goes black and the program ends with [exit code 1](#exit-codes) (the DOS launcher then plays the ending).
-- When the last champion dies, `kill_champion` sets the end flag (`g_game_end_flag`, `g_main_loop.end`); the game step stops before the game time goes on, and `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END": RESTART GAME loads the last slot (no dialog) and the game goes on; QUIT GAME ends with [exit code 2](#exit-codes).
+- When the last champion dies, `kill_champion` sets the end flag (`g_game_end_flag`, `g_main_loop.end`). The game step stops before the game time goes on. `session_end(1)` plays the scream of the first champion (`(0x16, portrait, 0x87)`, fallback `0xfe`), waits 240 retraces, and shows "THE END":
+  - RESTART GAME loads the last slot (no dialog), and the game goes on.
+  - QUIT GAME ends with [exit code 2](#exit-codes).
 
 ### Exit codes
 
@@ -51,7 +61,7 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
 
 ## Deviations from the original
 
-- The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`play_wait_frames` in `src/ui/play.c` calls `g_play_frame_hook`, which `src/platform/main.c` sets); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook (`g_play_frame_hook`).
+- The DOS layer is not ported: disks, drives, volume labels, the disk dialogs, the memory errors, the mouse pointer counter, the video state, and the busy waits. A modal loop (menu, dialog, name editor) runs one timer tick of the platform per pass (`play_wait_frames` in `src/ui/play.c` calls `g_play_frame_hook`, which `src/platform/main.c` sets); the original loops spin. A dialog waits until the player chooses a button or the program ends; the tests choose through the frame hook.
 - `session_quit` sets `g_main_loop.quit` and returns; the main loop then ends (the original exits the process immediately). After the end sensor the rest of that timeline step still runs. A RESTART (exit code 3) starts the program again with `execvp` and sets the environment variable `DM2_RESTARTED`, which turns off the start movies; a failed start prints an error. The restart drops `--save PATH`, so the program shows the start menu, as in the original.
 - The drive path codes of the dialog texts (3, 4, 15) give the last folder name of the `--data` path in capitals (the font has no lowercase letters); the error, memory, and file name codes give an empty text.
 - The volume setting scales the mix of the sound voices (0 is silent); the music volume goes to the music player.
@@ -68,9 +78,9 @@ The rules of the game flow: the start of a run, the save and the load, the dialo
   - The load of `DUNGEON.DAT` stops for a thing type with more records than its cap or with records of a type without a record size, and the free records of a new game stay inside the cap (the original reads and writes past its record buffers).
   - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0; the link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).
-- The `--save PATH` option starts the game of PATH immediately, without the menu and without the dialog after a load.
+- The `--save PATH` option ([manual.md](../manual.md#options)) starts the game of PATH immediately, without the menu and without the dialog after a load.
 - The exit codes of the port program (`src/ui/include/session.h`, `EXIT_USAGE` in `src/platform/main.c`) add to the [exit codes](#exit-codes):
   - 1: also when the program cannot start, for example with a `--data` folder without `DATA/GRAPHICS.DAT`.
   - 2: also a bad command-line option: an option without a value, an unknown argument that starts with `--`, an unknown mode, or an unknown filter.
-  - 3: the restart by `execvp` (see above).
+  - 3: the restart by `execvp`.
   - 4: a quick load of the advanced mode that loads neither `QUICK.DAT` nor the copy of the running game ([save.md](../formats/save.md#quick-save-files)).

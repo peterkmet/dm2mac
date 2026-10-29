@@ -1,10 +1,10 @@
 # Interface panels and text
 
-The rules of the interface: the font and the text drawing, the UI colors and the text formats, the message area, the offscreen bitmaps, and the slots and panels. The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`, and `src/ui/ui.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`, and `src/ui/ui.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Font and text drawing
 
-- The font is [GDAT](../formats/graphics.md#gdat-items) `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there). The font has no lowercase letters: the codes of the lowercase letters have other glyphs. For example the name "f m" of item `(0x15, 62)` shows as "B %", as in the original.
+- The font is [GDAT](../formats/graphics.md#gdat-items) `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there). The font has no lowercase letters: the codes of the lowercase letters have other glyphs. For example, the name "f m" of item `(0x15, 62)` shows as "B %", as in the original.
 - `build_glyph` makes a 4 bpp glyph of 6 × 6 pixels: the foreground value on the set bits, the background value on the other bits and in column 6. `text_draw` draws one glyph per character, 6 pixels apart, with the glyph rows from `y - 4` to `y + 1` (the base line is at `y`, 1 row of a glyph is below it).
 - In an 8 bpp bitmap the glyph holds 0 and 1, and a 2-entry colormap gives the color and the background. A background with bit `0x4000` is transparent. Text uses `MIRROR_NONE`, so the mirrored 4 bpp quirks of the blitters ([view.md](view.md#blitters-gfx_blit-and-its-row-functions)) do not apply.
 - `text_measure` gives the width `6 × length - 1` and the height 5. `text_wrap_line` breaks a line at the last space that fits; a word longer than the line breaks at the width.
@@ -13,7 +13,12 @@ The rules of the interface: the font and the text drawing, the UI colors and the
 ## UI colors and text formats
 
 - GDAT `(1, 0, 13, 0xfe)` holds 16 palette indices: the UI colors (`enum ui_color` in `src/ui/include/text.h`). The interface draws with UI color indices, not palette indices.
-- `gtext_format` replaces format codes. A code is `.Z` followed by 3 decimal digits, or the byte 1 followed by a byte with the value code + 32. The inserted text is formatted again. Codes: 2 and 27 texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`; 7 a champion name (word `0x7f988`); 10 to 14 the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`; 17 the text `(7, 0, 5, byte 0x7f990)`. The other codes (0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28) give drive paths, disk sizes, error codes, and save names for the dialogs. An unknown code inserts an empty text.
+- `gtext_format` replaces format codes. A code is `.Z` followed by 3 decimal digits, or the byte 1 followed by a byte with the value code + 32. The inserted text is formatted again. An unknown code inserts an empty text. The codes:
+  - 2 and 27: the texts `(1, 0xfe, 5, 0)` and `(1, 0xfe, 5, 6)`.
+  - 7: a champion name (word `0x7f988`).
+  - 10 to 14: the numbers in the words `0x7f996`, `0x7f98a`, `0x7f994`, `0x7f992`, `0x7f986`.
+  - 17: the text `(7, 0, 5, byte 0x7f990)`.
+  - 0, 1, 3, 4, 8, 9, 15, 20, 22 to 26, 28: drive paths, disk sizes, error codes, and save names for the dialogs.
 - `gtext_gdat` (`gdat_get_text` in the original) decrypts a text entry and formats it. The inventory sets the numbers before it formats a text, for example `(7, 0, 5, 0x2a)` (load) and `(7, 0, 5, 0x1f)` (weight).
 
 ## Message area
