@@ -352,11 +352,13 @@ void champ_process_repeated_actions(void);
 /* The leader throws the object in the leader hand to the left or the right side; true when it flies. */
 bool champ_throw_leader_hand_object(bool right_side);
 
-/* The leader hand, the champion slots, and the item effects (champion_inventory.c). */
+/* Load and item effects (champion_inventory.c) */
 /* Computes the load of the champion: its slots and the items of its open chest. */
 void champ_compute_load(int champ);
 /* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
 void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
+
+/* The leader hand */
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
 uint16_t inv_cursor_object(void);
 /* Puts thing into the hand of the leader; the cursor shows it from the next frame on (inv_cursor_object). */
@@ -365,6 +367,8 @@ void champ_put_in_leader_hand(uint16_t thing);
 uint16_t champ_take_from_leader_hand(void);
 /* Updates the cursor when the icon of the animated leader hand object changes. */
 void inv_update_hand_cursor(void);
+
+/* Slots */
 /* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
 uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
 /* Puts thing into slot of champ. */
@@ -376,6 +380,8 @@ void inv_click_slot(int16_t slot);
 void inv_store_leader_hand_object(int champ);
 /* Puts thing into the first free slot of champ that takes it. */
 void inv_put_in_free_slot(int champ, uint16_t thing);
+
+/* Eating and drinking */
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
 void champ_consume_object(int champ, uint16_t thing, int16_t slot);
