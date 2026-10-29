@@ -36,8 +36,14 @@ int16_t money_coin_value(int coin_type);
 void money_count_coins_in_box(uint16_t box, int16_t counts[COIN_TYPE_MAX]);
 /* The coin type that the money box shows in slot (0 to 9), -1 none. */
 int money_coin_type_for_slot(uint16_t box, int16_t slot);
-/* Splits amount into at most max_coins coins, the most valuable first; returns the value of the coins. */
-int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count);
+/* The coins of an amount: their total value and their number. */
+typedef struct {
+    int16_t total;
+    int16_t count;
+} MoneySplit;
+
+/* Splits amount into at most max_coins coins, the most valuable first; returns their value and number. */
+MoneySplit money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types);
 
 /* Money boxes */
 /* Puts coin into the money box; false when box is no money box or coin no coin. */

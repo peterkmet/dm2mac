@@ -140,7 +140,7 @@ address,name,signature,subsystem
 0x000154e0,money_init_coin_table,void money_init_coin_table(void),money and shops
 0x000155ef,money_get_coin_type_for_slot,"int16_t money_get_coin_type_for_slot(uint16_t container, uint16_t slot)",money and shops
 0x00015737,money_get_item_value,"uint16_t money_get_item_value(uint16_t thing, uint8_t creature_type, int16_t list, int buying, int apply_margin, int16_t charges)",money and shops
-0x00015958,money_split_amount,"int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)",money and shops
+0x00015958,money_split_amount,"MoneySplit money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types)",money and shops
 0x000159c3,position_to_cell,int16_t position_to_cell(int16_t position),dungeon view
 0x00015a02,get_thing_position,"int16_t get_thing_position(uint16_t thing, int16_t dir)",dungeon view
 0x00015a91,sound_alloc_buffers,void sound_alloc_buffers(void),sound

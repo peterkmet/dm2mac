@@ -2384,11 +2384,10 @@ static void show_shop_price(int16_t amount, uint8_t ornament, const PicturePlace
     uint16_t offset = gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE2, offset_key);
     int16_t x = gdat_offset_x(offset);
     int16_t y = gdat_offset_y(offset);
-    int16_t count;
     uint8_t coins[SHOP_PRICE_COINS];
     if (!amount)
         return;
-    money_split_amount(amount, SHOP_PRICE_COINS, coins, &count);
+    int16_t count = money_split_amount(amount, SHOP_PRICE_COINS, coins).count;
     if (count <= 0)
         return;
     Bitmap *strip = draw_temp_bitmap(count * COIN_WIDTH, COIN_HEIGHT, IMAGE_4BPP);

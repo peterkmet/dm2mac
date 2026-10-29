@@ -256,6 +256,10 @@ class PriceTerms(ctypes.Structure):
                 ("apply_margin", ctypes.c_bool)]
 
 
+class MoneySplit(ctypes.Structure):
+    _fields_ = [("total", ctypes.c_int16), ("count", ctypes.c_int16)]
+
+
 def assert_same_actions(rules, where):
     """The action list, the action area results, and the repeats of both."""
     lib, emu = rules.lib, rules.emu
@@ -442,9 +446,8 @@ def test_money_and_prices_match_original(rules, lib):
     lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
     lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
     lib.money_get_item_value.restype = ctypes.c_uint16
-    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8),
-                                       ctypes.POINTER(ctypes.c_int16)]
-    lib.money_split_amount.restype = ctypes.c_int16
+    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8)]
+    lib.money_split_amount.restype = MoneySplit
     lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_bool]
     lib.money_parse_item_class_set.restype = ctypes.c_bool
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
@@ -472,12 +475,12 @@ def test_money_and_prices_match_original(rules, lib):
             assert lib.money_normalize_coins(check, MONEY_BOX) == emu.call(MONEY_NORMALIZE_COINS, check, MONEY_BOX), n
         elif kind == 3:
             amount, most = rng.randrange(-5, 2000), rng.randrange(1, 18)
-            types, count = (ctypes.c_uint8 * 32)(), ctypes.c_int16()
-            mine = lib.money_split_amount(amount, most, types, ctypes.byref(count))
+            types = (ctypes.c_uint8 * 32)()
+            mine = lib.money_split_amount(amount, most, types)
             theirs = emu.call(MONEY_SPLIT_AMOUNT, amount, most, buffer, out, 0)
             their_count = struct.unpack("<h", emu.read(out, 2))[0]
-            assert (mine, count.value) == (theirs, their_count), n
-            assert bytes(types[:count.value]) == emu.read(buffer, their_count), n
+            assert (mine.total, mine.count) == (theirs, their_count), n
+            assert bytes(types[:mine.count]) == emu.read(buffer, their_count), n
         elif kind == 4:
             creature, list_, skip = rng.choice(creatures), rng.randrange(-1, 16), rng.randrange(2)
             bits = (ctypes.c_uint8 * 0x40)()
