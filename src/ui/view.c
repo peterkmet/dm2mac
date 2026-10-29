@@ -2307,7 +2307,7 @@ static bool target_has_item(uint16_t record, int type, bool loose)
 static void show_centered_label(int16_t x, int16_t y, const char *text)
 {
     int16_t count = UI_COLOR_COUNT;
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     if (!size.w)
         return;
     uint8_t colors[UI_COLOR_COUNT];

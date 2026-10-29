@@ -408,7 +408,7 @@ def test_draw_text_matches_original(port, original):
         assert bytes(mine) == emu.read(src, size), (case, s, x, y, color, bg, bpp)
 
 
-class TextSize(ctypes.Structure):
+class ScreenSize(ctypes.Structure):
     _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
 
 
@@ -418,7 +418,7 @@ def test_measure_and_wrap_match_original(port, original):
     lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int16]
     lib.text_wrap_line.restype = ctypes.c_int16
     lib.text_measure.argtypes = [ctypes.c_char_p]
-    lib.text_measure.restype = TextSize
+    lib.text_measure.restype = ScreenSize
     rng = random.Random(14)
     text, line, out = original.alloc(256), original.alloc(256), original.alloc(16)
     for case in range(300):

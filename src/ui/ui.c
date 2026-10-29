@@ -583,7 +583,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
 
 void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors colors, const char *text)
 {
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     if (!size.w)
         return;
     Bitmap dst = {o->bitmap->pixels, o->rect[RECT_W], o->rect[RECT_H], IMAGE_8BPP};
@@ -596,7 +596,7 @@ void offscreen_draw_text_at(Offscreen *o, int16_t x, int16_t y, TextColors color
 /* The base line start of text in zone (screen coordinates) and its rectangle; NULL when it is not visible. */
 static int16_t *zoned_text_rect(int zone, const char *text, int16_t *r)
 {
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     if (!size.w)
         return NULL;
     return zone_compute_rect(NULL, r, zone, &size.w, &size.h);
@@ -992,7 +992,7 @@ static void show_description(const char *text)
 /* Draws a centered line of a scroll in the scroll font. */
 static void show_scroll_line(int center_x, int16_t y, const char *line)
 {
-    TextSize size = text_measure(line);
+    ScreenSize size = text_measure(line);
     if (!size.w)
         return;
     char mapped[TEXT_SIZE];

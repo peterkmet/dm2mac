@@ -1620,7 +1620,7 @@ static void feedback_rune_button(Feedback *f)
     int set = champion(g_action.champion - 1)->rune_count;
     int rune = in.current.command - CMD_RUNE_FIRST;
     char text[RUNE_TEXT_SIZE] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     rect_center_in(r, f->o.rect, size.w, size.h);
     offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
                            (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN]}, text);

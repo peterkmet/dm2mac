@@ -82,7 +82,7 @@ static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], cons
     for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i])
             continue;
-        TextSize size = text_measure(texts[i]);
+        ScreenSize size = text_measure(texts[i]);
         widths[i] = size.w;
         heights[i] = size.h;
         int w = rect[RECT_W];

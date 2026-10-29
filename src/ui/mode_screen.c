@@ -62,7 +62,7 @@ bool mode_screen_item_box(int16_t item, int16_t *rect)
 {
     if (item < 0 || item >= ITEM_COUNT)
         return false;
-    TextSize size = text_measure(items[item]);
+    ScreenSize size = text_measure(items[item]);
     if (!size.w)
         return false;
     rect[RECT_W] = (int16_t)(size.w + 2 * ITEM_MARGIN);
@@ -102,7 +102,7 @@ void mode_screen_click(int16_t x, int16_t y)
 /* Draws text centered in the screen rectangle r. */
 static void print_centered(const int16_t r[RECT_SIZE], int color, const char *text)
 {
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     if (!size.w)
         return;
     int16_t x = (int16_t)(r[RECT_X] + (r[RECT_W] - size.w) / 2);

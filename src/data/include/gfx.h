@@ -21,6 +21,11 @@ typedef struct {
     int16_t x, y;
 } ScreenPoint;
 
+/* A size on the screen, in pixels. */
+typedef struct {
+    int16_t w, h;
+} ScreenSize;
+
 /* Blit mirror modes, as flags. */
 #define MIRROR_NONE 0x0
 #define MIRROR_H    0x1
