@@ -147,9 +147,9 @@ static bool step_view(void)
             if (g_party.redraw)
                 ai_refresh_party_maps();
             if (g_party.move_steps)
-                view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
+                view_draw_dungeon((Location){g_party.view_x, g_party.view_y}, g_party.view_dir);
             else
-                view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+                view_draw_dungeon((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
             play_present_viewport();
             if (g_game_mode != GAME_MODE_VANILLA)
                 seen_mark((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir);
@@ -245,7 +245,7 @@ static void show_projectile_flight(void)
         return;
     uint32_t seed = g_random_seed;
     view_set_flight_tick(g_main_loop.tick_count, g_main_loop.tick_threshold);
-    view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+    view_draw_dungeon((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
     play_present_viewport();
     view_set_flight_tick(0, 0);
     rand_set_seed(seed);

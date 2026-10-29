@@ -974,12 +974,12 @@ static int position_to_cell(int position)
     return position == CELL_CENTER ? DIR_COUNT : -1;
 }
 
-/* True when the picture of kind should be mirrored for the party at (x, y) looking to dir. */
-static bool get_flip_parity(int kind, int16_t dir, int16_t x, int16_t y)
+/* True when the picture of kind should be mirrored for the party on the square at looking to dir. */
+static bool get_flip_parity(int kind, int16_t dir, Location at)
 {
-    bool parity =
-        (y + x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) + dungeon_map_level(view.map)) &
-        1;
+    bool parity = (at.y + at.x + dir + dungeon_map_offset_x(view.map) + dungeon_map_offset_y(view.map) +
+                   dungeon_map_level(view.map)) &
+                  1;
     bool party_parity = g_game.party_dir & 1;
     int time = g_game.game_time & GAME_TIME_FRAMES;
     uint16_t flags = view.flip_flags;
@@ -1066,9 +1066,9 @@ GridPoint view_offset_toward_party(GridPoint eye, GridPoint creature, int16_t cr
     return creature;
 }
 
-/* Records the things of the square (x, y) at pos for the party eye: the grid cells of the square, the creatures in
-   the object grid, and the cells with missiles and objects. */
-static void load_square_things(int pos, const ViewEye *eye, int16_t x, int16_t y)
+/* Records the things of the square at for the party eye at view position pos: the grid cells of the square, the
+   creatures in the object grid, and the cells with missiles and objects. */
+static void load_square_things(int pos, const ViewEye *eye, Location at)
 {
     int16_t dir = eye->dir;
     ViewSquare *s = g_view_squares + pos;
@@ -1093,7 +1093,7 @@ static void load_square_things(int pos, const ViewEye *eye, int16_t x, int16_t y
                 g_view_object_masks[pos] |= 1u << get_thing_position(thing, dir);
         } else if (type == THING_GROUP) {
             /* this adds the cell of the push arrow for a creature in front of the party */
-            GridPoint c = aspect_cell_to_xy((Location){x, y}, get_thing_position(thing, DIR_NORTH));
+            GridPoint c = aspect_cell_to_xy(at, get_thing_position(thing, DIR_NORTH));
             if (pos != POS_PARTY)
                 c = view_offset_toward_party(eye->point, c, creature_info(gdat_current(), group_creature(thing))->size);
             RelativeOffset offset = relative_offset(dir, c.x - eye->point.x, c.y - eye->point.y);
@@ -1153,17 +1153,17 @@ static void load_walking_party_square(ViewSquare *s)
     }
 }
 
-void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
+void view_load_square(Location at, int pos, int16_t dir)
 {
-    Location square = step_relative((Location){x, y}, dir, depth_of(pos), lateral_of(pos));
+    Location square = step_relative(at, dir, depth_of(pos), lateral_of(pos));
     ViewSquare *s = g_view_squares + pos;
     s->x = (int8_t)square.x;
     s->y = (int8_t)square.y;
     aspect_get(s, view.map, dir, square.x, square.y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
-    ViewEye eye = {.dir = dir, .point = aspect_cell_to_xy((Location){x, y}, eye_cell[dir])};
-    load_square_things(pos, &eye, square.x, square.y);
+    ViewEye eye = {.dir = dir, .point = aspect_cell_to_xy(at, eye_cell[dir])};
+    load_square_things(pos, &eye, square);
 }
 
 void view_unhide_linked_squares(void)
@@ -2850,7 +2850,7 @@ static void show_linked_squares(const TeleporterLink *link, int pos, int depth)
     view.map = link->map;
     Location at = step_relative((Location){link->x, link->y}, view.party_dir, -depth, 0);
     for (int d = POS_DEPTH_MAX; d >= depth; d--)
-        view_load_square(at.x, at.y, depth_center[d], view.party_dir);
+        view_load_square(at, depth_center[d], view.party_dir);
     for (int d = POS_DEPTH_MAX; d > depth; d--)
         show_square_things(depth_center[d], THINGS_ALL, true);
     view.map = saved_map;
@@ -2962,8 +2962,9 @@ static void show_ceiling_pit(int pos)
     uint8_t square = dungeon_square_edge(above.map, above.x, above.y);
     if (square_type(square) != SQUARE_PIT || !square_flag(square, SQUARE_PIT_OPEN))
         return;
-    int flip = pos == POS_PARTY ? get_flip_parity(PARITY_CEILING, view.party_dir, view.party_x, view.party_y)
-                                : ceiling_pit_flip[pos];
+    int flip = pos == POS_PARTY
+                   ? get_flip_parity(PARITY_CEILING, view.party_dir, (Location){view.party_x, view.party_y})
+                   : ceiling_pit_flip[pos];
     show_map_picture(ceiling_pit_entry[pos], ceiling_pit_zone[pos], view.wall_key, flip);
 }
 
@@ -2976,7 +2977,7 @@ static void show_floor_pit(int pos)
     bool up = g_view_squares[pos].side[SIDE_PIT_UP] != 0;
     if (pos >= POS_FLOOR_PIT_BLOCKED && up)
         return;
-    int flip = pos == POS_PARTY ? get_flip_parity(PARITY_FLOOR, view.party_dir, view.party_x, view.party_y)
+    int flip = pos == POS_PARTY ? get_flip_parity(PARITY_FLOOR, view.party_dir, (Location){view.party_x, view.party_y})
                                 : floor_pit_flip[pos];
     show_map_picture(up ? floor_pit_entry_up[pos] : floor_pit_entry[pos], zone, view.wall_key, flip);
 }
@@ -3309,10 +3310,11 @@ static void outdoor_draw_sky_object(const SkyObject *o, int16_t dir, int16_t x, 
 {
     if (!o->zone)
         return;
-    bool flip = (o->flip == SKY_FLIP_FLOOR && get_flip_parity(PARITY_FLOOR, dir, x, y)) ||
-                (o->flip == SKY_FLIP_CEILING && get_flip_parity(PARITY_CEILING, dir, x, y)) ||
-                (o->flip == SKY_FLIP_FLOOR_2 && get_flip_parity(PARITY_FLOOR, dir, x, y)) ||
-                (o->flip == SKY_FLIP_CEILING_2 && get_flip_parity(PARITY_CEILING, dir, x, y));
+    Location at = {x, y};
+    bool flip = (o->flip == SKY_FLIP_FLOOR && get_flip_parity(PARITY_FLOOR, dir, at)) ||
+                (o->flip == SKY_FLIP_CEILING && get_flip_parity(PARITY_CEILING, dir, at)) ||
+                (o->flip == SKY_FLIP_FLOOR_2 && get_flip_parity(PARITY_FLOOR, dir, at)) ||
+                (o->flip == SKY_FLIP_CEILING_2 && get_flip_parity(PARITY_CEILING, dir, at));
     int scale_x = o->scale_x;
     int scale_y = o->scale_y;
     int16_t dx = o->dx;
@@ -3562,18 +3564,18 @@ static void start_tracks(int16_t dir, int16_t x, int16_t y)
     view.flight.time = g_game.game_time;
 }
 
-void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)
+void view_draw_dungeon(Location at, int16_t dir)
 {
     view.party_map = g_game.party_map;
     view.map = view.party_map;
     view.party_dir = dir;
-    view.party_x = x;
-    view.party_y = y;
+    view.party_x = at.x;
+    view.party_y = at.y;
     view.shade = game_has_cheat(CHEAT_LIGHT)
                      ? 0
                      : g_view_light_level * LIGHT_STEP; /* the creature rules keep g_view_light_level */
     view.walking = g_party.move_steps != 0;
-    start_tracks(dir, x, y);
+    start_tracks(dir, at.x, at.y);
     g_view_click_zone_count = VIEW_CLICK_ZONE_FIXED;
     for (int i = 0; i < VIEW_CLICK_ZONE_FIXED; i++) {
         g_view_click_zones[i].thing = THING_NONE;
@@ -3585,7 +3587,7 @@ void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)
     g_view_arrows_enabled = g_party.push_mode || g_party.push_pending_group != THING_NONE;
     input_update_viewport_arrow();
     for (int pos = VIEW_SQUARE_COUNT - 1; pos >= 0; pos--)
-        view_load_square(x, y, pos, dir);
+        view_load_square(at, pos, dir);
     int margins = NO_KEY;
     if (g_view_squares[POS_DEPTH2_LEFT].aspect == ASPECT_WALL &&
         g_view_squares[POS_DEPTH2_CENTER].aspect == ASPECT_WALL &&
@@ -3596,13 +3598,13 @@ void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)
         margins = MAP_KEY_NEAR_MARGINS;
     uint16_t m = margins == NO_KEY ? 0 : aspect_value_key(CAT_WALLSET, view.gfx_set, margins);
     zone_set_clip_margins(0, 0, 0, LOW_BYTE(m));
-    show_map_picture(GFX_MAP_CEILING, ZONE_CEILING, NO_KEY, get_flip_parity(PARITY_CEILING, dir, x, y));
+    show_map_picture(GFX_MAP_CEILING, ZONE_CEILING, NO_KEY, get_flip_parity(PARITY_CEILING, dir, at));
     g_zone_clip_rect[RECT_W] = 0;
     zone_set_clip_margins(0, HIGH_BYTE(m), 0, 0);
-    show_map_picture(GFX_MAP_FLOOR, ZONE_FLOOR, NO_KEY, get_flip_parity(PARITY_FLOOR, dir, x, y));
+    show_map_picture(GFX_MAP_FLOOR, ZONE_FLOOR, NO_KEY, get_flip_parity(PARITY_FLOOR, dir, at));
     g_zone_clip_rect[RECT_W] = 0;
-    view.flip = get_flip_parity(PARITY_SQUARE, dir, x, y);
-    outdoor_draw_sky(dir, x, y);
+    view.flip = get_flip_parity(PARITY_SQUARE, dir, at);
+    outdoor_draw_sky(dir, at.x, at.y);
     view_unhide_linked_squares();
     view_mark_hidden_squares();
     show_far_squares();

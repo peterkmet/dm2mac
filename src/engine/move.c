@@ -875,7 +875,7 @@ static void transit_pit(Transit *t)
         }
         int steps = g_party.move_steps;
         g_party.move_steps = 0;
-        g_hooks.draw_dungeon(g_game.party_dir, t->x, t->y);
+        g_hooks.draw_dungeon((Location){t->x, t->y}, g_game.party_dir);
         g_party.move_steps = (int16_t)steps;
     }
     if (to_marker) {

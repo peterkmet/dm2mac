@@ -20,7 +20,10 @@ from dm2test.lib import load_lib
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.view_load_square.argtypes = [Location, ctypes.c_int, ctypes.c_int16]
+    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
+    return lib
 
 VIEW_UNHIDE_LINKED_SQUARES, VIEW_MARK_HIDDEN_SQUARES = 0x54ABD, 0x5497E
 G_VIEW_SQUARES, G_VIEW_CREATURE_GRID, G_VIEW_OBJECT_GRID = 0x80040, 0x80044, 0x8004C
@@ -85,7 +88,7 @@ def original_view_squares(emu, x, y, direction, party):
 
 def c_view_squares(lib, x, y, direction):
     for pos in range(SQUARE_COUNT - 1, -1, -1):
-        lib.view_load_square(x, y, pos, direction)
+        lib.view_load_square(Location(x, y), pos, direction)
     lib.view_unhide_linked_squares()
     lib.view_mark_hidden_squares()
     return bytes((ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "g_view_squares"))
@@ -168,7 +171,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
-    lib.view_draw_dungeon(direction, x, y)
+    lib.view_draw_dungeon(Location(x, y), direction)
     return ctypes.string_at(viewport.pixels, VIEW_W * VIEW_H)
 
 

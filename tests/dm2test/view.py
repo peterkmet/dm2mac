@@ -226,7 +226,7 @@ class OriginalView:
 def draw_both(sc):
     """The view of the party in both, each with its own light level and sky objects."""
     from dm2test import view as tv
-    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER
+    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER, Location
     lib, emu, game = sc.lib, sc.emu, sc.game
     light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
     sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
@@ -240,7 +240,8 @@ def draw_both(sc):
     seed.value = tv.VIEW_SEED
     viewport = tv.Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
-    lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
+    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
+    lib.view_draw_dungeon(Location(game.party_x, game.party_y), game.party_dir)
     mine = ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H)
     sc.party.move_steps = steps
     seed.value = saved

@@ -45,9 +45,9 @@ typedef struct {
     void (*draw_movement_arrows)(void);                  /* draws the movement arrows */
     void (*fill_screen_zone)(int zone, int color);       /* fills a screen zone with a palette color */
     void (*draw_viewport_image)(int category, int index, int entry, int zone,
-                                int transparent);            /* a picture in a zone of the view */
-    void (*complete_game)(void);                             /* the party finished the game */
-    void (*draw_dungeon)(int16_t dir, int16_t x, int16_t y); /* draws the view of the party at (x, y) facing dir */
+                                int transparent);   /* a picture in a zone of the view */
+    void (*complete_game)(void);                    /* the party finished the game */
+    void (*draw_dungeon)(Location at, int16_t dir); /* draws the view of the party on the square at facing dir */
 } Hooks;
 
 extern Hooks g_hooks;

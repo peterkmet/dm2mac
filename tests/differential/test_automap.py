@@ -19,6 +19,7 @@ def lib():
     lib = load_lib()
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
+    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.seen_is_seen.restype = ctypes.c_bool
     return lib
 
@@ -530,7 +531,7 @@ def test_light_cheat_draws_full_light(lib, automap):
     def view(light, cheat):
         level.value = light
         lib.game_set_cheats(C.CHEAT_LIGHT if cheat else 0)
-        lib.view_draw_dungeon(game.party_dir, game.party_x, game.party_y)
+        lib.view_draw_dungeon(Location(game.party_x, game.party_y), game.party_dir)
         return c_view(lib)
     dark, cheat, bright = view(5, 0), view(5, 1), view(0, 0)
     assert cheat == bright != dark and len(bright) == VIEW_W * VIEW_H
