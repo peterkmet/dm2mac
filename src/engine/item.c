@@ -165,21 +165,9 @@ uint8_t item_index_gdat_index(uint16_t item)
 
 uint8_t item_index_gdat_category(uint16_t item)
 {
-    static const uint8_t kind_type[] = {THING_WEAPON, THING_ARMOUR, THING_MISC};
-    item &= ITEM_INDEX_NONE;
-    int type;
-    if (item < ITEM_FIRST_POTION)
-        type = kind_type[item / ITEM_KIND_ITEMS];
-    else if (item > ITEM_SCROLL)
+    int type = item_index_to_thing_type(item);
+    if (type < 0)
         type = THING_EXPLOSION; /* the original reads an item index of no type like this */
-    else if (item == ITEM_SCROLL)
-        type = THING_SCROLL;
-    else if (item >= ITEM_FIRST_CONTAINER)
-        type = THING_CONTAINER;
-    else if (item >= ITEM_FIRST_CREATURE)
-        type = THING_GROUP;
-    else
-        type = THING_POTION;
     return thing_gdat_category[type];
 }
 

@@ -996,21 +996,15 @@ void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, in
         return; /* fix: the original reads before the first-thing table */
     uint16_t *table = dun.square_first_things;
     int count = dun.square_thing_count;
-    uint16_t id = thing & THING_ID_MASK;
-    if (dungeon_next_thing(thing) == THING_ENDOFLIST && (table[index] & THING_ID_MASK) == id) {
-        *dungeon_square_byte(map, x, y) &= ~SQUARE_HAS_THINGS;
-        memmove(table + index, table + index + 1, (count - 1 - index) * sizeof *table);
-        table[count - 1] = THING_NONE;
-        shift_later_columns(map, x, -1);
-    } else if ((table[index] & THING_ID_MASK) == id) {
-        table[index] = dungeon_next_thing(thing);
-    } else {
-        uint16_t prev = table[index];
-        while (dungeon_next_thing(prev) != THING_ENDOFLIST && (dungeon_next_thing(prev) & THING_ID_MASK) != id)
-            prev = dungeon_next_thing(prev);
-        if (dungeon_next_thing(prev) != THING_ENDOFLIST)
-            thing_set_word(prev, THING_NEXT, dungeon_next_thing(thing));
+    if (dungeon_next_thing(thing) != THING_ENDOFLIST || (table[index] & THING_ID_MASK) != (thing & THING_ID_MASK)) {
+        dungeon_unlink_thing_from_list(thing, table + index);
+        return;
     }
+    /* the only thing of the square: the square loses its entry in the first-thing table */
+    *dungeon_square_byte(map, x, y) &= ~SQUARE_HAS_THINGS;
+    memmove(table + index, table + index + 1, (count - 1 - index) * sizeof *table);
+    table[count - 1] = THING_NONE;
+    shift_later_columns(map, x, -1);
     thing_set_word(thing, THING_NEXT, THING_ENDOFLIST);
 }
 
