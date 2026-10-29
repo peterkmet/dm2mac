@@ -12,7 +12,7 @@ from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
-from dm2test.scenario import gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Location, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -135,10 +135,6 @@ def take(s, x, y, thing):
     """Removes an object from its square of the current map in both."""
     s.lib.dungeon_unlink_thing_from_square(thing, s.party.cur_map, x, y)
     s.emu.call(DUN_UNLINK_THING, thing, 0, x, y)
-
-
-class Location(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 class ProjectileLaunch(ctypes.Structure):

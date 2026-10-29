@@ -6,7 +6,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import gdat, start, square_things  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location, Position, gdat, start, square_things  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1
@@ -15,14 +15,6 @@ FLOOR_ANY = 0x01
 SENSOR_TYPE_MASK = 0x7F  # the sensor type is bits 0-6 of the type word
 STEP_TYPES = (FLOOR_ANY, 2, 3, 4, 7, 8)  # floor sensors that a step or an item triggers
 ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
-
-
-class Location(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
-
-
-class Position(ctypes.Structure):
-    _fields_ = [("map", ctypes.c_int16), ("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 @pytest.fixture(scope="module")

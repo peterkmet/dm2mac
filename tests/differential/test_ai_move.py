@@ -11,7 +11,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import Position, gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Location, Position, gdat, start  # noqa: F401 (fixtures)
 from dm2test.lib import load_lib
 
 
@@ -70,11 +70,6 @@ THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
 def s16(v):
     return ctypes.c_int16(v & 0xFFFF).value
-
-
-class Location(ctypes.Structure):
-    """A square of the current map as the port passes it."""
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 class AiCommand(ctypes.Structure):
