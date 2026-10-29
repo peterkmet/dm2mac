@@ -358,17 +358,6 @@ static unsigned run_length(Nibbles *n)
     return v;
 }
 
-static int get_pixel(const uint8_t *buf, size_t pos)
-{
-    return pos & 1 ? buf[pos / 2] & NIBBLE_MASK : buf[pos / 2] >> NIBBLE_BIT_COUNT;
-}
-
-static void set_pixel(uint8_t *buf, size_t pos, int color)
-{
-    uint8_t *p = buf + pos / 2;
-    *p = pos & 1 ? (*p & ~NIBBLE_MASK) | color : (*p & NIBBLE_MASK) | color << NIBBLE_BIT_COUNT;
-}
-
 enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uint8_t *base, uint8_t *dst,
                                   size_t dst_size)
 {
@@ -401,10 +390,10 @@ enum GdatResult image_decode_4bpp(const uint8_t *src, size_t src_size, const uin
             if (pos >= total || (kind == CMD_COPY_ABOVE && pos < row))
                 return GDAT_ERR_DATA;
             if (kind == CMD_COPY_ABOVE)
-                color = get_pixel(dst, pos - row);
+                color = image_nibble(dst, pos - row);
             else if (base && kind == CMD_COPY_BASE)
-                color = get_pixel(base, pos);
-            set_pixel(dst, pos++, color);
+                color = image_nibble(base, pos);
+            image_set_nibble(dst, pos++, color);
             if (++x == width) {
                 x = 0;
                 pos += row - width;

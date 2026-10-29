@@ -5,9 +5,6 @@
 #include "ids.h"
 #include "le.h"
 
-/* The high nibble of a 4 bpp byte. */
-#define HIGH_NIBBLE_MASK 0xf0
-
 /* Fraction bits: the scalers step through the source in 1/128 pixel, the 8 bpp scaler in 1/256 pixel. */
 #define FRACTION_SHIFT      7
 #define BYTE_FRACTION_SHIFT 8
@@ -41,21 +38,16 @@ static int even(int width)
 /* The color of pixel i of a 4 bpp or 8 bpp picture. */
 static int get_pixel(const uint8_t *p, int bpp, int i)
 {
-    if (bpp == IMAGE_8BPP)
-        return p[i];
-    return i & 1 ? p[i >> 1] & NIBBLE_MASK : p[i >> 1] >> NIBBLE_BIT_COUNT;
+    return bpp == IMAGE_8BPP ? p[i] : image_nibble(p, i);
 }
 
 /* Sets pixel i of a 4 bpp or 8 bpp picture. */
 static void put_pixel(uint8_t *p, int bpp, int i, int color)
 {
-    if (bpp == IMAGE_8BPP) {
+    if (bpp == IMAGE_8BPP)
         p[i] = (uint8_t)color;
-        return;
-    }
-    uint8_t *b = p + (i >> 1);
-    *b = i & 1 ? (*b & HIGH_NIBBLE_MASK) | (color & NIBBLE_MASK)
-               : (*b & NIBBLE_MASK) | (uint8_t)(color << NIBBLE_BIT_COUNT);
+    else
+        image_set_nibble(p, i, color);
 }
 
 /* Blits */
