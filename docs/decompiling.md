@@ -44,7 +44,7 @@ The `.gitignore` file excludes `game/` and `reference/`. Do not commit game cont
 | `uv run dm2-le game/SKULL.EXE <out.bin>` | Load the Linear Executable (LE) file into a flat memory image (`tools/dm2tools/le.py`). Prints one `object N: base ...` line per object and the `entry:` address. The addresses of the image are in the Conventions of the [SKULL.EXE map](reference/skull-map.md). |
 | `[SYMBOLS=<csv>] tools/ghidra/decompile.sh <image.bin> <base> <data-start> <out.c> <entry> [<entry> ...]` | Decompile a flat 32-bit x86 image (Watcom register calling convention) with Ghidra headless. |
 | `dm2tools.emu` (Python) | Run a function of `SKULL.EXE` in an x86 emulator (`tools/dm2tools/emu.py`). `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
-| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file of `game/` except the movie files into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
+| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file of `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
 
 ## What decompile.sh does
 

@@ -57,6 +57,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/iso.h` | `iso_` | ISO 9660 CD images: finds and reads the game files on a CD image. |
 | `data/le.h` | `le16` `le32` `be16` `put_le16` `put_le32` `put_be32` | Little-endian reads and writes of the DOS file formats. |
 | `data/mve.h` | `mve_` | Interplay MVE movies: chunks, opcodes, 8-bit video, audio; from memory only. |
+| `data/num.h` | `abs_` `clamp_` `max_` `min_` | Integer helpers: the smaller, the bigger, the absolute, and the limited value. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
 | `data/pcx.h` | `pcx_` | PCX pictures, 8-bit, RLE (run-length encoded), palette at the end (the splash INTRPLAY.PCX); decodes from memory only. |
 | `data/settings.h` | `settings_` | The settings file of the advanced mode (SETTINGS.TXT in the saves folder): reads and writes the upscale filter; it does not apply the value. |
@@ -207,7 +208,7 @@ The rules request a redraw of the panels with redraw flags that `ui/` reads and 
 
 - `Champion.redraw` (`engine/champion.h`): the `REDRAW_*` bits for the name, the bars, the load, the title, the
   status box, and the inventory of one champion.
-- `g_party.redraw` (`engine/move.h`): the `REDRAW_*` bits for the view squares and the creature maps.
+- `g_party.redraw` (`engine/move.h`): the `PARTY_REDRAW_*` bits for the view and the squares around the party.
 
 ## The control socket and the turn
 
