@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 
 /* The sides of a view square: the 4 faces of a wall. */
 #define VIEW_SIDE_COUNT 4
@@ -118,6 +119,6 @@ int aspect_rotate_cell(int grid_cell, int16_t dir);
 /* The grid cell (0 to 24) of a creature in its square, turned by dir quarter turns: the cell of its animation frame. */
 int aspect_creature_cell(uint16_t group, int16_t dir);
 /* The thing grid position of grid_cell (0 to 24) of the square (base_x, base_y) of the map. */
-GridPoint aspect_cell_to_xy(int base_x, int base_y, int grid_cell);
+GridPoint aspect_cell_to_xy(Location base, int grid_cell);
 
 #endif /* DM2_ENGINE_ASPECT_H */

@@ -1551,7 +1551,7 @@ GroupNear creature_find_group_near_point(Location at, int16_t cell)
     static const uint16_t cell_grid[DIR_COUNT] = {
         cell_grid_index(CELL_CENTER_LOW, CELL_CENTER_LOW), cell_grid_index(CELL_CENTER_LOW, CELL_CENTER_HIGH),
         cell_grid_index(CELL_CENTER_HIGH, CELL_CENTER_HIGH), cell_grid_index(CELL_CENTER_HIGH, CELL_CENTER_LOW)};
-    GridPoint p = aspect_cell_to_xy(at.x, at.y, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
+    GridPoint p = aspect_cell_to_xy(at, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
     /* the square at, then the squares of the offsets */
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         Location s = at;
@@ -1565,7 +1565,7 @@ GroupNear creature_find_group_near_point(Location at, int16_t cell)
             continue;
         int size = creature_group_info(g)->hit_size;
         int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
-        GridPoint z = aspect_cell_to_xy(s.x, s.y, (uint16_t)zone);
+        GridPoint z = aspect_cell_to_xy(s, zone);
         int16_t cx = (int16_t)(z.x - p.x);
         int16_t cy = (int16_t)(z.y - p.y);
         if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size])

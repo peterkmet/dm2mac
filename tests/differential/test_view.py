@@ -9,7 +9,7 @@ from dm2test.gdat import GdatKey, ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
-from dm2test.scenario import Position
+from dm2test.scenario import Location, Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
@@ -299,14 +299,14 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+    lib.aspect_cell_to_xy.argtypes = [Location, ctypes.c_int]
     lib.aspect_cell_to_xy.restype = GridPoint
     rng = random.Random(21)
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
         cell = rng.randrange(C.CELL_GRID_COUNT) if rng.random() < 0.8 else rng.randrange(0x10000)
         image_emu.call(VIEW_GRID5_CELL_TO_XY, base_x, base_y, cell, OUT_X, OUT_Y)
-        point = lib.aspect_cell_to_xy(base_x, base_y, cell)
+        point = lib.aspect_cell_to_xy(Location(base_x, base_y), cell)
         assert (point.x, point.y) == read_xy(image_emu), (base_x, base_y, cell)
 
 

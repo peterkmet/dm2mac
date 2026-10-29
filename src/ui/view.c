@@ -1093,7 +1093,7 @@ static void load_square_things(int pos, const ViewEye *eye, int16_t x, int16_t y
                 g_view_object_masks[pos] |= 1u << get_thing_position(thing, dir);
         } else if (type == THING_GROUP) {
             /* this adds the cell of the push arrow for a creature in front of the party */
-            GridPoint c = aspect_cell_to_xy(x, y, (uint16_t)get_thing_position(thing, DIR_NORTH));
+            GridPoint c = aspect_cell_to_xy((Location){x, y}, get_thing_position(thing, DIR_NORTH));
             if (pos != POS_PARTY)
                 c = view_offset_toward_party(eye->point, c, creature_info(gdat_current(), group_creature(thing))->size);
             RelativeOffset offset = relative_offset(dir, c.x - eye->point.x, c.y - eye->point.y);
@@ -1162,7 +1162,7 @@ void view_load_square(int16_t x, int16_t y, int pos, int16_t dir)
     aspect_get(s, view.map, dir, square.x, square.y);
     if (view.walking && pos == POS_PARTY)
         load_walking_party_square(s);
-    ViewEye eye = {.dir = dir, .point = aspect_cell_to_xy(x, y, eye_cell[dir])};
+    ViewEye eye = {.dir = dir, .point = aspect_cell_to_xy((Location){x, y}, eye_cell[dir])};
     load_square_things(pos, &eye, square.x, square.y);
 }
 
