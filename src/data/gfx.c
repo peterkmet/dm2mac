@@ -120,7 +120,8 @@ void gfx_blit_scaled_4bpp(const Bitmap *source, Bitmap *target, const uint8_t *c
         prev = sy;
         int base = sy * src_stride;
         uint16_t acc_x = step_x >> 1;
-        /* two pixels per destination byte; an odd width also fills the pad nibble */
+        /* two pixels per destination byte; an odd width also fills the pad nibble; the source nibble index wraps
+           at 16 bits, as in the original */
         for (int i = 0; i < (dst_width + 1) / 2; i++) {
             int hi = get_pixel(src, IMAGE_4BPP, (uint16_t)((acc_x >> FRACTION_SHIFT) + base));
             acc_x += step_x;
