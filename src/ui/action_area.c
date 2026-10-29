@@ -742,8 +742,8 @@ static void show_action_result(int16_t value)
     }
     offscreen_draw_ctx(&area, draw_ctx_prepare(&c), ZONE_RESULT, GFX_OPAQUE);
     if (value >= 0) {
-        char digits[RESULT_DIGITS] = {0};
-        int at = RESULT_DIGITS - 1;
+        char digits[RESULT_DIGITS + 1] = {0}; /* fix: room for 5 digits and the end byte */
+        int at = RESULT_DIGITS;
         do {
             digits[--at] = (char)('0' + value % DECIMAL_BASE);
             value = (int16_t)(value / DECIMAL_BASE);

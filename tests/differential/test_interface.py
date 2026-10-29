@@ -292,11 +292,13 @@ def test_action_area_panels_match_original(port, original):
 
 
 def test_action_results_match_original(port, original):
-    # Damage numbers in the small and the large star, and the failure pictures; -2 shows the missing ammunition.
+    # Damage numbers in the small and the large star (10000: the 5 digits, a regression), and the failure pictures;
+    # -2 shows the missing ammunition.
     lib = port
     draw_game_screen(lib, original)
     pictures = set()
-    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (C.RESULT_NOTHING, 0, 0),
+    for result, flag, ammo in ((3, 0, 0), (15, 0, 0), (16, 0, 0), (40, 0, 0), (41, 0, 0), (123, 0, 0), (10000, 0, 0),
+                               (C.RESULT_NOTHING, 0, 0),
                                (C.RESULT_NO_AMMO, 0, 0x01), (C.RESULT_NO_AMMO, 1, 0x02), (C.RESULT_NO_AMMO, 0, 0x10),
                                (C.RESULT_UNKNOWN_SPELL, 0, 0), (C.RESULT_WIZARD_FAILED, 0, 0), (C.RESULT_PRIEST_FAILED, 0, 0),
                                (C.RESULT_CANT, 0, 0)):
