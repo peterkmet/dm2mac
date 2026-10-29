@@ -1106,7 +1106,7 @@ static void load_walking_party_square(ViewSquare *s)
             s->aspect = ASPECT_TELEPORTER;
         } else {
             clear_wall_ornaments(s);
-            s->text = 0;
+            s->text = 0; /* as in the original: 0 here, THING_TEXT_NONE on the side squares */
             s->first_thing = THING_ENDOFLIST;
         }
         for (int i = POS_NEAR_SIDE_1; i <= POS_NEAR_SIDE_2; i++) {

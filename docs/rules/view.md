@@ -55,5 +55,6 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 - Kept quirk: the explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage, as in the original.
 - Kept quirk: a static creature on a door square seen from the front shows only the possessions in the near cells, as in the original.
 - Kept quirk: `show_far_squares` keeps the cell mask from square to square; a stairs square draws its things with the mask of the square drawn before it, as in the original.
+- Kept quirk: while the party walks, a wall on its square gets the text 0 (`load_walking_party_square`), the wall squares beside it `THING_TEXT_NONE`, as in the original.
 - Kept quirk: a creature of size 3 steps toward the party by (-2, 1) in two octants (`toward_party_diagonal`), as in the original table.
 - Kept quirk: the dimming (`pal_apply_dim_remap`) replaces a key color by the nearest other step of its ramp; when every color of a ramp is a key color, it reads on into the colors of the next ramp, as in the original (`SKULL.c:9580`).
