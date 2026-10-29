@@ -8,7 +8,7 @@
 - [uv](https://docs.astral.sh/uv/).
 - Ghidra and OpenJDK 21 from Homebrew. `tools/ghidra/decompile.sh` uses `brew --prefix ghidra`. It uses `JAVA_HOME` if set, otherwise `brew --prefix openjdk@21`.
 - [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`, only for `tools/dosbox-nointro.sh`.
-- The original game files in `game/`, with `game/SKULL.EXE`. You provide them. The folder is git-ignored.
+- The original game files in `game/`, with `game/SKULL.EXE`. You provide them.
 
 ## Quickstart
 
@@ -34,7 +34,7 @@
 
    The script writes `build/skull.bin` (the flat image), `reference/decomp/SKULL.c` (decompiled C), and `reference/decomp/SKULL.c.log` (Ghidra log).
 
-The `.gitignore` file excludes `game/` and `reference/`. Do not commit game content. For the build and the tests, see [Development](development.md).
+Git ignores `game/` and `reference/`; do not commit game content. The build and the tests are in [Development](development.md).
 
 ## Tools
 
@@ -63,8 +63,3 @@ Ghidra runs these scripts in this order; all except step 3 are in `tools/ghidra/
 
 - The decompiled C does not compile. Some names, types, and calling conventions are incomplete.
 - The binary has no symbols. The names come from `docs/reference/skull-symbols.csv`.
-
-## Related pages
-
-- [SKULL.EXE map](reference/skull-map.md)
-- [Development](development.md)
