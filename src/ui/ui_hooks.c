@@ -35,6 +35,7 @@ Hooks g_hooks = {
     .set_wait = input_set_wait,
     .set_champion_cursor = input_set_champion_cursor,
     .toggle_inventory = ui_toggle_inventory,
+    .close_inventory = ui_close_inventory,
     .draw_champion_state = ui_draw_champion_state,
     .draw_all_champion_states = ui_draw_all_champion_states,
     .draw_movement_arrows = ui_draw_movement_arrows,

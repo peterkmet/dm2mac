@@ -224,8 +224,6 @@ static const uint8_t champion_colors[CHAMPION_MAX] = {UI_GREEN, UI_YELLOW, UI_RE
 static const uint8_t skill_level_texts[SKILL_LEVEL_MAX + 1] = {0x01, 0x00, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
                                                                0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12};
 
-bool g_inv_arrows_on_close = true;
-
 static struct {
     struct {
         uint8_t icon, gdat_index, flags;
@@ -1461,35 +1459,63 @@ void ui_draw_all_champion_states(bool tick)
     area_update(tick);
 }
 
-void ui_toggle_inventory(int16_t champion_index)
+/* Resets the panel and the shown object of the inventory; false when the push arrows, the mouth or the eye keep the
+   inventory as it is. */
+static bool begin_inventory_change(void)
 {
     game_set_panel_mode(PANEL_MODE_NONE);
     cache.shown_object = THING_NONE;
-    if ((champion_index < CHAMPION_MAX && !champion(champion_index)->health) || g_ui.push_mode || g_ui.mouth ||
-        g_ui.eye)
+    return !g_ui.push_mode && !g_ui.mouth && !g_ui.eye;
+}
+
+/* Takes the open inventory away from its champion; its status box comes back. */
+static void release_inventory(int16_t open)
+{
+    game_set_open_inventory(0);
+    Champion *c = champion(open);
+    if (c->health && !g_ui.candidate) {
+        c->redraw |= REDRAW_STATUS_BOX;
+        ui_draw_champion_state(open);
+    }
+    /* the raised skills that the player saw no longer show green */
+    champ_forget_shown_raises(open, cache.shown_raised);
+}
+
+/* Closes the open inventory of a champion; an awake party sees the view again, with the movement arrows when
+   draw_arrows. */
+static void close_inventory(int16_t open, bool draw_arrows)
+{
+    release_inventory(open);
+    if (!g_party_sleeping) {
+        if (draw_arrows)
+            ui_draw_movement_arrows();
+        view_clear_viewport();
+    }
+    input_refresh_mode();
+}
+
+void ui_close_inventory(bool draw_arrows)
+{
+    if (!begin_inventory_change())
         return;
     game_set_command_stop(true);
     int16_t open = inventory_champion();
-    if (champion_index == open)
-        champion_index = CHAMPION_MAX;
+    if (open >= 0)
+        close_inventory(open, draw_arrows);
+}
+
+void ui_toggle_inventory(int16_t champion_index)
+{
+    if (!begin_inventory_change() || !champion(champion_index)->health)
+        return;
+    game_set_command_stop(true);
+    int16_t open = inventory_champion();
     if (open >= 0) {
-        game_set_open_inventory(0);
-        Champion *c = champion(open);
-        if (c->health && !g_ui.candidate) {
-            c->redraw |= REDRAW_STATUS_BOX;
-            ui_draw_champion_state(open);
-        }
-        /* the raised skills that the player saw no longer show green */
-        champ_forget_shown_raises(open, cache.shown_raised);
-        if (g_party_sleeping || champion_index == CHAMPION_MAX) {
-            if (!g_party_sleeping) {
-                if (g_inv_arrows_on_close)
-                    ui_draw_movement_arrows();
-                view_clear_viewport();
-            }
-            input_refresh_mode();
+        if (champion_index == open || g_party_sleeping) {
+            close_inventory(open, true);
             return;
         }
+        release_inventory(open);
     }
     game_set_open_inventory(champion_index + 1);
     memset(cache.shown_raised, 0, sizeof cache.shown_raised);

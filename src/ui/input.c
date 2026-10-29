@@ -2314,6 +2314,18 @@ static void execute_session_command(int command)
     }
 }
 
+/* The inventory command of status box champ (CHAMPION_MAX: the close command); with a candidate, it cancels the
+   recruit. */
+static void execute_inventory_command(int champ)
+{
+    if (g_ui.candidate)
+        recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, CMD_RECRUIT_CANCEL);
+    else if (champ == CHAMPION_MAX)
+        ui_close_inventory(true);
+    else if (champ < g_game.champion_count)
+        ui_toggle_inventory(champ);
+}
+
 /* The commands of the movement, the leader, the inventory, the spells, and the pause and the sleep; true when
    command is one of them. */
 static bool execute_party_command(const Command *c, bool idle)
@@ -2338,11 +2350,7 @@ static bool execute_party_command(const Command *c, bool idle)
         champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(false);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
-        int champ = command - CMD_INVENTORY_FIRST;
-        if (g_ui.candidate)
-            recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, CMD_RECRUIT_CANCEL);
-        else if (champ == CHAMPION_MAX || champ < g_game.champion_count)
-            ui_toggle_inventory(champ);
+        execute_inventory_command(command - CMD_INVENTORY_FIRST);
     } else if (command == CMD_LEADER_INVENTORY) {
         if (g_game.leader != LEADER_NONE)
             ui_toggle_inventory(g_game.leader);

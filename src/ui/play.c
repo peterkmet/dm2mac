@@ -111,10 +111,8 @@ void play_sleep(void)
 {
     if (g_ui.candidate)
         return;
-    g_inv_arrows_on_close = false;
     if (g_ui.inventory)
-        ui_toggle_inventory(CHAMPION_MAX);
-    g_inv_arrows_on_close = true;
+        ui_close_inventory(false);
     action_area_close();
     play_hide_view();
     champ_set_party_sleeping(true);

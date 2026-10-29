@@ -470,7 +470,7 @@ static void kill_champion(int champ)
                 inv_show_object_name(g_game.leader_hand);
         }
         g_ui.mouth = 0;
-        g_hooks.toggle_inventory(CHAMPION_MAX);
+        g_hooks.close_inventory(true);
     }
     drop_all_objects(champ);
     int cell = c->cell;
