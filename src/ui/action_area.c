@@ -332,6 +332,22 @@ static Bitmap *face_bitmap(void)
     return face;
 }
 
+/* Draws the face of champ in zone through the face bitmap, moved while the party hastes, with its aura. */
+static void put_face(Bitmap *face, int champ, int zone)
+{
+    int16_t r[RECT_SIZE];
+    int16_t sx = 0;
+    int16_t sy = 0;
+    if (!zone_compute_rect(face, r, zone, &sx, &sy))
+        return;
+    haste_jitter(r);
+    uint8_t palette[IMAGE_COLORS];
+    ui_draw_champion_face_icon(face, champ, palette);
+    offscreen_blit(&area, &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette},
+                   r);
+    show_aura(champ, zone);
+}
+
 /* Draws the faces of the party in their cells, with the auras. */
 static void show_party_icons(void)
 {
@@ -344,18 +360,7 @@ static void show_party_icons(void)
         int cell = dir_relative(c->cell, g_game.party_dir);
         if (!c->health || g_input_drag_state == cell + 1)
             continue;
-        int16_t r[RECT_SIZE];
-        int16_t sx = 0;
-        int16_t sy = 0;
-        int zone = ZONE_PARTY_FACE_FIRST + cell;
-        if (!zone_compute_rect(face, r, zone, &sx, &sy))
-            continue;
-        haste_jitter(r);
-        uint8_t palette[IMAGE_COLORS];
-        ui_draw_champion_face_icon(face, i, palette);
-        offscreen_blit(&area,
-                       &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette}, r);
-        show_aura(i, zone);
+        put_face(face, i, ZONE_PARTY_FACE_FIRST + cell);
     }
     if (g_party_sleeping) {
         int16_t r[RECT_SIZE];
@@ -382,18 +387,8 @@ static void show_panel_face(void)
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_WALLSET, drawn.gfx_set, GFX_WALLSET_FACE_BACK}, ZONE_FACE_BACK,
                               GFX_OPAQUE);
     Bitmap *face = face_bitmap();
-    int16_t r[RECT_SIZE];
-    int16_t sx = 0;
-    int16_t sy = 0;
-    if (face && zone_compute_rect(face, r, ZONE_FACE, &sx, &sy)) {
-        haste_jitter(r);
-        int champ = g_action.champion - 1;
-        uint8_t palette[IMAGE_COLORS];
-        ui_draw_champion_face_icon(face, champ, palette);
-        offscreen_blit(&area,
-                       &(BlitSource){.bitmap = face, .x = sx, .y = sy, .transparent = UI_KEY, .colormap = palette}, r);
-        show_aura(champ, ZONE_FACE);
-    }
+    if (face)
+        put_face(face, g_action.champion - 1, ZONE_FACE);
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_LEFT}, ZONE_FACE_LEFT,
                               GFX_OPAQUE);
     offscreen_draw_gdat_image(&area, (GdatKey){CAT_INTERFACE, UI_INDEX_ACTION, GFX_ACTION_FACE_RIGHT}, ZONE_FACE_RIGHT,
