@@ -283,10 +283,10 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     # every action of every weapon kind.
     from dm2test.scenario import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
-    lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
-    lib.champ_perform_action.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool]
+    lib.champ_list_actions.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_perform_action.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_bool]
     lib.champ_perform_action.restype = ctypes.c_bool
-    lib.champ_use_action_charge.argtypes = [ctypes.c_int, ChampionAction]
+    lib.champ_use_action_charge.argtypes = [ctypes.c_int16, ChampionAction]
     lib.champ_use_action_charge.restype = ctypes.c_bool
     actions = (ChampionAction * C.CHAMPION_ACTION_MAX).in_dll(lib, "g_champ_actions")
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]

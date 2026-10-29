@@ -380,7 +380,7 @@ address,name,signature,subsystem
 0x00021301,input_feedback_init_rect,"void input_feedback_init_rect(int16_t *picture, int16_t *rect, int16_t width, int16_t height)",interface
 0x00021394,input_run_click_feedback,void input_run_click_feedback(int16_t elapsed_ticks),input
 0x0002186c,input_refine_champion_click,void input_refine_champion_click(int16_t *command_record),input
-0x000219c2,champ_set_leader,void champ_set_leader(int16_t index),champions
+0x000219c2,champ_set_leader,void champ_set_leader(int16_t champion_index),champions
 0x00021a49,minion_map_click_set_destination,"int minion_map_click_set_destination(int16_t command, int16_t x, int16_t y)",minions
 0x00021d19,render_sleep_message,void render_sleep_message(void),interface
 0x00021d6c,command_execute,int command_execute(int16_t *command_record),input
@@ -652,7 +652,7 @@ address,name,signature,subsystem
 0x00039a4d,inv_draw_food_water_panel,void inv_draw_food_water_panel(void),inventory
 0x00039b3f,inv_draw_mouth_picture,void inv_draw_mouth_picture(int eating),inventory
 0x00039bbb,item_use_charge,int item_use_charge(uint16_t thing),items
-0x00039c3f,champ_consume_object,"void champ_consume_object(int16_t champion, uint16_t thing, int16_t slot)",champions
+0x00039c3f,champ_consume_object,"void champ_consume_object(int16_t champion_index, uint16_t thing, int16_t slot)",champions
 0x0003a12a,inv_draw_skills_and_statistics,void inv_draw_skills_and_statistics(void),inventory
 0x0003a409,input_hold_right_button,void input_hold_right_button(void),input
 0x0003a464,ui_toggle_inventory,void ui_toggle_inventory(int16_t champion),inventory
@@ -756,24 +756,24 @@ address,name,signature,subsystem
 0x0003f846,item_has_charged_action,int item_has_charged_action(uint16_t thing),items
 0x0003f8ff,champ_get_action_field,int16_t champ_get_action_field(uint16_t field),champions
 0x0003f927,is_command_allowed,"int is_command_allowed(uint16_t champ, uint16_t thing, int16_t command)",minions
-0x0003f9f5,champ_list_actions,"int champ_list_actions(uint16_t champ, uint16_t thing, int16_t hand)",champions
-0x0003fc6d,champ_find_hand_source_slot,"int16_t champ_find_hand_source_slot(int16_t champ, int16_t hand)",inventory
+0x0003f9f5,champ_list_actions,"int champ_list_actions(int16_t champion_index, uint16_t thing, int16_t hand)",champions
+0x0003fc6d,champ_find_hand_source_slot,"int16_t champ_find_hand_source_slot(int16_t champion_index, int16_t hand)",inventory
 0x0003fd17,action_area_close,void action_area_close(void),interface
 0x0003fd77,action_area_open_hand,"void action_area_open_hand(uint16_t champ, uint16_t hand)",interface
 0x0003fe03,action_area_open_spells,void action_area_open_spells(uint16_t champ),interface
 0x0003fe68,area_update,void area_update(int tick),interface
 0x000408a8,item_is_ammo_for_hand,"int item_is_ammo_for_hand(uint16_t champ, uint16_t hand, uint16_t thing)",items
 0x00040930,item_has_action_command,"int item_has_action_command(uint16_t champ, uint16_t thing, int16_t command)",items
-0x00040a0a,champ_add_action_delay,"void champ_add_action_delay(uint16_t champ, uint16_t ticks, int16_t hand)",champions
-0x00040aa6,champ_reload_hand,"void champ_reload_hand(int16_t champ, uint16_t hand)",inventory
-0x00040d39,champ_use_action_charge,int champ_use_action_charge(uint16_t champ),champions
+0x00040a0a,champ_add_action_delay,"void champ_add_action_delay(int16_t champion_index, uint16_t ticks, int16_t hand)",champions
+0x00040aa6,champ_reload_hand,"void champ_reload_hand(int16_t champion_index, int16_t hand)",inventory
+0x00040d39,champ_use_action_charge,int champ_use_action_charge(int16_t champion_index),champions
 0x00040dec,champ_execute_selected_action,int champ_execute_selected_action(int16_t action),champions
 0x00040ee2,champ_process_repeated_actions,void champ_process_repeated_actions(void),champions
 0x00041081,minion_toggle_map_option,void minion_toggle_map_option(uint16_t option),interface
 0x000410f7,frighten_front_group,"int frighten_front_group(uint16_t power, int16_t x, int16_t y)",champions
 0x00041171,melee_attack_front,"int melee_attack_front(uint16_t champ, int16_t mode, int16_t x, int16_t y, int16_t skill, int16_t power)",champions
 0x000412e1,magic_add_light,"void magic_add_light(uint16_t spell, int16_t power)",magic
-0x000414a5,champ_perform_action,"int champ_perform_action(uint16_t champ, uint16_t action)",champions
+0x000414a5,champ_perform_action,"int champ_perform_action(int16_t champion_index, uint16_t action)",champions
 0x000421fd,magic_find_spell,uint32_t *magic_find_spell(const uint8_t *runes),magic
 0x0004225e,find_flask_in_hands,int16_t find_flask_in_hands(uint8_t *champ),magic
 0x000422f5,magic_cast_spell,"uint16_t magic_cast_spell(uint16_t champ, const uint8_t *spell, int16_t power)",magic
@@ -806,29 +806,29 @@ address,name,signature,subsystem
 0x0004565a,magic_add_party_aura,"void magic_add_party_aura(uint16_t champ_mask, uint8_t aura, int16_t amount, uint16_t duration)",magic
 0x00045815,magic_cast_party_aura,"int magic_cast_party_aura(uint8_t *champ, uint8_t aura, uint16_t power, int16_t use_mana)",magic
 0x00045869,champ_set_party_direction,void champ_set_party_direction(int16_t dir),champions
-0x000458f4,champ_get_index_in_cell,int champ_get_index_in_cell(uint16_t cell),champions
+0x000458f4,champ_get_index_in_cell,int16_t champ_get_index_in_cell(uint16_t cell),champions
 0x00045938,move_nearest_champion_at,"int16_t move_nearest_champion_at(int16_t x, int16_t y)",champions
 0x000459c8,adjust_stat,"void adjust_stat(uint8_t *champ, uint16_t stat, int16_t delta)",champions
 0x00045a41,item_get_stat_modifier,"int16_t item_get_stat_modifier(uint16_t thing, uint8_t attribute, int equipped, int16_t mode)",items
-0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champ, uint16_t thing, int16_t slot, int16_t mode)",inventory
-0x00045d6b,inv_store_leader_hand_object,void inv_store_leader_hand_object(int16_t champ),inventory
+0x00045a9d,champ_apply_item_effects,"void champ_apply_item_effects(int16_t champion_index, uint16_t thing, int16_t slot, int16_t mode)",inventory
+0x00045d6b,inv_store_leader_hand_object,void inv_store_leader_hand_object(int16_t champion_index),inventory
 0x00045def,champ_put_in_leader_hand,"void champ_put_in_leader_hand(uint16_t thing, int draw)",inventory
 0x00045e9e,champ_take_from_leader_hand,uint16_t champ_take_from_leader_hand(void),inventory
-0x00045f27,champ_remove_object_from_slot,"uint16_t champ_remove_object_from_slot(uint16_t champ, uint16_t slot)",inventory
-0x00045fcb,champ_add_object_to_slot,"void champ_add_object_to_slot(uint16_t champ, uint16_t thing, uint16_t slot)",inventory
+0x00045f27,champ_remove_object_from_slot,"uint16_t champ_remove_object_from_slot(int16_t champion_index, uint16_t slot)",inventory
+0x00045fcb,champ_add_object_to_slot,"void champ_add_object_to_slot(int16_t champion_index, uint16_t thing, uint16_t slot)",inventory
 0x00046029,inv_click_slot,void inv_click_slot(uint16_t slot),inventory
 0x000461e8,champ_get_party_level,int16_t champ_get_party_level(void),champions
-0x00046241,champ_get_skill_level,"int16_t champ_get_skill_level(int16_t champ, uint16_t skill, int with_bonus)",champions
-0x000462fa,champ_add_experience,"void champ_add_experience(uint16_t champ, uint16_t skill, uint32_t amount)",champions
+0x00046241,champ_get_skill_level,"int16_t champ_get_skill_level(int16_t champion_index, uint16_t skill, int with_bonus)",champions
+0x000462fa,champ_add_experience,"void champ_add_experience(int16_t champion_index, uint16_t skill, uint32_t amount)",champions
 0x0004663a,throw_fatigue,uint16_t throw_fatigue(uint16_t thing),items
 0x0004667a,champ_scale_by_stamina,"int16_t champ_scale_by_stamina(uint8_t *champ, int16_t value)",champions
 0x000466ab,champ_get_stat,"int16_t champ_get_stat(uint8_t *champ, uint16_t stat, uint16_t which)",champions
 0x00046745,champ_get_stat_adjusted_attack,"int16_t champ_get_stat_adjusted_attack(uint8_t *champ, uint16_t stat, uint16_t attack)",champions
 0x00046786,champ_test_luck,"int champ_test_luck(uint8_t *champ, uint16_t chance)",champions
 0x00046824,champ_get_max_load,uint16_t champ_get_max_load(uint8_t *champ),champions
-0x00046892,champ_get_move_delay,uint16_t champ_get_move_delay(uint16_t champ),champions
-0x00046968,champ_get_dexterity,int16_t champ_get_dexterity(uint16_t champ),champions
-0x00046a19,champ_get_strength,"int16_t champ_get_strength(int16_t champ, int16_t slot, uint16_t skill)",champions
+0x00046892,champ_get_move_delay,uint16_t champ_get_move_delay(int16_t champion_index),champions
+0x00046968,champ_get_dexterity,int16_t champ_get_dexterity(int16_t champion_index),champions
+0x00046a19,champ_get_strength,"int16_t champ_get_strength(int16_t champion_index, int16_t hand, uint16_t skill)",champions
 0x00046bad,armor_defense,"int16_t armor_defense(uint16_t armor_attribute, int sharp)",items
 0x00046bdc,wound_defense,"int16_t wound_defense(int16_t champ, uint16_t location)",champions
 0x00046d9c,champ_wake_party,void champ_wake_party(void),champions
@@ -836,19 +836,19 @@ address,name,signature,subsystem
 0x00046e4d,place_in_free_cell,void place_in_free_cell(uint16_t champ),champions
 0x00046eca,kill_champion,void kill_champion(uint16_t champ),champions
 0x00047113,champ_apply_pending_damage,void champ_apply_pending_damage(void),champions
-0x0004722a,champ_take_damage,"int16_t champ_take_damage(int16_t champ, int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
-0x000474fc,champ_poison,"void champ_poison(int16_t champ, uint16_t amount)",champions
-0x000475d3,champ_cure_poison,"void champ_cure_poison(int16_t champ, int16_t amount)",champions
+0x0004722a,champ_take_damage,"int16_t champ_take_damage(int16_t champion_index, int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
+0x000474fc,champ_poison,"void champ_poison(int16_t champion_index, uint16_t amount)",champions
+0x000475d3,champ_cure_poison,"void champ_cure_poison(int16_t champion_index, int16_t amount)",champions
 0x0004766b,champ_damage_party,"uint16_t champ_damage_party(int16_t damage, uint16_t wound_mask, uint16_t attack_type)",champions
-0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champ, int16_t amount)",champions
+0x00047707,champ_decrease_stamina,"void champ_decrease_stamina(int16_t champion_index, int16_t amount)",champions
 0x00047773,projectile_launch_from_champion,"void projectile_launch_from_champion(uint8_t *champ, uint16_t thing, int16_t kinetic, int16_t attack, int16_t step)",projectiles
 0x00047813,magic_cast_projectile_spell,"int magic_cast_projectile_spell(uint16_t champ, uint16_t thing, uint16_t power, uint16_t mana_cost)",magic
 0x000478a1,throw_object,"int throw_object(uint16_t champ, int16_t slot, int side)",champions
 0x00047b0a,champ_throw_leader_hand_object,int champ_throw_leader_hand_object(int side),champions
 0x00047b39,get_step_time,int16_t get_step_time(int16_t champ),champions
 0x00047b9e,get_party_step_time,int16_t get_party_step_time(void),champions
-0x00047bc5,champ_get_load,uint16_t champ_get_load(uint16_t champ),champions
-0x00047c05,champ_compute_load,void champ_compute_load(uint16_t champ),champions
+0x00047bc5,champ_get_load,uint16_t champ_get_load(int16_t champion_index),champions
+0x00047c05,champ_compute_load,void champ_compute_load(int16_t champion_index),champions
 0x00047cc3,champ_apply_time_effects,void champ_apply_time_effects(void),champions
 0x0004807f,ui_draw_champion_face_icon,"uint8_t *ui_draw_champion_face_icon(uint8_t *dst, int16_t champ, uint8_t *palette)",interface
 0x00048140,ui_status_box_begin_draw,"void ui_status_box_begin_draw(uint16_t champ, int clear)",interface
@@ -865,12 +865,12 @@ address,name,signature,subsystem
 0x00049020,set_redraw_flags,void set_redraw_flags(uint16_t flags),champions
 0x0004904f,ui_draw_all_champion_states,void ui_draw_all_champion_states(int tick),interface
 0x0004910b,inv_update_hand_cursor,void inv_update_hand_cursor(void),inventory
-0x0004916b,inv_put_in_free_slot,"void inv_put_in_free_slot(uint16_t champ, uint16_t thing)",inventory
+0x0004916b,inv_put_in_free_slot,"void inv_put_in_free_slot(int16_t champion_index, uint16_t thing)",inventory
 0x00049242,add_to_party,"void add_to_party(uint8_t portrait, int16_t index, uint8_t dir)",champions
 0x000494fb,recruit_start,"int recruit_start(int16_t x, int16_t y, int16_t dir, int16_t map)",champions
 0x000496e5,session_edit_champion_name,void session_edit_champion_name(char *champ_name),champions
 0x00049a17,recruit_finish,"void recruit_finish(int16_t x, int16_t y, int16_t dir, int16_t map, int16_t command)",champions
-0x00049cbb,champ_revive,void champ_revive(uint16_t champ),champions
+0x00049cbb,champ_revive,void champ_revive(int16_t champion_index),champions
 0x00049d46,champ_init_party_state,void champ_init_party_state(void),champions
 0x00049ef8,creature_turn_group,"void creature_turn_group(uint16_t group_thing, int absolute, uint16_t dir)",creatures
 0x00049f7c,rotate_projectile,"uint16_t rotate_projectile(uint8_t *teleporter, uint16_t thing)",dungeon data

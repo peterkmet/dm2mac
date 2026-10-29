@@ -46,7 +46,7 @@ def lib():
     lib.game_has_cheat.restype = ctypes.c_bool
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
     lib.item_set_gdat_index.argtypes = [ctypes.c_uint16, ctypes.c_int]
     lib.item_gdat_index.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
