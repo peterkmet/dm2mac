@@ -121,7 +121,7 @@ extern InputMatch g_input_match;
 /* A click feedback script waits for the next game step. */
 extern bool g_input_feedback_busy;
 /* The mouse position on the screen (main.c sets it before each tick). */
-extern int g_input_mouse_x, g_input_mouse_y;
+extern int16_t g_input_mouse_x, g_input_mouse_y;
 
 /* ---- Setup ---- */
 

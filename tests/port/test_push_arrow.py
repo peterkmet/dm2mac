@@ -35,7 +35,7 @@ def click(lib, x, y):
 
 def arrow_pixels(lib, mouse):
     """The pixels of the left arrow zone after some ticks with the mouse at mouse."""
-    ctypes.c_int.in_dll(lib, "g_input_mouse_x").value, ctypes.c_int.in_dll(lib, "g_input_mouse_y").value = mouse
+    ctypes.c_int16.in_dll(lib, "g_input_mouse_x").value, ctypes.c_int16.in_dll(lib, "g_input_mouse_y").value = mouse
     run_ticks(lib, 16)
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(LEFT_ARROW_ZONE, rect)

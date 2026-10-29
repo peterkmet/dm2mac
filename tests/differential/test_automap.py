@@ -426,7 +426,7 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
     lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)
     x, y, w, h = viewport(lib)
-    mouse_x, mouse_y = ctypes.c_int.in_dll(lib, "g_input_mouse_x"), ctypes.c_int.in_dll(lib, "g_input_mouse_y")
+    mouse_x, mouse_y = ctypes.c_int16.in_dll(lib, "g_input_mouse_x"), ctypes.c_int16.in_dll(lib, "g_input_mouse_y")
     start_x, start_y = x + w // 2, y + h // 2
     mouse_x.value, mouse_y.value = start_x, start_y
     lib.input_mouse_click(start_x, start_y, INPUT_BUTTON_LEFT)

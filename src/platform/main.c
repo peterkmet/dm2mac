@@ -420,7 +420,10 @@ static void pump_mode_screen_events(void)
         else if (e.scancode == SDL_SCANCODE_RETURN || e.scancode == SDL_SCANCODE_KP_ENTER)
             mode_screen_key(MODE_SCREEN_ENTER);
     }
-    plat_mouse_position(&g_input_mouse_x, &g_input_mouse_y);
+    int mouse_x, mouse_y;
+    plat_mouse_position(&mouse_x, &mouse_y);
+    g_input_mouse_x = (int16_t)mouse_x;
+    g_input_mouse_y = (int16_t)mouse_y;
 }
 
 /* Reads the values of the command line options into options; the option without a value, NULL when all have one.

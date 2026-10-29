@@ -133,7 +133,7 @@ def test_key_click_and_command_move_the_party(control, lib):
         assert request({"cmd": "click", "x": cx, "y": cy}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 16}, path)["ok"]
         assert game.party_dir == (direction + 1) % 4
-        assert ctypes.c_int.in_dll(lib, "g_input_mouse_x").value == cx
+        assert ctypes.c_int16.in_dll(lib, "g_input_mouse_x").value == cx
         assert request({"cmd": "command", "id": turn_right}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 16}, path)["ok"]
         assert game.party_dir == (direction + 2) % 4
@@ -197,7 +197,7 @@ def test_wait_answers_after_the_ticks(control, lib):
 
 def test_screenshot_is_the_screen_with_the_pointer(control, lib, tmp_path):
     path, *_ = control
-    ctypes.c_int.in_dll(lib, "g_input_mouse_x").value = -1
+    ctypes.c_int16.in_dll(lib, "g_input_mouse_x").value = -1
     with pumped(lib, ticks=False):
         reply = request({"cmd": "screenshot", "path": str(tmp_path / "a.png")}, path)
         assert reply == {"ok": True, "path": os.path.realpath(tmp_path / "a.png")}
