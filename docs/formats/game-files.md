@@ -1,6 +1,6 @@
 # Game files and install
 
-The 10 game files that the port reads from the PC DOS version of Dungeon Master II (English, 1995), the check of each file, and the install of the files from a source at the first start. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
+The 10 game files that the port reads from the PC DOS version of Dungeon Master II (English, 1995), the check of each file, and the install of the files from a source on startup. The port installs the files into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
 
 ## The files
 
@@ -21,9 +21,9 @@ The check of a file is its size and its CRC-32 (the standard polynomial `0xedb88
 
 `DATA/DUNGENB.DAT` and `DATA/DUNGEON.FTL` are optional files of the session. The DOS release has neither, and the install does not copy them. The port reads no other file of the DOS installation.
 
-A file fails when it is missing, has another size, or has another CRC-32. A file that is longer than the table size fails.
+A file fails when it is missing, has a different size, or has a different CRC-32. A file that is longer than the table size fails.
 
-## Start
+## Startup
 
 1. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
 2. Otherwise `main` creates `game/` when it is missing and opens the log.
@@ -37,7 +37,7 @@ The search runs in every mode, including the turn-based mode.
 A source holds all 10 files. The search runs in the working folder in this order:
 
 1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder counts as a source only when it holds at least one of the 10 files at its root. Other folders are searched into, but they get no log line and no message line.
-2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is the prefix of the first entry in name order whose name is `DATA/GRAPHICS.DAT` or ends with `/DATA/GRAPHICS.DAT` (see [zip.md](zip.md)).
+2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is found as in [zip.md](zip.md#names).
 3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image (see [cd-image.md](cd-image.md)).
 
 The extensions match without case. The first source with all 10 files that pass the check is the source of the install. A folder source with at least one game file, a ZIP archive, or a CD image that fails gets a line in the log and a line in the message, and the search goes on.
@@ -57,7 +57,7 @@ The install writes only the 10 fixed names of the table, never a path from the s
 When no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode the message goes to the log only; in the other modes the port also shows it in a message box without a window. The message has these parts:
 
 1. The game files of Dungeon Master II are missing.
-2. The need of an own copy of the PC DOS version (English, 1995).
+2. The user needs their own copy of the PC DOS version (English, 1995).
 3. The forms of a source (folder, `.zip`, `.iso`, `.img`, `.bin`) and the full path of the working folder.
 4. When `game/` holds a file that exists and fails, a line with the first such file of the table, `game/<file> is missing or wrong.`
 5. One line per failed source: `<path>: <reason>.` The reason is a problem of the source (`not a ZIP archive or damaged`, `not a CD image or damaged`, `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`, `no DATA/GRAPHICS.DAT in the archive`) or `<file> is missing or wrong` for the first file of the table that fails.
@@ -78,4 +78,4 @@ The progress goes to the log only: the source path, the failed sources with thei
 
 ## Deviations from the original
 
-None: the install is port only.
+None, because the install is only in the port.

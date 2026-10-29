@@ -19,7 +19,18 @@ Sector 16 is the primary volume descriptor. The reader requires type `0x01` and 
 
 ## Directory records
 
-The reader reads the fields of a record: length (offset 0), extent (2), data length (10), flags (25), name length (32), name (33). The folder flag is `0x02`. It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root folder, or a folder in the root folder and a file in it. A file or a folder at the wrong place in the path does not match. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
+The reader reads these fields of a record:
+
+| Field | Offset |
+|---|---|
+| Length | 0 |
+| Extent (first sector) | 2 |
+| Data length | 10 |
+| Flags (bit `0x02`: directory) | 25 |
+| Name length | 32 |
+| Name | 33 |
+
+It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root directory, or a subdirectory of the root directory and a file in it. A file or a folder at the wrong place in the path does not match. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
 
 ## Names
 
@@ -37,4 +48,4 @@ A name matches without case. The reader ignores the version suffix `;1` and a fi
 
 ## Deviations from the original
 
-None: the install is port only.
+None, because the install is only in the port.

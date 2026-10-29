@@ -2,20 +2,18 @@
 
 The save files `SKSAVE<n>.DAT` of Dungeon Master II and the port code that reads and writes them. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port is `src/engine/save.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
-Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call sequence in `session_load`. reDM2 verified the format by running the original load path in an emulator over three real saves; the bit stream ends exactly at the last byte of each file.
-
 ## Container
 
-| Part | Size (reDM2 saves) | Content |
+| Part | Size | Content |
 |---|---|---|
 | 1 | 42 bytes | Save header |
 | 2 | 43443 bytes | Dungeon image in the `DUNGEON.DAT` section format |
 | 3 | rest of file | Bit-packed game state |
 
-- Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The meaning of `+0x22` to `+0x29` is not known.
+- Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The meaning of `+0x22` to `+0x29` is unknown.
 - `session_save` (`0x3502b`) first reads the old header, then changes only `+0x00` and the name, and writes it back. All other header bytes come from the previous save. The port keeps them byte for byte.
 - `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
-- The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with 0, and `DUNGEON.DAT` with 1.
+- The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with `new_game` false, and the `DUNGEON.DAT` load calls it with `new_game` true.
 - The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
 
 ## Bit-packed records
@@ -36,27 +34,46 @@ Source: reDM2 `docs/savegame.md`. `reference/decomp/SKULL.c` confirms the call s
 - Record 1: fields go to `g_game_time` (`0x7f22c`), `g_random_seed` (`0x70518`), `g_party_x`, `g_party_y`, `g_party_dir`, `g_party_map`, `g_champion_count`, `g_timeline_event_count`, and other globals.
 - Record 5 does not store the hand and inventory slots (`+0xaf` to `+0xf0`). Record 8 rebuilds them.
 - Record 7 stores timeline bytes `+0` to `+9`. Bytes `+0x0a` and `+0x0b` are not stored.
-- Record 8 walks the squares and their thing lists. For each thing it reads the thing record with the mask of its type. The masks never store bytes 0-1 (the link word). Thing types 1 and 11-13 have no mask and are not stored.
+- Record 8 walks the squares and their thing lists. For each thing it reads the thing record with the mask of its type. The masks never store bytes 0 to 1 (the link word). Thing types 1 and 11 to 13 have no mask and are not stored.
 - Record 8 first unlinks and frees all things of types 4 to 15. Then it creates them again from the bit stream. Types 0 to 3 keep their slots.
 
 ## Details of the records
 
 - Order of the things: the things of the timeline events, then all squares of all maps, then the deferred containers and creatures.
 - Values between the records (the more bit, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
-- Game record (60 bytes, mask `0x75316`): `+0x00` game time (24 bits), `+0x04` random seed (only bits 0 to 15 are stored), `+0x08` champion count, `+0x0a`/`+0x0c`/`+0x0e`/`+0x10` party x, y, direction, map, `+0x12` leader, `+0x14` timeline event count, `+0x16` and `+0x1a` game times (`0x716a0`, `0x7f19c`), `+0x1e` party move cooldown, `+0x20` and `+0x22` (`0x7f25a`, `0x7f270`), `+0x24` one bit that the writer always sets to 0, `+0x28` sound volume (bits 0 to 3) and music volume (bits 4 to 7), `+0x2a` weather visible, `+0x2e` to `+0x37` weather and storm bytes, `+0x38` next hour time.
+
+Game record (60 bytes, mask `0x75316`):
+
+| Offset | Content |
+|---|---|
+| `+0x00` | Game time (24 bits) |
+| `+0x04` | Random seed (only bits 0 to 15 are stored) |
+| `+0x08` | Champion count |
+| `+0x0a`, `+0x0c`, `+0x0e`, `+0x10` | Party x, y, direction, map |
+| `+0x12` | Leader |
+| `+0x14` | Timeline event count |
+| `+0x16`, `+0x1a` | Game times (`0x716a0`, `0x7f19c`) |
+| `+0x1e` | Party move cooldown |
+| `+0x20`, `+0x22` | Two values (`0x7f25a`, `0x7f270`) |
+| `+0x24` | One bit that the writer always sets to 0 |
+| `+0x28` | Sound volume (bits 0 to 3) and music volume (bits 4 to 7) |
+| `+0x2a` | Weather visible |
+| `+0x2e` to `+0x37` | Weather and storm bytes |
+| `+0x38` | Next hour time |
+
 - Thing list (`save_write_thing_list`, `save_read_thing_list`): things of types 4 to 15 start with a 1 bit and the type; a 0 bit ends the list. A list with a single thing (champion slot, leader hand, projectile payload, event group) has no end bit when it holds a thing, and also none when it is `THING_ENDOFLIST`.
 - Creature groups whose creature info has flag bit 0 (static creatures, no active group) use the mask at `0x7548b` and store the cell of each possession. Minion maps (container kind 1) use the mask at `0x754b3`. A misc item inside a moneybox uses the mask at `0x754bf`. A projectile inside a creature group uses the mask at `0x754cf`. Minion maps and projectiles in groups are deferred: their link is stored after the squares as the position of the target group or container in the bit stream.
 - A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no square bits. When the target map is lower, the things of the square are stored with the target square, not here.
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
-- Header: `session_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`: the bytes after the end mark keep the old header bytes.
+- Header: `session_save` reads the old header from the `.BAK` file (the old `.DAT`, renamed just before). Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The name is copied with `str_copy`, so the bytes after the end mark keep the old header bytes.
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
-- A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again: the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
+- A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again because the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
 
 ## Reader and writer of the port
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
-- After a load, things of types 4 to 15 can sit in other slots than in the file (reDM2 measured 492 of 941). A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
-- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`game_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
+- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests compare the C writer with the original writer run in `dm2tools.emu` on the same memory state, and a C load with the original load by content.
+- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original
 
@@ -75,7 +92,7 @@ Result for `tests/saves/start.DAT` (50452 bytes, 1 champion, 3 timeline events):
 - The original round trip is not byte-equal: 4292 of 50452 bytes differ, all in the dungeon image. The file size and the bit stream stay equal. The load creates the groups and items again in the first free records, so the first-thing table and the link words change.
 - A second round trip of the original output is byte-equal (a fixed point).
 - The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
-- A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets another bit stream position than its record index, so the deferred links use the written positions.
+- A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets a different bit stream position from its record index, so the deferred links use the written positions.
 
 ## AMAP and CHTS blocks
 
@@ -105,16 +122,24 @@ A load reads the blocks when they are there.
 - CHTS: in the advanced mode, the cheats come from the block. A missing block, a wrong version, an unknown bit, bytes after the block, or a damaged AMAP block give no cheats. The vanilla and turn-based modes ignore the block and use no cheats.
 - The game loads in all these cases. A save with only the original data (vanilla) loads with an empty automap and no cheats.
 
-The original game loads a save with the blocks: its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
+The original game loads a save with the blocks because its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
 
 ## Deviations from the original
 
 - Without an old file, the header bytes after the name are 0 (the original writes uninitialized bytes).
 - On a failed save (no file, a write error) the port renames the `.BAK` back to the slot file; the original leaves only the `.BAK` (`session_save`, `0x35696`), which the next load of the slot renames back.
-- Damaged files give an error code: a truncated file, a dungeon image with a bad first-thing table or broken thing lists, more than 4 champions, more timeline events than the queue holds, an event or record index out of range, no free record for a new thing, a full first-thing table, more than 100 deferred things. The dungeon is then empty.
+- Damaged files give an error code and an empty dungeon. The causes are:
+  - a truncated file
+  - a dungeon image with a bad first-thing table or broken thing lists
+  - more than 4 champions
+  - more timeline events than the queue holds
+  - an event or record index out of range
+  - no free record for a new thing
+  - a full first-thing table
+  - more than 100 deferred things
 - A poison event of a champion that does not exist is skipped on load (the original writes to the record past the last champion).
 - A damage display event of a champion past the four champion records is not linked to a champion (the original writes past the last record).
 - A creature group whose creature info index lies past the table stores the bits of a group that is not static (the original reads past the table).
 - A deferred minion map or carried projectile whose link lies past the records of its target type writes the record position 0 (the original reads past its table).
-- Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`game_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, else the party stays without a leader.
+- Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`session_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, otherwise the party stays without a leader.
 - On save, the compaction of the timeline stops at the last event when the event count is higher than the number of events in use, for example after the load of an event without a type (the original reads past the events).

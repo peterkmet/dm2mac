@@ -20,7 +20,7 @@ The reader searches the end record in the last 22 + 65535 bytes of the file, fro
 |---|---|
 | Method 0 (stored) | read; the compressed size must equal the size |
 | Method 8 (deflate) | read |
-| Another method | the archive opens; reading the entry fails |
+| Different method | the archive opens; reading the entry fails |
 | Encrypted entry (flag bit 0) | the archive fails to open |
 | ZIP64 (entry count `0xffff`, or a size or offset `0xffffffff`) | the archive fails to open |
 | Entry CRC-32 | not checked; the check of the game file (size and CRC-32) catches wrong bytes |
@@ -44,4 +44,4 @@ The inflate is tinf 1.2.1 by Jørgen Ibsen (zlib license), vendored in `src/thir
 
 ## Deviations from the original
 
-None: the install is port only.
+None, because the install is only in the port.
