@@ -157,7 +157,7 @@ DrawCtx *draw_ctx_init(DrawCtx *ctx, int category, int index, int entry)
     ctx->entry = (uint8_t)entry;
     ctx->scale_x = SCALE_FULL;
     ctx->scale_y = SCALE_FULL;
-    ctx->zone = (int16_t)ZONE_NONE;
+    ctx->zone = ZONE_NONE;
     ctx->anchor = ZONE_NO_ANCHOR;
     ctx->dst = &g_draw_screen;
     ctx->transparent = GFX_OPAQUE;
@@ -230,7 +230,7 @@ void draw_ctx_draw(DrawCtx *ctx)
     if (ctx->w <= 0 || ctx->h <= 0 || !ctx->image)
         return;
     const Bitmap *image = ctx->image;
-    int zone = (uint16_t)ctx->zone;
+    uint16_t zone = ctx->zone;
     ScreenSize size = {ctx->src_x, ctx->src_y};
     if (zone != ZONE_NONE) {
         if (!(zone & ZONE_RELATIVE) && !ctx->dx && !ctx->dy) {

@@ -21,7 +21,8 @@ typedef struct {
     int16_t x, y, w, h; /* the part of the image */
     uint8_t category, index, entry;
     int16_t item;         /* GDAT item of the image, -1 for an image that the caller gives */
-    int16_t zone, anchor; /* layout zone (ZONE_NONE: rect is given), anchor override */
+    uint16_t zone;        /* layout zone (ZONE_NONE: rect is given) */
+    int16_t anchor;       /* anchor override */
     int16_t dx, dy;       /* offset of the image in its zone */
     int16_t src_x, src_y; /* after drawing: the source position of rect */
     int16_t rect[RECT_SIZE];

@@ -1265,7 +1265,7 @@ static void setup_picture(const PicturePlace *p, int category, int index, int en
     c->scale_y = (int16_t)p->scale_y;
     c->dx = (int16_t)(c->dx + p->dx);
     c->dy = (int16_t)(c->dy + p->dy);
-    c->zone = (int16_t)p->zone;
+    c->zone = p->zone;
     c->anchor = (int16_t)p->anchor;
     c->dst = &g_view_viewport;
     c->transparent = (int16_t)p->key;
@@ -1364,7 +1364,7 @@ static void show_map_picture(int entry, int zone, int key, int flip)
     c.flip = (int16_t)flip;
     if (view.walking && (zone == ZONE_CEILING || zone == ZONE_FLOOR))
         c.src_y = (int16_t)(c.src_y + (zone == ZONE_CEILING ? WALK_CEILING_DY : WALK_FLOOR_DY));
-    c.zone = (int16_t)zone;
+    c.zone = zone;
     draw_ctx_prepare(&c);
     draw_ctx_draw(&c);
 }
@@ -1402,7 +1402,7 @@ static void show_offscreen(DrawCtx *ctx, Bitmap *offscreen, int zone, int anchor
 {
     ctx->transparent = (int16_t)key;
     ctx->dst = &g_view_viewport;
-    ctx->zone = (int16_t)zone;
+    ctx->zone = zone;
     ctx->anchor = (int16_t)anchor;
     ctx->palette_count = 0;
     draw_ctx_set_image(ctx, offscreen);
@@ -1722,7 +1722,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
                                   .dx = (int16_t)dx,
                                   .dy = (int16_t)dy,
                                   .depth = depth,
-                                  .zone = (int16_t)zone,
+                                  .zone = zone,
                                   .key = THING_KEY,
                                   .key2 = NO_KEY},
                   category, index, pic.entry);
@@ -1867,7 +1867,7 @@ static void show_creature(int pos, int depth, uint16_t group)
                         .dx = jitter_offset[anim & ANIM_JITTER] + dx,
                         .dy = jitter_offset[anim >> ANIM_JITTER_Y_SHIFT & ANIM_JITTER] + dy,
                         .depth = depth,
-                        .zone = (int16_t)zone,
+                        .zone = zone,
                         .anchor = ZONE_NO_ANCHOR,
                         .key = (int16_t)gdat_entry_index(g, CAT_CREATURE, type, GDAT_TYPE_VALUE, CREATURE_KEY_COLOR),
                         .key2 = NO_KEY},
@@ -2042,7 +2042,7 @@ static void show_missiles(uint16_t thing, int pos, int position)
                                       .scale_x = scale,
                                       .scale_y = scale,
                                       .depth = depth,
-                                      .zone = (int16_t)(zone | ZONE_RELATIVE),
+                                      .zone = zone | ZONE_RELATIVE,
                                       .key = THING_KEY,
                                       .key2 = NO_KEY},
                       category, index, pic.entry);
@@ -2063,7 +2063,7 @@ static void setup_explosion_picture(int type, int size, int flip, int zone)
     c->src_y = (int16_t)(c->src_y + c->dy);
     c->dx = 0;
     c->dy = 0;
-    c->zone = (int16_t)zone;
+    c->zone = zone;
     c->anchor = 0;
     c->transparent = THING_KEY;
     c->dst = &g_view_viewport;
@@ -2545,7 +2545,7 @@ static void show_wall_text(int pos, int entry, const PicturePlace *place)
     c.palette_count = IMAGE_COLORS;
     get_depth_shading(c.palette, place->depth, place->key, NO_KEY, &c.palette_count);
     c.dst = &g_view_viewport;
-    c.zone = (int16_t)place->zone;
+    c.zone = place->zone;
     c.anchor = (int16_t)place->anchor;
     c.src_x = plate.dx;
     c.src_y = plate.dy;
@@ -3224,13 +3224,13 @@ static void show_door(int pos, int frame_before, int frame_after, uint32_t cell_
                 int16_t half = (int16_t)(view.ctx.w >> 1);
                 view.ctx.w = half;
                 view.ctx.x = (int16_t)(view.ctx.x + half);
-                view.ctx.zone = (int16_t)(zone + DOOR_HALF_OFFSET);
+                view.ctx.zone = zone + DOOR_HALF_OFFSET;
                 flush_picture();
                 view.ctx.x = (int16_t)(view.ctx.x - half);
                 zone += DOOR_LEFT_OFFSET;
             }
         }
-        view.ctx.zone = (int16_t)zone;
+        view.ctx.zone = zone;
         flush_picture();
     }
     if (frame_after)
@@ -3332,7 +3332,7 @@ static void outdoor_draw_sky_object(const SkyObject *o, int16_t dir, int16_t x, 
     setup_picture(&(PicturePlace){.flip = flip,
                                   .scale_x = scale_x,
                                   .scale_y = scale_y,
-                                  .zone = (int16_t)(o->zone | ZONE_RELATIVE),
+                                  .zone = o->zone | ZONE_RELATIVE,
                                   .anchor = ZONE_NO_ANCHOR,
                                   .key = view.wall_key,
                                   .key2 = NO_KEY},

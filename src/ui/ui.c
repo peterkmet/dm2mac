@@ -573,7 +573,7 @@ void offscreen_draw_ctx(Offscreen *o, DrawCtx *ctx, int zone, int transparent)
         ctx->h = (int16_t)(ctx->h + size.h);
     }
     local_rect(o, r, ctx->rect);
-    ctx->zone = (int16_t)ZONE_NONE;
+    ctx->zone = ZONE_NONE;
     ctx->transparent = (int16_t)transparent;
     draw_ctx_draw(ctx);
     add_dirty_rect(o, r);
@@ -651,7 +651,7 @@ void ui_draw_viewport_image(int category, int index, int entry, int zone, int tr
     c.dst = &g_view_viewport;
     c.dx = 0;
     c.dy = 0;
-    c.zone = (int16_t)zone;
+    c.zone = zone;
     draw_ctx_draw(draw_ctx_prepare(&c));
 }
 
@@ -704,7 +704,7 @@ void ui_draw_interface_image(int category, int index, int entry, int zone)
     DrawCtx d;
     draw_ctx_init(&d, category, index, entry);
     d.transparent = GFX_OPAQUE;
-    d.zone = (int16_t)zone;
+    d.zone = zone;
     draw_ctx_draw(draw_ctx_prepare(&d));
 }
 
