@@ -60,7 +60,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    state prefixes with the same first word. The prefixes of one module may share a first word (`champ_` and
    `champion` in `champion.h`), and a module may state several prefixes (`input_ command_ kbd_ rect_` in
    `input.h`). The header that owns a prefix declares every function with that prefix. [prefix]
-9. `src/third_party/` is vendored code (`opl3/`), the one folder of `src/` outside the layers. The folder is
+9. `src/third_party/` is vendored code (`opl3/`, `tinf/`), the one folder of `src/` outside the layers. The folder is
    outside every check, including the format check. [layer]
 
 ## 2. Headers and includes
@@ -356,7 +356,7 @@ their allowlist key:
 | Key | Fails on |
 |---|---|
 | `layer` | an include that breaks the layer order, names a path or names no project header; SDL outside `platform/`; a file outside a layer folder, a public header outside `include/`, a private header in `include/`; a header name in two layers |
-| `platform` | a header other than the portable C headers and `opl3/` outside `platform/`; `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr`, `exit(` or `abort(` outside `platform/` and `data/os.c` |
+| `platform` | a header other than the portable C headers, `opl3/` and `tinf/` outside `platform/`; `_WIN32` outside `platform/`; `rand(`, `srand(`, `time(` or `clock(` outside `platform/`; `fprintf(stderr`, `exit(` or `abort(` outside `platform/` and `data/os.c` |
 | `engine-write` | a write (`=`, `++`, `--`, `memcpy`, `memmove`, `memset`, a pointer without `const`) of `ui/` or `control/` to an extern `g_*` of `engine/include/*.h`, except `g_hooks` and the `*_hook` globals; the target is `<file>` or `<file>:<function>` |
 | `module` | a `.c` file without its header, a part file whose suffix `IncludeIsMainRegex` of `.clang-format` does not list, a second public header of one module |
 | `prefix` | a header without a prefix line, a header without functions whose line is not `none`, a prefix with the first word of a prefix of another module, a name outside its prefixes |
