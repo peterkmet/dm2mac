@@ -1665,7 +1665,7 @@ static bool floor_item_in_reach(ItemTest *it)
         if ((uint8_t)g_ai_square_scan.cells[0] == CELL_ANY) {
             /* the cells in reach: the near half of the square, or all of the own square */
             int bits = same ? (d == -1 ? CELLS_ALL : CELLS_NEAR) : CELLS_FAR;
-            int16_t c = same && d == -1 ? 0 : d;
+            int16_t c = d == -1 ? 0 : d; /* fix: the original writes the cell before the table for direction -1 */
             for (int i = 0; i < DIR_COUNT; i++) {
                 g_ai_square_scan.cells[c] = (int8_t)(bits & 1);
                 c = dir_turn(c, TURN_RIGHT);

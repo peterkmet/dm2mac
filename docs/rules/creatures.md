@@ -54,6 +54,7 @@ The rules of the creatures: the creature data, the updates of the creature group
   - the back-off of a ranged attack along a line out of the distance map (`back_off_line` in `src/engine/ai_move.c`): the original reads before or after the distance map, the port keeps the creature on its square and stops the line; any cell before the map (x below 0, and x = 0 with y = -1) or after it (x = 32 on a map 32 wide, and x = 31 with y = 32) stops it
   - a melee attack of a creature info with random champions and two champions together (`melee_attack_party` in `src/engine/ai.c`; no shipped creature info has both): when no living champion is left to pick, the original attacks champion -1, the port skips the pick
   - the AI condition "health below" (`test_condition` in `src/engine/ai.c`) of a creature info with a maximum health of 0 (no shipped creature info has one): the original divides by 0, the port divides by 1
+  - the cells in reach of a floor item (`floor_item_in_reach` in `src/engine/ai_move.c`) for another square and direction -1 (no caller passes both): the original writes the cell byte before its table, the port starts at cell 0
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
 - `magic_add_light` uses a delay of 0 for a light kind other than the three that exist (the original leaves it unset; no caller uses another kind).
 - The create item spell skips the move of an invalid thing when no record is free; it still draws the random number.
