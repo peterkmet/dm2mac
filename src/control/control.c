@@ -333,13 +333,6 @@ static void key_pair(Json *reply, const char *key, int64_t value, int64_t max)
     json_close(reply, ']');
 }
 
-/* Appends "key":value of an integer. */
-static void key_int(Json *reply, const char *key, int64_t value)
-{
-    json_key(reply, key);
-    json_int(reply, value);
-}
-
 /* The champions of the state reply: name, health, stamina, mana, load. The game texts of GRAPHICS.DAT (701 entries)
    are ASCII, so only request text can bring bytes from 0x80 into a reply. */
 static void put_champions(Json *reply)
@@ -354,7 +347,7 @@ static void put_champions(Json *reply)
         key_pair(reply, "health", c->health, c->max_health);
         key_pair(reply, "stamina", c->stamina, c->max_stamina);
         key_pair(reply, "mana", c->mana, c->max_mana);
-        key_int(reply, "load", champ_get_load(i));
+        json_key_int(reply, "load", champ_get_load(i));
         json_close(reply, '}');
     }
     json_close(reply, ']');
@@ -369,8 +362,8 @@ static void put_state(Json *reply)
     json_open(reply, '{');
     json_key(reply, "ok");
     json_bool(reply, true);
-    key_int(reply, "time", g_game.game_time);
-    key_int(reply, "ticks", g_main_loop.timer_ticks);
+    json_key_int(reply, "time", g_game.game_time);
+    json_key_int(reply, "ticks", g_main_loop.timer_ticks);
     json_key(reply, "mode");
     json_str(reply, movie ? "movie" : state_json_mode_name(mode));
     json_key(reply, "dialog");
@@ -380,39 +373,39 @@ static void put_state(Json *reply)
         json_int(reply, g_dialog.id);
     json_key(reply, "party");
     json_open(reply, '{');
-    key_int(reply, "map", g_game.party_map);
-    key_int(reply, "x", g_game.party_x);
-    key_int(reply, "y", g_game.party_y);
-    key_int(reply, "dir", g_game.party_dir);
+    json_key_int(reply, "map", g_game.party_map);
+    json_key_int(reply, "x", g_game.party_x);
+    json_key_int(reply, "y", g_game.party_y);
+    json_key_int(reply, "dir", g_game.party_dir);
     json_close(reply, '}');
-    key_int(reply, "champion_count", g_game.champion_count);
-    key_int(reply, "leader", champ_leader());
+    json_key_int(reply, "champion_count", g_game.champion_count);
+    json_key_int(reply, "leader", champ_leader());
     put_champions(reply);
-    key_int(reply, "inventory", g_ui.inventory - 1);
-    key_int(reply, "candidate", g_ui.candidate - 1);
+    json_key_int(reply, "inventory", g_ui.inventory - 1);
+    json_key_int(reply, "candidate", g_ui.candidate - 1);
     json_key(reply, "hand");
     if (!g_game.champion_count || g_game.leader_hand == THING_NONE)
         json_raw(reply, "null");
     else {
         json_open(reply, '{');
-        key_int(reply, "thing", g_game.leader_hand);
+        json_key_int(reply, "thing", g_game.leader_hand);
         json_key(reply, "name");
         json_str(reply, item_name(g_game.leader_hand));
         json_close(reply, '}');
     }
-    key_int(reply, "sound_volume", g_game.sound_volume);
-    key_int(reply, "music_volume", g_game.music_volume);
-    key_int(reply, "end", g_main_loop.end);
-    key_int(reply, "quit", g_main_loop.quit);
+    json_key_int(reply, "sound_volume", g_game.sound_volume);
+    json_key_int(reply, "music_volume", g_game.music_volume);
+    json_key_int(reply, "end", g_main_loop.end);
+    json_key_int(reply, "quit", g_main_loop.quit);
     json_key(reply, "game_mode");
     json_str(reply, g_game_mode_names[g_game_mode]);
-    key_int(reply, "automap", g_advanced_screen == ADVANCED_SCREEN_AUTOMAP);
-    key_int(reply, "cheat_immortal", game_has_cheat(CHEAT_IMMORTAL));
-    key_int(reply, "cheat_food", game_has_cheat(CHEAT_FOOD));
-    key_int(reply, "cheat_light", game_has_cheat(CHEAT_LIGHT));
-    key_int(reply, "cheat_kill", game_has_cheat(CHEAT_KILL));
-    key_int(reply, "cheat_walls", game_has_cheat(CHEAT_WALLS));
-    key_int(reply, "cheat_map", game_has_cheat(CHEAT_MAP));
+    json_key_int(reply, "automap", g_advanced_screen == ADVANCED_SCREEN_AUTOMAP);
+    json_key_int(reply, "cheat_immortal", game_has_cheat(CHEAT_IMMORTAL));
+    json_key_int(reply, "cheat_food", game_has_cheat(CHEAT_FOOD));
+    json_key_int(reply, "cheat_light", game_has_cheat(CHEAT_LIGHT));
+    json_key_int(reply, "cheat_kill", game_has_cheat(CHEAT_KILL));
+    json_key_int(reply, "cheat_walls", game_has_cheat(CHEAT_WALLS));
+    json_key_int(reply, "cheat_map", game_has_cheat(CHEAT_MAP));
     json_close(reply, '}');
 }
 
@@ -809,7 +802,7 @@ bool control_end_turn(Json *reply)
         json_open(reply, '{');
         json_key(reply, "ok");
         json_bool(reply, true);
-        key_int(reply, "ticks", ran);
+        json_key_int(reply, "ticks", ran);
         json_close(reply, '}');
         return true;
     }
