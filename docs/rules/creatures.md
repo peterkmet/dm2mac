@@ -23,7 +23,9 @@ The rules of the creatures: the creature data, the updates of the creature group
 
 ## Minion map
 
-- The minion map is a panel of the action area. It shows the squares around a minion or a marker, takes 1 mana from the champion who opened it every 25 game steps, and a click on the grid sends the minion there.
+- The minion map is a panel of the action area. It shows the squares around a minion or a marker, and a click on the grid sends the minion there.
+- Mana (`minion_map_open`, `minion_map_drain_mana`, `minion_toggle_map_option` in `src/engine/minion.c`): the map takes 1 mana from the champion who opened it when it opens, and 1 mana each time its timer runs out. The timer counts game steps: the first period is 25 game steps (`MINION_MAP_MANA_TICKS`), each later period 25 / `mana_divisor` game steps, rounded down. `mana_divisor` is 1 plus the mana of the options that are on. An option takes its mana (2, 3, 1, or 1) when it is switched on; with less mana the option stays off. A switch-off gives no mana back, and a change of the options changes only the periods after the current one.
+- A champion without mana opens the map without power: a dithered black covers the grid. When the timer runs out and the champion has no mana, the map opens again with all options off. A map without power opens again when the champion has mana.
 
 ## Deviations from the original
 
