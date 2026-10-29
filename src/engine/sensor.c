@@ -419,11 +419,12 @@ static bool altar_takes_bones(uint16_t t, uint16_t thing)
 /* The altar brings back the champion of the bones. */
 static void altar_schedule_rebirth(uint16_t bones, int16_t x, int16_t y, int16_t cell)
 {
-    int champ = item_charges(bones);
-    if (champ < 0 || champ >= g_game.champion_count)
+    int16_t champion_index = item_charges(bones);
+    if (champion_index < 0 || champion_index >= g_game.champion_count)
         return;
-    TimelineEvent e = {
-        .time_map = current_map_time(g_game.game_time + 1), .type = EVENT_ALTAR_REBIRTH, .priority = (uint8_t)champ};
+    TimelineEvent e = {.time_map = current_map_time(g_game.game_time + 1),
+                       .type = EVENT_ALTAR_REBIRTH,
+                       .priority = (uint8_t)champion_index};
     e.data[EVENT_X] = (uint8_t)x;
     e.data[EVENT_Y] = (uint8_t)y;
     e.data[EVENT_CELL] = (uint8_t)cell;
@@ -648,7 +649,7 @@ static void test_global_flag(const TimelineEvent *e, uint16_t sensor)
 }
 
 /* The frame count of the animation of the ornament of a sensor (wall or floor). */
-static unsigned ornament_cycle(uint16_t sensor, bool wall)
+static uint16_t ornament_cycle(uint16_t sensor, bool wall)
 {
     int category = ornament_category(wall);
     int ornament = wall_or_floor_ornament(sensor, wall);
@@ -664,7 +665,7 @@ static unsigned ornament_cycle(uint16_t sensor, bool wall)
 }
 
 /* An audible animated ornament starts its repeating sound at the next start of its animation cycle. */
-static void start_ambient_sound(uint16_t sensor, int16_t x, int16_t y, unsigned cycle, bool wall)
+static void start_ambient_sound(uint16_t sensor, int16_t x, int16_t y, uint16_t cycle, bool wall)
 {
     if (!sensor_flag(sensor, SENSOR_AUDIBLE) || sensor_sound_on(sensor))
         return;
@@ -694,7 +695,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
     bool now = apply_effect(e->data[EVENT_EFFECT], old);
     sensor_set_flag(sensor, SENSOR_STATE, now);
     if (old != now) {
-        unsigned cycle = (uint16_t)ornament_cycle(sensor, wall);
+        uint16_t cycle = ornament_cycle(sensor, wall);
         if (now) {
             if (!sensor_flag(sensor, SENSOR_BUSY)) {
                 sensor_set_flag(sensor, SENSOR_BUSY, true);
@@ -1147,7 +1148,7 @@ static void wall_sensor_event(TimelineEvent *e, uint16_t t, int effect)
         break;
     case SENSOR_FRAME_STEP: { /* steps the ornament frame; a step back from 0 gives 0xffff, as in the original */
         unsigned frame = (uint16_t)(effect == EFFECT_SET ? data + 1 : data - 1);
-        sensor_set_data(t, frame % (uint16_t)ornament_cycle(t, true));
+        sensor_set_data(t, frame % ornament_cycle(t, true));
         break;
     }
     case SENSOR_CREATURE_SLOT:
@@ -1508,7 +1509,7 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
         return;
     }
     bool wall = square_type(dun_get_square((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
-    timeline_delay_event(e, (uint16_t)ornament_cycle(thing, wall));
+    timeline_delay_event(e, ornament_cycle(thing, wall));
     timeline_add_event(e);
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
@@ -1551,7 +1552,7 @@ void sensor_process_event(TimelineEvent *e)
     switch (e->type) {
     case EVENT_SENSOR_ANIMATION_STEP: {
         e->time_map++;
-        unsigned cycle = (uint16_t)ornament_cycle(thing, e->data[SENSOR_EVENT_WALL]);
+        uint16_t cycle = ornament_cycle(thing, e->data[SENSOR_EVENT_WALL]);
         unsigned frame = (sensor_data(thing) + 1) & SENSOR_DATA_MASK;
         sensor_set_data(thing, frame);
         if (frame % cycle == 0)
@@ -1607,7 +1608,7 @@ void sensor_process_map_entry(bool entering)
                             sensor_trigger_target(t, sensor_effect(t), 0);
                         }
                     } else if (kind == SENSOR_ANIMATION && entering && sensor_flag(t, SENSOR_BUSY)) {
-                        start_ambient_sound(t, x, y, (uint16_t)ornament_cycle(t, wall), wall);
+                        start_ambient_sound(t, x, y, ornament_cycle(t, wall), wall);
                     }
                 } else if (thing_type(t) == THING_TEXT && entering) {
                     if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == TEXT_GENERATOR_ON_ENTRY &&

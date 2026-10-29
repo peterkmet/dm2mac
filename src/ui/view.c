@@ -2281,7 +2281,7 @@ static uint8_t wall_text_glyph(uint8_t c)
 /* The target square of the sensor record. */
 static Location record_target(uint16_t record)
 {
-    return (Location){(int16_t)sensor_target_x(record), (int16_t)sensor_target_y(record)};
+    return (Location){sensor_target_x(record), sensor_target_y(record)};
 }
 
 /* True when the target square of the sensor record holds an item of the item index type: in the possessions of a

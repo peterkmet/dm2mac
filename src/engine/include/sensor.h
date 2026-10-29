@@ -65,15 +65,15 @@ static inline int16_t sensor_ornament_index(uint16_t sensor)
     return (int16_t)(thing_field(sensor, SENSOR_FLAGS, SENSOR_ORNAMENT_SHIFT, SENSOR_ORNAMENT_MASK) - 1);
 }
 /* The target word: the target square and cell, or the energy and step of a launched missile. */
-static inline uint16_t sensor_target_x(uint16_t sensor)
+static inline int16_t sensor_target_x(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_X_SHIFT, LOCATION_COORD_MASK);
 }
-static inline uint16_t sensor_target_y(uint16_t sensor)
+static inline int16_t sensor_target_y(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_Y_SHIFT, LOCATION_COORD_MASK);
 }
-static inline uint16_t sensor_target_cell(uint16_t sensor)
+static inline int16_t sensor_target_cell(uint16_t sensor)
 {
     return thing_field(sensor, SENSOR_TARGET, SENSOR_TARGET_CELL_SHIFT, SENSOR_TARGET_CELL_MASK);
 }
@@ -187,17 +187,17 @@ static inline uint16_t sensor_launch_step(uint16_t sensor)
 
 /* The sub-fields of the data word. */
 /* The map in the data word of a sensor. */
-static inline uint16_t sensor_data_map(uint16_t sensor)
+static inline int16_t sensor_data_map(uint16_t sensor)
 {
     return sensor_data(sensor) & SENSOR_MAP_MASK;
 }
 /* The cell in the data word of a sensor. */
-static inline uint16_t sensor_data_cell(uint16_t sensor)
+static inline int16_t sensor_data_cell(uint16_t sensor)
 {
     return sensor_data(sensor) >> SENSOR_CELL_SHIFT & CELL_MASK;
 }
 /* The turn direction in the data word of a sensor. */
-static inline uint16_t sensor_turn_dir(uint16_t sensor)
+static inline int16_t sensor_turn_dir(uint16_t sensor)
 {
     return sensor_data(sensor) & DIR_MASK;
 }
