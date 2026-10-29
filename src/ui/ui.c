@@ -967,6 +967,7 @@ static void show_description(const char *text)
     snprintf(buf, sizeof buf, "%s", text);
     for (char *line = buf; *line;) {
         char *next = line + strlen(line);
+        char kept = '\0'; /* the character that a break inside a word cuts off, put back after the draw */
         if (strlen(line) > DESCRIPTION_LINE) {
             char *brk = line + DESCRIPTION_BREAK;
             while (brk > line && *brk != ' ')
@@ -977,17 +978,14 @@ static void show_description(const char *text)
             } else {
                 /* fix: a word without a space breaks at the line width; the original scans before the buffer */
                 next = line + DESCRIPTION_LINE;
-                char kept = *next;
+                kept = *next;
                 *next = '\0';
-                text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
-                cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
-                *next = kept;
-                line = next;
-                continue;
             }
         }
         text_draw_in_viewport(cache.description_x, cache.description_y, g_ui_colors[UI_LIGHT_GRAY], line);
         cache.description_y = (int16_t)(cache.description_y + TEXT_LINE_HEIGHT);
+        if (kept)
+            *next = kept;
         line = next;
     }
 }
