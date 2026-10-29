@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include "champion.h"
 #include "dungeon.h"
 #include "gdat.h"
 #include "ids.h"
@@ -118,7 +119,7 @@ char *gtext_format(const char *fmt, char *dst)
         char value[TEXT_SIZE] = "", inner[TEXT_SIZE];
         if (code == FORMAT_CHAMPION) {
             if (g_text_args.champion >= 0 && g_text_args.champion < CHAMPION_MAX)
-                snprintf(value, sizeof value, "%s", (const char *)g_game.champions[g_text_args.champion]);
+                snprintf(value, sizeof value, "%s", champion(g_text_args.champion)->name);
         } else if (code >= FORMAT_NUMBER_FIRST && code <= FORMAT_NUMBER_LAST) {
             snprintf(value, sizeof value, "%d", g_text_args.number[code - FORMAT_NUMBER_FIRST]);
         } else if (code == FORMAT_TEXT) {
