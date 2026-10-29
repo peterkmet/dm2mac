@@ -1705,7 +1705,7 @@ static void show_object(uint16_t thing, int pos, const ObjectLook *look)
     uint8_t category = item_gdat_category(thing);
     uint8_t index = item_gdat_index(thing);
     ThingPicture pic = pick_object_picture(thing, at.pos, at.cell, look->open_state, look->in_alcove);
-    if (look->spot != -1) {
+    if (look->spot != -1) { /* as in the original, the alcove items get the jitter a second time */
         dx += jitter_offset[jitter[look->spot][0]];
         if (look->group == THING_NONE)
             dy += jitter_offset[jitter[look->spot][1]];
@@ -2733,6 +2733,7 @@ static int show_wall_ornament(int pos, int side, bool record_click)
     ThingPicture pic = wall_ornament_picture(ornament, side, frame);
     int entry = pic.entry;
     p.flip = pic.flip;
+    /* as in the original, the hit test (record_click false) of a wet ornament draws it and its contents */
     if (side == 0 && aspect_value_key(CAT_WALL_ORNAMENT, ornament, ORN_KEY_WET)) {
         show_wet_wall_ornament(ornament, entry, &p, record_click, click_rect);
     } else {

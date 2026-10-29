@@ -54,6 +54,8 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 - Kept quirk: the landmarks of an outdoor map use the first sky object of `weather_sky_objects` as their work record, as in the original. The weather update writes that record again before each use.
 - Kept quirk: the explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage, as in the original.
 - Kept quirk: a static creature on a door square seen from the front shows only the possessions in the near cells, as in the original.
+- Kept quirk: an item in an alcove gets the jitter of its spot twice, once in the alcove place and once as the items on the floor, as in the original (`SKULL.c:52354-52358`, `52396-52401`).
+- Kept quirk: the hit test of a wet wall ornament on the front face draws the ornament with its rain and its contents into the view, where the hit test of the other ornaments only measures them, as in the original (`SKULL.c:50988-51065`).
 - Kept quirk: `show_far_squares` keeps the cell mask from square to square; a stairs square draws its things with the mask of the square drawn before it, as in the original.
 - Kept quirk: `aspect_get` clears the wall text of a square to 0, not `THING_TEXT_NONE`, as in the original (`SKULL.c:12597`); only the wall things write `THING_TEXT_NONE`.
 - Kept quirk: while the party walks, a wall on its square gets the text 0 (`load_walking_party_square`), the wall squares beside it `THING_TEXT_NONE`, as in the original.
