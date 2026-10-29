@@ -70,32 +70,32 @@
 #define GDAT_CREATURE_INFO_ENTRY 0x05
 
 /* Game record fields, byte offsets. */
-#define REC_GAME_TIME         0x00
-#define REC_RANDOM_SEED       0x04
-#define REC_CHAMPIONS         0x08
-#define REC_PARTY_X           0x0a
-#define REC_PARTY_Y           0x0c
-#define REC_PARTY_DIR         0x0e
-#define REC_PARTY_MAP         0x10
-#define REC_LEADER            0x12 /* two bits: LEADER_NONE loads as 3, as in the original */
-#define REC_TIMELINE_EVENTS   0x14
-#define REC_UNKNOWN_TIME_A    0x16
-#define REC_UNKNOWN_TIME_B    0x1a
-#define REC_MOVE_COOLDOWN     0x1e
-#define REC_UNKNOWN_COUNTDOWN 0x20
-#define REC_UNKNOWN_DIR       0x22
-#define REC_VOLUMES           0x28
-#define REC_WEATHER_VISIBLE   0x2a
-#define REC_HEAVY_RAIN        0x2e
-#define REC_WIND_DIR          0x2f
-#define REC_RAIN_INTENSITY    0x30
-#define REC_SKY_DARKNESS      0x31
-#define REC_CLOUD_COVER       0x32
-#define REC_STORM_MULTIPLIER  0x33
-#define REC_STORM_INTENSITY   0x34
-#define REC_STORM_STEP        0x36
-#define REC_STORM_CURVE       0x37
-#define REC_NEXT_HOUR_TIME    0x38
+#define REC_GAME_TIME          0x00
+#define REC_RANDOM_SEED        0x04
+#define REC_CHAMPIONS          0x08
+#define REC_PARTY_X            0x0a
+#define REC_PARTY_Y            0x0c
+#define REC_PARTY_DIR          0x0e
+#define REC_PARTY_MAP          0x10
+#define REC_LEADER             0x12 /* two bits: LEADER_NONE loads as 3, as in the original */
+#define REC_TIMELINE_EVENTS    0x14
+#define REC_LAST_COMBAT_TIME   0x16
+#define REC_FIRST_RECRUIT_TIME 0x1a
+#define REC_MOVE_COOLDOWN      0x1e
+#define REC_THROW_COOLDOWN     0x20
+#define REC_THROW_DIR          0x22
+#define REC_VOLUMES            0x28
+#define REC_WEATHER_VISIBLE    0x2a
+#define REC_HEAVY_RAIN         0x2e
+#define REC_WIND_DIR           0x2f
+#define REC_RAIN_INTENSITY     0x30
+#define REC_SKY_DARKNESS       0x31
+#define REC_CLOUD_COVER        0x32
+#define REC_STORM_MULTIPLIER   0x33
+#define REC_STORM_INTENSITY    0x34
+#define REC_STORM_STEP         0x36
+#define REC_STORM_CURVE        0x37
+#define REC_NEXT_HOUR_TIME     0x38
 
 /* The sound volume in the low nibble of the volume byte, the music volume in the high nibble. */
 #define VOLUME_MASK 0xf
@@ -516,11 +516,11 @@ static void pack_game_record(uint8_t *r)
     put_le16(r + REC_PARTY_MAP, g_game.party_map);
     put_le16(r + REC_LEADER, g_game.leader);
     put_le16(r + REC_TIMELINE_EVENTS, g_timeline.count);
-    put_le32(r + REC_UNKNOWN_TIME_A, g_game.last_combat_time);
-    put_le32(r + REC_UNKNOWN_TIME_B, g_game.first_recruit_time);
+    put_le32(r + REC_LAST_COMBAT_TIME, g_game.last_combat_time);
+    put_le32(r + REC_FIRST_RECRUIT_TIME, g_game.first_recruit_time);
     put_le16(r + REC_MOVE_COOLDOWN, g_game.party_move_cooldown);
-    put_le16(r + REC_UNKNOWN_COUNTDOWN, g_game.throw_cooldown);
-    put_le16(r + REC_UNKNOWN_DIR, g_game.throw_dir);
+    put_le16(r + REC_THROW_COOLDOWN, g_game.throw_cooldown);
+    put_le16(r + REC_THROW_DIR, g_game.throw_dir);
     put_le16(r + REC_VOLUMES, (g_game.sound_volume & VOLUME_MASK) | (g_game.music_volume & VOLUME_MASK)
                                                                         << MUSIC_VOLUME_SHIFT);
     put_le32(r + REC_WEATHER_VISIBLE, g_game.weather_visible);
@@ -548,11 +548,11 @@ static void unpack_game_record(const uint8_t *r)
     g_game.party_map = le16(r + REC_PARTY_MAP);
     g_game.leader = le16(r + REC_LEADER);
     g_timeline.count = le16(r + REC_TIMELINE_EVENTS);
-    g_game.last_combat_time = le32(r + REC_UNKNOWN_TIME_A);
-    g_game.first_recruit_time = le32(r + REC_UNKNOWN_TIME_B);
+    g_game.last_combat_time = le32(r + REC_LAST_COMBAT_TIME);
+    g_game.first_recruit_time = le32(r + REC_FIRST_RECRUIT_TIME);
     g_game.party_move_cooldown = le16(r + REC_MOVE_COOLDOWN);
-    g_game.throw_cooldown = le16(r + REC_UNKNOWN_COUNTDOWN);
-    g_game.throw_dir = le16(r + REC_UNKNOWN_DIR);
+    g_game.throw_cooldown = le16(r + REC_THROW_COOLDOWN);
+    g_game.throw_dir = le16(r + REC_THROW_DIR);
     g_game.sound_volume = r[REC_VOLUMES] & VOLUME_MASK;
     g_game.music_volume = r[REC_VOLUMES] >> MUSIC_VOLUME_SHIFT & VOLUME_MASK;
     g_game.weather_visible = r[REC_WEATHER_VISIBLE];
