@@ -55,15 +55,6 @@
 #define MOOD_AT_MASK_WORD       0
 #define MOOD_AT_CHOICES         2
 
-/* The flags of an AI class (g_ai_class_flags). */
-#define AI_CLASS_ALWAYS_SCANS   0x0001 /* the creature scans for plans on each update */
-#define AI_CLASS_ONE_FEAR       0x0002
-#define AI_CLASS_NO_DEATH_CLOUD 0x0008
-#define AI_CLASS_DODGES         0x0010
-#define AI_CLASS_SEARCH_NEAR    0x0020
-#define AI_CLASS_NO_FLEE        0x0040
-#define AI_CLASS_BORED          0x0400 /* class byte 1 bit 2: the creature is always bored */
-
 /* The jump byte of an animation step. */
 #define STEP_INTERRUPTIBLE 0x40 /* the step may end the animation at an interrupt */
 #define STEP_ACTS          0x80 /* the creature acts at this step */
@@ -1237,7 +1228,7 @@ static uint16_t change_mood(uint16_t mood)
         mood ^= MOOD_HURRY;
     if (!((uint16_t)r % (SPEED_MOOD_STEPS - creature_fear_resistance(g_ai.info))))
         mood &= ~MOOD_BORED;
-    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_BORED)
+    if (g_ai_class_flags[g_ai.class_index] & AI_CLASS_LAZY_GUARD)
         mood |= MOOD_LAZY;
     else if (!(r & ROLL_LAZY))
         mood &= ~MOOD_LAZY;

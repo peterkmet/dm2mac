@@ -52,45 +52,38 @@
 /* The payload of a missile that is an explosion: this plus the explosion type. */
 #define EXPLOSION_THING_BASE    0xff80
 
-/* The AI class flags (g_ai_class_flags). */
-#define AI_CLASS_SEES_ALL_SIDES     0x0100
-#define AI_CLASS_SEES_BEHIND        0x0400
-#define AI_CLASS_TURNS_TO_TAKE      0x1000
-#define AI_CLASS_STAYS_ON_MAPS      0x2000 /* targets only on its own map and on the party map */
-#define AI_CLASS_AVOIDS_CLOUDS      0x0200
-#define AI_CLASS_AVOIDS_PARTY_DOORS 0x4000
 /* g_ai.attack_flags. */
-#define ATTACK_HIT                  0x0001
-#define ATTACK_HIT_2                0x0002
-#define ATTACK_THROW                0x0008
-#define ATTACK_FIREBALL             0x0010
-#define ATTACK_HARM_NON_MATERIAL    0x0020
-#define ATTACK_LIGHTNING            0x0040
-#define ATTACK_POISON_CLOUD         0x0080
-#define ATTACK_POISON_BOLT          0x0100
-#define ATTACK_SLIME                0x0200
-#define ATTACK_PUSH                 0x0400
-#define ATTACK_PULL                 0x0800
-#define ATTACK_MELEE_MASK           0x0007
-#define ATTACK_RANGED_MASK          0x0ff8
-#define ATTACK_STEAL                0x0004
+#define ATTACK_HIT               0x0001
+#define ATTACK_HIT_2             0x0002
+#define ATTACK_THROW             0x0008
+#define ATTACK_FIREBALL          0x0010
+#define ATTACK_HARM_NON_MATERIAL 0x0020
+#define ATTACK_LIGHTNING         0x0040
+#define ATTACK_POISON_CLOUD      0x0080
+#define ATTACK_POISON_BOLT       0x0100
+#define ATTACK_SLIME             0x0200
+#define ATTACK_PUSH              0x0400
+#define ATTACK_PULL              0x0800
+#define ATTACK_MELEE_MASK        0x0007
+#define ATTACK_RANGED_MASK       0x0ff8
+#define ATTACK_STEAL             0x0004
 /* g_ai.item_flags. */
-#define ITEM_SKILL_SAME_SQUARE      0x0001
-#define ITEM_SKILL_WALL             0x0004
-#define ITEM_SKILL_STATIC           0x0008
-#define ITEM_SKILL_CHESTS           0x0010
-#define ITEM_SKILL_GROUPS           0x0020
-#define ITEM_SKILL_OTHER_SQUARE     0x002a
+#define ITEM_SKILL_SAME_SQUARE   0x0001
+#define ITEM_SKILL_WALL          0x0004
+#define ITEM_SKILL_STATIC        0x0008
+#define ITEM_SKILL_CHESTS        0x0010
+#define ITEM_SKILL_GROUPS        0x0020
+#define ITEM_SKILL_OTHER_SQUARE  0x002a
 /* Sub-commands of the shoot action (ActiveGroup.sub). */
-#define SHOT_STEAL                  0x0b
+#define SHOT_STEAL               0x0b
 /* The flags of the search target kinds (g_ai_kind_flags). */
-#define KIND_TESTS_OPEN             0x01 /* the kind tests the squares that the search enters */
-#define KIND_TESTS_BLOCKED          0x02 /* ... the squares that it cannot enter */
-#define KIND_FIRST_BEST             0x04 /* a found target may still get a nearer better one */
-#define KIND_CACHES_SQUARE          0x08
-#define KIND_NO_LOCATION            0x10 /* the found target keeps its location */
-#define KIND_PARTY_LOCATION         0x20 /* the found target is the party square; also: needs the party seen */
-#define KIND_NO_BONUS               0x40
+#define KIND_TESTS_OPEN          0x01 /* the kind tests the squares that the search enters */
+#define KIND_TESTS_BLOCKED       0x02 /* ... the squares that it cannot enter */
+#define KIND_FIRST_BEST          0x04 /* a found target may still get a nearer better one */
+#define KIND_CACHES_SQUARE       0x08
+#define KIND_NO_LOCATION         0x10 /* the found target keeps its location */
+#define KIND_PARTY_LOCATION      0x20 /* the found target is the party square; also: needs the party seen */
+#define KIND_NO_BONUS            0x40
 
 /* The item filters of the AI (the filter argument of the item tests). */
 #define FILTER_INVERT              0x80
@@ -1077,7 +1070,7 @@ bool ai_projectile_incoming(Location at)
     int16_t x = at.x;
     int16_t y = at.y;
     for (int16_t d = 0; d < DIR_COUNT; d++) {
-        if (!(class_flags() & AI_CLASS_SEES_BEHIND)) {
+        if (!(class_flags() & AI_CLASS_LAZY_GUARD)) {
             bool wanders = group_mood_flag(g_ai.group_thing, MOOD_WANDERS);
             bool behind = !(g_ai.info->flags & CREATURE_FACES_PARTY) && at_group(x, y) &&
                           d == dir_opposite(group_dir(g_ai.group_thing));

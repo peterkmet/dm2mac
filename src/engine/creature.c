@@ -78,16 +78,6 @@
 #define SEQUENCE_FIRST_STEP 2
 #define SEQUENCE_END        (-1)
 
-/* AI class flags of g_ai_class_flags. */
-#define AI_CLASS_NO_HOME_EVENT   0x0004 /* class flag: the home square gets no event when the creature is hurt */
-#define AI_CLASS_NO_TURN         0x0080 /* an alert does not turn the creature */
-#define AI_CLASS_WAKES           0x0410
-#define AI_CLASS_DIES_NEAR_PARTY 0x0800 /* the creature dies only in front of the party; the commands wait */
-#define AI_CLASS_SCREAMS         0x8000 /* the creature screams when it is hurt */
-
-/* Class flag: a creature on another map than the party keeps its pace. */
-#define AI_CLASS_STAYS_FAR 0x10000
-
 /* The phases of ACTION_FALL while the creature is in the air: after its first step, after its second step. */
 #define FALL_PHASE_FIRST_STEP  1
 #define FALL_PHASE_SECOND_STEP 2
