@@ -384,11 +384,11 @@ static void rank_json(Json *j, const char *text)
 }
 
 /* The level and the rank text of each base skill; the rank is null below level 2, as the skills panel shows it. */
-static void skills_json(Json *j, int champ)
+static void skills_json(Json *j, int16_t champion_index)
 {
     json_open(j, '{');
     for (int s = 0; s < SKILL_BASE_COUNT; s++) {
-        int level = champ_get_skill_level(champ, s, true);
+        int level = champ_get_skill_level(champion_index, s, true);
         char text[TEXT_SIZE];
         json_key(j, skill_names[s]);
         json_open(j, '{');
@@ -397,7 +397,7 @@ static void skills_json(Json *j, int champ)
         if (level < RANK_LEVEL_MIN)
             put_null(j);
         else
-            rank_json(j, ui_skill_rank_text(champ, s, text));
+            rank_json(j, ui_skill_rank_text(champion_index, s, text));
         json_close(j, '}');
     }
     json_close(j, '}');
@@ -443,21 +443,21 @@ static void put_action_names(Json *j)
 }
 
 /* Lists in g_champ_actions the actions of a hand of a champion; none for a dead champion. */
-static void list_hand_actions(int champ, int hand)
+static void list_hand_actions(int16_t champion_index, int16_t hand)
 {
     champ_action_list_restore(&(ChampActionList){.thing = THING_NONE});
-    if (champion(champ)->health)
-        champ_list_actions(champ, champion(champ)->slots[hand], hand);
+    if (champion(champion_index)->health)
+        champ_list_actions(champion_index, champion(champion_index)->slots[hand], hand);
 }
 
 /* The action menu that each hand of a living champion opens; the open action menu stays as it is. */
-static void hands_json(Json *j, int champ)
+static void hands_json(Json *j, int16_t champion_index)
 {
     ChampActionList saved;
     champ_action_list_save(&saved);
     json_open(j, '{');
-    for (int hand = SLOT_READY_HAND; hand < SLOT_HAND_COUNT; hand++) {
-        list_hand_actions(champ, hand);
+    for (int16_t hand = SLOT_READY_HAND; hand < SLOT_HAND_COUNT; hand++) {
+        list_hand_actions(champion_index, hand);
         json_key(j, hand_names[hand]);
         put_action_names(j);
     }
@@ -465,20 +465,20 @@ static void hands_json(Json *j, int champ)
     champ_action_list_restore(&saved);
 }
 
-int state_json_hand_action_count(int champ, int hand)
+int state_json_hand_action_count(int16_t champion_index, int16_t hand)
 {
     ChampActionList saved;
     champ_action_list_save(&saved);
-    list_hand_actions(champ, hand);
+    list_hand_actions(champion_index, hand);
     int count = g_champ_action_count;
     champ_action_list_restore(&saved);
     return count;
 }
 
 /* The bars, food, water, load, and place of a champion. */
-static void put_champion_values(Json *j, int champ)
+static void put_champion_values(Json *j, int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     key_bool(j, "alive", c->health > 0);
     pair(j, "health", c->health, c->max_health);
     pair(j, "stamina", c->stamina / STAMINA_DISPLAY_UNIT, c->max_stamina / STAMINA_DISPLAY_UNIT);
@@ -487,7 +487,7 @@ static void put_champion_values(Json *j, int champ)
     json_key_int(j, "water", c->water);
     json_key(j, "load_kg");
     json_open(j, '[');
-    tenths(j, champ_get_load(champ));
+    tenths(j, champ_get_load(champion_index));
     tenths(j, champ_get_max_load(c));
     json_close(j, ']');
     key_str(j, "position", party_cell_names[dir_relative(c->cell, g_game.party_dir)]);
@@ -495,20 +495,20 @@ static void put_champion_values(Json *j, int champ)
 }
 
 /* A champion: name, title, values, statistics, skills, wounds, slots, hand menus, runes, busy hands. */
-static void put_champion(Json *j, int champ)
+static void put_champion(Json *j, int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     json_open(j, '{');
-    json_key_int(j, "index", champ);
+    json_key_int(j, "index", champion_index);
     json_key(j, "name");
     trimmed(j, c->name, CHAMPION_NAME_SIZE);
     json_key(j, "title");
     trimmed(j, c->title, CHAMPION_TITLE_SIZE);
-    put_champion_values(j, champ);
+    put_champion_values(j, champion_index);
     json_key(j, "statistics");
     statistics_json(j, c);
     json_key(j, "skills");
-    skills_json(j, champ);
+    skills_json(j, champion_index);
     json_key(j, "wounds");
     json_open(j, '[');
     for (size_t w = 0; w < sizeof wound_names / sizeof wound_names[0]; w++)
@@ -518,7 +518,7 @@ static void put_champion(Json *j, int champ)
     json_key(j, "slots");
     slots_json(j, c);
     json_key(j, "hands");
-    hands_json(j, champ);
+    hands_json(j, champion_index);
     json_key(j, "runes");
     runes_json(j, c);
     json_key(j, "busy");
@@ -834,7 +834,7 @@ static Viewer viewer_place(void)
 static int visible_squares(SeenSquare out[SEEN_VISIBLE_MAX])
 {
     Viewer v = viewer_place();
-    return seen_visible(g_game.party_map, v.at.x, v.at.y, v.dir, out);
+    return seen_visible((Position){g_game.party_map, v.at.x, v.at.y}, v.dir, out);
 }
 
 /* The square of a seen square. */
@@ -1296,7 +1296,7 @@ static char map_char(Location at)
 static void map_row(int16_t y, int w, const SeenSquare *squares, int count, char *out)
 {
     for (int16_t x = 0; x < w; x++) {
-        bool seen = seen_is_seen(g_game.party_map, x, y);
+        bool seen = seen_is_seen((Position){g_game.party_map, x, y});
         for (int i = 0; i < count && !seen; i++)
             seen = squares[i].x == x && squares[i].y == y;
         out[x] = x == g_game.party_x && y == g_game.party_y ? '@' : seen ? map_char((Location){x, y}) : ' ';

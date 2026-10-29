@@ -9,18 +9,21 @@ from dm2test.gdat import GdatKey, ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
-from dm2test.scenario import Position
+from dm2test.scenario import Location, Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
-    Bitmap, OriginalView, WeatherGame, u8_p,
+    Bitmap, OriginalView, ScreenSize, WeatherGame, u8_p,
 )
 from dm2test.lib import load_lib
 
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.view_load_square.argtypes = [Location, ctypes.c_int, ctypes.c_int16]
+    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
+    return lib
 
 VIEW_UNHIDE_LINKED_SQUARES, VIEW_MARK_HIDDEN_SQUARES = 0x54ABD, 0x5497E
 G_VIEW_SQUARES, G_VIEW_CREATURE_GRID, G_VIEW_OBJECT_GRID = 0x80040, 0x80044, 0x8004C
@@ -85,7 +88,7 @@ def original_view_squares(emu, x, y, direction, party):
 
 def c_view_squares(lib, x, y, direction):
     for pos in range(SQUARE_COUNT - 1, -1, -1):
-        lib.view_load_square(x, y, pos, direction)
+        lib.view_load_square(Location(x, y), pos, direction)
     lib.view_unhide_linked_squares()
     lib.view_mark_hidden_squares()
     return bytes((ctypes.c_uint8 * (SQUARE_COUNT * SQUARE_SIZE)).in_dll(lib, "g_view_squares"))
@@ -168,7 +171,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
-    lib.view_draw_dungeon(direction, x, y)
+    lib.view_draw_dungeon(Location(x, y), direction)
     return ctypes.string_at(viewport.pixels, VIEW_W * VIEW_H)
 
 
@@ -274,7 +277,6 @@ def test_door_states_match_original(lib, loaded, original_view):
 VIEW_GRID5_CELL_TO_XY, VIEW_ROTATE_GRID5_CELL, VIEW_OFFSET_CREATURE = 0x18E7F, 0x19B0B, 0x52A88
 OUT_X, OUT_Y = SCRATCH, SCRATCH + 4
 GRID_SIZE, MASKS_SIZE = C.VIEW_GRID_SIZE, 4 * SQUARE_COUNT
-i16_p = ctypes.POINTER(ctypes.c_int16)
 
 
 class AnchoredZone(ctypes.Structure):
@@ -299,14 +301,14 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.aspect_cell_to_xy.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+    lib.aspect_cell_to_xy.argtypes = [Location, ctypes.c_int]
     lib.aspect_cell_to_xy.restype = GridPoint
     rng = random.Random(21)
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
         cell = rng.randrange(C.CELL_GRID_COUNT) if rng.random() < 0.8 else rng.randrange(0x10000)
         image_emu.call(VIEW_GRID5_CELL_TO_XY, base_x, base_y, cell, OUT_X, OUT_Y)
-        point = lib.aspect_cell_to_xy(base_x, base_y, cell)
+        point = lib.aspect_cell_to_xy(Location(base_x, base_y), cell)
         assert (point.x, point.y) == read_xy(image_emu), (base_x, base_y, cell)
 
 
@@ -420,7 +422,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     lib.gfx_scale_64.restype = ctypes.c_int16
     lib.gfx_scale_64.argtypes = [ctypes.c_int16, ctypes.c_int16]
     lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,
-                                               i16_p, i16_p]
+                                               ctypes.POINTER(ScreenSize)]
     lib.zone_compute_anchored_rect.restype = ctypes.c_void_p
     game = WeatherGame.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
@@ -461,10 +463,10 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
                    lib.gdat_entry_index(g, CAT_WEAPON, 0xFE, C.GDAT_TYPE_VALUE2, 0)):
         dx += struct.unpack("b", bytes([packed >> 8 & 0xFF]))[0]
         dy += struct.unpack("b", bytes([packed & 0xFF]))[0]
-    sx, sy = ctypes.c_int16(lib.gfx_scale_64(dx, scale)), ctypes.c_int16(lib.gfx_scale_64(dy, scale))
+    offset = ScreenSize(lib.gfx_scale_64(dx, scale), lib.gfx_scale_64(dy, scale))
     rect = (ctypes.c_int16 * 4)()
     zone = 5000 + 3 * 25 + 16 | C.ZONE_RELATIVE
-    assert lib.zone_compute_anchored_rect(ctypes.byref(picture), rect, AnchoredZone(zone, 0), ctypes.byref(sx), ctypes.byref(sy))
+    assert lib.zone_compute_anchored_rect(ctypes.byref(picture), rect, AnchoredZone(zone, 0), ctypes.byref(offset))
     rx, ry, rw, rh = rect
     assert all(rx <= col < rx + rw and ry <= row < ry + rh for row, col in changed), (rect[:], changed[:5])
     game.party_x, game.party_y, game.party_dir, game.party_map = saved
@@ -603,7 +605,7 @@ CTX_W, CTX_RECT, CTX_PALETTE_COUNT, CTX_PALETTE = 0x12, 0x24, 0x38, 0x3A
 class DrawCtx(ctypes.Structure):
     _fields_ = [("image", ctypes.POINTER(Bitmap)), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("w", ctypes.c_int16),
                 ("h", ctypes.c_int16), ("category", ctypes.c_uint8), ("index", ctypes.c_uint8), ("entry", ctypes.c_uint8),
-                ("item", ctypes.c_int16), ("zone", ctypes.c_int16), ("anchor", ctypes.c_int16), ("dx", ctypes.c_int16),
+                ("item", ctypes.c_int16), ("zone", ctypes.c_uint16), ("anchor", ctypes.c_int16), ("dx", ctypes.c_int16),
                 ("dy", ctypes.c_int16), ("src_x", ctypes.c_int16), ("src_y", ctypes.c_int16),
                 ("rect", ctypes.c_int16 * 4), ("dst", ctypes.POINTER(Bitmap)), ("transparent", ctypes.c_int16),
                 ("mode", ctypes.c_int), ("flip", ctypes.c_int16), ("scale_x", ctypes.c_int16), ("scale_y", ctypes.c_int16),

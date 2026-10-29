@@ -684,7 +684,7 @@ void creature_activate_group(uint16_t group, Location at)
         a->event = EVENT_NO_SLOT;
         a->action = ACTIVE_ACTION_NONE;
         AiContext saved;
-        bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_THINK, &saved); /* g_ai.active is a */
+        bool restored = ai_begin(group, at, EVENT_CREATURE_THINK, &saved); /* g_ai.active is a */
         a->plan = -1;
         a->plan_step = 0;
         a->regeneration_time = (uint8_t)((g_game.game_time >> REGEN_TIME_SHIFT) - 1);
@@ -781,7 +781,7 @@ void creature_update_anim_at(Location at, bool alt)
     if (creature_group_info(group)->flags & CREATURE_STATIC && group_active(group) == GROUP_NOT_ACTIVE)
         creature_activate_group(group, at);
     AiContext saved;
-    bool restored = ai_begin(group, at.x, at.y, EVENT_CREATURE_ANIMATION, &saved);
+    bool restored = ai_begin(group, at, EVENT_CREATURE_ANIMATION, &saved);
     if (g_ai.active)
         schedule_loop(alt);
     ai_end(restored, &saved);
@@ -883,7 +883,7 @@ void creature_process_event(Location at, int type)
     if (group == THING_NONE)
         return;
     AiContext saved;
-    bool restored = ai_begin(group, at.x, at.y, type, &saved);
+    bool restored = ai_begin(group, at, type, &saved);
     if (!g_ai.active) { /* fix: the original reads a null active entry */
         ai_end(restored, &saved);
         return;
@@ -1010,7 +1010,7 @@ static void signal_home_square(uint16_t group, int effect)
     int saved = g_party.cur_map;
     uint16_t home = thing_word(group, GROUP_HOME);
     dun_set_current_map(location_map(home));
-    sensor_schedule_square_event(location_x(home), location_y(home), 0, effect, g_game.game_time + 1);
+    sensor_schedule_square_event((Location){location_x(home), location_y(home)}, 0, effect, g_game.game_time + 1);
     dun_set_current_map(saved);
 }
 
@@ -1308,13 +1308,13 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
 {
     int8_t search_dir = summon.search_dir;
     int16_t saved = g_party.cur_map;
-    dun_set_current_map(summon.map);
+    dun_set_current_map(summon.at.map);
     SummonedGroup summoned = {
-        THING_NONE, {-1, summon.x, summon.y}
+        THING_NONE, {-1, summon.at.x, summon.at.y}
     };
     int tries = search_dir < 0 ? 0 : DIR_COUNT;
     int turn = rand_bit() ? 1 : -1;
-    Location at = {summon.x, summon.y};
+    Location at = {summon.at.x, summon.at.y};
     for (;;) {
         if (summon_square_open(at)) {
             summoned = create_group(summon.creature_type, summon.count, summon.dir, at, summon.link != THING_NONE);
@@ -1322,7 +1322,8 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
                 break;
         }
         if (tries) {
-            at = (Location){(int16_t)(summon.x + g_dir_dx[search_dir]), (int16_t)(summon.y + g_dir_dy[search_dir])};
+            at = (Location){(int16_t)(summon.at.x + g_dir_dx[search_dir]),
+                            (int16_t)(summon.at.y + g_dir_dy[search_dir])};
             search_dir = (int8_t)dir_turn(search_dir, turn);
         }
         if (--tries == -1)
@@ -1551,7 +1552,7 @@ GroupNear creature_find_group_near_point(Location at, int16_t cell)
     static const uint16_t cell_grid[DIR_COUNT] = {
         cell_grid_index(CELL_CENTER_LOW, CELL_CENTER_LOW), cell_grid_index(CELL_CENTER_LOW, CELL_CENTER_HIGH),
         cell_grid_index(CELL_CENTER_HIGH, CELL_CENTER_HIGH), cell_grid_index(CELL_CENTER_HIGH, CELL_CENTER_LOW)};
-    GridPoint p = aspect_cell_to_xy(at.x, at.y, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
+    GridPoint p = aspect_cell_to_xy(at, cell == CELL_ANY ? CELL_CENTER : cell_grid[cell]);
     /* the square at, then the squares of the offsets */
     for (int i = 0; i <= HIT_OFFSETS_READ; i++) {
         Location s = at;
@@ -1565,7 +1566,7 @@ GroupNear creature_find_group_near_point(Location at, int16_t cell)
             continue;
         int size = creature_group_info(g)->hit_size;
         int zone = aspect_creature_cell(g, dir_relative(DIR_NORTH, group_dir(g)));
-        GridPoint z = aspect_cell_to_xy(s.x, s.y, (uint16_t)zone);
+        GridPoint z = aspect_cell_to_xy(s, zone);
         int16_t cx = (int16_t)(z.x - p.x);
         int16_t cy = (int16_t)(z.y - p.y);
         if ((int16_t)(cy * cy + cx * cx) < hit_radius_sq[size])

@@ -809,14 +809,14 @@ Position dungeon_location_on_map_from(Position from, int level_delta, int *next)
         if (ax < ox - 1 || (unsigned)ax > (unsigned)(ox + dungeon_map_width(*m)) || ay < oy - 1 ||
             (unsigned)ay > (unsigned)(oy + dungeon_map_height(*m)))
             continue;
-        int lx = ax - ox;
-        int ly = ay - oy;
+        int16_t lx = ax - ox;
+        int16_t ly = ay - oy;
         int type = square_type(dungeon_square_edge(*m, lx, ly));
         if (type == SQUARE_UNKNOWN || (type == SQUARE_TELEPORTER && is_closed_teleporter(*m, lx, ly)))
             continue;
         if (next)
             *next = (int)(m - maps) + 1;
-        return (Position){*m, (int16_t)lx, (int16_t)ly};
+        return (Position){*m, lx, ly};
     }
     return none;
 }

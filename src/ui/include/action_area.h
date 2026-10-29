@@ -15,17 +15,18 @@
 
 /* Clears the drawn state of the action area and its bitmap. */
 void area_reset(void);
-/* Clears the drawn state of the action area for champion champ. */
-void area_reset_champion(int champ);
+/* Clears the drawn state of the action area for champion champion_index. */
+void area_reset_champion(int16_t champion_index);
 
 /* ---- Drawing ---- */
 
 /* Opens the action area bitmap (clear: it starts black) and returns it. */
 Offscreen *area_begin_draw(bool clear);
-/* Draws the hand of champ in the action area: its back, its item icon, dimmed while it is busy (flash: pressed). */
-void area_draw_hand_icon(int champ, int hand, bool flash);
-/* Draws the spell hand and the rune icon of champ in the action area (flash: pressed). */
-void area_draw_spell_icon(int champ, bool flash);
+/* Draws the hand of champion_index in the action area: its back, its item icon, dimmed while it is busy
+   (flash: pressed). */
+void area_draw_hand_icon(int16_t champion_index, int16_t hand, bool flash);
+/* Draws the spell hand and the rune icon of champion_index in the action area (flash: pressed). */
+void area_draw_spell_icon(int16_t champion_index, bool flash);
 /* Draws the runes that the champion entered in the spell panel (clear: their background first). */
 void area_draw_entered_runes(bool clear);
 /* Draws the button and the name of action i of the action menu or of a minion map. */

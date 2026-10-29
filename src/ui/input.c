@@ -882,8 +882,8 @@ static struct {
 
 InputMatch g_input_match = {.zone = ZONE_NONE, .origin = -1};
 bool g_input_feedback_busy;
-int g_input_mouse_x = -1;
-int g_input_mouse_y = -1;
+int16_t g_input_mouse_x = -1;
+int16_t g_input_mouse_y = -1;
 
 /* ---- Setup ---- */
 
@@ -1159,11 +1159,11 @@ uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int butt
     uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons, rect);
     if (g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
         return command;
-    for (int champ = 0; champ < CHAMPION_MAX; champ++) {
+    for (int16_t champion_index = 0; champion_index < CHAMPION_MAX; champion_index++) {
         int16_t box[RECT_SIZE], target[RECT_SIZE];
-        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champ);
-        uint16_t store = (uint16_t)(CMD_STORE_FIRST + champ);
-        if (!zone_get_rect(ZONE_STATUS_BOX + champ, box) || !point_in_rect(box, x, y))
+        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champion_index);
+        uint16_t store = (uint16_t)(CMD_STORE_FIRST + champion_index);
+        if (!zone_get_rect(ZONE_STATUS_BOX + champion_index, box) || !point_in_rect(box, x, y))
             continue;
         if (command && command != open && command != store)
             return command;
@@ -1478,20 +1478,20 @@ void input_refine_champion_click(Command *c)
     int command = c->command;
     if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
         int n = command - CMD_HAND_FIRST;
-        int hand = n % SLOT_HAND_COUNT;
-        int champ = party_cell_champion(n / SLOT_HAND_COUNT);
-        if (champ < 0 || champion(champ)->action_delay[hand] ||
-            !champ_list_actions(champ, champion(champ)->slots[hand], hand))
+        int16_t hand = n % SLOT_HAND_COUNT;
+        int16_t champion_index = party_cell_champion(n / SLOT_HAND_COUNT);
+        if (champion_index < 0 || champion(champion_index)->action_delay[hand] ||
+            !champ_list_actions(champion_index, champion(champion_index)->slots[hand], hand))
             c->command = 0;
         else
-            c->command = (uint16_t)(CMD_HAND_FIRST + champ * SLOT_HAND_COUNT + hand);
+            c->command = (uint16_t)(CMD_HAND_FIRST + champion_index * SLOT_HAND_COUNT + hand);
         return;
     }
     if (command < CMD_PARTY_ICON_FIRST || command > CMD_PARTY_ICON_LAST)
         return;
     int icon = command - CMD_PARTY_ICON_FIRST; /* the cell relative to the party direction */
-    int champ = party_cell_champion(icon);
-    if (champ < 0) {
+    int16_t champion_index = party_cell_champion(icon);
+    if (champion_index < 0) {
         c->command = 0;
         return;
     }
@@ -1502,7 +1502,7 @@ void input_refine_champion_click(Command *c)
                                                                                : r[RECT_X] + r[RECT_W] - 1 - c->x);
     if (dx <= dy)
         c->command = (uint16_t)(CMD_LEADER_FIRST + icon);
-    else if (champion(champ)->action_delay[ACTION_SPELL])
+    else if (champion(champion_index)->action_delay[ACTION_SPELL])
         c->command = 0;
 }
 
@@ -1620,7 +1620,7 @@ static void feedback_rune_button(Feedback *f)
     int set = champion(g_action.champion - 1)->rune_count;
     int rune = in.current.command - CMD_RUNE_FIRST;
     char text[RUNE_TEXT_SIZE] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     rect_center_in(r, f->o.rect, size.w, size.h);
     offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
                            (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN]}, text);
@@ -1635,23 +1635,23 @@ static void present_action_area(void)
 /* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
 static void feedback_hand_icon(int icon)
 {
-    int champ = g_action.champion - 1;
+    int16_t champion_index = g_action.champion - 1;
     if (!g_action.champion) {
         if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST)
             return;
-        champ = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
+        champion_index = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
     }
-    area_draw_hand_icon(champ, icon, true);
+    area_draw_hand_icon(champion_index, icon, true);
     present_action_area();
 }
 
 /* Draws the pressed spell icon of the champion in the party cell in the action area. */
 static void feedback_spell_icon(int16_t cell)
 {
-    int champ = party_cell_champion(cell);
-    if (champ < 0)
+    int16_t champion_index = party_cell_champion(cell);
+    if (champion_index < 0)
         return;
-    area_draw_spell_icon(champ, true);
+    area_draw_spell_icon(champion_index, true);
     present_action_area();
 }
 
@@ -1993,8 +1993,8 @@ static void click_wall_sensor(int16_t cell)
     }
     if (x < 0 || x >= dungeon_map_width(g_game.party_map) || y < 0 || y >= dungeon_map_height(g_game.party_map))
         return;
-    game_set_command_stop(
-        sensor_process_wall_click(x, y, dir_turn(dir, wall_side_turn[cell]), THING_NONE, g_game.leader_hand));
+    game_set_command_stop(sensor_process_wall_click((Location){x, y}, dir_turn(dir, wall_side_turn[cell]), THING_NONE,
+                                                    g_game.leader_hand));
 }
 
 /* A click on a static creature in front: a push of its middle starts the push arrows, a side turns it. */
@@ -2142,9 +2142,9 @@ static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z,
     uint16_t door = dungeon_square_first_thing(g_game.party_map, at.x, at.y);
     if (!door_flag(door, DOOR_BUTTON)) {
         int16_t side = dir_turn(v->dir, TURN_RIGHT);
-        game_set_command_stop(sensor_process_wall_click((int16_t)(at.x + g_dir_dx[side]),
-                                                        (int16_t)(at.y + g_dir_dy[side]), dir_turn(v->dir, TURN_LEFT),
-                                                        THING_NONE, hand));
+        game_set_command_stop(
+            sensor_process_wall_click((Location){(int16_t)(at.x + g_dir_dx[side]), (int16_t)(at.y + g_dir_dy[side])},
+                                      dir_turn(v->dir, TURN_LEFT), THING_NONE, hand));
     } else if (hand == THING_NONE) {
         click_door_button(at, door);
     }
@@ -2314,16 +2314,17 @@ static void execute_session_command(int command)
     }
 }
 
-/* The inventory command of status box champ (CHAMPION_MAX: the close command); with a candidate, it cancels the
+/* The inventory command of status box champion_index (CHAMPION_MAX: the close command); with a candidate, it cancels the
    recruit. */
-static void execute_inventory_command(int champ)
+static void execute_inventory_command(int16_t champion_index)
 {
     if (g_ui.candidate)
-        recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, CMD_RECRUIT_CANCEL);
-    else if (champ == CHAMPION_MAX)
+        recruit_finish((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir,
+                       CMD_RECRUIT_CANCEL);
+    else if (champion_index == CHAMPION_MAX)
         ui_close_inventory(true);
-    else if (champ < g_game.champion_count)
-        ui_toggle_inventory(champ);
+    else if (champion_index < g_game.champion_count)
+        ui_toggle_inventory(champion_index);
 }
 
 /* The commands of the movement, the leader, the inventory, the spells, and the pause and the sleep; true when
@@ -2341,9 +2342,9 @@ static bool execute_party_command(const Command *c, bool idle)
         move_party(command);
     } else if (command == CMD_ROTATE_LEFT || command == CMD_ROTATE_RIGHT) {
         if (g_action.champion) {
-            int16_t champ = g_action.champion - 1;
+            int16_t champion_index = g_action.champion - 1;
             int16_t turn = command == CMD_ROTATE_LEFT ? TURN_LEFT : TURN_RIGHT;
-            champ_set_direction(champ, dir_turn(champion(champ)->dir, turn));
+            champ_set_direction(champion_index, dir_turn(champion(champion_index)->dir, turn));
         }
         area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
@@ -2397,13 +2398,13 @@ static bool execute_champion_command(int command, bool idle)
         action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT,
                               (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
     } else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST) {
-        int champ = party_cell_champion(command - CMD_PARTY_ICON_FIRST);
-        if (champ >= 0)
-            action_area_open_spells(champ);
+        int16_t champion_index = party_cell_champion(command - CMD_PARTY_ICON_FIRST);
+        if (champion_index >= 0)
+            action_area_open_spells(champion_index);
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
         money_box_click_coin(command - CMD_COIN_FIRST);
     } else if ((command == CMD_RECRUIT || command == CMD_RECRUIT_CANCEL) && idle) {
-        recruit_finish(g_game.party_x, g_game.party_y, g_game.party_dir, g_game.party_map, command);
+        recruit_finish((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir, command);
     } else if (command == CMD_MOUTH) {
         champ_consume_object(-1, THING_NONE, -1);
     } else if (command == CMD_EYE) {

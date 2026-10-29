@@ -10,7 +10,7 @@ from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.scenario import (  # noqa: F401 (gdat, start and scenario are fixtures)
     CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, approaches, gdat, scenario, sensor_squares, square_event, squares, start,
+    Command, Location, approaches, gdat, scenario, sensor_squares, square_event, squares, start,
 )
 
 
@@ -154,14 +154,14 @@ def mirror(lib, map_, x, y, cell):
 def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
     # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
     # holders, ladders, fountains; then the timeline runs what they trigger.
-    lib.sensor_process_wall_click.argtypes = [ctypes.c_int16] * 2 + [ctypes.c_int] + [ctypes.c_uint16] * 2
+    lib.sensor_process_wall_click.argtypes = [Location, ctypes.c_int] + [ctypes.c_uint16] * 2
     cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL][part::2]
     for n, (map_, x, y, cell) in enumerate(cells):
         if mirror(lib, map_, x, y, cell):  # the champion of a mirror joins the party that stands in front of it
             scenario.place(map_, x + DIRS[cell][0], y + DIRS[cell][1], (cell + 2) & 3)
         else:
             scenario.place(map_, x, y, (cell + 2) & 3)
-        lib.sensor_process_wall_click(x, y, cell, NONE, NONE)
+        lib.sensor_process_wall_click(Location(x, y), cell, NONE, NONE)
         scenario.emu.call(SENSOR_PROCESS_WALL_CLICK, x, y, cell, NONE, NONE)
         scenario.assert_same(("click", n, map_, x, y, cell))
         for _ in range(3):
@@ -176,7 +176,7 @@ def test_clicks_in_the_view(scenario, lib):
     # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
     # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
     from dm2test import view as tv
-    scenario.lib.view_draw_dungeon.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
+    scenario.lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * 12)).in_dll(lib, "g_view_click_zones")
     count = ctypes.c_int.in_dll(lib, "g_view_click_zone_count")
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
@@ -196,7 +196,7 @@ def test_clicks_in_the_view(scenario, lib):
         sky = ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
         scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "g_view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
-        lib.view_draw_dungeon(d, x, y)
+        lib.view_draw_dungeon(Location(x, y), d)
         n_zones = count.value
         raw = bytes(zones)
         targets = []

@@ -94,12 +94,11 @@ static void render_screen_picture(int category, int index, int entry)
 {
     const Bitmap *image = draw_gdat_image(category, index, entry);
     int16_t r[RECT_SIZE];
-    int16_t x = 0;
-    int16_t y = 0;
-    if (image && zone_compute_rect(image, r, ZONE_SCREEN, &x, &y))
+    ScreenSize size = {0, 0};
+    if (image && zone_compute_rect(image, r, ZONE_SCREEN, &size))
         ui_blit_bitmap(&(BlitSource){.bitmap = image,
-                                     .x = x,
-                                     .y = y,
+                                     .x = size.w,
+                                     .y = size.h,
                                      .transparent = GFX_OPAQUE,
                                      .colormap = draw_gdat_image_palette(category, index, entry)},
                        &g_draw_screen, r);
@@ -173,18 +172,18 @@ void session_draw_name_entry(const char *name, bool cursor)
 static void list_slots(void)
 {
     char path[OS_PATH_SIZE];
-    for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
-        memset(slots[i], 0, sizeof slots[i]);
-        FILE *f = fopen(slot_path(path, i, false), "rb");
+    for (int16_t slot = 0; slot < SAVE_SLOT_COUNT; slot++) {
+        memset(slots[slot], 0, sizeof slots[slot]);
+        FILE *f = fopen(slot_path(path, slot, false), "rb");
         if (f) {
-            size_t n = fread(slots[i], 1, SAVE_HEADER_SIZE, f);
-            (void)n;                                             /* a short file keeps its zeros after what it has */
-            slots[i][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
+            size_t n = fread(slots[slot], 1, SAVE_HEADER_SIZE, f);
+            (void)n;                                                /* a short file keeps its zeros after what it has */
+            slots[slot][SAVE_HEADER_NAME + SAVE_NAME_SIZE - 1] = 0; /* a damaged name ends at its field */
             fclose(f);
             continue;
         }
-        snprintf((char *)slots[i] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", i);
-        put_le32(slots[i] + SAVE_HEADER_EMPTY_MARK, SAVE_EMPTY_SLOT_MARK);
+        snprintf((char *)slots[slot] + SAVE_HEADER_NAME, SAVE_HEADER_SIZE - SAVE_HEADER_NAME, "%d UNUSED", slot);
+        put_le32(slots[slot] + SAVE_HEADER_EMPTY_MARK, SAVE_EMPTY_SLOT_MARK);
     }
 }
 
@@ -397,7 +396,7 @@ static bool load_new_game(void)
     game_set_cheats(0);
     uint16_t start = dungeon_party_start();
     /* the party start keeps the direction in the map bits */
-    save_set_party_position(location_x(start), location_y(start), location_dir(start), 0);
+    save_set_party_position((Position){0, location_x(start), location_y(start)}, location_dir(start));
     timeline_init(EVENT_SLACK + dungeon_thing_count(THING_GROUP) + dungeon_thing_count(THING_PROJECTILE) +
                   dungeon_thing_count(THING_EXPLOSION));
     weather_load(gdat_current());

@@ -255,20 +255,20 @@ void champ_init_party_state(void);
    220. */
 int champ_get_stat(const Champion *c, int stat, int which);
 /* The level of skill; with_bonus adds the skill bonus and the base skill's bonus. */
-int champ_get_skill_level(int champ, int skill, bool with_bonus);
+int champ_get_skill_level(int16_t champion_index, int16_t skill, bool with_bonus);
 /* value reduced when the stamina is below half of its maximum. */
 int champ_scale_by_stamina(const Champion *c, int value);
 /* The load in 1/10 kg that the champion can carry. */
 int champ_get_max_load(const Champion *c);
 /* The load in 1/10 kg that the champion carries, with the leader hand object for the leader. */
-int champ_get_load(int champ);
+int champ_get_load(int16_t champion_index);
 /* The number of game steps that the champion needs for a move (load, wounds, haste). */
-int champ_get_move_delay(int champ);
+int champ_get_move_delay(int16_t champion_index);
 
 /* Hands and actions */
 /* Lists in g_champ_actions the actions of the thing in hand (THING_NONE: the champion's own actions);
    true when the action area has something to show. */
-bool champ_list_actions(int champ, uint16_t thing, int hand);
+bool champ_list_actions(int16_t champion_index, uint16_t thing, int16_t hand);
 /* Copies the open action menu into out. */
 void champ_action_list_save(ChampActionList *out);
 /* Makes the saved list in the open action menu again. */
@@ -276,9 +276,9 @@ void champ_action_list_restore(const ChampActionList *in);
 
 /* Party */
 /* The living champion in cell (0 to 3), -1 none. */
-int champ_get_index_in_cell(int16_t cell);
-/* Makes champ (-1: none) the leader. */
-void champ_set_leader(int champ);
+int16_t champ_get_index_in_cell(int16_t cell);
+/* Makes champion_index (-1: none) the leader. */
+void champ_set_leader(int16_t champion_index);
 /* The index of the leader, -1 for none. */
 int16_t champ_leader(void);
 /* Gives champion_index a new name and title: the whole fields, the bytes after the end marks too. */
@@ -300,22 +300,22 @@ extern uint16_t g_champ_regen_counter; /* steps the regeneration of mana and hea
 void champ_reset_step_state(void);
 /* attack reduced by the statistic stat (anti-fire, anti-magic, vitality). */
 int champ_get_stat_adjusted_attack(const Champion *c, int stat, int attack);
-/* The strength of champ with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
-int champ_get_strength(int champ, int hand, int skill);
-/* The dexterity of champ with its load, 1 to 100. */
-int champ_get_dexterity(int champ);
+/* The strength of champion_index with the item in hand for skill (-1: no skill), 0 to 100; exported for the tests. */
+int champ_get_strength(int16_t champion_index, int16_t hand, int16_t skill);
+/* The dexterity of champion_index with its load, 1 to 100. */
+int champ_get_dexterity(int16_t champion_index);
 /* A luck test against chance; the luck changes by 2. True when the champion is lucky. */
 bool champ_test_luck(Champion *c, int chance);
-/* Wounds and damages champ (the damage shows at the end of the step); returns the damage, 0 when none. */
-int champ_take_damage(int champ, int damage, int wound_mask, int attack_type);
+/* Wounds and damages champion_index (the damage shows at the end of the step); returns the damage, 0 when none. */
+int champ_take_damage(int16_t champion_index, int damage, int wound_mask, int attack_type);
 /* Takes stamina from a champion. */
-void champ_decrease_stamina(int champ, int amount);
+void champ_decrease_stamina(int16_t champion_index, int amount);
 /* Damages each champion by about damage; returns the mask of the champions that took damage. */
 int champ_damage_party(int damage, int wound_mask, int attack_type);
-/* Poisons champ: damage now, and a poison event that repeats with less. */
-void champ_poison(int champ, int amount);
-/* Takes amount away from the poison events of champ; exported for the tests. */
-void champ_cure_poison(int champ, int amount);
+/* Poisons champion_index: damage now, and a poison event that repeats with less. */
+void champ_poison(int16_t champion_index, int amount);
+/* Takes amount away from the poison events of champion_index; exported for the tests. */
+void champ_cure_poison(int16_t champion_index, int amount);
 /* A click on the face of a champion in cell: the first click takes the face, the second swaps it with the champion
    of the second cell. */
 void champ_drag_click(int16_t cell);
@@ -327,28 +327,28 @@ void champ_apply_pending_damage(void);
 void champ_apply_time_effects(void);
 /* The torches in the hands burn down. */
 void champ_burn_held_lights(void);
-/* Brings champ back to life in a free cell, without items, with less maximum health. */
-void champ_revive(int champ);
+/* Brings champion_index back to life in a free cell, without items, with less maximum health. */
+void champ_revive(int16_t champion_index);
 
 /* Champion actions (champion_action.c). */
 /* g_action.result after the last champ_perform_action (damage >= 0, failure < 0); set by champ_execute_selected_action. */
 extern int16_t g_champ_action_result;
 /* Clears g_champ_action_result before a new action. */
 void champ_action_clear_result(void);
-/* Makes the hand (-1: both hands and the spell) of champ busy for about ticks game steps. */
-void champ_add_action_delay(int champ, uint16_t ticks, int hand);
-/* Takes the charges of action from its item in the open hand of champ; true when the item has no charges left;
+/* Makes the hand (-1: both hands and the spell) of champion_index busy for about ticks game steps. */
+void champ_add_action_delay(int16_t champion_index, uint16_t ticks, int16_t hand);
+/* Takes the charges of action from its item in the open hand of champion_index; true when the item has no charges left;
    exported for the tests. */
-bool champ_use_action_charge(int champ, ChampionAction action);
-/* The hand of champ is free again: a shooter or a thrower takes the next ammunition or throwing item. */
-void champ_reload_hand(int champ, int hand);
+bool champ_use_action_charge(int16_t champion_index, ChampionAction action);
+/* The hand of champion_index is free again: a shooter or a thrower takes the next ammunition or throwing item. */
+void champ_reload_hand(int16_t champion_index, int16_t hand);
 /* The level of the whole party: from the sum of the base skill experience of all champions. */
 int champ_get_party_level(void);
 /* Adds experience in skill; each new level raises the statistics and prints a message. */
-void champ_add_experience(int champ, int skill, uint32_t experience);
+void champ_add_experience(int16_t champion_index, int skill, uint32_t experience);
 /* Champ performs the action of g_champ_actions at index with the item in the open hand; a repeat (repeated) takes no
    delay, stamina, or experience. True when the action was done; exported for the tests. */
-bool champ_perform_action(int champ, int index, bool repeated);
+bool champ_perform_action(int16_t champion_index, int index, bool repeated);
 /* Runs the action at index (0 to 2, -1: none) of the open action menu; true when the action was done. */
 bool champ_execute_selected_action(int index);
 /* The repeats of the actions of all champions. */
@@ -358,9 +358,9 @@ bool champ_throw_leader_hand_object(bool right_side);
 
 /* Load and item effects (champion_inventory.c) */
 /* Computes the load of the champion: its slots and the items of its open chest. */
-void champ_compute_load(int champ);
-/* Applies (or takes back) the effects of thing in slot of champ (slot -1: the leader hand). */
-void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode);
+void champ_compute_load(int16_t champion_index);
+/* Applies (or takes back) the effects of thing in slot of champion_index (slot -1: the leader hand). */
+void champ_apply_item_effects(int16_t champion_index, uint16_t thing, int16_t slot, enum EffectMode mode);
 
 /* The leader hand */
 /* The object of the leader hand that the cursor shows, THING_NONE none. */
@@ -373,27 +373,29 @@ uint16_t champ_take_from_leader_hand(void);
 void inv_update_hand_cursor(void);
 
 /* Slots */
-/* Takes the item out of slot of champ (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE when empty. */
-uint16_t champ_remove_object_from_slot(int champ, int16_t slot);
-/* Puts thing into slot of champ. */
-void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot);
+/* Takes the item out of slot of champion_index (slots from SLOT_CONTAINER_FIRST on: the open chest); THING_NONE
+   when empty. */
+uint16_t champ_remove_object_from_slot(int16_t champion_index, int16_t slot);
+/* Puts thing into slot of champion_index. */
+void champ_add_object_to_slot(int16_t champion_index, uint16_t thing, int16_t slot);
 /* A click on a slot: 0 to 7 the hands in the status boxes, then the inventory slots, then the open chest. The leader
    hand object and the item in the slot change places. */
 void inv_click_slot(int16_t slot);
-/* Puts the leader hand object into the first free pouch or pack slot of champ. */
-void inv_store_leader_hand_object(int champ);
-/* Puts thing into the first free slot of champ that takes it. */
-void inv_put_in_free_slot(int champ, uint16_t thing);
+/* Puts the leader hand object into the first free pouch or pack slot of champion_index. */
+void inv_store_leader_hand_object(int16_t champion_index);
+/* Puts thing into the first free slot of champion_index that takes it. */
+void inv_put_in_free_slot(int16_t champion_index, uint16_t thing);
 
 /* Eating and drinking */
 /* Champ eats or drinks thing from slot (-1: the leader hand); thing THING_NONE: the leader hand object, for the
    champion of the open inventory (a click on the mouth). */
-void champ_consume_object(int champ, uint16_t thing, int16_t slot);
+void champ_consume_object(int16_t champion_index, uint16_t thing, int16_t slot);
 
 /* Party state that the interface sets (champion.c). */
 /* The party falls asleep (on) or wakes; only the flag. */
 void champ_set_party_sleeping(bool on);
-/* The raised skill counts that the closed inventory of champ showed (shown[SKILL_BASE_COUNT]) no longer show green. */
-void champ_forget_shown_raises(int champ, const uint8_t *shown);
+/* The raised skill counts that the closed inventory of champion_index showed (shown[SKILL_BASE_COUNT]) no longer
+   show green. */
+void champ_forget_shown_raises(int16_t champion_index, const uint8_t *shown);
 
 #endif /* DM2_ENGINE_CHAMPION_H */

@@ -20,7 +20,7 @@ def lib():
     lib = load_lib()
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     lib.item_is_moneybox.restype = ctypes.c_bool
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
     lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
     lib.input_command_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
     lib.input_command_rect.restype = ctypes.c_bool

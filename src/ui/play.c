@@ -85,9 +85,9 @@ void play_show_view(void)
     game_set_view_hidden(false);
     action_request_redraw();
     if (g_ui.inventory) {
-        int champ = g_ui.inventory - 1;
+        int16_t champion_index = g_ui.inventory - 1;
         game_set_open_inventory(0);
-        ui_toggle_inventory(champ);
+        ui_toggle_inventory(champion_index);
         return;
     }
     view_clear_viewport();
@@ -147,12 +147,12 @@ static bool step_view(void)
             if (g_party.redraw)
                 ai_refresh_party_maps();
             if (g_party.move_steps)
-                view_draw_dungeon(g_party.view_dir, g_party.view_x, g_party.view_y);
+                view_draw_dungeon((Location){g_party.view_x, g_party.view_y}, g_party.view_dir);
             else
-                view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+                view_draw_dungeon((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
             play_present_viewport();
             if (g_game_mode != GAME_MODE_VANILLA)
-                seen_mark(g_game.party_map, g_game.party_x, g_game.party_y, g_game.party_dir);
+                seen_mark((Position){g_game.party_map, g_game.party_x, g_game.party_y}, g_game.party_dir);
         }
         if (!g_party.move_steps)
             return true;
@@ -205,7 +205,7 @@ void play_start_session(void)
 {
     game_start_play();
     input_set_mode(INPUT_MODE_MOVE);
-    game_enter_map(g_game.party_x, g_game.party_y, g_game.party_map, 0);
+    game_enter_map((Position){g_game.party_map, g_game.party_x, g_game.party_y}, false);
     g_dialog.progress_enabled = false;
     advanced_reset();
     if (g_session.loaded) {
@@ -245,7 +245,7 @@ static void show_projectile_flight(void)
         return;
     uint32_t seed = g_random_seed;
     view_set_flight_tick(g_main_loop.tick_count, g_main_loop.tick_threshold);
-    view_draw_dungeon(g_game.party_dir, g_game.party_x, g_game.party_y);
+    view_draw_dungeon((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
     play_present_viewport();
     view_set_flight_tick(0, 0);
     rand_set_seed(seed);

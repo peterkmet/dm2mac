@@ -402,13 +402,13 @@ static bool has_leader(void)
 }
 
 /* The champion of the request key: a living member of the party, not the candidate; -1 none. */
-static int requested_champion(const char *request, const char *key)
+static int16_t requested_champion(const char *request, const char *key)
 {
     int64_t c = control_get_int(request, key, -1);
     int members = g_game.champion_count - (g_ui.candidate ? 1 : 0);
     if (c < 0 || c >= members || c >= CHAMPION_MAX || champion((int)c)->health <= 0)
         return -1;
-    return (int)c;
+    return (int16_t)c;
 }
 
 /* The cell of champion c relative to the party direction: the place of its icons on the screen. */
@@ -618,7 +618,7 @@ static const char *drop_object(const char *r)
 /* Opens the inventory of a champion with a click on its status box. */
 static const char *open_inventory(const char *r)
 {
-    int c = requested_champion(r, "champion");
+    int16_t c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (g_ui.inventory == c + 1)
@@ -660,7 +660,7 @@ static const char *slot_command(int c, int64_t requested_slot, uint16_t *command
 static const char *click_slot(const char *r, bool put)
 {
     uint16_t command;
-    int c = requested_champion(r, "champion");
+    int16_t c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (!has_leader())
@@ -706,12 +706,12 @@ static bool opens_panel(uint16_t thing)
 static const char *choose_action(const char *r)
 {
     char name[ACTION_NAME_SIZE] = "";
-    int c = requested_champion(r, "champion");
+    int16_t c = requested_champion(r, "champion");
     int64_t index = control_get_int(r, "index", -1);
     if (c < 0)
         return NO_CHAMPION;
     control_get_string(r, "hand", name, sizeof name);
-    int hand = !strcmp(name, "ready") ? SLOT_READY_HAND : !strcmp(name, "action") ? SLOT_ACTION_HAND : -1;
+    int16_t hand = !strcmp(name, "ready") ? SLOT_READY_HAND : !strcmp(name, "action") ? SLOT_ACTION_HAND : -1;
     if (hand < 0)
         return "hand must be ready or action";
     bool open = g_action.mode == ACTION_MODE_MENU && g_action.champion == c + 1 && g_action.hand == hand;
@@ -751,7 +751,7 @@ static const char *click_spell_icon(const char *r, bool caster)
     static const bool right[CELL_COUNT] = {false, true, true, false};
     static const bool bottom[CELL_COUNT] = {true, true, false, false};
     int16_t rect[RECT_SIZE];
-    int c = requested_champion(r, "champion");
+    int16_t c = requested_champion(r, "champion");
     if (c < 0)
         return NO_CHAMPION;
     if (g_action.champion)
@@ -779,7 +779,7 @@ static const char *set_leader(const char *r)
 }
 
 /* The caster of the open spell panel, -1 none. */
-static int spell_caster(void)
+static int16_t spell_caster(void)
 {
     return g_action.mode == ACTION_MODE_SPELL && g_action.champion ? g_action.champion - 1 : -1;
 }
@@ -788,7 +788,7 @@ static int spell_caster(void)
 static const char *add_rune(const char *r)
 {
     int64_t symbol = control_get_int(r, "symbol", -1);
-    int caster = spell_caster();
+    int16_t caster = spell_caster();
     if (symbol < 0 || symbol >= SPELL_RUNES_PER_SET)
         return "symbol must be 0-5";
     if (caster < 0)
@@ -803,7 +803,7 @@ static const char *add_rune(const char *r)
 /* A spell panel button that needs an entered rune: delete the last rune, or cast. */
 static const char *rune_button(uint16_t command)
 {
-    int caster = spell_caster();
+    int16_t caster = spell_caster();
     if (caster < 0)
         return "no spell panel (set_caster)";
     if (!champion(caster)->rune_count)
@@ -860,8 +860,8 @@ static const char *wake(const char *r)
 /* Clicks the face of champion a, then the face of champion b: the two champions swap cells. */
 static const char *swap_champions(const char *r)
 {
-    int a = requested_champion(r, "a");
-    int b = requested_champion(r, "b");
+    int16_t a = requested_champion(r, "a");
+    int16_t b = requested_champion(r, "b");
     if (a < 0 || b < 0)
         return "a and b must be living champions";
     if (a == b)
@@ -890,7 +890,7 @@ static const char *look(const char *r)
     if (slot >= 0) {
         if (!hand_is_empty())
             return "the leader hand must be empty to look at a slot";
-        int c = control_find_value(r, "champion") ? requested_champion(r, "champion") : g_ui.inventory - 1;
+        int16_t c = control_find_value(r, "champion") ? requested_champion(r, "champion") : g_ui.inventory - 1;
         if (c < 0)
             return NO_CHAMPION;
         const char *error = slot_command(c, slot, &command);

@@ -98,14 +98,14 @@ static void adjust_stat(uint8_t *stat_values, int delta)
     stat_values[STAT_CURRENT] = (uint8_t)clamp_int(STAT_MIN, (int16_t)(stat_values[STAT_CURRENT] + d), STAT_MAX);
 }
 
-void champ_compute_load(int champ)
+void champ_compute_load(int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     uint16_t load = 0;
     for (int s = 0; s < SLOT_COUNT; s++)
         load = (uint16_t)(load + item_weight(c->slots[s]));
-    if (champ == g_action.champion - 1 && g_action.hand < SLOT_HAND_COUNT &&
-        item_is_chest(g_action.hand_items[champ][g_action.hand]))
+    if (champion_index == g_action.champion - 1 && g_action.hand < SLOT_HAND_COUNT &&
+        item_is_chest(g_action.hand_items[champion_index][g_action.hand]))
         for (int i = 0; i < CONTAINER_SLOTS; i++)
             load = (uint16_t)(load + item_weight(g_action.open_items[i]));
     c->load = load;
@@ -135,29 +135,29 @@ static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, enu
     }
 }
 
-/* Adds the event that ends the timed effect of the consumed thing on champ. */
-static void add_effect_end_event(int champ, uint16_t thing)
+/* Adds the event that ends the timed effect of the consumed thing on champion_index. */
+static void add_effect_end_event(int16_t champion_index, uint16_t thing)
 {
     /* fix: the original leaves the last 3 data bytes uninitialized */
     TimelineEvent e = {.time_map =
                            timeline_time_map(g_game.game_time + item_attr(thing, ATTR_EFFECT_TIME), g_game.party_map),
                        .type = EVENT_ITEM_EFFECT,
-                       .priority = (uint8_t)champ};
+                       .priority = (uint8_t)champion_index};
     e.data[EFFECT_DATA_TYPE] = (uint8_t)thing_type(thing);
     e.data[EFFECT_DATA_INDEX] = item_gdat_index(thing);
     timeline_add_event(&e);
 }
 
-void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum EffectMode mode)
+void champ_apply_item_effects(int16_t champion_index, uint16_t thing, int16_t slot, enum EffectMode mode)
 {
-    if (champ < 0 || thing == THING_NONE)
+    if (champion_index < 0 || thing == THING_NONE)
         return;
     if (slot < SLOT_COUNT) {
         uint16_t flags = item_attr(thing, ATTR_FLAGS);
         if (mode != EFFECT_MODE_LOAD && flags & ITEM_FLAG_LIGHT)
             light_update_party_light();
         if (flags & ATTR_HAS_EFFECTS) {
-            Champion *c = champion(champ);
+            Champion *c = champion(champion_index);
             bool equipped = item_fits_slot(thing, slot, true);
             bool timed = false;
             int m;
@@ -181,11 +181,11 @@ void champ_apply_item_effects(int champ, uint16_t thing, int16_t slot, enum Effe
                     light_update_party_light();
             }
             if (timed && mode == EFFECT_MODE_CONSUME)
-                add_effect_end_event(champ, thing);
+                add_effect_end_event(champion_index, thing);
         }
     }
     if (mode != EFFECT_MODE_LOAD)
-        champ_compute_load(champ);
+        champ_compute_load(champion_index);
 }
 
 /* The leader hand */
@@ -212,7 +212,7 @@ void champ_put_in_leader_hand(uint16_t thing)
     g_hooks.render_hand_icon();
     inv_show_object_name(thing);
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_ADD);
-    sensor_enter_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_enter_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
 }
 
 uint16_t champ_take_from_leader_hand(void)
@@ -225,7 +225,7 @@ uint16_t champ_take_from_leader_hand(void)
     g_game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
     champ_apply_item_effects(champ_leader(), thing, -1, EFFECT_MODE_REMOVE);
-    sensor_leave_square(g_game.party_x, g_game.party_y, THING_NONE, true, false);
+    sensor_leave_square((Location){g_game.party_x, g_game.party_y}, THING_NONE, true, false);
     return thing;
 }
 
@@ -242,58 +242,59 @@ void inv_update_hand_cursor(void)
 
 /* Slots */
 
-/* The thing in the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static uint16_t slot_thing(int champ, int16_t slot)
+/* The thing in the slot of champion_index, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
+static uint16_t slot_thing(int16_t champion_index, int16_t slot)
 {
-    return slot < SLOT_COUNT ? champion(champ)->slots[slot] : g_action.open_items[slot - SLOT_CONTAINER_FIRST];
+    return slot < SLOT_COUNT ? champion(champion_index)->slots[slot] : g_action.open_items[slot - SLOT_CONTAINER_FIRST];
 }
 
-/* Puts thing into the slot of champ, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
-static void set_slot_thing(int champ, int16_t slot, uint16_t thing)
+/* Puts thing into the slot of champion_index, or of the open chest for slots from SLOT_CONTAINER_FIRST on. */
+static void set_slot_thing(int16_t champion_index, int16_t slot, uint16_t thing)
 {
     if (slot < SLOT_COUNT)
-        champion(champ)->slots[slot] = thing;
+        champion(champion_index)->slots[slot] = thing;
     else
         g_action.open_items[slot - SLOT_CONTAINER_FIRST] = thing;
 }
 
-uint16_t champ_remove_object_from_slot(int champ, int16_t slot)
+uint16_t champ_remove_object_from_slot(int16_t champion_index, int16_t slot)
 {
-    uint16_t thing = slot_thing(champ, slot);
-    set_slot_thing(champ, slot, THING_NONE);
+    uint16_t thing = slot_thing(champion_index, slot);
+    set_slot_thing(champion_index, slot, THING_NONE);
     if (thing != THING_NONE) {
-        if (champ == g_action.champion - 1 && slot < SLOT_HAND_COUNT && slot == g_action.hand)
+        if (champion_index == g_action.champion - 1 && slot < SLOT_HAND_COUNT && slot == g_action.hand)
             action_area_close();
-        champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_REMOVE);
+        champ_apply_item_effects(champion_index, thing, slot, EFFECT_MODE_REMOVE);
     }
     return thing;
 }
 
-void champ_add_object_to_slot(int champ, uint16_t thing, int16_t slot)
+void champ_add_object_to_slot(int16_t champion_index, uint16_t thing, int16_t slot)
 {
     if (thing == THING_NONE)
         return;
     thing &= THING_ID_MASK;
-    set_slot_thing(champ, slot, thing);
-    champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_ADD);
+    set_slot_thing(champion_index, slot, thing);
+    champ_apply_item_effects(champion_index, thing, slot, EFFECT_MODE_ADD);
 }
 
 void inv_click_slot(int16_t slot)
 {
     uint16_t hand = g_game.leader_hand;
-    int champ;
+    int16_t champion_index;
     if (g_game.leader == LEADER_NONE)
         return;
     if (slot < CLICK_STATUS_HANDS) {
-        champ = slot / SLOT_HAND_COUNT;
-        if (g_ui.candidate || champ >= g_game.champion_count || champ + 1 == g_ui.inventory || !champion(champ)->health)
+        champion_index = slot / SLOT_HAND_COUNT;
+        if (g_ui.candidate || champion_index >= g_game.champion_count || champion_index + 1 == g_ui.inventory ||
+            !champion(champion_index)->health)
             return;
         slot %= SLOT_HAND_COUNT;
     } else {
         slot -= CLICK_STATUS_HANDS;
-        champ = (slot < SLOT_COUNT ? g_ui.inventory : g_action.champion) - 1;
+        champion_index = (slot < SLOT_COUNT ? g_ui.inventory : g_action.champion) - 1;
     }
-    uint16_t thing = slot_thing(champ, slot);
+    uint16_t thing = slot_thing(champion_index, slot);
     if (thing == THING_NONE && hand == THING_NONE)
         return;
     if (hand != THING_NONE && !item_fits_slot(hand, slot, false))
@@ -301,11 +302,11 @@ void inv_click_slot(int16_t slot)
     if (hand != THING_NONE)
         champ_take_from_leader_hand();
     if (thing != THING_NONE) {
-        champ_remove_object_from_slot(champ, slot);
+        champ_remove_object_from_slot(champion_index, slot);
         champ_put_in_leader_hand(thing);
     }
     if (hand != THING_NONE)
-        champ_add_object_to_slot(champ, hand, slot);
+        champ_add_object_to_slot(champion_index, hand, slot);
     g_hooks.draw_all_champion_states(false);
     if ((slot >= SLOT_QUIVER_FIRST && slot <= SLOT_QUIVER_LAST) || slot == SLOT_QUIVER_READY ||
         slot == SLOT_QUIVER_ACTION || slot >= SLOT_COUNT) {
@@ -314,21 +315,21 @@ void inv_click_slot(int16_t slot)
     }
 }
 
-void inv_store_leader_hand_object(int champ)
+void inv_store_leader_hand_object(int16_t champion_index)
 {
-    if (g_game.leader_hand == THING_NONE || !champion(champ)->health)
+    if (g_game.leader_hand == THING_NONE || !champion(champion_index)->health)
         return;
     int slot = SLOT_POUCH_FIRST;
-    while (slot < SLOT_COUNT && champion(champ)->slots[slot] != THING_NONE)
+    while (slot < SLOT_COUNT && champion(champion_index)->slots[slot] != THING_NONE)
         slot++;
     if (slot == SLOT_COUNT)
         return;
     uint16_t thing = champ_take_from_leader_hand();
     if (thing != THING_NONE)
-        champ_add_object_to_slot(champ, thing, slot);
+        champ_add_object_to_slot(champion_index, thing, slot);
 }
 
-void inv_put_in_free_slot(int champ, uint16_t thing)
+void inv_put_in_free_slot(int16_t champion_index, uint16_t thing)
 {
     /* slot ranges in the order of the search, with the thing type that they take (-1 any) */
     static const struct {
@@ -343,9 +344,9 @@ void inv_put_in_free_slot(int champ, uint16_t thing)
     };
     for (size_t r = 0; r < sizeof ranges / sizeof *ranges; r++)
         for (int slot = ranges[r].first; slot <= ranges[r].last; slot++)
-            if (champion(champ)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, false) &&
+            if (champion(champion_index)->slots[slot] == THING_NONE && item_fits_slot(thing, slot, false) &&
                 (ranges[r].type < 0 || ranges[r].type == thing_type(thing))) {
-                champ_add_object_to_slot(champ, thing, slot);
+                champ_add_object_to_slot(champion_index, thing, slot);
                 return;
             }
 }
@@ -379,9 +380,9 @@ static void drink_health_potion(Champion *c, unsigned power, int16_t divisor)
 }
 
 /* A potion changes the champion; false for a potion kind without an effect. */
-static bool drink_potion(int champ, uint16_t thing)
+static bool drink_potion(int16_t champion_index, uint16_t thing)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     unsigned power = potion_power(thing);
     int16_t divisor = (int16_t)(((DIVISOR_POWER_TOP - (int)power) /
                                  (int)(((power + 1) >> DIVISOR_POWER_SHIFT) + DIVISOR_POWER_BASE)) >>
@@ -402,7 +403,7 @@ static bool drink_potion(int champ, uint16_t thing)
         break;
     case POTION_ANTIDOTE: {
         unsigned power_squared = (uint16_t)((power / ANTIDOTE_POWER_DIVISOR) * (power / ANTIDOTE_POWER_DIVISOR));
-        champ_cure_poison(champ, (int16_t)(value + power + power_squared));
+        champ_cure_poison(champion_index, (int16_t)(value + power + power_squared));
         break;
     }
     case POTION_STAMINA:
@@ -411,7 +412,7 @@ static bool drink_potion(int champ, uint16_t thing)
         break;
     case POTION_DEFENSE: {
         int16_t amount = (int16_t)((uint16_t)value + ((uint16_t)value >> 1));
-        magic_add_party_aura((int16_t)(1 << champ), AURA_DEFENSE, amount, (uint16_t)(amount * amount));
+        magic_add_party_aura((int16_t)(1 << champion_index), AURA_DEFENSE, amount, (uint16_t)(amount * amount));
         break;
     }
     case POTION_MANA:
@@ -429,26 +430,26 @@ static bool drink_potion(int champ, uint16_t thing)
     return true;
 }
 
-void champ_consume_object(int champ, uint16_t thing, int16_t slot)
+void champ_consume_object(int16_t champion_index, uint16_t thing, int16_t slot)
 {
     if (thing == THING_NONE) {
         if (g_game.leader_hand == THING_NONE) {
             g_ui.mouth = (g_input_mouse_buttons & INPUT_BUTTON_LEFT) != 0; /* held until the left button is released */
             return;
         }
-        champ = g_ui.inventory - 1;
+        champion_index = g_ui.inventory - 1;
         thing = g_game.leader_hand;
         slot = -1;
     }
     if (g_ui.candidate)
         return;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t food = (int16_t)item_attr(thing, ATTR_FOOD);
     if (food) {
         if (slot == -1)
             champ_take_from_leader_hand(); /* the original also animates the mouth */
         c->food = min_int((int16_t)(c->food + food), FOOD_MAX);
-        champ_apply_item_effects(champ, thing, slot, EFFECT_MODE_CONSUME);
+        champ_apply_item_effects(champion_index, thing, slot, EFFECT_MODE_CONSUME);
         thing_set_word(thing, THING_NEXT, THING_NONE);
         if (slot != -1)
             c->slots[slot] = THING_NONE;
@@ -457,7 +458,7 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
         if (slot != -1)
             c->slots[slot] = thing;
     } else {
-        if (thing_type(thing) != THING_POTION || !drink_potion(champ, thing))
+        if (thing_type(thing) != THING_POTION || !drink_potion(champion_index, thing))
             return;
         if (slot == -1)
             champ_take_from_leader_hand();
@@ -481,6 +482,6 @@ void champ_consume_object(int champ, uint16_t thing, int16_t slot)
     c->redraw |= REDRAW_EATEN;
     if (slot != -1) {
         c->redraw |= REDRAW_STATUS_BOX;
-        champ_compute_load(champ);
+        champ_compute_load(champion_index);
     }
 }

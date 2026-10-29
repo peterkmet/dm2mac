@@ -14,7 +14,7 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 ## Layout zones (`zone_compute_rect`)
 
 - A zone record is `{anchor type, parent, x, y}`. The parent chain ends at a zone with parent 0. A size zone (type 9) gives a width and height; the zones under it are placed in it and clipped to it.
-- The image size comes from `*w`, `*h`, or the image header. A zone with bit 15 (`ZONE_RELATIVE`) adds `*w` and `*h` to its position. On return, `*w` and `*h` hold the pixels clipped at the left and the top: the source offset of the blit.
+- The image size comes from `*size` (a `ScreenSize`), or the image header when it is 0. A zone with bit 15 (`ZONE_RELATIVE`) adds `size->w` and `size->h` to its position. On return, `*size` holds the pixels clipped at the left and the top: the source offset of the blit.
 - `g_zone_clip_rect` (`0x7f1c8`) clips the next zones while its width is not 0. `zone_set_clip_margins` sets it to the viewport minus margins; the view sets its width to 0 after each picture.
 - While the party walks (`0x7f1d4` and `g_party_move_steps`), zones of parent 3 clip to the walking view `{21, 8, 182, 110}`.
 

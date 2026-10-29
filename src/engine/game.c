@@ -41,12 +41,12 @@ const char *const g_game_mode_names[GAME_MODE_COUNT] = {"vanilla", "advanced", "
 
 /* The map changes and the timeline */
 
-void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
+void game_enter_map(Position at, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_position((Position){map, x, y});
-    g_hooks.enter_map_view(map);
+    dun_set_party_position(at);
+    g_hooks.enter_map_view(at.map);
     world_update_day_night(false);
     sensor_process_map_entry(true);
     creature_activate_groups_on_map();
@@ -55,10 +55,10 @@ void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving)
     g_hooks.flush_input();
 }
 
-/* The damage number of champion champ stops showing; the bars redraw. */
-static void hide_damage(int champ)
+/* The damage number of champion champion_index stops showing; the bars redraw. */
+static void hide_damage(int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     c->damage_event = THING_NONE;
     if (c->health)
         c->redraw |= REDRAW_BARS;
@@ -196,7 +196,7 @@ void game_process_timeline(void)
 
 void game_enter_new_map(void)
 {
-    game_enter_map(g_game.party_x, g_game.party_y, g_party.new_map, true);
+    game_enter_map((Position){g_party.new_map, g_game.party_x, g_game.party_y}, true);
     g_party.move_steps = 0;
     move_thing(THING_NONE, MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     g_party.new_map = -1;
@@ -288,7 +288,7 @@ int game_modify_global_var(int var, int value, int op)
 void game_start_play(void)
 {
     g_party_sleeping = false;
-    g_party.push_mode = 0;
+    g_party.push_mode = false;
     g_party.push_pending_group = THING_NONE; /* no push of the last game waits */
     g_main_loop.view_hidden = false;
     g_main_loop.tick_threshold = STEP_TICKS;

@@ -17,13 +17,14 @@ typedef struct {
     void (*print_newline)(void);                        /* the next message starts on a new row */
     bool (*play_sound)(const Sound *s, uint8_t volume, int8_t lateral,
                        int8_t forward); /* starts a sound in a free voice */
-    bool (*zone_offset)(int16_t from, int16_t to, int16_t percent,
-                        ScreenPoint *out);              /* the offset percent of the way between two layout zones */
-    int16_t *(*zone_rect)(int16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
-    void (*update_action_area)(bool tick);              /* redraws what changed in the action area */
-    void (*reset_action_area)(void);                    /* clears the drawn state of the action area */
-    void (*reset_action_champion)(int champ);           /* clears the drawn state of the action area for a champion */
-    void (*render_hand_icon)(void);                     /* draws the leader hand object into the cursor */
+    bool (*zone_offset)(uint16_t from, uint16_t to, int16_t percent,
+                        ScreenPoint *out);               /* the offset percent of the way between two layout zones */
+    int16_t *(*zone_rect)(uint16_t zone, int16_t *rect); /* the screen rectangle of a layout zone */
+    void (*update_action_area)(bool tick);               /* redraws what changed in the action area */
+    void (*reset_action_area)(void);                     /* clears the drawn state of the action area */
+    void (*reset_action_champion)(
+        int16_t champion_index);    /* clears the drawn state of the action area for a champion */
+    void (*render_hand_icon)(void); /* draws the leader hand object into the cursor */
     void (*draw_interface_image)(int category, int index, int entry,
                                  int zone);      /* an interface picture in a screen zone */
     void (*enter_map_view)(int16_t map);         /* the view loads the graphics of the map that the party enters */
@@ -44,9 +45,9 @@ typedef struct {
     void (*draw_movement_arrows)(void);                  /* draws the movement arrows */
     void (*fill_screen_zone)(int zone, int color);       /* fills a screen zone with a palette color */
     void (*draw_viewport_image)(int category, int index, int entry, int zone,
-                                int transparent);            /* a picture in a zone of the view */
-    void (*complete_game)(void);                             /* the party finished the game */
-    void (*draw_dungeon)(int16_t dir, int16_t x, int16_t y); /* draws the view of the party at (x, y) facing dir */
+                                int transparent);   /* a picture in a zone of the view */
+    void (*complete_game)(void);                    /* the party finished the game */
+    void (*draw_dungeon)(Location at, int16_t dir); /* draws the view of the party on the square at facing dir */
 } Hooks;
 
 extern Hooks g_hooks;

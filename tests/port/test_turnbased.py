@@ -326,7 +326,7 @@ def test_take_coin_moves_a_coin_to_the_hand(tb, lib):
     from dm2test.interface import things_of
     path, *_ = tb
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
     lib.champ_remove_object_from_slot(0, 0)
     lib.champ_add_object_to_slot(0, things_of(lib, 9, 1, lib.item_is_moneybox)[0], 0)
     lib.area_update(0)  # the hand icons show the box, as after a click that puts it into the hand

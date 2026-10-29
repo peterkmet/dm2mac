@@ -10,7 +10,7 @@ from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import Event, Timeline
-from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location, Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -18,10 +18,6 @@ CHEATS = (C.CHEAT_LIGHT, C.CHEAT_IMMORTAL, C.CHEAT_FOOD, C.CHEAT_KILL, C.CHEAT_W
 HEALTH = 1000  # far more health than the test hits take
 FLAGS, DEFENSE, PUSH_RESISTANCE = 0, 2, 0x1D  # byte offsets in a creature info record
 UNPUSHABLE = 0xFE  # push resistance 0xfe and 0xff: the party cannot push the creature
-
-
-class Location(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 @pytest.fixture(scope="module")
@@ -87,7 +83,8 @@ def enter(lib, game, m, x, y, d):
     party = Party.in_dll(lib, "g_party")
     game.party_dir = d
     party.move_steps, party.cur_map = 0, -1  # the party square follows on the map change
-    lib.game_enter_map(x, y, m, 0)
+    lib.game_enter_map.argtypes = [Position, ctypes.c_bool]
+    lib.game_enter_map(Position(m, x, y), False)
 
 
 def unhurt_creature(lib, gdat):  # noqa: F811

@@ -48,6 +48,7 @@ class Rules:
         scenario.game.champion_count = C.CHAMPION_MAX
         self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", C.CHAMPION_MAX))
         lib.champ_test_luck.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        lib.champ_get_strength.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
 
     def record(self, thing):
         """(C address, original address) of a thing record."""
@@ -241,6 +242,24 @@ def restore_minion_links(rules, saved):
     saved.clear()
 
 
+KALAN_GAUNTLET_SKILL_ACTION = bytes((0x10, 3, 10))  # GDAT (category, index, entry) of the action with skill 186
+
+
+def list_actions_original(rules, champ, thing, hand):
+    """CHAMP_LIST_ACTIONS in the original, without the third action of the Kalan Gauntlet: its skill 186 reads
+    outside the experience table in the original, the port treats it as untrained (docs/rules/champions.md)."""
+    emu = rules.emu
+    result = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
+    count = struct.unpack("<H", emu.read(G_ACTION_COUNT, 2))[0]
+    entries = [emu.read(G_ACTION_LIST + 4 * i, 4) for i in range(count)]
+    kept = [e for e in entries if e[:3] != KALAN_GAUNTLET_SKILL_ACTION]
+    if len(kept) == count:
+        return result
+    emu.write(G_ACTION_LIST, b"".join(kept) + bytes(4 * (count - len(kept))))
+    emu.write(G_ACTION_COUNT, struct.pack("<H", len(kept)))
+    return int(bool(kept))
+
+
 class ActionState(ctypes.Structure):
     _fields_ = [("champion", ctypes.c_int16), ("hand", ctypes.c_int16), ("mode", ctypes.c_int16),
                 ("dirty", ctypes.c_int16), ("redraw_delay", ctypes.c_int16), ("flags", ctypes.c_uint16),
@@ -254,6 +273,10 @@ class ChampionAction(ctypes.Structure):
 class PriceTerms(ctypes.Structure):
     _fields_ = [("creature", ctypes.c_int), ("list", ctypes.c_int), ("buying", ctypes.c_bool),
                 ("apply_margin", ctypes.c_bool)]
+
+
+class MoneySplit(ctypes.Structure):
+    _fields_ = [("total", ctypes.c_int16), ("count", ctypes.c_int16)]
 
 
 def assert_same_actions(rules, where):
@@ -279,10 +302,10 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     # every action of every weapon kind.
     from dm2test.scenario import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
-    lib.champ_list_actions.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int]
-    lib.champ_perform_action.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool]
+    lib.champ_list_actions.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_perform_action.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_bool]
     lib.champ_perform_action.restype = ctypes.c_bool
-    lib.champ_use_action_charge.argtypes = [ctypes.c_int, ChampionAction]
+    lib.champ_use_action_charge.argtypes = [ctypes.c_int16, ChampionAction]
     lib.champ_use_action_charge.restype = ctypes.c_bool
     actions = (ChampionAction * C.CHAMPION_ACTION_MAX).in_dll(lib, "g_champ_actions")
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
@@ -364,7 +387,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             emu.write(G_ACTION_HAND, struct.pack("<h", hand))
             thing = struct.unpack_from("<H", bytes(champion_records(lib)), champ * CHAMPION_SIZE + CH["slots"] + 2 * hand)[0]
             mine = lib.champ_list_actions(champ, thing, hand)
-            theirs = emu.call(CHAMP_LIST_ACTIONS, champ, thing, hand)
+            theirs = list_actions_original(rules, champ, thing, hand)
             assert mine == theirs, n
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             if count:
@@ -407,7 +430,7 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
             hold(0, 0, t, index | C.CHARGES_MASK << C.WEAPON_CHARGES_SHIFT)
             action_state.hand = 0
             emu.write(G_ACTION_HAND, struct.pack("<h", 0))
-            assert lib.champ_list_actions(0, t, 0) == emu.call(CHAMP_LIST_ACTIONS, 0, t, 0), (index, action)
+            assert lib.champ_list_actions(0, t, 0) == list_actions_original(rules, 0, t, 0), (index, action)
             count = ctypes.c_int.in_dll(lib, "g_champ_action_count").value
             listed |= {(index, a) for a in range(count)}
             if action < count:
@@ -442,9 +465,8 @@ def test_money_and_prices_match_original(rules, lib):
     lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
     lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
     lib.money_get_item_value.restype = ctypes.c_uint16
-    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8),
-                                       ctypes.POINTER(ctypes.c_int16)]
-    lib.money_split_amount.restype = ctypes.c_int16
+    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8)]
+    lib.money_split_amount.restype = MoneySplit
     lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_bool]
     lib.money_parse_item_class_set.restype = ctypes.c_bool
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
@@ -472,12 +494,12 @@ def test_money_and_prices_match_original(rules, lib):
             assert lib.money_normalize_coins(check, MONEY_BOX) == emu.call(MONEY_NORMALIZE_COINS, check, MONEY_BOX), n
         elif kind == 3:
             amount, most = rng.randrange(-5, 2000), rng.randrange(1, 18)
-            types, count = (ctypes.c_uint8 * 32)(), ctypes.c_int16()
-            mine = lib.money_split_amount(amount, most, types, ctypes.byref(count))
+            types = (ctypes.c_uint8 * 32)()
+            mine = lib.money_split_amount(amount, most, types)
             theirs = emu.call(MONEY_SPLIT_AMOUNT, amount, most, buffer, out, 0)
             their_count = struct.unpack("<h", emu.read(out, 2))[0]
-            assert (mine, count.value) == (theirs, their_count), n
-            assert bytes(types[:count.value]) == emu.read(buffer, their_count), n
+            assert (mine.total, mine.count) == (theirs, their_count), n
+            assert bytes(types[:mine.count]) == emu.read(buffer, their_count), n
         elif kind == 4:
             creature, list_, skip = rng.choice(creatures), rng.randrange(-1, 16), rng.randrange(2)
             bits = (ctypes.c_uint8 * 0x40)()

@@ -523,8 +523,8 @@ int aspect_creature_cell(uint16_t group, int16_t dir)
     return aspect_rotate_cell(frame[FRAME_CELL], dir);
 }
 
-GridPoint aspect_cell_to_xy(int base_x, int base_y, int grid_cell)
+GridPoint aspect_cell_to_xy(Location base, int grid_cell)
 {
-    return (GridPoint){(int16_t)(grid_cell % CELL_GRID_SIDE + base_x * GRID_SQUARE_CELLS),
-                       (int16_t)(grid_cell / CELL_GRID_SIDE + base_y * GRID_SQUARE_CELLS)};
+    return (GridPoint){(int16_t)(grid_cell % CELL_GRID_SIDE + base.x * GRID_SQUARE_CELLS),
+                       (int16_t)(grid_cell / CELL_GRID_SIDE + base.y * GRID_SQUARE_CELLS)};
 }

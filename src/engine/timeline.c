@@ -263,10 +263,10 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
     int x = e->data[EVENT_X];
     int y = e->data[EVENT_Y];
     int cell = e->data[EVENT_CELL];
-    int champ = e->priority;
+    int16_t champion_index = e->priority;
     switch (e->data[ALTAR_EVENT_STEPS]) {
     case REBIRTH_REVIVE:
-        champ_revive(champ);
+        champ_revive(champion_index);
         return;
     case REBIRTH_SMOKE:
         explosion_create(EXPLOSION_SMOKE, 0, x, y, cell);
@@ -276,7 +276,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
         for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
             if (thing_cell(t) == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES &&
-                (int16_t)item_add_charges(t, 0) == champ)
+                (int16_t)item_add_charges(t, 0) == champion_index)
                 break;
         if (t == THING_ENDOFLIST)
             return;

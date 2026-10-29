@@ -133,9 +133,9 @@ static int16_t offered_value(uint16_t group, int16_t cell)
 static int16_t price_in_coins(uint16_t group, int16_t cell)
 {
     uint8_t coins[COIN_MAX];
-    int16_t count;
     return money_split_amount(sum_items_value(group, cell, (ItemSum){-1, FILTER_COINS, true, true, false}), COIN_MAX,
-                              coins, &count);
+                              coins)
+        .total;
 }
 
 /* An offer below the price: the merchant haggles (MERCHANT_HAGGLE) or refuses, by chance. */
@@ -306,8 +306,7 @@ int shop_cmd_pay_change(void)
         return r == AI_RESULT_ISSUED ? AI_RESULT_ISSUED : AI_RESULT_DONE;
     }
     uint8_t coins[COIN_MAX];
-    int16_t count;
-    money_split_amount(amount, COIN_MAX, coins, &count);
+    int16_t count = money_split_amount(amount, COIN_MAX, coins).count;
     *change = -1;
     if (count <= 0)
         return AI_RESULT_DONE;

@@ -99,7 +99,7 @@ static int visible_depths(void)
     return VIEW_DEPTHS;
 }
 
-int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squares[SEEN_VISIBLE_MAX])
+int seen_visible(Position at, int16_t dir, SeenSquare squares[SEEN_VISIBLE_MAX])
 {
     bool open[VIEW_DEPTHS][VIEW_WIDTH] = {{false}}; /* seen, and the view looks on through it */
     int depths = visible_depths();
@@ -115,9 +115,9 @@ int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squa
                     (!depth && !side) || (side && open[depth][column - sign]) || (depth && open[depth - 1][column]);
                 if (!visible)
                     continue;
-                Location at = dun_move_relative((Location){x, y}, dir, depth, side * sign);
-                squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), at.x, at.y};
-                open[depth][column] = !blocks_sight(map, at.x, at.y);
+                Location square = dun_move_relative((Location){at.x, at.y}, dir, depth, side * sign);
+                squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), square.x, square.y};
+                open[depth][column] = !blocks_sight(at.map, square.x, square.y);
             }
         if (!open[depth][VIEW_HALF_WIDTH])
             break; /* the view ends at the first middle square that blocks sight */
@@ -125,20 +125,20 @@ int seen_visible(int16_t map, int16_t x, int16_t y, int16_t dir, SeenSquare squa
     return count;
 }
 
-bool seen_is_seen(int16_t map, int16_t x, int16_t y)
+bool seen_is_seen(Position at)
 {
-    uint8_t *square = known_byte(map, x, y);
+    uint8_t *square = known_byte(at.map, at.x, at.y);
     return square && *square;
 }
 
 /* ---- Commands ---- */
 
-void seen_mark(int16_t map, int16_t x, int16_t y, int16_t dir)
+void seen_mark(Position at, int16_t dir)
 {
     SeenSquare squares[SEEN_VISIBLE_MAX];
-    int count = seen_visible(map, x, y, dir, squares);
+    int count = seen_visible(at, dir, squares);
     for (int i = 0; i < count; i++) {
-        uint8_t *square = known_byte(map, squares[i].x, squares[i].y);
+        uint8_t *square = known_byte(at.map, squares[i].x, squares[i].y);
         if (square)
             *square = 1;
     }

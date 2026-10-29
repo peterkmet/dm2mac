@@ -275,7 +275,7 @@ typedef struct {
     int creature_type;
     uint16_t count; /* the creature_create_group count */
     int16_t dir;
-    int16_t x, y, map;
+    Position at;
     uint16_t link;     /* the item that controls a minion, THING_NONE none */
     int8_t search_dir; /* the first direction of the search for a free square, -1 no search */
 } CreatureSummon;

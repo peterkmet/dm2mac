@@ -150,13 +150,12 @@ int money_coin_type_for_slot(uint16_t box, int16_t slot)
     return -1;
 }
 
-int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types, int16_t *coin_count)
+MoneySplit money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types)
 {
     int16_t left = amount;
     int type = money_coin_type_count() - 1;
-    int16_t total = 0;
-    *coin_count = 0;
-    while (*coin_count < max_coins && left > 0 && type >= 0) {
+    MoneySplit split = {0, 0};
+    while (split.count < max_coins && left > 0 && type >= 0) {
         int16_t value = money_coin_value(type);
         if (value < 1)
             break;
@@ -164,11 +163,11 @@ int16_t money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_type
             type--;
             continue;
         }
-        coin_types[(*coin_count)++] = (uint8_t)type;
+        coin_types[split.count++] = (uint8_t)type;
         left = (int16_t)(left - value);
-        total = (int16_t)(total + value);
+        split.total = (int16_t)(split.total + value);
     }
-    return total;
+    return split;
 }
 
 /* Money boxes */
@@ -219,25 +218,25 @@ void money_box_click_coin(int16_t slot)
 {
     if (g_action.mode != ACTION_MODE_MONEY_BOX)
         return;
-    int champ = g_action.champion - 1;
-    uint16_t box = champion(champ)->slots[g_action.hand];
+    int16_t champion_index = g_action.champion - 1;
+    uint16_t box = champion(champion_index)->slots[g_action.hand];
     if (g_game.leader_hand == THING_NONE) {
         uint16_t coin = money_take_coin_from_box(box, money_coin_type_for_slot(box, slot));
         if (coin == THING_NONE) {
-            champ_compute_load(champ);
+            champ_compute_load(champion_index);
             return;
         }
         champ_put_in_leader_hand(coin);
     } else {
         if (!money_add_coin_to_box(box, g_game.leader_hand)) {
-            champ_compute_load(champ);
+            champ_compute_load(champion_index);
             return;
         }
         champ_take_from_leader_hand();
     }
     g_action.redraw_delay = ACTION_REDRAW_NEXT;
     g_hooks.update_action_area(false);
-    champ_compute_load(champ);
+    champ_compute_load(champion_index);
 }
 
 bool money_normalize_coins(bool check_only, uint16_t box)

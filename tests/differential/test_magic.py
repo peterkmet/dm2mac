@@ -196,7 +196,7 @@ def cast(scenario, champ, index, power):
     lib = scenario.lib
     lib.magic_find_spell.restype = ctypes.c_void_p
     lib.magic_find_spell.argtypes = [ctypes.c_char_p]
-    lib.magic_cast_spell.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+    lib.magic_cast_spell.argtypes = [ctypes.c_int16, ctypes.c_void_p, ctypes.c_int]
     spell = lib.magic_find_spell(bytes(spell_runes(index, power)) + b"\0")
     assert spell and ctypes.string_at(spell, SPELL_SIZE) == SPELL_TABLE_BYTES[index * SPELL_SIZE:(index + 1) * SPELL_SIZE]
     mine = lib.magic_cast_spell(champ, spell, power)

@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 #include "os.h"
 #include "save.h"
 
@@ -137,7 +138,7 @@ extern const char *const g_game_mode_names[GAME_MODE_COUNT];
 
 /* The map changes and the timeline */
 /* The party enters map at (x, y); leaving: the old map gets its exit sensors first. */
-void game_enter_map(int16_t x, int16_t y, int16_t map, bool leaving);
+void game_enter_map(Position at, bool leaving);
 /* Runs the due timeline events. */
 void game_process_timeline(void);
 

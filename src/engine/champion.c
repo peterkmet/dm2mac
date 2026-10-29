@@ -118,11 +118,13 @@ int champ_get_stat(const Champion *c, int stat, int which)
     return clamp_int(STAT_MIN, (int16_t)(c->stat_bonus[stat] + v), STAT_MAX);
 }
 
-int champ_get_skill_level(int champ, int skill, bool with_bonus)
+int champ_get_skill_level(int16_t champion_index, int16_t skill, bool with_bonus)
 {
     if (g_party_sleeping)
         return SKILL_LEVEL_UNTRAINED;
-    const Champion *c = champion(champ);
+    if (skill < 0 || skill >= SKILL_COUNT)
+        return SKILL_LEVEL_UNTRAINED; /* fix: a GDAT skill outside the table (the Kalan Gauntlet gives 186) */
+    const Champion *c = champion(champion_index);
     uint32_t experience = c->experience[skill];
     if (skill >= SKILL_BASE_COUNT) {
         int base = champ_base_skill(skill);
@@ -159,24 +161,24 @@ int champ_get_max_load(const Champion *c)
     return (uint16_t)(rounded - rounded % LOAD_ROUND);
 }
 
-int champ_get_load(int champ)
+int champ_get_load(int16_t champion_index)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     if (!c->health)
         return 0;
     uint16_t load = c->load;
-    if (champ == g_game.leader)
+    if (champion_index == g_game.leader)
         load = (uint16_t)(load + g_leader_hand.weight);
     return load;
 }
 
-int champ_get_move_delay(int champ)
+int champ_get_move_delay(int16_t champion_index)
 {
     if (g_game.magic_light[MAGIC_HASTE])
         return 1;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     unsigned max = (uint16_t)champ_get_max_load(c);
-    unsigned load = (uint16_t)champ_get_load(champ);
+    unsigned load = (uint16_t)champ_get_load(champion_index);
     int delay, wounded_extra;
     if (max > load) {
         delay = load * LOAD_HEAVY_EIGHTHS > max * LOAD_HEAVY_PART ? MOVE_DELAY_HEAVY : MOVE_DELAY_LIGHT;
@@ -197,9 +199,9 @@ int champ_get_move_delay(int champ)
 
 /* Hands and actions */
 
-int champ_find_hand_source_slot(int champ, int hand)
+int champ_find_hand_source_slot(int16_t champion_index, int16_t hand)
 {
-    const Champion *c = champion(champ);
+    const Champion *c = champion(champion_index);
     if (hand == SLOT_ACTION_HAND) {
         if (c->slots[SLOT_QUIVER_ACTION] != THING_NONE)
             return SLOT_QUIVER_ACTION;
@@ -247,12 +249,12 @@ static bool is_command_allowed(uint16_t thing, int command)
     return false;
 }
 
-bool champ_list_actions(int champ, uint16_t thing, int hand)
+bool champ_list_actions(int16_t champion_index, uint16_t thing, int16_t hand)
 {
     int category, index;
     if (thing == THING_NONE) {
         category = CAT_CHAMPION;
-        index = champion(champ)->portrait;
+        index = champion(champion_index)->portrait;
     } else {
         if (item_is_moneybox(thing) || item_is_chest(thing))
             return true;
@@ -270,7 +272,7 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
         if (needs_hand && needs_hand - 1 != hand)
             continue;
         if (thing == THING_NONE) {
-            if (command == COMMAND_LOAD && champ_find_hand_source_slot(champ, hand) < 0)
+            if (command == COMMAND_LOAD && champ_find_hand_source_slot(champion_index, hand) < 0)
                 continue;
         } else {
             if (!is_command_allowed(thing, command))
@@ -286,9 +288,9 @@ bool champ_list_actions(int champ, uint16_t thing, int hand)
                     continue;
             }
         }
-        uint16_t skill = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_SKILL);
+        int16_t skill = gtext_gdat_field(category, index, entry, FIELD_SKILL);
         uint16_t level = (uint16_t)gtext_gdat_field(category, index, entry, FIELD_LEVEL);
-        if (level <= (uint16_t)champ_get_skill_level(champ, skill, true))
+        if (level <= (uint16_t)champ_get_skill_level(champion_index, skill, true))
             g_champ_actions[count++] = (ChampionAction){(uint8_t)category, (uint8_t)index, (uint8_t)entry};
     }
     g_champ_action_count = count;
@@ -312,24 +314,24 @@ void champ_action_list_restore(const ChampActionList *in)
 
 /* Party */
 
-int champ_get_index_in_cell(int16_t cell)
+int16_t champ_get_index_in_cell(int16_t cell)
 {
-    for (int i = 0; i < g_game.champion_count; i++)
+    for (int16_t i = 0; i < g_game.champion_count; i++)
         if (champion(i)->cell == cell && champion(i)->health)
             return i;
     return -1;
 }
 
-void champ_set_leader(int champ)
+void champ_set_leader(int16_t champion_index)
 {
     int16_t leader = champ_leader();
-    if (champ == leader || (champ != -1 && !champion(champ)->health))
+    if (champion_index == leader || (champion_index != -1 && !champion(champion_index)->health))
         return;
     if (g_game.leader != LEADER_NONE)
         champion(leader)->redraw |= REDRAW_LOAD | REDRAW_NAME;
-    g_game.leader = (uint16_t)champ;
-    if (champ != -1 && champ + 1 != g_ui.candidate)
-        champion(champ)->redraw |= REDRAW_LOAD | REDRAW_NAME;
+    g_game.leader = (uint16_t)champion_index;
+    if (champion_index != -1 && champion_index + 1 != g_ui.candidate)
+        champion(champion_index)->redraw |= REDRAW_LOAD | REDRAW_NAME;
 }
 
 int16_t champ_leader(void)
@@ -385,8 +387,8 @@ void champ_set_party_sleeping(bool on)
     g_party_sleeping = on;
 }
 
-void champ_forget_shown_raises(int champ, const uint8_t *shown)
+void champ_forget_shown_raises(int16_t champion_index, const uint8_t *shown)
 {
     for (int i = 0; i < SKILL_BASE_COUNT; i++)
-        g_champ_skill_raised[champ][i] = (uint8_t)(g_champ_skill_raised[champ][i] - shown[i]);
+        g_champ_skill_raised[champion_index][i] = (uint8_t)(g_champ_skill_raised[champion_index][i] - shown[i]);
 }

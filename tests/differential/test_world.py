@@ -14,7 +14,7 @@ from dm2test.gdat import GdatKey
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
     COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
+    Location, Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
 )
 from dm2test.save import Game, Timeline
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
@@ -23,7 +23,9 @@ from dm2test.lib import load_lib
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.light_add_square_light.argtypes = [ctypes.c_int, ctypes.c_int16, Location, ctypes.c_uint]
+    return lib
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC
@@ -275,7 +277,7 @@ def test_square_light_matches_original(world, lib):
                 args = (rng.randrange(10), d, x, y, rng.choice((7, 7, rng.randrange(8))))
                 set_weather(sc, g_light_source_sum=0, g_explosion_light_sum=0, heavy_rain=rng.randrange(2),
                             hour_light=rng.randrange(C.HOUR_LIGHT_DAY, C.HOUR_LIGHT_NIGHT + 1))
-                lib.light_add_square_light(*args)
+                lib.light_add_square_light(args[0], args[1], Location(x, y), args[4])
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, args))
                 nonzero += ctypes.c_int16.in_dll(lib, "g_light_source_sum").value != 0
@@ -287,6 +289,7 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
     offset = ScreenPoint()
+    lib.zone_interpolate_offset.argtypes = [ctypes.c_uint16, ctypes.c_uint16, ctypes.c_int16, ctypes.POINTER(ScreenPoint)]
     lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
@@ -529,7 +532,7 @@ def test_square_light_of_added_things_matches_original(world, lib, gdat):
             for d in range(C.DIR_COUNT):
                 args = (rng.randrange(10), d, x, y, rng.choice((1, 3, 7)))
                 set_weather(sc, g_light_source_sum=0, g_explosion_light_sum=0)
-                lib.light_add_square_light(*args)
+                lib.light_add_square_light(args[0], args[1], Location(x, y), args[4])
                 sc.emu.call(LIGHT_ADD_SQUARE_LIGHT, *args[:4], args[4])
                 sc.assert_same_weather((map_, hex(thing), args))
                 lit += ctypes.c_int16.in_dll(lib, "g_explosion_light_sum").value != 0

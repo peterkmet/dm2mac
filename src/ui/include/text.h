@@ -39,11 +39,6 @@ typedef struct {
     int color, bg;
 } TextColors;
 
-/* The width and height in pixels of a text line. */
-typedef struct {
-    int16_t w, h;
-} TextSize;
-
 /* ---- Setup ---- */
 
 /* Loads the font and the UI colors and clears the message area state; returns false when they are missing. */
@@ -52,7 +47,7 @@ bool text_init(const Gdat *gdat);
 /* ---- Queries ---- */
 
 /* The size of a text line; {0, 0} for an empty text. */
-TextSize text_measure(const char *text);
+ScreenSize text_measure(const char *text);
 /* Copies the part of text from *out_pos that fits in max_width pixels into line, broken at a space when it does
    not fit; *out_pos goes to the rest. Returns the width of line. */
 int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width);

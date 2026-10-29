@@ -142,9 +142,9 @@ static int armor_defense(uint16_t attr, bool sharp)
                  SHARP_FACTOR_SHIFT);
 }
 
-int champ_get_strength(int champ, int hand, int skill)
+int champ_get_strength(int16_t champion_index, int16_t hand, int16_t skill)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t v = (int16_t)((rand_next() & STRENGTH_ROLL) + champ_get_stat(c, STAT_STRENGTH, STAT_CURRENT));
     uint16_t item = c->slots[hand];
     uint16_t weight = (uint16_t)item_weight(item);
@@ -156,8 +156,8 @@ int champ_get_strength(int champ, int hand, int skill)
         if (weight > heavy)
             v = (int16_t)(v - (weight - heavy) * 2);
     }
-    if ((int16_t)skill >= 0) {
-        v = (int16_t)(v + champ_get_skill_level(champ, skill, true) * 2);
+    if (skill >= 0) {
+        v = (int16_t)(v + champ_get_skill_level(champion_index, skill, true) * 2);
         int bonus = 0;
         if (skill == SKILL_FIGHTER || (skill >= SKILL_SWING && skill <= SKILL_PARRY) || skill == SKILL_FIGHT) {
             bonus = item_attr(item, ATTR_STRENGTH);
@@ -175,11 +175,11 @@ int champ_get_strength(int champ, int hand, int skill)
     return clamp_int(0, (int16_t)(v >> 1), PERCENT);
 }
 
-int champ_get_dexterity(int champ)
+int champ_get_dexterity(int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t v = (int16_t)((rand_next() & DEXTERITY_ROLL) + champ_get_stat(c, STAT_DEXTERITY, STAT_CURRENT));
-    int32_t load = (int32_t)(v >> 1) * (uint16_t)champ_get_load(champ);
+    int32_t load = (int32_t)(v >> 1) * (uint16_t)champ_get_load(champion_index);
     v = (int16_t)(v - load / (uint16_t)champ_get_max_load(c));
     if (v < DEXTERITY_MIN)
         v = DEXTERITY_MIN;
@@ -202,16 +202,16 @@ bool champ_test_luck(Champion *c, int chance)
     return lucky;
 }
 
-/* The defense of a wound location of champ (sharp: against a sharp attack), 0 to 100. */
-static int wound_defense(int champ, int location, bool sharp)
+/* The defense of a wound location of champion_index (sharp: against a sharp attack), 0 to 100. */
+static int wound_defense(int16_t champion_index, int location, bool sharp)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t hands = 0;
-    for (int hand = 0; hand < SLOT_HAND_COUNT; hand++) {
+    for (int16_t hand = 0; hand < SLOT_HAND_COUNT; hand++) {
         uint16_t attr = item_attr(c->slots[hand], ATTR_ARMOUR_CLASS);
         if (!(attr & ARMOUR_DEFENDS))
             continue;
-        int strength = champ_get_strength(champ, hand, SKILL_PARRY);
+        int strength = champ_get_strength(champion_index, hand, SKILL_PARRY);
         int v = (armor_defense(attr, sharp) + strength) * wound_defense_factor[location];
         hands = (int16_t)(hands + (v >> ((hand != location) + HAND_DEFENSE_SHIFT)));
     }
@@ -231,8 +231,8 @@ static int wound_defense(int champ, int location, bool sharp)
     return clamp_int(0, (int16_t)(v >> 1), PERCENT);
 }
 
-/* The mean defense of champ over the wound locations of wound_mask against an attack of type. */
-static uint16_t mean_defense(int champ, int wound_mask, int type)
+/* The mean defense of champion_index over the wound locations of wound_mask against an attack of type. */
+static uint16_t mean_defense(int16_t champion_index, int wound_mask, int type)
 {
     int count = 0;
     uint16_t defense = 0;
@@ -240,24 +240,25 @@ static uint16_t mean_defense(int champ, int wound_mask, int type)
         if (!((uint16_t)wound_mask & 1 << w))
             continue;
         count++;
-        defense = (uint16_t)(defense + wound_defense(champ, w, type == ATTACK_TYPE_SHARP));
+        defense = (uint16_t)(defense + wound_defense(champion_index, w, type == ATTACK_TYPE_SHARP));
     }
     return count ? (uint16_t)(defense / count) : defense;
 }
 
-/* The damage d that is left after the defense, a parry, the statistics, and the auras of champ; 0 or less: none. */
-static int16_t reduce_damage(int champ, int16_t d, int wound_mask, int attack_type)
+/* The damage d that is left after the defense, a parry, the statistics, and the auras of champion_index; 0 or less:
+   none. */
+static int16_t reduce_damage(int16_t champion_index, int16_t d, int wound_mask, int attack_type)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int type = attack_type & ATTACK_TYPE_MASK;
-    uint16_t defense = mean_defense(champ, wound_mask, type);
+    uint16_t defense = mean_defense(champion_index, wound_mask, type);
     int16_t parry = 0;
-    for (int hand = 0; hand < SLOT_HAND_COUNT; hand++)
+    for (int16_t hand = 0; hand < SLOT_HAND_COUNT; hand++)
         if (c->last_command[hand] == COMMAND_PARRY)
             parry = (int16_t)(parry + c->defense[hand]);
     if (parry) {
-        int chance =
-            (uint16_t)champ_get_skill_level(champ, SKILL_PARRY, true) + ((uint16_t)parry >> PARRY_CHANCE_SHIFT);
+        int chance = (uint16_t)champ_get_skill_level(champion_index, SKILL_PARRY, true) +
+                     ((uint16_t)parry >> PARRY_CHANCE_SHIFT);
         if (chance > (int)(rand_next() & PARRY_ROLL)) {
             if (attack_type & ATTACK_BLOCKABLE) {
                 d = (int16_t)(d - parry);
@@ -276,7 +277,7 @@ static int16_t reduce_damage(int champ, int16_t d, int wound_mask, int attack_ty
         break;
     case ATTACK_TYPE_SELF:
     case ATTACK_TYPE_SELF_2:
-        defense = (uint16_t)((defense >> 1) + champ_get_skill_level(champ, SKILL_NINJA, true));
+        defense = (uint16_t)((defense >> 1) + champ_get_skill_level(champion_index, SKILL_NINJA, true));
         break;
     case ATTACK_TYPE_MAGIC:
         d = (int16_t)champ_get_stat_adjusted_attack(c, STAT_ANTI_MAGIC, (uint16_t)d);
@@ -301,19 +302,21 @@ static int16_t reduce_damage(int champ, int16_t d, int wound_mask, int attack_ty
     return d;
 }
 
-int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
+int champ_take_damage(int16_t champion_index, int damage, int wound_mask, int attack_type)
 {
     int16_t d = (int16_t)damage;
-    if (champ == -1 || champ + 1 == g_ui.candidate || g_session.completed || d < 1 || !champion(champ)->health)
+    if (champion_index == -1 || champion_index + 1 == g_ui.candidate || g_session.completed || d < 1 ||
+        !champion(champion_index)->health)
         return 0;
     if (attack_type & ATTACK_TYPE_MASK) {
-        d = reduce_damage(champ, d, wound_mask, attack_type);
+        d = reduce_damage(champion_index, d, wound_mask, attack_type);
         if (d <= 0)
             return 0;
         int16_t resist = (int16_t)champ_get_stat_adjusted_attack(
-            champion(champ), STAT_VITALITY, (int)((rand_next() & WOUND_ROLL_MASK) + WOUND_ROLL_BASE));
+            champion(champion_index), STAT_VITALITY, (int)((rand_next() & WOUND_ROLL_MASK) + WOUND_ROLL_BASE));
         while (d > resist) {
-            g_champ_pending_wounds[champ] |= (uint16_t)((1 << (rand_next() & WOUND_LOCATION_ROLL)) & wound_mask);
+            g_champ_pending_wounds[champion_index] |=
+                (uint16_t)((1 << (rand_next() & WOUND_LOCATION_ROLL)) & wound_mask);
             resist = (int16_t)(resist * 2);
             if (d <= resist || !resist)
                 break;
@@ -321,20 +324,20 @@ int champ_take_damage(int champ, int damage, int wound_mask, int attack_type)
         if (g_party_sleeping)
             champ_wake_party();
     }
-    g_champ_pending_damage[champ] = (int16_t)(g_champ_pending_damage[champ] + d);
+    g_champ_pending_damage[champion_index] = (int16_t)(g_champ_pending_damage[champion_index] + d);
     return d;
 }
 
-void champ_decrease_stamina(int champ, int amount)
+void champ_decrease_stamina(int16_t champion_index, int amount)
 {
-    if (champ == -1)
+    if (champion_index == -1)
         return;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     c->stamina = (int16_t)(c->stamina - amount);
     if (c->stamina <= 0) {
         int16_t missing = c->stamina;
         c->stamina = 0;
-        champ_take_damage(champ, (int16_t)(-missing >> 1), 0, 0);
+        champ_take_damage(champion_index, (int16_t)(-missing >> 1), 0, 0);
     } else if (c->stamina > c->max_stamina) {
         c->stamina = c->max_stamina;
     }
@@ -358,13 +361,13 @@ int champ_damage_party(int damage, int wound_mask, int attack_type)
     return hit;
 }
 
-void champ_poison(int champ, int amount)
+void champ_poison(int16_t champion_index, int amount)
 {
-    if (champ == -1 || champ + 1 == g_ui.candidate)
+    if (champion_index == -1 || champion_index + 1 == g_ui.candidate)
         return;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t d = (int16_t)(((uint16_t)amount + POISON_DAMAGE_ROUND) >> POISON_DAMAGE_SHIFT);
-    champ_take_damage(champ, d > 1 ? d : 1, 0, 0);
+    champ_take_damage(champion_index, d > 1 ? d : 1, 0, 0);
     c->redraw |= REDRAW_POISON;
     uint16_t left = (uint16_t)(amount - 1);
     if (!left)
@@ -377,22 +380,22 @@ void champ_poison(int champ, int amount)
     c->poison = (int16_t)(c->poison + left);
     c->poisoned++;
     /* fix: the original leaves the last 4 data bytes uninitialized */
-    TimelineEvent e = party_event(POISON_EVENT_DELAY, EVENT_POISON, champ);
+    TimelineEvent e = party_event(POISON_EVENT_DELAY, EVENT_POISON, champion_index);
     put_le16(e.data, left); /* the poison that is left */
     timeline_add_event(&e);
 }
 
-void champ_cure_poison(int champ, int amount)
+void champ_cure_poison(int16_t champion_index, int amount)
 {
-    if (champ == -1)
+    if (champion_index == -1)
         return;
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t left = (int16_t)amount;
     /* the original reads the first event slots as many as the timeline holds, so it can miss a poison event in a
        later slot; the advanced mode reads all slots */
     bool all = g_game_mode == GAME_MODE_ADVANCED;
-    for (int i = timeline_find_event(0, EVENT_POISON, (uint8_t)champ, all); i != -1;
-         i = timeline_find_event(i + 1, EVENT_POISON, (uint8_t)champ, all)) {
+    for (int i = timeline_find_event(0, EVENT_POISON, (uint8_t)champion_index, all); i != -1;
+         i = timeline_find_event(i + 1, EVENT_POISON, (uint8_t)champion_index, all)) {
         TimelineEvent *e = &g_timeline.events[i];
         int16_t v = (int16_t)le16(e->data);
         if (left < v) {
@@ -410,11 +413,11 @@ void champ_cure_poison(int champ, int amount)
 }
 
 /* Drops all items of the champion on the party square, in its cell. */
-static void drop_all_objects(int champ)
+static void drop_all_objects(int16_t champion_index)
 {
-    int cell = champion(champ)->cell;
+    int cell = champion(champion_index)->cell;
     for (int i = 0; i < SLOT_COUNT; i++) {
-        uint16_t t = champ_remove_object_from_slot(champ, drop_order[i]);
+        uint16_t t = champ_remove_object_from_slot(champion_index, drop_order[i]);
         if (t != THING_NONE)
             move_thing(thing_with_cell(t, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     }
@@ -423,7 +426,7 @@ static void drop_all_objects(int champ)
 /* A click on the face in relative cell: takes the face, or drops the dragged face there (finish false: a cancel). */
 static void drag_click(int16_t cell, bool finish)
 {
-    int16_t target = (int16_t)champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
+    int16_t target = champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
     if (!g_input_drag_state) {
         if (target < 0)
             return;
@@ -433,7 +436,7 @@ static void drag_click(int16_t cell, bool finish)
     }
     int from = g_input_drag_state - 1;
     g_input_drag_state = 0;
-    int16_t dragged = (int16_t)champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
+    int16_t dragged = champ_get_index_in_cell(dir_turn(g_game.party_dir, from));
     if (finish)
         champion(dragged)->dir = (uint8_t)g_game.party_dir;
     if (from == cell)
@@ -454,16 +457,16 @@ void champ_drag_cancel(void)
         drag_click((int16_t)(g_input_drag_state - 1), false);
 }
 
-/* Kills champ: it drops its items and its bones. */
-static void kill_champion(int champ)
+/* Kills champion_index: it drops its items and its bones. */
+static void kill_champion(int16_t champion_index)
 {
-    Champion *c = champion(champ);
-    if (champ == g_action.champion - 1)
+    Champion *c = champion(champion_index);
+    if (champion_index == g_action.champion - 1)
         action_area_close();
     c->health = 0;
     memset(c->action_delay, 0, sizeof c->action_delay);
     c->redraw |= REDRAW_STATUS_BOX;
-    if (champ + 1 == g_ui.inventory) {
+    if (champion_index + 1 == g_ui.inventory) {
         if (g_ui.eye) {
             g_ui.eye = 0;
             if (g_game.leader_hand != THING_NONE)
@@ -472,13 +475,13 @@ static void kill_champion(int champ)
         g_ui.mouth = 0;
         g_hooks.close_inventory(true);
     }
-    drop_all_objects(champ);
+    drop_all_objects(champion_index);
     int cell = c->cell;
     uint16_t bones = dungeon_unused_thing_any_record(THING_MISC);
     if (bones != THING_NONE) {
         item_set_type(bones, ITEM_BONES);
         item_set_kept(bones, true);
-        misc_set_charges(bones, (uint16_t)champ); /* the champion of the bones */
+        misc_set_charges(bones, (uint16_t)champion_index); /* the champion of the bones */
         move_thing(thing_with_cell(bones, cell), MOVE_NO_SQUARE, 0, g_game.party_x, g_game.party_y);
     }
     c->rune_count = 0;
@@ -488,7 +491,7 @@ static void kill_champion(int champ)
     if (dir_relative(cell, g_game.party_dir) + 1 == g_input_drag_state)
         champ_drag_cancel();
     if (c->poisoned)
-        champ_cure_poison(champ, CURE_ALL);
+        champ_cure_poison(champion_index, CURE_ALL);
     int alive = 0;
     while (alive < g_game.champion_count && !champion(alive)->health)
         alive++;
@@ -497,7 +500,7 @@ static void kill_champion(int champ)
         g_hooks.flush_input();
         g_party_sleeping = false;
         g_main_loop.view_hidden = 0;
-    } else if (champ == champ_leader()) {
+    } else if (champion_index == champ_leader()) {
         champ_set_leader(alive);
     }
     g_hooks.refresh_input_mode();
@@ -656,7 +659,7 @@ void champ_burn_held_lights(void)
         count--; /* the recruit candidate burns no lights */
     for (int i = 0; i < count; i++) {
         Champion *c = champion(i);
-        for (int hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
+        for (int16_t hand = SLOT_HAND_COUNT - 1; hand >= 0; hand--) {
             uint16_t t = c->slots[hand];
             if (!(item_attr(t, ATTR_FLAGS) & ITEM_FLAG_LIGHT) || !item_charges(t))
                 continue;
@@ -669,12 +672,12 @@ void champ_burn_held_lights(void)
         light_update_party_light();
 }
 
-/* Puts champ into its cell, or into the first free cell from the party direction. */
-static void place_in_free_cell(int champ)
+/* Puts champion_index into its cell, or into the first free cell from the party direction. */
+static void place_in_free_cell(int16_t champion_index)
 {
-    Champion *c = champion(champ);
+    Champion *c = champion(champion_index);
     int16_t health = c->health;
-    c->health = 0; /* champ_get_index_in_cell skips a champion without health: the search skips champ itself */
+    c->health = 0; /* champ_get_index_in_cell skips a champion without health: the search skips champion_index itself */
     if (c->cell == NO_CHAMPION_CELL || champ_get_index_in_cell(c->cell) != -1) {
         int k = 0;
         while (champ_get_index_in_cell(dir_turn(g_game.party_dir, k)) != -1)
@@ -685,10 +688,10 @@ static void place_in_free_cell(int champ)
     c->health = health;
 }
 
-void champ_revive(int champ)
+void champ_revive(int16_t champion_index)
 {
-    Champion *c = champion(champ);
-    place_in_free_cell(champ);
+    Champion *c = champion(champion_index);
+    place_in_free_cell(champion_index);
     c->load = 0;
     for (int s = 0; s < SLOT_COUNT; s++)
         c->slots[s] = THING_NONE;

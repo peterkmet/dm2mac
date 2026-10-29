@@ -12,7 +12,7 @@
 #include "gdat.h"
 #include "gfx.h"
 
-/* Zone flag: add the offsets in *w and *h to the zone position. */
+/* Zone flag: add the offset in *size to the zone position. */
 #define ZONE_RELATIVE 0x8000
 
 /* Anchor override that keeps the anchor of the zone record. */
@@ -47,21 +47,21 @@ void zone_free(void);
 
 /* ---- Rects of the zones ---- */
 
-/* Places an image of *out_w x *out_h pixels (0: the size of image) in zone and clips it. Returns rect, or NULL when
-   nothing is visible; *out_w and *out_h then hold the clipped left and top pixel counts. */
-int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, int16_t *out_w, int16_t *out_h);
+/* Places an image in zone and clips it. *size has three roles: in, the box size (0: the size of image), or with
+   ZONE_RELATIVE the offset to add to the zone position; out, the clipped left and top pixel counts. Returns rect,
+   or NULL when nothing is visible. */
+int16_t *zone_compute_rect(const Bitmap *image, int16_t *rect, uint16_t zone, ScreenSize *size);
 /* As zone_compute_rect, with the anchor type of the zone replaced. */
-int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, int16_t *out_w,
-                                    int16_t *out_h);
+int16_t *zone_compute_anchored_rect(const Bitmap *image, int16_t *rect, AnchoredZone anchored, ScreenSize *size);
 /* The rect of zone at w_scale and h_scale (1/10000) of the size of its parent size zone. */
-int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, uint16_t h_scale);
+int16_t *zone_get_rect_clipped(uint16_t zone, int16_t *rect, uint16_t w_scale, uint16_t h_scale);
 /* The rect of zone at the full size of its parent size zone. */
-int16_t *zone_get_rect(int16_t zone, int16_t *rect);
+int16_t *zone_get_rect(uint16_t zone, int16_t *rect);
 /* The rect of the whole viewport, also while the party walks (zone_get_rect then cuts it to the walk view). */
 int16_t *zone_get_viewport_rect(int16_t *rect);
 /* Writes to *out the offset at percent (0 to 100) of the way from zone from to zone to; returns false and leaves
    *out unchanged for an unknown zone. */
-bool zone_interpolate_offset(int16_t from, int16_t to, int16_t percent, ScreenPoint *out);
+bool zone_interpolate_offset(uint16_t from, uint16_t to, int16_t percent, ScreenPoint *out);
 
 /* ---- Clip ---- */
 
@@ -72,10 +72,10 @@ void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bot
 
 /* The rect of an icon (16 x 16) placed in zone, with a 1 pixel frame; the zero rect for a zone that the layout does
    not place. */
-int16_t *zone_get_icon_rect(int16_t zone, int16_t *rect);
+int16_t *zone_get_icon_rect(uint16_t zone, int16_t *rect);
 /* The screen position of zone for a point (1 x 1 pixels). */
-ScreenPoint zone_get_position(int16_t zone);
+ScreenPoint zone_get_position(uint16_t zone);
 /* The view zone of grid cell grid_cell (0 to 24, 5 x 5) of view element base, turned by dir. */
-int zone_id_for_view_cell(int16_t base, int16_t grid_cell, int16_t dir);
+uint16_t zone_id_for_view_cell(int16_t base, int16_t grid_cell, int16_t dir);
 
 #endif /* DM2_UI_ZONE_H */

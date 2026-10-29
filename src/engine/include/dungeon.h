@@ -155,7 +155,7 @@ static inline uint16_t event_square_dir(int16_t x, int16_t y, int16_t dir)
     return (uint16_t)location_pack(x, y, dir & DIR_MASK);
 }
 /* The direction in the map bits of a square and direction word. */
-static inline uint16_t location_dir(uint16_t word)
+static inline int16_t location_dir(uint16_t word)
 {
     return location_map(word) & DIR_MASK;
 }
@@ -437,7 +437,7 @@ static inline uint16_t teleporter_map(uint16_t teleporter)
     return thing_field(teleporter, TELEPORTER_MAP, TELEPORTER_MAP_SHIFT, TELEPORTER_MAP_MASK);
 }
 /* The quarter turns of the direction of the thing that goes through. */
-static inline uint16_t teleporter_rotation(uint16_t teleporter)
+static inline int16_t teleporter_rotation(uint16_t teleporter)
 {
     return thing_field(teleporter, TELEPORTER_TARGET, TELEPORTER_ROTATION_SHIFT, TELEPORTER_ROTATION_MASK);
 }
@@ -523,7 +523,7 @@ static inline void group_set_mood_flag(uint16_t group, uint16_t bit, bool on)
 /* The position of the direction (bits 8-9) in GROUP_DIR. */
 #define GROUP_DIR_SHIFT      8
 /* The facing direction of a group. */
-static inline uint16_t group_dir(uint16_t group)
+static inline int16_t group_dir(uint16_t group)
 {
     return thing_field(group, GROUP_DIR, GROUP_DIR_SHIFT, GROUP_DIR_MASK);
 }

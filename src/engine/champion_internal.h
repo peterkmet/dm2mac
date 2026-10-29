@@ -21,7 +21,7 @@ typedef struct {
 } ActionRepeat;
 
 /* The slot that a hand loads from (12 or 7-9 for the action hand, 11 or 6 for the ready hand), -1 none. */
-int champ_find_hand_source_slot(int champ, int hand);
+int champ_find_hand_source_slot(int16_t champion_index, int16_t hand);
 /* Prints the name of thing in the message area. */
 void inv_show_object_name(uint16_t thing);
 

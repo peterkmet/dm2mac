@@ -67,13 +67,13 @@ typedef struct {
     int teleporter_flag;                                   /* the last teleporter is TELEPORTER_AUDIBLE */
     uint32_t redraw;                                       /* PARTY_REDRAW_* */
     uint16_t push_pending_group;                           /* creature group that a push waits for, THING_NONE none */
-    int push_mode;                                         /* the movement arrows show the push arrows */
+    bool push_mode;                                        /* the movement arrows show the push arrows */
     int16_t push_arrow;
 } Party;
 
 /* The other end of a seamless passage at (x, y) of the current map. */
 typedef struct {
-    uint8_t side, target_side, x, y, map;
+    int16_t side, target_side, x, y, map;
 } PassageEnd;
 
 /* The two champions on the side of a bump, -1 none; both can be the same champion. */
@@ -123,16 +123,16 @@ bool dun_on_party_square(Location at);
 /* True when a square stops the party: walls, closed doors, closed fake walls, unknown squares. */
 bool dun_square_blocks_movement(uint8_t square);
 /* The direction that leads out of the stairs on at. */
-int dun_get_stairs_exit_direction(Location at);
+int16_t dun_get_stairs_exit_direction(Location at);
 /* Puts the other end of the seamless passage on at into *end; false when there is none. */
 bool dun_get_linked_teleporter_dest(PassageEnd *end, Location at);
 
 /* ---- Champions ---- */
 
 /* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
-int dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
+int16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
 /* The champion nearest to the side of the party square that faces at, seen from cell (0xff: any); -1 none. */
-int move_nearest_champion_at(Location at, int16_t cell);
+int16_t move_nearest_champion_at(Location at, int16_t cell);
 /* Damage of a bump into a wall or a creature on at for the two champions on that side; returns them. */
 BumpedChampions move_party_bump_damage(Location at, int16_t dir, int step);
 

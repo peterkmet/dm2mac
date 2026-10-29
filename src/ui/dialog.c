@@ -65,10 +65,9 @@ void dialog_present(void)
         return;
     }
     int16_t r[RECT_SIZE];
-    int16_t x = 0;
-    int16_t y = 0;
-    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &x, &y))
-        ui_blit_bitmap(&(BlitSource){.bitmap = &g_view_viewport, .x = x, .y = y, .transparent = GFX_OPAQUE},
+    ScreenSize size = {0, 0};
+    if (zone_compute_rect(&g_view_viewport, r, ZONE_DIALOG_SCREEN, &size))
+        ui_blit_bitmap(&(BlitSource){.bitmap = &g_view_viewport, .x = size.w, .y = size.h, .transparent = GFX_OPAQUE},
                        &g_draw_screen, r);
 }
 
@@ -82,7 +81,7 @@ static void render_message(const int16_t *rect, char *texts[MESSAGE_TEXTS], cons
     for (int i = 0; i < MESSAGE_TEXTS; i++) {
         if (!texts[i])
             continue;
-        TextSize size = text_measure(texts[i]);
+        ScreenSize size = text_measure(texts[i]);
         widths[i] = size.w;
         heights[i] = size.h;
         int w = rect[RECT_W];

@@ -41,12 +41,12 @@ def lib():
     lib.cheats_get_cursor.restype = Cursor
     lib.cheats_move_selection.argtypes = [ctypes.c_int16]
     lib.cheats_process_click.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.magic_cast_cheat_spell.argtypes = [ctypes.c_int, ctypes.c_void_p]
+    lib.magic_cast_cheat_spell.argtypes = [ctypes.c_int16, ctypes.c_void_p]
     lib.game_has_cheat.argtypes = [ctypes.c_uint8]
     lib.game_has_cheat.restype = ctypes.c_bool
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int, ctypes.c_uint16, ctypes.c_int16]
+    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
     lib.item_set_gdat_index.argtypes = [ctypes.c_uint16, ctypes.c_int]
     lib.item_gdat_index.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]

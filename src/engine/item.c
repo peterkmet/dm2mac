@@ -480,9 +480,9 @@ uint16_t item_find_link_projectile(uint16_t group, uint16_t payload)
 
 /* Items of the champion actions. */
 
-bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing)
+bool item_is_ammo_for_hand(int16_t champion_index, int16_t hand, uint16_t thing)
 {
-    uint16_t launcher = champion(champ)->slots[hand];
+    uint16_t launcher = champion(champion_index)->slots[hand];
     if (thing == THING_NONE || launcher == THING_NONE)
         return false;
     uint16_t kinds = item_attr(launcher, ATTR_AMMO);
@@ -492,12 +492,12 @@ bool item_is_ammo_for_hand(int champ, int hand, uint16_t thing)
     return !(ammo & AMMO_LAUNCHER) && ammo & AMMO_KINDS & kinds;
 }
 
-bool item_has_action_command(int champ, uint16_t thing, int command)
+bool item_has_action_command(int16_t champion_index, uint16_t thing, int command)
 {
     bool found = false;
     if (thing == THING_NONE)
         return false;
-    if (champ_list_actions(champ, thing, -1)) {
+    if (champ_list_actions(champion_index, thing, -1)) {
         for (int i = 0; i < g_champ_action_count; i++)
             if ((uint16_t)gtext_gdat_field(g_champ_actions[i].category, g_champ_actions[i].index,
                                            g_champ_actions[i].entry, FIELD_COMMAND) == (uint16_t)command) {

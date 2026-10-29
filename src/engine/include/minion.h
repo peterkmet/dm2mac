@@ -70,7 +70,7 @@ typedef struct {
 extern MinionMap g_minion_map;
 
 /* The minion map opens in the hand of the open action area: the champion pays 1 mana for it. */
-void minion_map_open(int champ);
+void minion_map_open(int16_t champion_index);
 /* One game tick of an open minion map: it takes mana, or it goes dark without mana. */
 void minion_map_drain_mana(void);
 /* Turns option button option (0 to 3) on (for its mana) or off. */

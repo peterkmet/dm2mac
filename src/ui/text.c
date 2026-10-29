@@ -75,16 +75,16 @@ bool text_init(const Gdat *gdat)
 
 /* ---- Queries ---- */
 
-TextSize text_measure(const char *text)
+ScreenSize text_measure(const char *text)
 {
     if (!text)
-        return (TextSize){0, 0};
+        return (ScreenSize){0, 0};
     int16_t w = -FONT_SPACING;
     for (; *text; text++)
         w += FONT_ADVANCE;
     if (w <= 0)
-        return (TextSize){0, 0};
-    return (TextSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
+        return (ScreenSize){0, 0};
+    return (ScreenSize){w, FONT_GLYPH_HEIGHT - FONT_BASELINE};
 }
 
 int16_t text_wrap_line(const char *text, char *line, int16_t *out_pos, int16_t max_width)
@@ -179,7 +179,7 @@ void text_draw(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char 
 
 void text_draw_with_shadow(Bitmap *dst, int16_t x, int16_t y, TextColors colors, const char *text)
 {
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     if (!size.w)
         return;
     if (!(colors.bg & TEXT_TRANSPARENT)) {
@@ -206,9 +206,9 @@ void text_draw_in_viewport(int16_t x, int16_t y, int color, const char *text)
 /* The base line start of text placed in zone; not visible for an empty text or a zone off the view. */
 static Baseline baseline_in_zone(int zone, const char *text)
 {
-    TextSize size = text_measure(text);
+    ScreenSize size = text_measure(text);
     int16_t r[RECT_SIZE];
-    if (!size.w || !zone_compute_rect(NULL, r, zone, &size.w, &size.h))
+    if (!size.w || !zone_compute_rect(NULL, r, zone, &size))
         return (Baseline){false, 0, 0};
     return (Baseline){true, r[RECT_X], (int16_t)(r[RECT_Y] + r[RECT_H] - 1)};
 }

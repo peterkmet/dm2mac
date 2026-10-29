@@ -63,12 +63,12 @@ extern ActionArea g_action;
 /* Setup */
 /* Clears the action area state and its caches. */
 void action_reset(void);
-/* Clears the drawn state of the action area for champion champ. */
-void action_reset_champion(int champ);
+/* Clears the drawn state of the action area for champion champion_index. */
+void action_reset_champion(int16_t champion_index);
 
 /* Queries */
 /* True when hand is a hand slot (SLOT_READY_HAND, SLOT_ACTION_HAND), not the spell panel or no hand. */
-static inline bool action_is_hand_slot(int hand)
+static inline bool action_is_hand_slot(int16_t hand)
 {
     return hand >= SLOT_READY_HAND && hand < SLOT_HAND_COUNT;
 }
@@ -84,10 +84,10 @@ void action_open_container(uint16_t container);
 void action_tick_hands(void);
 
 /* The action area of a hand or of the spells. */
-/* Opens the action menu of a hand of champ (0 to 3) in the action area. */
-void action_area_open_hand(int champ, int hand);
-/* Opens the spell panel of champ in the action area. */
-void action_area_open_spells(int champ);
+/* Opens the action menu of a hand of champion_index (0 to 3) in the action area. */
+void action_area_open_hand(int16_t champion_index, int16_t hand);
+/* Opens the spell panel of champion_index in the action area. */
+void action_area_open_spells(int16_t champion_index);
 /* The action area redraws: the whole area while no panel is open, else the open panel after one update. */
 void action_request_redraw(void);
 /* The GDAT index of the minion map that the action area shows. */

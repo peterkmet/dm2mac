@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dungeon.h"
 #include "gdat.h"
 
 /* Weather and day state that the save file does not keep (the saved part is in game). */
@@ -99,7 +100,7 @@ void world_update_day_night(bool storm_step);
 /* Computes the party light level (g_view_light_level) from the hand lights, the square lights, magic, the map, the
    hour, and the weather. */
 void light_update_party_light(void);
-/* Adds the light of the square (x, y) of the current map, distance squares from the party, seen from dir. */
-void light_add_square_light(int distance, int16_t dir, int16_t x, int16_t y, unsigned flags);
+/* Adds the light of the square at of the current map, distance squares from the party, seen from dir. */
+void light_add_square_light(int distance, int16_t dir, Location at, unsigned flags);
 
 #endif /* DM2_ENGINE_WEATHER_H */

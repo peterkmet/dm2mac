@@ -21,13 +21,15 @@ from dm2test.modes import (  # noqa: F401 (advanced is a fixture)
 )
 from dm2test.dialog import DialogState, Session
 from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 
 @pytest.fixture(scope="module")
 def lib():
-    return load_lib()
+    lib = load_lib()
+    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
+    return lib
 
 # the keypad key of each letter: turn left, forward, turn right, strafe left, back, strafe right
 LETTER_KEYPAD = {SCAN_Q: C.KEYPAD_TURN_LEFT, SCAN_W: C.KEYPAD_FORWARD, SCAN_E: C.KEYPAD_TURN_RIGHT, SCAN_A: C.KEYPAD_LEFT,
@@ -274,7 +276,7 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
 def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
     # A control click gives the press and the release: moving the pointer afterwards does not scroll the map.
     path, game, _ = control
-    lib.seen_mark(game.party_map, game.party_x, game.party_y, game.party_dir)
+    lib.seen_mark(Position(game.party_map, game.party_x, game.party_y), game.party_dir)
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(7, rect)  # the viewport
     x, y, w, h = rect

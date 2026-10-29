@@ -19,11 +19,11 @@ void action_reset(void)
     g_hooks.reset_action_area();
 }
 
-void action_reset_champion(int champ)
+void action_reset_champion(int16_t champion_index)
 {
-    g_hooks.reset_action_champion(champ);
-    g_action.hand_items[champ][SLOT_READY_HAND] = THING_NONE;
-    g_action.hand_items[champ][SLOT_ACTION_HAND] = THING_NONE;
+    g_hooks.reset_action_champion(champion_index);
+    g_action.hand_items[champion_index][SLOT_READY_HAND] = THING_NONE;
+    g_action.hand_items[champion_index][SLOT_ACTION_HAND] = THING_NONE;
 }
 
 /* Queries */
@@ -102,32 +102,33 @@ void action_tick_hands(void)
 
 /* The action area of a hand or of the spells. */
 
-/* Opens the panel of hand (ACTION_HAND_SPELL: the spells) of champ in the action area. */
-static void open_panel(int champ, int hand)
+/* Opens the panel of hand (ACTION_HAND_SPELL: the spells) of champion_index in the action area. */
+static void open_panel(int16_t champion_index, int16_t hand)
 {
-    g_action.flash = (int16_t)(champ + 1);
+    g_action.flash = (int16_t)(champion_index + 1);
     g_action.redraw_delay = ACTION_REDRAW_NEXT;
     g_action.flags = 0;
-    g_action.flash_hand = (int16_t)hand;
+    g_action.flash_hand = hand;
     g_action.champion = g_action.flash;
-    g_action.hand = (int16_t)hand;
+    g_action.hand = hand;
     champ_drag_cancel();
     g_hooks.update_action_area(false);
 }
 
-void action_area_open_hand(int champ, int hand)
+void action_area_open_hand(int16_t champion_index, int16_t hand)
 {
-    if (!champion(champ)->health || !champ_list_actions(champ, champion(champ)->slots[hand], hand))
+    if (!champion(champion_index)->health ||
+        !champ_list_actions(champion_index, champion(champion_index)->slots[hand], hand))
         return;
-    open_panel(champ, hand);
-    g_hooks.draw_champion_state(champ);
+    open_panel(champion_index, hand);
+    g_hooks.draw_champion_state(champion_index);
 }
 
-void action_area_open_spells(int champ)
+void action_area_open_spells(int16_t champion_index)
 {
-    if (!champion(champ)->health)
+    if (!champion(champion_index)->health)
         return;
-    open_panel(champ, ACTION_HAND_SPELL);
+    open_panel(champion_index, ACTION_HAND_SPELL);
 }
 
 void action_request_redraw(void)

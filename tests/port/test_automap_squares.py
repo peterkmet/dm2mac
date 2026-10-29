@@ -6,7 +6,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import gdat, start, square_things  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location, Position, gdat, start, square_things  # noqa: F401 (gdat and start are fixtures)
 from dm2test.lib import load_lib
 
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1
@@ -17,20 +17,12 @@ STEP_TYPES = (FLOOR_ANY, 2, 3, 4, 7, 8)  # floor sensors that a step or an item 
 ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
 
 
-class Location(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
-
-
-class Position(ctypes.Structure):
-    _fields_ = [("map", ctypes.c_int16), ("x", ctypes.c_int16), ("y", ctypes.c_int16)]
-
-
 @pytest.fixture(scope="module")
 def lib():
     lib = load_lib()
     lib.automap_is_imaginary_wall.argtypes = [ctypes.c_uint8]
     lib.automap_is_imaginary_wall.restype = ctypes.c_bool
-    lib.automap_is_pressure_pad.argtypes = [ctypes.c_int16] * 3
+    lib.automap_is_pressure_pad.argtypes = [Position]
     lib.automap_is_pressure_pad.restype = ctypes.c_bool
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.thing_word.restype = ctypes.c_uint16
@@ -38,6 +30,8 @@ def lib():
     lib.automap_level_square.restype = ctypes.c_bool
     lib.automap_level_seen.argtypes = [Location]
     lib.automap_level_seen.restype = ctypes.c_bool
+    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
+    lib.seen_is_seen.argtypes = [Position]
     lib.seen_is_seen.restype = ctypes.c_bool
     return lib
 
@@ -72,8 +66,8 @@ def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):  # n
             if t >> 10 & 15 == THING_SENSOR and lib.thing_word(t, 2) & SENSOR_TYPE_MASK in STEP_TYPES:
                 (visible if lib.thing_word(t, 4) >> ORNAMENT_SHIFT else hidden).append((map_, x, y))
     assert visible and hidden
-    assert all(lib.automap_is_pressure_pad(*p) for p in visible if p not in hidden)
-    assert not any(lib.automap_is_pressure_pad(*p) for p in hidden if p not in visible)
+    assert all(lib.automap_is_pressure_pad(Position(*p)) for p in visible if p not in hidden)
+    assert not any(lib.automap_is_pressure_pad(Position(*p)) for p in hidden if p not in visible)
 
 
 def level_square(lib, x, y):
@@ -93,8 +87,8 @@ def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: 
 def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # noqa: F811
     lib.seen_reset()
     assert not lib.automap_level_seen(Location(52, 28))
-    lib.seen_mark(12, 25, 1, C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
-    assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(40, 6, 6)
+    lib.seen_mark(Position(12, 25, 1), C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
+    assert lib.automap_level_seen(Location(52, 28)) and not lib.seen_is_seen(Position(40, 6, 6))
     lib.seen_reset()
 
 
@@ -104,9 +98,9 @@ def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
     assert level_square(lib, 40, 26) == (12, 13, -1)
     assert level_square(lib, 21, 35) is None  # the margin of map 0 beside no open square: outside
     lib.seen_reset()
-    lib.seen_mark(12, 13, 2, C.DIR_SOUTH)  # the squares two rows away
+    lib.seen_mark(Position(12, 13, 2), C.DIR_SOUTH)  # the squares two rows away
     assert not lib.automap_level_seen(Location(40, 26))
-    lib.seen_mark(12, 13, 0, C.DIR_NORTH)  # the square next to the edge wall
+    lib.seen_mark(Position(12, 13, 0), C.DIR_NORTH)  # the square next to the edge wall
     assert lib.automap_level_seen(Location(40, 26))
     lib.seen_reset()
 
@@ -120,7 +114,7 @@ def test_edge_wall_over_an_unknown_square_of_another_map(lib, session):  # noqa:
     try:
         assert level_square(lib, 34, 60) == (24, 4, 4)
         lib.seen_reset()
-        lib.seen_mark(24, 4, 3, C.DIR_SOUTH)
+        lib.seen_mark(Position(24, 4, 3), C.DIR_SOUTH)
         assert lib.automap_level_seen(Location(34, 60))
     finally:
         game.party_map, game.party_x, game.party_y = saved
