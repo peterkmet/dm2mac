@@ -641,7 +641,7 @@ void champ_apply_time_effects(void)
                 uint8_t *v = c->stats[s];
                 if (v[STAT_CURRENT] < v[STAT_MAXIMUM])
                     v[STAT_CURRENT]++;
-                else if (v[STAT_CURRENT] > v[STAT_MAXIMUM])
+                else if (v[STAT_MAXIMUM] && v[STAT_CURRENT] > v[STAT_MAXIMUM]) /* fix: the original divides by 0 */
                     v[STAT_CURRENT] = (uint8_t)(v[STAT_CURRENT] - v[STAT_CURRENT] / v[STAT_MAXIMUM]);
             }
         }
