@@ -1,6 +1,6 @@
 # Champions, inventory, items, money, and shops
 
-The rules of the champions: the leader hand, damage and time effects, the actions, money and shops, item creation by a sensor, merchant trading, the cursor, and the first room of `start.DAT`. The code is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champion_action.c`, `src/engine/champion_inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code of the champions, the items, money, shops, and the cursor is in `src/engine/champion.c`, `src/engine/champion_damage.c`, `src/engine/champion_action.c`, `src/engine/champion_inventory.c`, `src/engine/item.c`, `src/engine/money.c`, `src/engine/merchant.c`, `src/engine/recruit.c`, and `src/ui/input.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## The leader hand
 
@@ -34,7 +34,11 @@ The rules of the champions: the leader hand, damage and time effects, the action
 
 ## Merchant trading
 
-- A merchant faces a counter: a group in front of it. Coins (item filter `0x10`) and goods (filter `7`) on the counter are the offer. The AI plan of the merchant runs four commands: `shop_cmd_wait_for_offer` waits for coins or goods in the customer cells; `shop_cmd_evaluate_offer` compares the value of the offer with the price of the goods in the merchant cells (in whole coins, at most 18 coins, with a random discount of up to 15 % for a price above 16 coins); `shop_cmd_count_payment` checks the payment and keeps the change in the active group (`position` word); `shop_cmd_pay_change` normalizes the coins of its money boxes and gives the change in coins (into its money box, or into its possessions).
+- A merchant faces a counter: a group in front of it. Coins (item filter `0x10`) and goods (filter `7`) on the counter are the offer. The AI plan of the merchant runs four commands:
+  - `shop_cmd_wait_for_offer` waits for coins or goods in the customer cells.
+  - `shop_cmd_evaluate_offer` compares the value of the offer with the price of the goods in the merchant cells (in whole coins, at most 18 coins, with a random discount of up to 15 % for a price above 16 coins).
+  - `shop_cmd_count_payment` checks the payment and keeps the change in the active group (`position` word).
+  - `shop_cmd_pay_change` normalizes the coins of its money boxes and gives the change in coins (into its money box, or into its possessions).
 - The active group words `counters[0]` and `counters[1]` hold the patience and the last offer. The actions are `0x1b` refuse, `0x1c` accept, `0x1d` wait, `0x1e` idle, `0x1f` offer, `0x20` haggle.
 - `sum_items_value` adds the merchant values (`money_get_item_value`, price list from group word 8) of the items of a filter in a cell, even inside chests; -1 when none matches.
 
@@ -43,7 +47,10 @@ The rules of the champions: the leader hand, damage and time effects, the action
 - `input_set_mode`, `input_pop_mode`, and `input_refresh_mode` mark the input zones of the input tree of the mode whose conditions hold (`input_mark_active_zones`). Byte 6 of an input zone (bits 0 to 5) is its cursor zone, from 1. `mouse_area_add` shows the cursor zone of an input zone that becomes active; `mouse_area_remove` hides the cursor zone of an input zone that becomes inactive. When one mode change both hides and shows the same cursor zone, the zone stays as it is.
 - The 18 cursor zones (mouse areas in the original; `g_cursor_zones`, `0x722d4`, 10 bytes): layout zone (bit 15: in the viewport, `g_viewport_origin` (0, 40)), cursor kind, flags (bits 0 to 3: priority), enter event, leave event, list node. Kind 1: zones `0x5c`, `0xa1` to `0xa4`, and `0x07` (the viewport, 2 zones). Kind 2: zone `0x2f` (the party icons, active only while a champion is dragged). The other zones have kind 0. The shown zones are a list: a new zone goes in front of the first zone of the same or a lower priority.
 - `mouse_move_event` (`0x14483`) takes the first shown zone that holds the pointer. Kind 2 gives cursor image 3 (the dragged champion). Kind 1 with a leader gives image 2 (the leader hand object, `g_cursor_has_item`) or image 1 (the hand). All other positions give image 0 (the arrow). A menu or a dialog (input mode 4) shows no cursor zone of kind 1.
-- The cursor images (`mouse_set_cursor_image`, `0x14743`: image, bitmap, hot spot, size, bpp, palette, clear color). `input_init` (`0x147d1`) sets image 0, the arrow (`g_cursor_arrow_bitmap`, `0x7155a`, 12 × 16), and image 1, the hand (`g_cursor_hand_bitmap`, `0x715ba`, 16 × 16). Both are 4 bpp (high nibble first) with the UI colors (`g_ui_colors`) and clear color 12, hot spot (0, 0). `mouse_update_hand_cursor` (`0x14889`) sets image 2, the leader hand object: 18 × 18, 8 bpp, no palette, hot spot (8, 8). `mouse_draw_item_cursor_bitmap` (`0x14375`) fills it with the hand icon palette color of color number 12. It draws the 16 × 16 icon at (2, 2) with all colors black (`g_ui_colors[0]`), the shadow, and then the icon at (0, 0) with its palette. Both skip color number 12. The clear color is the palette color of color number 12 (`0x7fbc6`). `champ_drag_click` (`0x149ba`) sets image 3 when a drag starts: the face of the champion (`ui_draw_champion_face_icon`), 17 × 17, 8 bpp, hot spot (8, 6). The face goes through its palette onto a fill of value 12, without its color 4 pixels. The clear color is the face palette color of color number 12.
+- The cursor images (`mouse_set_cursor_image`, `0x14743`: image, bitmap, hot spot, size, bpp, palette, clear color):
+  - `input_init` (`0x147d1`) sets image 0, the arrow (`g_cursor_arrow_bitmap`, `0x7155a`, 12 × 16), and image 1, the hand (`g_cursor_hand_bitmap`, `0x715ba`, 16 × 16). Both are 4 bpp (high nibble first) with the UI colors (`g_ui_colors`) and clear color 12, hot spot (0, 0).
+  - `mouse_update_hand_cursor` (`0x14889`) sets image 2, the leader hand object: 18 × 18, 8 bpp, no palette, hot spot (8, 8). `mouse_draw_item_cursor_bitmap` (`0x14375`) fills it with the hand icon palette color of color number 12. It draws the 16 × 16 icon at (2, 2) with all colors black (`g_ui_colors[0]`), the shadow, and then the icon at (0, 0) with its palette. Both skip color number 12. The clear color is the palette color of color number 12 (`0x7fbc6`).
+  - `champ_drag_click` (`0x149ba`) sets image 3 when a drag starts: the face of the champion (`ui_draw_champion_face_icon`), 17 × 17, 8 bpp, hot spot (8, 6). The face goes through its palette onto a fill of value 12, without its color 4 pixels. The clear color is the face palette color of color number 12.
 
 ## The first room of `start.DAT`
 
@@ -52,33 +59,35 @@ The rules of the champions: the leader hand, damage and time effects, the action
 
 ## Deviations from the original
 
-- Kept quirk: `money_normalize_coins` (`0x29598`) takes the coins out of the box one by one and creates each new coin item.
-- Kept quirk: the item ranges of a money box text (`money_coin_type_for_slot`) and of a merchant class set (`money_parse_item_class_set`) use base -1 for a range without a letter before it, so such a number gives the item index number - 1.
-- Kept quirk: `item_name` formats the item name twice: `gtext_gdat` formats it, then `gtext_format` formats the result again.
-- Kept quirk: the fourth rune writes the end mark of the runes into the byte after the rune field (`unknown_26[0]` of the champion record).
-- Kept quirk: `add_to_party` (`0x49242`) ends the name at a space or after 7 characters and drops the next character; the title starts after it. The 8th character of a longer name is lost.
-- Kept quirk: `recruit_finish` (`0x49a17`) with command `0x93` (cancel) takes the object out of the leader hand and does not put it anywhere: the object is lost.
-- Kept quirk: `champ_cure_poison` (`0x475d3`) reads only as many timeline slots from the start as the timeline holds events. A poison event in a later slot (the events before it were deleted, for example the events of creatures that died or stayed behind) gets no cure: an antidote does nothing. The advanced mode reads all slots.
-- Kept quirk: bit 15 of the attack value of a melee action (`FIELD_ATTACK`) also makes the hit pierce, and the hit chance ignores the bit (`melee_attack_front`).
-- Kept quirk: when the quiver holds no throwing item, a thrower reloads its hand with what lies in the quiver slot (slot 12), even an item that cannot be thrown (`take_next_missile`).
+- Kept quirks, as in the original:
+  - `money_normalize_coins` (`0x29598`) takes the coins out of the box one by one and creates each new coin item.
+  - The item ranges of a money box text (`money_coin_type_for_slot`) and of a merchant class set (`money_parse_item_class_set`) use base -1 for a range without a letter before it, so such a number gives the item index number - 1.
+  - `item_name` formats the item name twice: `gtext_gdat` formats it, then `gtext_format` formats the result again.
+  - The fourth rune writes the end mark of the runes into the byte after the rune field (`unknown_26[0]` of the champion record).
+  - `add_to_party` (`0x49242`) ends the name at a space or after 7 characters and drops the next character; the title starts after it. The 8th character of a longer name is lost.
+  - `recruit_finish` (`0x49a17`) with command `0x93` (cancel) takes the object out of the leader hand and does not put it anywhere: the object is lost.
+  - `champ_cure_poison` (`0x475d3`) reads only as many timeline slots from the start as the timeline holds events. A poison event in a later slot (the events before it were deleted, for example the events of creatures that died or stayed behind) gets no cure: an antidote does nothing. The advanced mode reads all slots.
+  - Bit 15 of the attack value of a melee action (`FIELD_ATTACK`) also makes the hit pierce, and the hit chance ignores the bit (`melee_attack_front`).
+  - When the quiver holds no throwing item, a thrower reloads its hand with what lies in the quiver slot (slot 12), even an item that cannot be thrown (`take_next_missile`).
+- Fixes:
+  - `melee_hit_damage` reads its remainder uninitialized for a strength of 0; the port starts the remainder at 0.
+  - `item_icon_index` divides by the step of the icon animation attribute (bits 5 to 7 of value key `0x06`) in the modes by charges and time; the shipped GRAPHICS.DAT has no step of 0. For a step of 0 the port shows the first icon.
+  - The time effects (`champ_apply_time_effects`) lower a statistic above its maximum by the current value divided by the maximum; the original divides by 0 for a maximum of 0 (a damaged save). The port leaves such a statistic unchanged.
+  - `item_add_charges` returns a register of no meaning for a thing type without charges; the port returns 0.
+  - The third action of the Kalan Gauntlet (`SK18SK6`, skill 186) reads the experience of another champion record or the data after the champion array in the original; the port treats a skill outside the skill table as untrained, so the action (level 4) never shows and gives no experience.
+  - `money_normalize_coins` skips a coin type with a value below 1 (a damaged GRAPHICS.DAT); the original loops forever when the remainder of the amount reaches that coin type.
+  - The original leaves data bytes of some events uninitialized (the timed effects of eaten items, poison, the hide damage event, invisibility). The port sets them to 0.
+  - `add_to_party` reads the champion data without a test that the GDAT entry exists; without the entry, or with an entry shorter than its 52 bytes (a damaged GRAPHICS.DAT; the original reads past it), the port leaves the health, stamina, mana, statistics, skills, food and water of the champion at 0.
+  - `recruit_start` without a mirror on the wall takes an uninitialized portrait; the port does not recruit, so without a mirror the start champion of a new game does not join.
+  - `money_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it.
+  - `show_shop_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor.
+  - `shop_cmd_evaluate_offer` divides by the price in coins, 0 when the merchant cells hold no goods; the port takes 100 %.
+  - The save writes the container order of a minion link that is no container (the attack and guard minion items) from past its table; the port writes 0.
+  - `frighten_front_group` passes a leftover register (EDX) as the damage of `creature_alert`; the port passes 0.
+  - `item_create_by_index` and the item creation sensor ask for a record of type `0xffff` for an item index without a thing type; the port gives no item.
+  - The item creation sensor with charge mode 3 adds an uninitialized stack word to the charges; the port adds 0, as for the transfer sensors ([world.md](world.md#deviations-from-the-original)), and the oracle (the original in the emulator `dm2tools.emu`) sets the word to 0.
+  - A coin type below 0 reads before the coin table; the port gives no coin.
 - Not ported: `click_throw_object` (`0x22942`) tests the zones `0x300` and `0x301` instead of `0x2fd` and `0x2fe` when the type of the square in front is `0x11`. The type is bits 5 to 7 of the square byte (0 to 7, `0x7f52c`), so the original never takes this branch.
-- Fix: `melee_hit_damage` reads its remainder uninitialized for a strength of 0; the port starts the remainder at 0.
-- Fix: `item_icon_index` divides by the step of the icon animation attribute (bits 5 to 7 of value key `0x06`) in the modes by charges and time; the shipped GRAPHICS.DAT has no step of 0. For a step of 0 the port shows the first icon.
-- Fix: the time effects (`champ_apply_time_effects`) lower a statistic above its maximum by the current value divided by the maximum; the original divides by 0 for a maximum of 0 (a damaged save). The port leaves such a statistic unchanged.
-- Fix: `item_add_charges` returns a register of no meaning for a thing type without charges; the port returns 0.
-- Fix: the third action of the Kalan Gauntlet (`SK18SK6`, skill 186) reads the experience of another champion record or the data after the champion array in the original; the port treats a skill outside the skill table as untrained, so the action (level 4) never shows and gives no experience.
-- Fix: `money_normalize_coins` skips a coin type with a value below 1 (a damaged GRAPHICS.DAT); the original loops forever when the remainder of the amount reaches that coin type.
-- Fixes: the original leaves data bytes of some events uninitialized (the timed effects of eaten items, poison, the hide damage event, invisibility). The port sets them to 0.
-- Fix: `add_to_party` reads the champion data without a test that the GDAT entry exists; without the entry, or with an entry shorter than its 52 bytes (a damaged GRAPHICS.DAT; the original reads past it), the port leaves the health, stamina, mana, statistics, skills, food and water of the champion at 0.
-- Fix: `recruit_start` without a mirror on the wall takes an uninitialized portrait; the port does not recruit, so without a mirror the start champion of a new game does not join.
-- Fix: `money_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it.
-- Fix: `show_shop_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor.
-- Fix: `shop_cmd_evaluate_offer` divides by the price in coins, 0 when the merchant cells hold no goods; the port takes 100 %.
-- Fix: The save writes the container order of a minion link that is no container (the attack and guard minion items) from past its table; the port writes 0.
-- Fix: `frighten_front_group` passes a leftover register (EDX) as the damage of `creature_alert`; the port passes 0.
-- Fix: `item_create_by_index` and the item creation sensor ask for a record of type `0xffff` for an item index without a thing type; the port gives no item.
-- Fix: The item creation sensor with charge mode 3 adds an uninitialized stack word to the charges; the port adds 0, as for the transfer sensors ([world.md](world.md#deviations-from-the-original)), and the oracle (the original in the emulator `dm2tools.emu`) sets the word to 0.
-- Fix: A coin type below 0 reads before the coin table; the port gives no coin.
 - The port hides the system cursor. Each present (the game loop and the modal loops of menus and dialogs) draws the image of `input_cursor_at` at the mouse pointer (`present_with_cursor`, `input_draw_cursor`). The original cursor in menus and dialogs is unverified: the driver (`IBMIOP.EXE`) is not analyzed.
 - The load and a new game clear the pending damage and wounds, the action repeats, the raised skills, the regeneration counter, the leader hand, and the recruit candidate of the last game (`champ_reset_step_state`).
 - The leader hand icon (`g_leader_hand_icon`) starts at 0 in the original (BSS), and a load keeps it. The port starts it at `0xff` (no icon) and sets `0xff` on each load. The screen does not change.

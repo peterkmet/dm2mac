@@ -1,6 +1,6 @@
 # Dungeon view
 
-The rules of the dungeon view: the blitters, the layout zones, the view squares, and the things in the view. The code is in `src/data/gfx.c`, `src/ui/zone.c`, and `src/ui/view.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code of the dungeon view is in `src/data/gfx.c`, `src/ui/zone.c`, and `src/ui/view.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Blitters (`gfx_blit` and its row functions)
 
@@ -36,7 +36,8 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 
 ## Things in the view
 
-- Thing grids (`g_view_creature_grid`, `g_view_object_grid`, 21 × 17 bytes each, index `(lateral + 10) * 17 + forward`): each square has 5 × 5 cells, and neighbor squares share their edge rows and columns, so a square is 4 grid cells wide. `view_load_square` writes the view position of each square up to depth 3 that is not a wall into the creature grid (4 rows of 5 cells), and the view position of each creature group into the object grid at its cell relative to the party eye (cell 22, 10, 2, or 14 of the party square by direction). A creature of size 1 to 3 (creature info `+0x22`) is nearer to the party. An occupied object grid cell moves the creature one cell nearer.
+- Thing grids (`g_view_creature_grid`, `g_view_object_grid`, 21 × 17 bytes each, index `(lateral + 10) * 17 + forward`): each square has 5 × 5 cells. Neighbor squares share their edge rows and columns, so a square is 4 grid cells wide.
+- `view_load_square` writes the view position of each square up to depth 3 that is not a wall into the creature grid (4 rows of 5 cells), and the view position of each creature group into the object grid at its cell relative to the party eye (cell 22, 10, 2, or 14 of the party square by direction). A creature of size 1 to 3 (creature info `+0x22`) is nearer to the party. An occupied object grid cell moves the creature one cell nearer.
 - Cell masks (`g_view_missile_masks`, `g_view_object_masks`, one 32-bit word per view position): bit n is set when grid cell n of the square holds a projectile, or an item. A floor square with a shop stand (side word 3 is 0) does not set the object bits.
 - `show_square_things` goes through the 25 cells (the party square: the far 15) in an order toward the view axis. For each cell it draws the objects, the creature whose object grid cell is there (then the projectiles of the 7 cells before), and the projectiles. Mask bit 30 limits the creatures to static creatures: the creatures behind a closed door.
 - Creature pictures: the animation frame (GDAT `(0x0f, type, 7, 0xfd)`, 8 bytes: picture entry for each side, grid cell, size row, shift, mirror bits) gives the picture, the cell, and the scale (`(0x0f, type, 7, 0xfe)`, 4 bytes per size row). A missing picture falls back to the opposite side (mirrored), to the front, then to the pictures `0xfa` to `0xfd`. Static creatures (creature info flag bit 0) keep the animation state in their record (`+8` sequence start, `+0x0a` state); the other creatures keep it in their active group (`g_active_groups`, `+8`).
@@ -48,7 +49,7 @@ The rules of the dungeon view: the blitters, the layout zones, the view squares,
 
 ## Seen squares
 
-The advanced and the turn-based modes mark the seen squares of the automap (`seen_visible` in `src/engine/seen.c`; the original game has no automap). Each game step marks the squares of the dungeon view. The view has 5 rows: the party row and 4 rows ahead, with 3, 3, 5, 5, and 7 squares.
+The advanced and the turn-based modes mark the seen squares of the automap (`seen_visible` in `src/engine/seen.c`). Each game step marks the squares of the dungeon view. The view has 5 rows: the party row and 4 rows ahead, with 3, 3, 5, 5, and 7 squares.
 
 - The party square is seen.
 - A square is seen when the seen square beside it toward the middle is open, or when the seen square in front of it (one row nearer) is open.
@@ -80,7 +81,6 @@ The automap of the advanced mode (`src/ui/automap.c`; the original game has none
   - `choose_shop_item` read before a price table of 0 or 1 bytes; the port steps through the item indices as for a shop ornament without a price table.
   - `ornament_frame` divided by 0 for an ornament frames value of `0x8000`; the port shows frame 1, as the cycle of 1 of the sensors ([world.md](world.md#deviations-from-the-original)).
 - Fix: the dimmed remap (`pal_apply_dim_remap`) skips a key color of 256 or more, which only a damaged `GRAPHICS.DAT` gives; the original writes it past the remap table.
-- Kept quirk: the scaled 4 bpp blit (`gfx_blit_scaled_4bpp`) wraps the nibble index of the source at 16 bits, as in the original; only a source of more than 65535 pixels reaches the wrap.
 - Explosion types 100 and 101 in alcoves are ported, but GRAPHICS.DAT has no pictures for them.
 - The mirrored sparkle mask of an odd width has an undefined last column in the original (an image cache bitmap that is not cleared); the port clears it.
 - The rain bitmap of a wet ornament is rect width × rain height (all rain pictures are 224 × 20). Its tile row is the area minus 16 minus 0 to 31 pixels, from a start of `rand_below(area - 60)` (16-bit). When the tile row is not longer than its start, for example a wet ornament 1 or 2 pixels wide, the original tiles from past the end of the rain bitmap; the port then fills the background with the color key. The rain over the view has the same tile row from a start of 0 to 255; with a rain picture of fewer than about 330 pixels (a damaged GRAPHICS.DAT) the row is not longer than its start, and the port draws no rain.
@@ -89,12 +89,13 @@ The automap of the advanced mode (`src/ui/automap.c`; the original game has none
 - `src/engine/save.c` reads the static flag from the creature info table of `src/engine/creature.c`.
 - The advanced mode draws views between game steps (the projectile flight). These views change no game state: `show_projectile_flight` (`src/ui/play.c`) restores the random seed, explosions do not count their views again, and a shop display does not choose or create an item. They do not set the seen bit (`GROUP_SEEN`) of a group, because the original has no such views. The AI clears the bit at each mood update, so the bit that a save of the advanced mode stores can differ from the bit that a view of each tick would leave.
 - Kept quirks, as in the original:
+  - The scaled 4 bpp blit (`gfx_blit_scaled_4bpp`) wraps the nibble index of the source at 16 bits; only a source of more than 65535 pixels reaches the wrap.
   - In the frame text of an animated ornament (`ornament_frame`), a letter `A` to `Z` gives the frame `letter - 'K'`; the letters `A` to `J` give negative frames.
   - The landmarks of an outdoor map use the first sky object of `weather_sky_objects` as their work record. The weather update writes that record again before each use.
   - The explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage.
   - A static creature on a door square seen from the front shows only the possessions in the near cells.
   - An item in an alcove gets the jitter of its spot twice, once in the alcove place and once as the items on the floor (`SKULL.c:52354-52358`, `52396-52401`).
-  - the random wall ornaments of a square on another map (linked squares, minion map) use the wall ornament list of the map entered last, with the random ornament count, the size, and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`)
+  - The random wall ornaments of a square on another map (linked squares, minion map) use the wall ornament list of the map entered last, with the random ornament count, the size, and the index of the map of the square (`random_ornament` in `src/engine/aspect.c`).
   - The hit test of a wet wall ornament on the front face draws the ornament with its rain and its contents into the view, where the hit test of the other ornaments only measures them (`SKULL.c:50988-51065`).
   - `show_far_squares` keeps the cell mask from square to square; a stairs square draws its things with the mask of the square drawn before it.
   - `aspect_get` clears the wall text of a square to 0, not `THING_TEXT_NONE` (`SKULL.c:12597`); only the wall things write `THING_TEXT_NONE`.
