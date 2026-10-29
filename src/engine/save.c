@@ -1047,6 +1047,7 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     if (!f) {
         free(group_order);
         free(container_order);
+        rename(bak_path, path); /* fix: the old save stays at path; without an old file the rename fails */
         return SAVE_ERR_IO;
     }
     start_io(f, gdat);
@@ -1062,8 +1063,10 @@ SaveResult save_write(const char *path, const char *bak_path, const char *name, 
     free(io.container_order);
     if (fclose(f) != 0)
         ok = false;
-    if (!ok)
+    if (!ok) {
         remove(path);
+        rename(bak_path, path); /* fix: the old save stays at path; without an old file the rename fails */
+    }
     creature_activate_all_maps();
     return ok ? SAVE_OK : SAVE_ERR_IO;
 }
