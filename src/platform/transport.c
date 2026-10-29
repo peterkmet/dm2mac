@@ -210,17 +210,17 @@ static void read_requests(void)
     while (transport.client_fd >= 0 && !transport.reply_held && !control_is_turn_pending() &&
            (end = memchr(transport.input, '\n', transport.input_length))) {
         size_t used = (size_t)(end + 1 - transport.input);
+        char line[INPUT_SIZE];
         *end = 0;
-        if (transport.discarding)
-            transport.discarding = false;
-        else if (memchr(transport.input, 0, used - 1))
-            send_error("request line has a NUL byte");
-        else if (end > transport.input)
-            answer_line(transport.input);
-        if (transport.client_fd < 0)
-            return;
+        memcpy(line, transport.input, used); /* fix: a poll inside the answer cannot change the line or the buffer */
         memmove(transport.input, end + 1, transport.input_length - used);
         transport.input_length -= used;
+        if (transport.discarding)
+            transport.discarding = false;
+        else if (memchr(line, 0, used - 1))
+            send_error("request line has a NUL byte");
+        else if (used > 1)
+            answer_line(line);
     }
     if (transport.input_length == sizeof transport.input) {
         if (!transport.discarding)
