@@ -6,6 +6,7 @@
 #include <string.h>
 #include "advanced.h"
 #include "champion.h"
+#include "crc32.h"
 #include "dialog.h"
 #include "dungeon.h"
 #include "game.h"
@@ -52,9 +53,6 @@
 #define SURROGATE_LOW  0xdc00
 #define SURROGATE_END  0xe000
 
-/* The reflected CRC-32 polynomial of PNG. */
-#define CRC32_POLYNOMIAL 0xedb88320u
-
 /* Format bytes of the zlib stream and the PNG header. */
 #define ZLIB_METHOD   0x78 /* deflate, 32 KB window */
 #define ZLIB_FLAGS    0x01 /* no dictionary; header check bits */
@@ -73,7 +71,6 @@
 #define ZLIB_HEADER_SIZE         2
 #define STORED_BLOCK_HEADER_SIZE 5 /* the last block flag, the length, and its complement */
 #define ADLER_SIZE               4
-#define CRC_TABLE_SIZE           256
 #define ADLER_SUM_SHIFT          16 /* the Adler-32 checksum: the second sum in the high half */
 #define PNG_ROW_SIZE             (1 + RGB_CHANNELS * SCREEN_W) /* the filter byte and the pixels of a row */
 #define PNG_RAW_SIZE             (PNG_ROW_SIZE * SCREEN_H)
@@ -87,7 +84,6 @@ static struct {
         bool pending;
         uint32_t start, ticks;
     } waiting;
-    uint32_t crc_table[CRC_TABLE_SIZE]; /* the CRC-32 of each byte value; filled on the first use */
     uint8_t png_raw[PNG_RAW_SIZE];      /* the filtered rows of a screenshot */
     uint8_t png_zlib[ZLIB_SIZE];        /* the zlib stream of the rows */
     uint8_t screen[SCREEN_H][SCREEN_W]; /* the screen of a screenshot, with the cursor */
@@ -410,22 +406,6 @@ static void put_state(Json *reply)
 }
 
 /* Screenshots: the screen with the pointer, as a PNG file. */
-
-/* The CRC-32 of PNG after n more bytes at p. */
-static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n)
-{
-    if (!control.crc_table[1])
-        for (uint32_t i = 0; i < CRC_TABLE_SIZE; i++) {
-            uint32_t c = i;
-            for (int k = 0; k < BYTE_BIT_COUNT; k++)
-                c = c & 1 ? CRC32_POLYNOMIAL ^ c >> 1 : c >> 1;
-            control.crc_table[i] = c;
-        }
-    crc = ~crc;
-    while (n--)
-        crc = control.crc_table[(crc ^ *p++) & BYTE_MASK] ^ crc >> BYTE_BIT_COUNT;
-    return ~crc;
-}
 
 /* Writes a PNG chunk: its length, its type, its data, and its CRC. */
 static void png_chunk(FILE *f, const char *type, const uint8_t *data, uint32_t n)
