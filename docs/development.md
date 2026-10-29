@@ -5,8 +5,7 @@ The port builds with `make`, tests with `make test`, and checks with `make check
 The port is built in three steps:
 
 1. **Decompilation:** Ghidra decompiles `SKULL.EXE` to C ([Decompiling](decompiling.md)).
-2. **Reimplementation:** the game rules in C11 follow the decompiled code. The port does not reproduce the DOS
-   technical layer.
+2. **Reimplementation:** the game rules in C11 follow the decompiled code ([Architecture](architecture.md)).
 3. **Differential verification:** a test runs a ported C function and the original code in an emulator with the
    same input and compares the state ([Tests](#tests)).
 
@@ -32,7 +31,7 @@ uv sync
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
-Put your DOS game (the folder, the ZIP archive, or the CD image) into the project folder, then start the game:
+Put your DOS game (the folder, the ZIP archive, or the CD image) into the project folder ([game-files.md](formats/game-files.md#sources)), then start the game:
 
 ```sh
 build/dm2                                   # New game (mode screen)
@@ -74,7 +73,7 @@ uv run pytest -q tests/<folder>/test_x.py
 
 To run several files, add `-n auto`.
 
-| Folder | What it proves |
+| Folder or file | What it proves |
 |---|---|
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
@@ -123,22 +122,24 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 2. Write the rule in the engine module that owns the data.
 3. Name every value (rule 3.1 of [coding-standard.md](coding-standard.md#3-constants)).
 4. Change the user interface only through the redraw flags or a member of `g_hooks`.
-5. Write a differential test in `tests/differential/`: the same input through the port (the test library) and
-   the original in the emulator (`dm2tools.emu`); compare the state.
+5. Write a differential test in `tests/differential/` ([Tests](#tests)).
 6. Record a deviation from the original in the "Deviations from the original" section of the rule page in
    [docs/rules/](rules/).
 7. Run `make check`.
 
 ## Manual checks
 
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md). The checks of the turn-based mode are in [manual-test-checklist.md](manual-test-checklist.md#t-turn-based-mode).
+The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md); the checks of the turn-based mode are in its section [T](manual-test-checklist.md#t-turn-based-mode).
 
 ## Documentation
 
 - [Player manual](manual.md): the options, the modes, the controls, and the cheats.
 - [Architecture](architecture.md) and [Coding standard](coding-standard.md): the structure of the code.
-- [Decompiling](decompiling.md), [SKULL.EXE map](reference/skull-map.md), and
-  [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
+- [Decompiling](decompiling.md), [SKULL.EXE map](reference/skull-map.md),
+  [skull-symbols.csv](reference/skull-symbols.csv), [SKULL.EXE address layout](reference/symbols/ranges.md) with its
+  range notes, and [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
+- [Items](reference/items.md): the values of every item.
+- [Manual test checklist](manual-test-checklist.md): the checks that no test covers.
 - [LLM mode](llm/llm-mode.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
   plays the game.
 - [TODO](todo.md): the open work. [Changelog](../CHANGELOG.md): the changes.
