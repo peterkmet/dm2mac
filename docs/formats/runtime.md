@@ -1,11 +1,11 @@
 # Runtime layer and timing
 
-The DOS runtime of `SKULL.EXE`: the SVGA option of the installer, the PIT divisor and the tick rates of the game, the music, and the digital driver, and the resident layer `IBMIOP.EXE` that the game calls for video, input, timer, and the movie script. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The DOS runtime of `SKULL.EXE`: the Super VGA (SVGA) option of the installer, the programmable interval timer (PIT) divisor and the tick rates of the game, the music, and the digital driver, and the resident layer `IBMIOP.EXE` that the game calls for video, input, timer, and the movie script. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## SVGA option
 
 - The SVGA option changes only the movies. It does not change the game. The game always runs in VGA mode `0x13` (320 × 200, 256 colors).
-- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, probably for SVGA only, the switch ` +VS`.
+- `INSTALL.EXE` asks "Press S for SVGA animations, V for standard VGA". For SVGA it copies `INTRO`, `FTL`, `END`, and `CREDITS`. For VGA it copies `INTRO.VGA`, `FTL.VGA`, and `END.VGA` under the names `INTRO`, `FTL`, `END`, and `CREDITS.PCX` instead of the credits movie. It writes `DM2.BAT` with `IBMIOP SKULL.EXE` and, for SVGA only (unverified, see below), the switch ` +VS`.
 - The movie files, their video modes, and their video sizes: [movies.md](movies.md#movie-player).
 - `IBMIOP.EXE` holds two launch scripts, one for SVGA and one for VGA ([movies.md](movies.md#launcher-script-ibmiopexe)).
 
@@ -16,7 +16,7 @@ The files show this:
 - `IBMIOP.EXE` (decompressed `0x19fe`): `int 10h` with `AX=0x0013`. `SKULL.EXE` has no `int 10h` and no VESA call.
 - The script tables, the script records, and the arguments of the movie player: [movies.md](movies.md).
 
-The effect is certain. The exact use of ` +VS` is probable, not verified.
+The effect is certain. The exact use of ` +VS` is unverified, because no static trace of the switch handler exists.
 
 ## PIT divisor and tick rates
 
@@ -46,7 +46,7 @@ PIT programming in the HMI timer library, `FUN_00062efd` and `FUN_00062f43`:
 - `SKULL.EXE` `FUN_0005a8b1`: sets vector `0x2d` to `FUN_00010cc2`, then `int 0FCh` with `EAX=0x0f`. `IBMIOP.EXE` function `0x0f` stores the callback and returns 1. `FUN_00010d0f` first calls `int 0FCh` function `0x2a`, which reinstalls the `IBMIOP.EXE` timer handler.
 - `FUN_00013887` (frame wait) polls VGA port `0x3da` bit 3. It does not use the PIT.
 
-The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are probable ([Unknown values](#unknown-values)).
+The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are unverified, because the real rate of the `INT 2Dh` callback is unknown ([Unknown values](#unknown-values)).
 
 More facts of the `IBMIOP.EXE` timer:
 

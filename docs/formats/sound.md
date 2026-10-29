@@ -1,12 +1,12 @@
 # Digital sound effects
 
-The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md](graphics.md)), their playback through the HMI SOS digital driver, and the volume and stereo position of a sound. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md](graphics.md)), their playback through the digital driver of the Human Machine Interfaces Sound Operating System (HMI SOS), and the volume and stereo position of a sound. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Sound items
 
 - The samples are GDAT items of type `2` in `GRAPHICS.DAT`. There are no separate sound files. `TEST.RAW` is only for the HMI `SETUP.EXE` test.
-- There are 292 sound items. Each item has a 6-byte header and raw PCM data.
-- Header: u16 LE sample rate `0x2b77` (11127 Hz), then the bytes `08 01 00 00` (probably 8 bits, 1 channel). All 292 items have the same header.
+- There are 292 sound items. Each item has a 6-byte header and raw pulse-code modulation (PCM) data.
+- Header: u16 LE sample rate `0x2b77` (11127 Hz), then the bytes `08 01 00 00` (8 bits, 1 channel; unverified, because no code reads these bytes). All 292 items have the same header.
 - Data: 8-bit signed PCM, mono, not compressed. Length = item size − 6 (245 to 61713 bytes).
 - At load time, `SKULL.EXE` converts the data in place to unsigned 8-bit (XOR `0x80`).
 - The SOS digital driver mixes at 11025 Hz. The game stores the 11127 Hz rate but does not pass it to the driver. The samples play at 11025 Hz (0.9 % slower).
@@ -30,7 +30,7 @@ Request: `FUN_00015ca9(cat, idx, entry, priority, volume, x, y, mode)`.
 
 1. If the global flag `DAT_0007f234` is set, `volume = volume >> 1`.
 2. The sound position is made relative to the party (`DAT_0007f26a`, `DAT_0007f26e`) and rotated by the party direction `DAT_0007f252`. The result is `lateral` (byte `+6`) and `forward` (byte `+7`).
-3. `dist = |dx| + |dy|`. If `dist > 1`, `FUN_0002facc(x, y)` returns `n`. If `n < 0`, the sound is dropped. If `dist < n`, both components are scaled: `k = (n << 10) / dist`, `c = ±((|c| * k + 0x200) >> 10)`.
+3. `dist = |dx| + |dy|`. If `dist > 1`, `FUN_0002facc(x, y)` returns `n`. If `n < 0`, the sound is dropped. If `dist < n`, both `lateral` and `forward` are scaled: `k = (n << 10) / dist`, and each component `c` becomes `±((|c| * k + 0x200) >> 10)`.
 4. `mode` is the delay: `1` queues to `DAT_0007f198`, `-1` queues to `DAT_0007f190`, `>= 2` uses timeline event `0x15`. `FUN_0001616d` flushes a queue. The rules of the delay: [world.md](../rules/world.md#sound-requests).
 
 Volume and pan: `FUN_00010877` on the 12-byte request record.
@@ -51,7 +51,7 @@ else {
 - `FUN_00010573` sorts the records by priority (byte `+4`), then by `vol8` (`FUN_0001084d`). It fills the SOS start-sample structure at `0x703f8`: `+0` data pointer, `+8` length, `+0x10` = 2, `+0x14` volume = `vol8 << 7 | vol8 >> 1`, `+0x18` slot, `+0x28` = 800, `+0x40` pan. Then it calls `FUN_000609b9` (`sosDIGIStartSample`). There are 64 slots (`DAT_0007eda0`).
 - Master volume, `FUN_00010736(level 0..7, 0)`: `FUN_00061a45` gets `l | l<<3 | l<<6 | l<<9 | l<<12` (0 to `0x7fff`).
 
-The SOS structure field names are probable.
+The SOS structure field names are unverified, because the binary has no HMI SOS symbols.
 
 ## Deviations from the original
 
@@ -60,7 +60,7 @@ The sound output is `src/ui/sound.c`.
 - The port loads the sounds from GDAT type `2` and skips the 6-byte header (`sndreq_load`, `src/engine/sound_request.c`).
 - Pan ratio overflow fixed. `FUN_00010877` divides `|lateral| << 11` by `|forward|` in 32 bits, but compares only the low 16 bits with `THRESH`. For `|lateral| >= 32` and a small `|forward|`, the ratio wraps and the sound pans near the center (example: lateral 32, forward 1 gives `0x8f00`, not `0xf800`). The port compares the full ratio. The differential test skips these inputs and checks the fix separately.
 - Mixing: the port mixes at 44100 Hz (4 × 11025) in interleaved signed 16-bit stereo. Each sample repeats 4 times. SDL3 converts to the device rate.
-- Pan law: the SOS pan curve is not known. The port uses a linear balance with the center at full volume on both sides: left gain = `min(0x8000, 0x10000 − pan) / 0x8000`, right gain = `min(0x8000, pan) / 0x8000`, times the SOS volume `vol8 << 7 | vol8 >> 1`.
+- Pan law: the SOS pan curve is unknown. The port uses a linear balance with the center at full volume on both sides: left gain = `min(0x8000, 0x10000 − pan) / 0x8000`, right gain = `min(0x8000, pan) / 0x8000`, times the SOS volume `vol8 << 7 | vol8 >> 1`.
 - Voices: 64, as in the original. A new sound takes the first free voice. When all play, the sound is dropped.
 - The port keeps the samples signed and skips the XOR `0x80` of `FUN_000104ea`.
 - `sndreq_party_offset` takes the party direction 0 to 3. For other values the original keeps stale locals; the port treats them as north.

@@ -6,7 +6,7 @@ The songs of the game: the HMP song items in `GRAPHICS.DAT` ([graphics.md](graph
 
 - The songs are 29 GDAT items with key `(4, song, 3, 0)`, `song` = 0 to 28. Each item is a complete HMP file (`HMIMIDIP013195`).
 - `game/TEST.HMP` is byte-equal to song 10 (item 5602, 9645 bytes).
-- `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number. The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes. The game reads at most `0x3f` bytes.
+- `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes. The game reads at most `0x3f` bytes.
 
 The code and the data show this:
 
@@ -78,7 +78,7 @@ The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addr
 - Names: 128 × 12 bytes (u16 index, u8 flag, 9-byte name). In `DRUM.BNK`, the flag byte holds the drum note (for example `35`, `38`, `41`).
 - Data: 128 × 30 bytes (`0x61c + 30*128 = 5404` = file size).
 
-Per 30-byte record, `b[0]` is the percussive flag and `b[1]` the voice number. The modulator fields are `b[2..14]` and the carrier fields are `b[15..27]`, in the order KSL, MULT, FB, AR, SL, EG, DR, RR, TL, AM, VIB, KSR, CON. `b[28]` and `b[29]` are the wave selects.
+Per 30-byte record, `b[0]` is the percussive flag and `b[1]` the voice number. The modulator fields are `b[2..14]` and the carrier fields are `b[15..27]`, in the order KSL, MULT, FB, AR, SL, EG, DR, RR, TL, AM, VIB, KSR, CON (key scale level, frequency multiplier, feedback, attack rate, sustain level, envelope type, decay rate, release rate, total level, amplitude modulation, vibrato, key scale rate, connection). `b[28]` and `b[29]` are the wave selects.
 
 The packing routine (driver offset `0xd37`) overwrites the record in place. It sets header byte 2 to `'H'` and converts `used − 2` records (126, not 128):
 

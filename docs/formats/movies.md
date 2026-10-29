@@ -1,6 +1,6 @@
 # Movies
 
-The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player files, the Interplay MVE stream, and the splash picture `INTRPLAY.PCX`. The SVGA option of the installer selects the movie files ([runtime.md](runtime.md#svga-option)). The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The movies of the game: the launcher script of `IBMIOP.EXE`, the movie player files, the Interplay movie (MVE) stream, and the splash picture `INTRPLAY.PCX`. The Super VGA (SVGA) option of the installer selects the movie files ([runtime.md](runtime.md#svga-option)). The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Launcher script (`IBMIOP.EXE`)
 
