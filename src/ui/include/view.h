@@ -111,6 +111,11 @@ bool view_shows_rain(void);
 /* Fills the offscreen bitmap of the wet picture ctx: with rain, a random part of the rain picture, else color_key. */
 void view_draw_wet_image(const DrawCtx *ctx, Bitmap *offscreen, int color_key); /* exported for the tests */
 
+/* ---- Things ---- */
+
+/* The picture kind of a flying object (a missile) by the pictures of its payload in its GDAT entry. */
+enum MissileKind view_missile_kind(uint16_t thing);
+
 /* ---- The view ---- */
 
 /* The view picture, 224 x 136 pixels. */

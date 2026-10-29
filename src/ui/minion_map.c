@@ -312,23 +312,6 @@ static void show_group(uint16_t group, const MapSquare *at)
     }
 }
 
-/* How the pictures of a flying object show its sides: from the images that exist in its GDAT entry. */
-static enum MissileKind missile_image_kind(uint16_t thing)
-{
-    int category = item_gdat_category(thing);
-    int index = item_gdat_index(thing);
-    const Gdat *g = gdat_current();
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_FRONT))
-        return MISSILE_NO_PICTURE;
-    if (!gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_SIDE))
-        return MISSILE_NO_SIDE;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_BACK))
-        return MISSILE_FRONT_BACK;
-    if (gdat_exists(g, category, index, GDAT_TYPE_IMAGE, GFX_MISSILE_PICTURE_FRONT_2))
-        return MISSILE_MIRRORED;
-    return MISSILE_FRONT;
-}
-
 /* The icons of the missiles of a thing list from first. */
 static void show_missiles(uint16_t first, const MapSquare *at)
 {
@@ -344,7 +327,7 @@ static void show_missiles(uint16_t first, const MapSquare *at)
         if (m.count > MISSILE_SIDES_ICON) {
             int side = dir_relative(projectile_dir(t), dir);
             icon = MISSILE_SIDES_ICON;
-            switch (missile_image_kind(t)) {
+            switch (view_missile_kind(t)) {
             case MISSILE_FRONT_BACK:
                 icon = side + MISSILE_SIDES_ICON + missile_side_shift[side][cell];
                 break;

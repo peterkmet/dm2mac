@@ -1930,8 +1930,7 @@ static void show_pending_possessions(int pos)
     view.pending.first = THING_ENDOFLIST;
 }
 
-/* The picture kind of a missile by the pictures of its payload. */
-static enum MissileKind missile_picture_kind(uint16_t thing)
+enum MissileKind view_missile_kind(uint16_t thing)
 {
     int category = item_gdat_category(thing);
     int index = item_gdat_index(thing);
@@ -1998,7 +1997,7 @@ static void show_missiles(uint16_t thing, int pos, int position)
         if (get_thing_position(thing, view.party_dir) != position || thing_type(thing) != THING_PROJECTILE)
             continue;
         int zone = zone_id_for_view_cell(pos, position, 0);
-        enum MissileKind kind = missile_picture_kind(thing);
+        enum MissileKind kind = view_missile_kind(thing);
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         if (kind == MISSILE_NO_PICTURE) {
             uint16_t object = thing_with_cell(payload, thing_cell(thing));
