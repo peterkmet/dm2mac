@@ -28,7 +28,7 @@ A file fails when it is missing, has a different size, or has a different CRC-32
 1. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
 2. Otherwise `main` creates `game/` when it is missing and opens the log.
 3. The port checks the 10 files of `game/`. When all pass, it reads no source.
-4. Otherwise it searches a source and installs from it. A restart of the game finds a complete `game/` and reads no source.
+4. Otherwise it searches a source and installs from it.
 
 The search runs in every mode, including the turn-based mode.
 
