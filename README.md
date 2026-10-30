@@ -19,18 +19,18 @@ languages) do not work.
    `DM2Mac-windows-x64.zip`. Extract it.
 2. Copy your game (the folder, the ZIP archive, or the CD image) into the extracted `DM2Mac` folder.
 3. Start the game:
-   - **macOS:** open Terminal in the folder, remove the quarantine, and start the launcher (or double-click it in
-     Finder):
+   - **macOS:** open Terminal in the folder, remove the quarantine attribute, and start the launcher (or
+     double-click it in Finder):
 
      ```sh
      xattr -d com.apple.quarantine dm2 "Dungeon Master II.command" libSDL3.0.dylib
      open "Dungeon Master II.command"
      ```
 
-   - **Windows:** double-click `dm2.exe`. When SmartScreen warns about an unknown publisher, click "More info", then
+   - **Windows:** double-click `dm2.exe`. If SmartScreen warns about an unknown publisher, click "More info", then
      "Run anyway".
 
-On first startup the game checks your files and copies the 10 files it needs into `game/`. When a file is missing
+On first startup the game checks your files and copies the 10 files it needs into `game/`. If a file is missing
 or wrong, a message names it. Your saved games go to `game/DATA`.
 
 ## Keys
@@ -42,32 +42,32 @@ an automap, an options menu, cheats, and these keys):
 |---|---|
 | `W` `A` `S` `D`, `Q` `E` | Move, turn |
 | `Tab` or `M` | Automap |
-| `Esc` | Options menu (the upscale filter of the window) |
+| `Esc` | Options menu (window upscale filter) |
 | `C` | Cheat screen |
 | `F5`, `F9` | Quick save, quick load |
 
-The mouse and the arrow keys work as in the original. All controls, options, and the cheats are in the
+The mouse and arrow keys work as in the original. All controls, options, and cheats are in the
 [Player manual](docs/manual.md).
 
 ## For developers
 
 DM2Mac is a C11 and SDL3 reimplementation of `SKULL.EXE`, built from its own Ghidra decompilation and checked
-against the original in an emulator. The build, the tests, and the index of the documentation are in
-[Development](docs/development.md). A program, for example an LLM, can play the game turn by turn on macOS:
-[LLM mode](docs/llm/llm-mode.md).
+against the original in an emulator. Build instructions, tests, and the documentation index are in
+[Development](docs/development.md). On macOS, a program such as an LLM can play the game turn by turn
+([LLM mode](docs/llm/llm-mode.md)).
 
 ## Acknowledgements
 
 - [SDL3](https://github.com/libsdl-org/SDL): windowing, input, and audio output.
-- [Nuked-OPL3](https://github.com/nukeykt/Nuked-OPL3) by Nuke.YKT: the OPL3 emulation for the music.
+- [Nuked-OPL3](https://github.com/nukeykt/Nuked-OPL3) by Nuke.YKT: OPL3 emulation for the music.
 - [tinf](https://github.com/jibsen/tinf) by Jørgen Ibsen: ZIP decompression.
-- [Unicorn](https://www.unicorn-engine.org): the CPU emulation for the differential tests.
+- [Unicorn](https://www.unicorn-engine.org): CPU emulation for the differential tests.
 - [reDM2](https://codeberg.org/CyCl0ne/reDM2): an analysis of the same `SKULL.EXE`, read for names, formats, and
   logic.
 
 ## License
 
-GPL-3.0-or-later ([LICENSE](LICENSE)). Nuked-OPL3 in `src/third_party/opl3/` has the LGPL-2.1-or-later license
-([opl3-LICENSE](src/third_party/opl3/opl3-LICENSE)); tinf in `src/third_party/tinf/` has the zlib license
+GPL-3.0-or-later ([LICENSE](LICENSE)). Nuked-OPL3 in `src/third_party/opl3/` is under the LGPL-2.1-or-later license
+([opl3-LICENSE](src/third_party/opl3/opl3-LICENSE)); tinf in `src/third_party/tinf/` is under the zlib license
 ([tinf-LICENSE](src/third_party/tinf/tinf-LICENSE)). Dungeon Master II is the property of its rights holders. This
 project is not affiliated with or endorsed by them. The game data is not included and is not covered by this license.
