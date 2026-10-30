@@ -1,8 +1,8 @@
 # Cross-check with reDM2
 
-A comparison of the `SKULL.EXE` analysis of the port with the reDM2 project (https://codeberg.org/CyCl0ne/reDM2). reDM2 analyzes the same `SKULL.EXE` with the same code base `0x10000`.
+A comparison of the port's `SKULL.EXE` analysis with the [reDM2](https://codeberg.org/CyCl0ne/reDM2) project. reDM2 analyzes the same `SKULL.EXE` with the same code base address `0x10000`.
 
-Rule: the port uses reDM2 for names, formats, logic, and test methods. It does not copy its code. When the port follows reDM2 analysis, the port comment cites it.
+Rule: the port uses reDM2 for names, formats, logic, and test methods, but does not copy reDM2 code. Where the port follows the reDM2 analysis, the port comment cites it.
 
 Sources in reDM2:
 
@@ -10,14 +10,14 @@ Sources in reDM2:
 - Formats: `docs/formats.md`, `docs/savegame.md`.
 - Evidence: `docs/memory.md`, `docs/equiv.md`, `README.md`, and `src/*.c` with `src/*.test.toml` (functions with a differential test).
 
-Sources of the port: `docs/reference/skull-symbols.csv`, [skull-map.md](skull-map.md), `docs/formats/`, `docs/rules/`, `reference/decomp/SKULL.c`.
+Port sources: `docs/reference/skull-symbols.csv`, [skull-map.md](skull-map.md), `docs/formats/`, `docs/rules/`, `reference/decomp/SKULL.c`.
 
 ## Method
 
-1. Join both name sets by address. Functions: the 1362 starts of the port and the 1405 reDM2 `'af+` starts. Globals: the 626 globals of the port and the 341 reDM2 `DM2_GLOBAL` addresses.
+1. Join both name sets by address. Functions: the port's 1362 starts and the 1405 reDM2 `'af+` starts. Globals: the port's 626 globals and the 341 reDM2 `DM2_GLOBAL` addresses.
 2. Remove reDM2 placeholder names (`fcn.*`, `crt_sub_*`, `hmi_sub_*`, `noop_*`, `loc.*`, `int.*`, and the encoded signature-match names).
 3. Split each name into words and map common synonyms (`dun`/`dungeon`, `gfx`/`image`/`gdat`, `creature`/`actor`, `zone`/`region`, `timeline`/`event`, and others).
-4. Shared word: "same meaning". No shared word: read both names, the reDM2 comment, and the decompiled body. Then classify as "compatible" (same role, other abstraction level) or "conflicting" (other role).
+4. A pair that shares a word has the "same meaning". For any other pair, read both names, the reDM2 comment, and the decompiled body, then classify the pair as "compatible" (same role, different abstraction level) or "conflicting" (different role).
 
 reDM2 names are mostly mechanical (`obj_type_value4`, `rec12_index_sift`, `type_attr_e_d`). The port names are mostly game-level (`creature_get_gdat_attr4`, `timeline_fix_queue_slot`, `dun_get_door_attr_0d`). Thus most "compatible" pairs differ only in the level of description.
 
@@ -31,10 +31,10 @@ reDM2 names are mostly mechanical (`obj_type_value4`, `rec12_index_sift`, `type_
 | Different but compatible | 151 |
 | Conflicting meaning | 27 (1 resolved by rename, 26 open) |
 | Both have a start, reDM2 has only a placeholder name | 677 |
-| reDM2-only starts (inside a function of the port) | 79 |
+| reDM2-only starts (inside a port function) | 79 |
 | Port-only starts (no reDM2 start) | 34 |
 
-The 1362 starts of the port = 473 + 151 + 27 + 677 + 34.
+The port's 1362 starts = 473 + 151 + 27 + 677 + 34.
 
 ### Globals
 
@@ -48,18 +48,18 @@ The 1362 starts of the port = 473 + 151 + 27 + 677 + 34.
 
 ## Renames
 
-All renames are in `docs/reference/skull-symbols.csv`. The function address set did not change.
+All renames are in `docs/reference/skull-symbols.csv`. The set of function addresses did not change.
 
 | Address | Old name | New name | Reason |
 |---|---|---|---|
-| `0x46745` | `champ_reduce_by_stat` | `champ_get_stat_adjusted_attack` | reDM2 matches the body with DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack` and tests it (1035 cases). The function scales an attack value by `170 - stat`. "Reduce" did not tell this. The third argument is `attack`. |
+| `0x46745` | `champ_reduce_by_stat` | `champ_get_stat_adjusted_attack` | reDM2 matches the body with DM1 `F0307_CHAMPION_GetStatisticAdjustedAttack` and tests it (1035 cases). The function scales an attack value by `170 - stat`. "Reduce" did not say this. The third argument is `attack`. |
 | `0x7f8dc` | `g_save_checksum` | `g_save_bit_total` | reDM2: `g_packed_bit_ctr`. `save_write_packed` and `save_read_packed` add the number of stored bits. No code reads the value for a check. |
 
 `reference/decomp/SKULL.c` (`tools/decompile-skull.sh`), [skull-map.md](skull-map.md), and `docs/reference/symbols/` use the new names.
 
 ## Conflicts left open
 
-The port keeps its name in each case. The reason is in the last column.
+The port keeps its name in each case.
 
 ### Functions
 
@@ -86,7 +86,7 @@ The port keeps its name in each case. The reason is in the last column.
 | `0x7054a` | `g_disk_no_swap` | `g_ztoken_savesw` | reDM2 comment: also the "saves are on the hard disk" flag. Compatible use, but the reDM2 name is a string token name. |
 | `0x7ef34` | `g_prepared_samples` | `g_hilite_list` | Follows `0x104ea`. |
 | `0x7f07c` | `g_palette_set_result` | `g_mouse_absent` | Follows `0x13898`. |
-| `0x7f0ae` | `g_mouse_buttons` | `g_cursor_q_h` | reDM2 read the `IBMIOP` handler: the third word is "cursor height". The game tests bit 1 of it for the right button. Needs a DOSBox check. |
+| `0x7f0ae` | `g_mouse_buttons` | `g_cursor_q_h` | reDM2 reads the `IBMIOP` handler: the third word is "cursor height". The game tests bit 1 of it for the right button. Needs a DOSBox check. |
 | `0x7f258` | `g_party_move_steps` | `g_ui_effect_count` | An earlier port draft named it `g_walk_anim_step`. The reDM2 name is a third reading. Not checked in depth. |
 | `0x7f280` | `g_new_game` | `g_rec12_relink_7f280` | Commands `0xd7`/`0xd8` set it, `0xd9` clears it. |
 | `0x7f3c0` | `g_cur_map_extra_data` | `g_creature_list` | Not checked in depth. |
@@ -94,18 +94,18 @@ The port keeps its name in each case. The reason is in the last column.
 | `0x7f8d0`-`0x7f8d6` | `g_ai_target_y`, `_map`, `_x`, `_dir` | `g_view_y_save`, ... | reDM2: saved view position in `map_switch_save_view` (`ai_set_map` in the port). An earlier port draft named them `g_ai_party_*`. The reDM2 reading supports "party position saved". Not checked. |
 | `0x7fad0` | `g_song_buffer_size` | `g_gfx_max_size_7fad0` | `gdat_find_max_song_size` scans type 3 items. `sound_alloc_buffers` uses the value for `g_song_buffer`. |
 | `0x7fbce` | `g_leader_hand_weight` | `g_champ_bonus_7fbce` | Not checked in depth. |
-| `0x7fff0` | `g_party_haste` | `g_stat_boost_shift` | The main loop decrements it. Spells add to it. When it is not 0, the action delay is shifted right by 2. |
+| `0x7fff0` | `g_party_haste` | `g_stat_boost_shift` | The main loop decrements it. Spells add to it. If it is not 0, the action delay is shifted right by 2. |
 
 ## Function boundaries
 
-`tests/tools/test_symbols.py` requires that the function addresses of the port are the Ghidra function starts. The port keeps them. reDM2 has 79 starts inside functions of the port, and 34 starts of the port have no reDM2 start.
+`tests/tools/test_symbols.py` requires the port's function addresses to be the Ghidra function starts, and the port keeps them. reDM2 has 79 starts inside port functions, and 34 port starts have no reDM2 start.
 
-reDM2 starts inside functions of the port (79):
+The 79 reDM2 starts inside port functions:
 
-- Probable real entry points that Ghidra joined to the previous function (10): `0x2fdf0` and `0x2fe0a` (`word_sign_gate`, tested in reDM2) after `math_count_bits`; `0x3305a` (2789 bytes) in `ai_search_area`; `0x540ff` in `show_far_squares`; `0x43108` in `ui_draw_party_icons`; `0x48066` in `champ_apply_time_effects`; `0x4be76` in `sensor_party_possesses_type`; `0x2301d` in `click_in_viewport`; `0x24022` in `creature_push_creature`; `0x37022` in `restore_timed_effects` (reDM2: the switch on the event type). Check these before the port splits or merges them.
+- Probable real entry points that Ghidra joined to the previous function (10): `0x2fdf0` and `0x2fe0a` (`word_sign_gate`, tested in reDM2) after `math_count_bits`; `0x3305a` (2789 bytes) in `ai_search_area`; `0x540ff` in `show_far_squares`; `0x43108` in `ui_draw_party_icons`; `0x48066` in `champ_apply_time_effects`; `0x4be76` in `sensor_party_possesses_type`; `0x2301d` in `click_in_viewport`; `0x24022` in `creature_push_creature`; `0x37022` in `restore_timed_effects` (reDM2: the switch on the event type). Check them before splitting or merging the port functions.
 - Second entry points of table-called handlers (26): 10 in the `input_cond_*` functions (`0x200c8`-`0x2027c`) and 16 in the `creature_ai_scan_*` and `creature_ai_cmd_*` functions (`0x2765c`-`0x281e9`). The dispatch tables can point into the middle of these functions.
-- Not functions (10): `0x1d051` (loop latch, reDM2 says so), `0x3156e` (shared epilogue, reDM2 says so), `0x26e60` and `0x2703c` (switch targets), `0x3ae7a` and `0x3b0ee` (parts of `gdat_load_map_graphics`), `0x4710c`/`0x4710d`, `0x10d07` and `0x14726` (interrupt return points).
-- Decoder inner loops (3): `0x5ab4f`, `0x5ad3c`, `0x5ad9e`. The port starts `0x5aada`, `0x5ad2b`, `0x5ad8d` are the pointers in `g_image_decoders`, so these starts are correct.
+- Not functions (10): `0x1d051` (loop latch, per reDM2), `0x3156e` (shared epilogue, per reDM2), `0x26e60` and `0x2703c` (switch targets), `0x3ae7a` and `0x3b0ee` (parts of `gdat_load_map_graphics`), `0x4710c`/`0x4710d`, `0x10d07` and `0x14726` (interrupt return points).
+- Decoder inner loops (3): `0x5ab4f`, `0x5ad3c`, `0x5ad9e`. The port starts `0x5aada`, `0x5ad2b`, `0x5ad8d` are the pointers in `g_image_decoders`, which confirms them.
 - Library and HMI code (10): `0x5b0fe`, `0x5efb5`, `0x5f35c`, `0x62001`, `0x62513`, `0x633b5`, `0x63661`, `0x637e9`, `0x64ff4`, `0x68c0f`.
 - Short starts near a function end, probably shared tails, not checked (20): `0x140fb`, `0x1c4a1`, `0x1fe66` (reDM2: shared tail), `0x23d0d`, `0x24015`, `0x25c52`, `0x25d41`, `0x28671`, `0x2a351`, `0x2fecd`, `0x2fed3`, `0x3180d`, `0x35b77`, `0x3c0ca`, `0x3c3a5`, `0x3f547`, `0x40d33`, `0x509df`, `0x557a0`, `0x55f48`.
 
@@ -128,7 +128,7 @@ A global goes into the symbol table when the port code needs it.
 
 ## Format findings
 
-The details and the citations are in the pages of `docs/formats/`.
+The pages in `docs/formats/` give the details and the citations.
 
 Agreements:
 
@@ -151,11 +151,11 @@ Disagreements:
 - `IBMIOP` function `0x0e`, third word: buttons (port) or cursor height (reDM2). Open.
 - `IBMIOP` function `0x10a`: palette (port) or cursor image (reDM2). Open.
 
-The game tick rate is an open measurement in both projects ([runtime.md](../formats/runtime.md#unknown-values)).
+Neither project has measured the game tick rate yet ([runtime.md](../formats/runtime.md#unknown-values)).
 
 ## Test methods of reDM2
 
-reDM2 verifies by functional equivalence, not by byte matching (`README.md`, "How verification works"; `docs/equiv.md`). The table gives the use of each method with the `dm2tools.emu` oracle (`tools/dm2tools/emu.py`) of the port. "Proposed" marks a use that the tests do not have.
+reDM2 verifies by functional equivalence, not by byte matching (`README.md`, "How verification works"; `docs/equiv.md`). The table shows how each method applies to the port's `dm2tools.emu` oracle (`tools/dm2tools/emu.py`). "Proposed" marks a use that the tests do not have yet.
 
 | reDM2 method | What it does | Use with `dm2tools.emu` |
 |---|---|---|
