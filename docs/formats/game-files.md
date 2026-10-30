@@ -1,10 +1,10 @@
 # Game files and install
 
-The port reads 10 game files of the PC DOS version of Dungeon Master II (English, 1995), checks each file, and on startup installs them from a source into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), the CD image reader in [cd-image.md](cd-image.md).
+The port reads 10 game files of the PC DOS version of Dungeon Master II (English, 1995), checks each file, and on startup installs them from a source into `game/` below the working folder. The ZIP reader is in [zip.md](zip.md), and the CD image reader is in [cd-image.md](cd-image.md).
 
 ## The files
 
-The check of a file is its size and its CRC-32 (the standard polynomial `0xedb88320`). Names are case-insensitive. The table is `gamefile_table` in `src/data/gamefile.c`.
+The file check compares the size and the CRC-32 (the standard polynomial `0xedb88320`). Names are case-insensitive. The table is `gamefile_table` in `src/data/gamefile.c`.
 
 | File below `game/` | Size | CRC-32 | Read by |
 |---|---|---|---|
@@ -19,16 +19,16 @@ The check of a file is its size and its CRC-32 (the standard polynomial `0xedb88
 | `DATA/GRAPHICS.DAT` | 8639757 | `0xc6d130f6` | the session |
 | `DATA/DUNGEON.DAT` | 39437 | `0x2530a08a` | the session |
 
-`DATA/DUNGENB.DAT` and `DATA/DUNGEON.FTL` are optional files of the session. The DOS release has neither, and the install does not copy them. The port reads no other file of the DOS installation.
+`DATA/DUNGENB.DAT` and `DATA/DUNGEON.FTL` are optional session files. The DOS release has neither, and the install does not copy them. The port does not read any other file of the DOS installation.
 
-A file fails when it is missing, has a different size, or has a different CRC-32.
+A file fails if it is missing, has a different size, or has a different CRC-32.
 
 ## Startup
 
 1. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
-2. Otherwise `main` creates `game/` when it is missing and opens the log.
-3. The port checks the 10 files of `game/`. When all pass, it reads no source.
-4. Otherwise it searches a source and installs from it.
+2. Otherwise, `main` creates `game/` if it is missing and opens the log.
+3. The port checks the 10 files in `game/`. If all pass, it does not read a source.
+4. Otherwise, it searches for a source and installs from it.
 
 The search runs in every mode, including the turn-based mode.
 
@@ -36,45 +36,45 @@ The search runs in every mode, including the turn-based mode.
 
 A source is a folder, a ZIP archive, or a CD image that holds all 10 files. The search runs in the working folder in this order:
 
-1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder is tried only when it holds at least one of the 10 files at its root. The search enters other folders, but they get no log line and no message line.
+1. Folders. The search is depth-first in name order (`strcmp`) up to 3 levels; a child of the working folder is level 1. A folder is checked before its subfolders. The folder `game/` at level 1 is skipped. A folder is tried only if it holds at least one of the 10 files at its root. The search enters other folders, but they do not get a log line or a message line.
 2. ZIP archives (`.zip`) in the working folder itself, in name order. The root of the game files is found as in [zip.md](zip.md#names).
 3. CD images (`.iso`, `.img`, `.bin`) in the working folder itself, in name order. The files are in the root folder of the image ([cd-image.md](cd-image.md#directory-records)).
 
-The extensions are case-insensitive. The first source with all 10 files that pass the check is the source of the install. A folder source with at least one game file, a ZIP archive, or a CD image that fails gets a line in the log and a line in the message, and the search goes on.
+The extensions are case-insensitive. The install uses the first source whose 10 files all pass the check. A folder source with at least one game file, a ZIP archive, or a CD image that fails gets a line in the log and a line in the message, and the search continues.
 
 ## Install
 
-1. The install creates `game/` and `game/DATA` when they are missing.
-2. It deletes the temporary files of an earlier install (the file name and `.TMP`) in `game/`.
-3. The source is complete only when all 10 files pass, even when `game/` holds some of them.
-4. For each file that is missing or fails in `game/`, the install writes the file to its temporary name, checks the written file (size and CRC-32), deletes the target, and renames the temporary file to the target. A mismatch or an error deletes the temporary file.
-5. Files of `game/` that pass stay as they are.
+1. The install creates `game/` and `game/DATA` if they are missing.
+2. It deletes temporary files (the file name plus `.TMP`) that an earlier install left in `game/`.
+3. The source is complete only if all 10 files pass, even if `game/` already holds some of them.
+4. For each file in `game/` that is missing or fails, the install writes the file under its temporary name, checks the written file (size and CRC-32), deletes the target, and renames the temporary file to the target. On a mismatch or an error, the install deletes the temporary file.
+5. Files in `game/` that pass stay as they are.
 
-The install writes only the 10 fixed names of the table, never a path from the source.
+The install writes only the 10 fixed names from the table, never a path from the source.
 
 ## Message
 
-When no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode the message goes to the log only; in the other modes the port also shows it in a system message box (the game window is not open yet). The message has these parts:
+If no source passes, the port stops with `EXIT_FAILURE` and a message. In the turn-based mode, the message goes to the log only; in the other modes, the port also shows it in a system message box (the game window is not open yet). The message has these parts:
 
-1. The game files of Dungeon Master II are missing.
-2. The user needs their own copy of the PC DOS version (English, 1995).
-3. The forms of a source (folder, `.zip`, `.iso`, `.img`, `.bin`) and the full path of the working folder.
-4. When `game/` holds a file that exists and fails, a line with the first such file of the table, `game/<file> is missing or wrong.`
-5. One line per failed source: `<path>: <reason>.` The reason is one of: `not a ZIP archive or damaged`; `not a CD image or damaged`; `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`; `no DATA/GRAPHICS.DAT in the archive`; `<file> is missing or wrong` (the first file of the table that fails).
+1. A statement that the Dungeon Master II game files are missing.
+2. A statement that the user needs their own copy of the PC DOS version (English, 1995).
+3. The source forms (folder, `.zip`, `.iso`, `.img`, `.bin`) and the full path of the working folder.
+4. If `game/` holds a file that is present but fails, a line for the first such file in the table: `game/<file> is missing or wrong.`
+5. One line per failed source: `<path>: <reason>.` The reason is one of: `not a ZIP archive or damaged`; `not a CD image or damaged`; `a MODE2 CD image: the port reads 2048-byte and MODE1 sectors only`; `no DATA/GRAPHICS.DAT in the archive`; `<file> is missing or wrong` (the first failing file in the table).
 
-The message has at most 4095 characters; a longer message ends with `...`. When the port cannot write into `game/`, the message is `cannot write the game files into <path>`.
+The message has at most 4095 characters; a longer message ends with `...`. If the port cannot write into `game/`, the message is `cannot write the game files into <path>`.
 
 ## Log
 
-The progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in the data folder (`game/` by default) on Windows, the error output on macOS.
+Progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in the data folder (`game/` by default) on Windows, and the error output on macOS.
 
 ## Invariants
 
-- The install changes no file of a source. The readers open a source with `"rb"`.
-- After a successful install, each of the 10 files of `game/` passes the check, and `game/` has no temporary file.
-- The install changes no save, no `QUICK.DAT`, and no `SETTINGS.TXT`.
+- The install does not change any source file. The readers open a source with `"rb"`.
+- After a successful install, each of the 10 files in `game/` passes the check, and `game/` holds no temporary file.
+- The install does not change saves, `QUICK.DAT`, or `SETTINGS.TXT`.
 - With `--data DIR`, the port neither searches nor writes a game file.
-- Two programs that start at the same time in one folder can install at the same time. The port does not prevent this.
+- Two programs that start at the same time in one folder can install at the same time; the port does not prevent this.
 
 ## Deviations from the original
 

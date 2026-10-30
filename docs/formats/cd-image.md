@@ -9,9 +9,9 @@
 | Cooked image | 2048 bytes | the whole sector |
 | Raw MODE1 image | 2352 bytes | 2048 bytes at offset 16, after the sync and the header |
 
-The reader picks the layout by the sync pattern at the start of the image: a zero byte, ten bytes `0xff`, a zero byte (12 bytes). Without the pattern, the sectors are 2048 bytes. The sector count is the image size divided by the sector size.
+The reader picks the layout from the sync pattern at the start of the image: a zero byte, ten bytes `0xff`, a zero byte (12 bytes). Without the pattern, the sectors are 2048 bytes. The sector count is the image size divided by the sector size.
 
-In a raw image, the mode byte (offset 15) of sector 16 must be `0x01` (MODE1). A raw image with mode `0x02` is a MODE2 image (an XA image); it fails as in [What fails](#what-fails). Any other mode value is a damaged image.
+In a raw image, the mode byte (offset 15) of sector 16 must be `0x01` (MODE1). A raw image with mode `0x02` is a MODE2 image (an XA image); it fails as listed in [What fails](#what-fails). Any other mode value means a damaged image.
 
 ## Volume descriptor
 
@@ -19,7 +19,7 @@ Sector 16 is the primary volume descriptor. The reader requires type `0x01` and 
 
 ## Directory records
 
-The reader reads these fields of a record:
+The reader reads these record fields:
 
 | Field | Offset |
 |---|---|
@@ -30,7 +30,7 @@ The reader reads these fields of a record:
 | Name length | 32 |
 | Name | 33 |
 
-It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root directory, or a subdirectory of the root directory and a file in it. A file or a folder at the wrong place in the path does not match. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
+It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT`): a file in the root directory, or a subdirectory of the root directory and a file in it. A record matches a path part only if its directory flag fits the part: a directory for the first of two parts, a file for the last part. The sectors of an extent must all lie inside the image. A record that is too short for its name, or that ends outside the directory, fails the search.
 
 ## Names
 
