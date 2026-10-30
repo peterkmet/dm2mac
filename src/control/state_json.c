@@ -796,11 +796,6 @@ static const char *name_of_door_state(int state)
     return "partly_open";
 }
 
-static bool is_object(uint16_t thing)
-{
-    return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
-}
-
 /* What the view draws on the square at at view position pos, seen to dir: VIEW_DRAWS_* bits. */
 static unsigned draws_at(int pos, int16_t dir, Location at)
 {
@@ -820,7 +815,7 @@ static bool is_drawn(uint16_t thing, unsigned draws)
     case THING_EXPLOSION:
         return (draws & VIEW_DRAWS_EXPLOSIONS) != 0;
     }
-    return is_object(thing) && draws & VIEW_DRAWS_OBJECTS;
+    return thing_is_item(thing) && draws & VIEW_DRAWS_OBJECTS;
 }
 
 int state_json_visible_things(uint16_t type, StateJsonSeenThing *things, int max)
@@ -859,7 +854,7 @@ static void flying_json(Json *j, uint16_t thing)
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         key_str(j, "kind", "projectile");
         json_key(j, "name");
-        if (payload < SPELL_THING_FIRST && is_object(payload))
+        if (payload < SPELL_THING_FIRST && thing_is_item(payload))
             trimmed(j, item_name(payload), TEXT_SIZE);
         else
             json_str(j, "spell");
@@ -901,7 +896,7 @@ static void put_square_things(Json *j, unsigned draws, Location at, int16_t dir)
             state_json_creature_name(&creatures, group_creature(t));
             json_key_int(&creatures, "count", 1);
             json_close(&creatures, '}');
-        } else if (is_object(t)) {
+        } else if (thing_is_item(t)) {
             json_open(&objects, '{');
             key_str(&objects, "cell", party_cell_names[dir_relative(thing_cell(t), dir)]);
             json_key(&objects, "name");
@@ -1096,7 +1091,7 @@ static ZoneTop top_of_zone(const ViewClickZone *z)
         return found;
     for (uint16_t t = dungeon_square_first_thing(g_game.party_map, found.at.x, found.at.y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
-        if (is_object(t) && thing_cell(t) == thing_cell(z->thing))
+        if (thing_is_item(t) && thing_cell(t) == thing_cell(z->thing))
             found.top = t;
     return found;
 }
@@ -1107,7 +1102,7 @@ static void put_pile_objects(Json *j, uint16_t t, int16_t cell)
     if (t == THING_ENDOFLIST)
         return;
     put_pile_objects(j, dungeon_next_thing(t), cell);
-    if (is_object(t) && thing_cell(t) == cell)
+    if (thing_is_item(t) && thing_cell(t) == cell)
         trimmed(j, item_name(t), TEXT_SIZE);
 }
 

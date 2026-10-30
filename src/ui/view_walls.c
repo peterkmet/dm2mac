@@ -288,7 +288,7 @@ static bool target_has_item(uint16_t record, int type, bool loose)
     for (uint16_t t = aspect_first_thing(g_view_state.map, at.x, at.y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         int kind = thing_type(t);
-        if (loose && view_is_item(t)) {
+        if (loose && thing_is_item(t)) {
             if (item_get_index(t) == type)
                 return true;
         } else if (kind == THING_GROUP) {

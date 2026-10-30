@@ -844,11 +844,6 @@ static bool counter_empty(uint16_t sensor)
     return !sensor_data(sensor) || (sensor_data(sensor) & SENSOR_DATA_SIGN);
 }
 
-static bool is_object(uint16_t thing)
-{
-    return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
-}
-
 /* Moves thing (from the square from, NULL: a new thing; from_creature: from the possessions of a creature there) to
    the cell of the square to for a transfer sensor, with the charge change of the sensor; on a floor the cell is
    random. */
@@ -900,7 +895,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
     }
     int count = 0;
     for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
-        if (is_object(t) && (tr.any_cell || thing_cell(t) == from.cell))
+        if (thing_is_item(t) && (tr.any_cell || thing_cell(t) == from.cell))
             count++;
     uint8_t bits[ITEM_CLASS_SET_SIZE];
     if (tr.use_filter)
@@ -908,7 +903,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
                                    sensor_delay(sensor) * ITEM_CLASS_ENTRY_STEP + ITEM_CLASS_ENTRY_FIRST, bits, false);
     for (uint16_t t = first, next; t != THING_ENDOFLIST; t = next) {
         next = dungeon_next_thing(t);
-        if (count > 0 && is_object(t) && (tr.any_cell || thing_cell(t) == from.cell)) {
+        if (count > 0 && thing_is_item(t) && (tr.any_cell || thing_cell(t) == from.cell)) {
             count--;
             uint16_t item = item_get_index(t);
             bool match;
@@ -1698,7 +1693,7 @@ static void wall_click_alcove(WallClick *c)
          o = dungeon_next_thing(o))
         if (thing_cell(o) == c->cell)
             object = o;
-    if (object != THING_NONE && thing_type(object) >= THING_WEAPON && thing_type(object) <= THING_MISC) {
+    if (object != THING_NONE && thing_is_item(object)) {
         move_thing(object, c->x, c->y, MOVE_NO_SQUARE, 0);
         c->give = object;
     }

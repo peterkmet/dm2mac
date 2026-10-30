@@ -481,7 +481,7 @@ static void show_cell_objects(uint16_t thing, int pos, int16_t cell, uint16_t gr
     const CreatureInfo *info = group != THING_NONE ? creature_info(gdat_current(), group_creature(group)) : NULL;
     int spot = 0;
     for (; thing != THING_ENDOFLIST; thing = dungeon_next_thing(thing)) {
-        if (!view_is_item(thing) || dir_relative(thing_cell(thing), g_view_state.party_dir) != cell)
+        if (!thing_is_item(thing) || dir_relative(thing_cell(thing), g_view_state.party_dir) != cell)
             continue;
         if (info && !(info->possessions & STATIC_POSSESSIONS_SHOWN) && !(info->possessions & POSSESSIONS_CELLS_MASK)) {
             /* a creature that hides what it holds: one click zone for all of it */
@@ -967,7 +967,7 @@ void view_show_alcove_contents(int pos)
         /* as in the original, the party direction, not g_view_state.party_dir, which show_linked_squares turns */
         if (thing_cell(thing) != dir_opposite(g_game.party_dir))
             continue;
-        if (view_is_item(thing)) {
+        if (thing_is_item(thing)) {
             view_show_object(thing, pos,
                              &(ObjectLook){.spot = spot,
                                            .group = THING_NONE,

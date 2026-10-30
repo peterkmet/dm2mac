@@ -305,7 +305,7 @@ static void show_group(uint16_t group, const MapSquare *at)
     if (!(creature_group_info(group)->possessions & POSSESSIONS_KIND_MASK))
         return;
     for (uint16_t t = dungeon_next_thing(group); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (thing_type(t) < THING_WEAPON || thing_type(t) > THING_MISC)
+        if (!thing_is_item(t))
             continue;
         Strip o = map_icon_strip(item_gdat_category(t), item_gdat_index(t));
         if (o.count)
@@ -365,7 +365,7 @@ static void show_things(const ViewSquare *s, const MapSquare *at)
             } else if (type == THING_EXPLOSION) {
                 if (explosions == THING_ENDOFLIST)
                     explosions = t;
-            } else if (type >= THING_WEAPON && type <= THING_MISC) {
+            } else if (thing_is_item(t)) {
                 Strip o = map_icon_strip(item_gdat_category(t), item_gdat_index(t));
                 if (!o.count)
                     continue;

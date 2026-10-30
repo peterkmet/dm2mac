@@ -266,12 +266,6 @@ RelativeOffset view_relative_offset(int16_t dir, int dx, int dy)
     }
 }
 
-bool view_is_item(uint16_t thing)
-{
-    int type = thing_type(thing);
-    return type >= THING_WEAPON && type <= THING_MISC;
-}
-
 int view_get_thing_position(uint16_t thing, int16_t dir)
 {
     int cell = CELL_CENTER;
@@ -415,7 +409,7 @@ static void load_square_things(int pos, const ViewEye *eye, Location at)
         int type = thing_type(thing);
         if (type == THING_PROJECTILE) {
             g_view_missile_masks[pos] |= 1u << view_get_thing_position(thing, dir);
-        } else if (view_is_item(thing)) {
+        } else if (thing_is_item(thing)) {
             /* a shop stand on a floor shows its objects itself */
             if (s->aspect != ASPECT_FLOOR || s->side[SIDE_SHOP_DISPLAY] != 0)
                 g_view_object_masks[pos] |= 1u << view_get_thing_position(thing, dir);
@@ -1213,7 +1207,7 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
     uint16_t chest = THING_NONE;
     enum ChestState hit_state = CHEST_CLOSED;
     for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
-        if (!view_is_item(t) || thing_cell(t) != thing_cell(thing))
+        if (!thing_is_item(t) || thing_cell(t) != thing_cell(thing))
             continue;
         enum ChestState state = CHEST_CLOSED;
         uint16_t this_chest = THING_NONE;
