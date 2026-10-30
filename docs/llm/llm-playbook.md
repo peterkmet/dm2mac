@@ -40,7 +40,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## Food, water, sleep
 
 - The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Between -512 and -1, the stamina stays. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
-- Sleep makes the champions use food and water four times as fast: the champion clock runs each 16 game steps instead of 64.
+- Sleep makes the champions use food and water four times as fast: the champion clock runs every 16 game steps instead of 64.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
 - Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
@@ -88,20 +88,20 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - `busy` gives `[ready hand, action hand, spell]`: `true` while the champion must wait before it acts with it again.
 - Hint: some creatures take damage only from magic or special weapons.
 - A closed door blocks creatures. Hint: a door that closes on a creature hurts it.
-- Before a fight with a creature type that is in `bestiary.md`, read its section again. Use what works against it, and avoid what does not work.
+- Before a fight with a creature type that is in `bestiary.md`, read its section again. Use what works against it.
 - Before a timed action (a timed switch, a door that closes, a run past a trap), check `wounds`, health, and stamina of each champion. Heal first.
 
 ## The dungeon
 
-- **Doors:** a door opens with a button, a key in a lock, a switch, or a spell. Some doors break under attacks (`door` is `broken`).
-- **Keys and locks:** each key fits locks of its own kind. A `lock` face gives the number of its picture: record which key fits which number.
-- **Switches and plates:** wall switches and floor plates open doors, close doors, open pits, move walls, or start traps. Some are hidden.
-- **Walls:** some walls are illusions that the party can walk through.
-- **Pits:** a pit can be the way down or a trap.
-- **Teleporters:** a teleporter moves the party or objects to another square. A teleporter shows only while it is on and visible; otherwise it looks like floor.
-- **Stairs:** stairs lead to the level above or below.
-- **Alcoves:** an alcove holds objects. `view.alcove` lists them. Some alcoves react to the object that you put in.
-- **Machines:** some wall and floor places move objects to another place.
+- A door opens with a button, a key in a lock, a switch, or a spell. Some doors break under attacks (`door` is `broken`).
+- Each key fits locks of its own kind. A `lock` face gives the number of its picture: record which key fits which number.
+- Wall switches and floor plates open doors, close doors, open pits, move walls, or start traps. Some are hidden.
+- Some walls are illusions that the party can walk through.
+- A pit can be the way down or a trap.
+- A teleporter moves the party or objects to another square. It shows only while it is on and visible; otherwise it looks like floor.
+- Stairs lead to the level above or below.
+- An alcove holds objects (`view.alcove` lists them). Some alcoves react to the object that you put in.
+- Some wall and floor places (machines) move objects to another place.
 - A cell can hold a pile of many objects. `view.piles[].objects` lists every object of the pile, top first. Take every object of a pile: send `take_object` for the cell until the pile is gone, then decide what to keep.
 
 ## Money
@@ -119,13 +119,13 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Trade: the merchant shows its goods on its side of the counter. Put your offer (coins, or goods to sell) on your side of the counter: `drop_object` with cell 2 or 3 (the near cells of the square ahead). The merchant compares the value of the offer with the price of the goods. It accepts, refuses, or haggles, and gives change in coins. When `drop_object` gives `no floor to drop on ahead`, the square ahead takes no object: write it in `lessons.md`.
 - Hint: take the bought goods and the change with `take_object` on cells 2 and 3. When `take_object` gives `no object at this cell` for an object that you see, note it in `bugs.md`.
 - A merchant needs time to answer: send `wait` with some ticks after the offer, then look at the counter again.
-- **Shops on walls:** a wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display chose an item). A click above the center of the display shows the next item, a click below the center shows the item before. Hint: `click_wall_ahead` clicks the center; use `act click` with `x` and `y` to page. Check with a screenshot where the display is.
+- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display chose an item). A click above the center of the display shows the next item, a click below the center shows the previous item. Hint: `click_wall_ahead` clicks the center; use `act click` with `x` and `y` to page. Check with a screenshot where the display is.
 - Write each merchant and shop, its goods, and its prices in the map of the level and in `items.md`.
 
 ## Minions
 
 - Some items and spells give minions: creatures that work for the party.
-- A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]` (`option` 0-3, `name`: `creatures`, `details`, `items`, `hold`; `on`).
+- A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]`, where each entry has `option` (0-3), `name` (`creatures`, `details`, `items`, or `hold`), and `on`.
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
 - The minion map takes 1 mana of the champion when it opens; a champion without mana opens it unpowered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by (1 plus the mana of the options that are on). When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
@@ -133,7 +133,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Outside and weather
 
-- `state.outdoor` is `true` when the party sees the sky. Only then the state has `weather` and `day_time`.
+- `state.outdoor` is `true` when the party sees the sky. Only then does the state have `weather` and `day_time`.
 - `weather.clouds` and `weather.rain` are `none`, `light`, `medium`, or `heavy`. `weather.wind` (`north`, `east`, `south`, `west`) is present only while rain falls in the view.
 - `day_time` is `day`, `night`, or `dawn_dusk`. One hour is 1365 game steps; a day has 24 hours. The night is dark: carry a light.
 - A storm comes and goes. In a strong storm, lightning can strike floor squares, even the party square. Get under a roof in a heavy storm.
@@ -197,7 +197,7 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake`, then `uv run dm2-play --brief act close_inventory` |
 | See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
 
-### View a screenshot as an LLM
+### View a screenshot
 
 1. Save the screenshot to a file.
 
@@ -300,7 +300,7 @@ uv run dm2-play --brief wait '{"ticks": 5000}'
 
 ### Seen
 
-An explosion lasts only a few ticks. It can be gone before the turn ends, so the `view` of the response does not show it. A creature can die in the same way. Thus an `act`, `act_many`, or `wait` request records what the party sees after each tick.
+An explosion lasts only a few ticks. It can be gone before the turn ends, so the `view` of the response does not show it. A creature can die in the same way. An `act`, `act_many`, or `wait` request records what the party sees after each tick.
 
 The response has `seen: {explosions, creature_changes}` when the record is not empty. Without a record, the response has no `seen` field.
 
@@ -415,7 +415,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
 - A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of a different picture). `facing` is the direction that the face points to.
-- `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists every object of the pile, top first. `take_object` takes `objects[0]`, the same object as `top`.
+- `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists the pile from top (`objects[0]`, also in `top`) to bottom; `take_object` takes `objects[0]`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
