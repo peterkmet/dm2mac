@@ -207,7 +207,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## L. Advanced mode
 
-Details: [Advanced features](manual.md#advanced-features).
+Details: [Advanced mode](manual.md#advanced-mode).
 
 - [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, like the arrow keys.
 - [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.

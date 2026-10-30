@@ -85,7 +85,7 @@ Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu
 
 ## AMAP and CHTS blocks
 
-In advanced mode, a slot save and the quick save `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. Turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in vanilla mode. The AMAP block holds the automap's seen squares; the CHTS block holds the cheats ([manual.md](../manual.md#advanced-features)).
+In advanced mode, a slot save and the quick save `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. Turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in vanilla mode. The AMAP block holds the automap's seen squares; the CHTS block holds the cheats ([manual.md](../manual.md#advanced-mode)).
 
 The AMAP block:
 
@@ -123,7 +123,7 @@ In advanced and turn-based modes, the quick save `QUICK.DAT` is in the `--saves`
 
 ## SETTINGS.TXT
 
-The settings file of advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#settingstxt)). It is in the same folder as `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
+The settings file of advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#options-menu)). It is in the same folder as `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
 
 ```
 filter=scale2x
