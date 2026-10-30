@@ -55,8 +55,7 @@ def ui(port, original):
     emu.write_u32(G_SAVE_PATH, path)
     emu.write(G_DISK_PATH_KIND + 2, struct.pack("<H", 2))
     # the port gets a --data path; the dialogs show its last folder in capitals (the font has no lowercase letters)
-    data = b"/some/dir/" + DRIVE_PATH.lower() + b"/\0"
-    ctypes.memmove(ctypes.addressof(ctypes.c_char.in_dll(port, "g_text_drive_path")), data, len(data))
+    Session.in_dll(port, "g_session").data_dir = b"/some/dir/" + DRIVE_PATH.lower() + b"/"
     return port
 
 
