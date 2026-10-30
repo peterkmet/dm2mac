@@ -1,5 +1,7 @@
 # Range 4 notes (0x2b96a-0x3ba23)
 
+Analysis notes of the address range 0x2b96a-0x3ba23; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 145 functions. 21 names have low confidence (see "Low-confidence names").
 
 ## Creature AI working state

@@ -1,5 +1,7 @@
 # Range 1 notes (0x10000-0x18e7f)
 
+Analysis notes of the address range 0x10000-0x18e7f; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 173 functions. 16 names have low confidence (see "Open questions").
 
 ## Anchor corrections
@@ -9,7 +11,7 @@
 - `sound_request` (0x15ca9): the anchor signature swaps volume and priority. Correct order: `(category, index, entry, priority, volume, x, y, delay)`. Byte +4 of the request gets argument 4 (priority). Byte +5 gets argument 5 (volume, halved while the party sleeps). Example: `sound_set_volume_and_test` calls `(3, 0, 0x8b, 0x6c, 200, party_x, party_y, 0)`.
 - `explosion_create` (0x16746): the anchor signature order is wrong. Correct order: `(type, attack, x, y, cell)`. `cell == 0xff` = centered explosion (bit 7 of byte +2). If `x > 0xff`, the high byte holds `x + 1` and the low bytes of x and y are cells or offsets (packed form).
 - `play_present_viewport` (0x138d9) takes no argument. It reads zone 7, checks if the mouse pointer (IOP 0x0e) is inside, hides it, calls IOP 0x109 with flags 8 or 0x8008.
-- IOP table in `notes.md`: function 0x1b is not a disk call. It converts a key code to an ASCII character (`kbd_key_to_ascii`, 0x114c5; used by name entry). Function 0x15 (`disk_query_drive_info`, 0x111db) is missing from the table. Function 0x28 (`disk_get_drive_path`, 0x113fa) returns 3 bytes for a drive (written to 0x70528 and 0x7052c).
+- IOP table: function 0x1b is not a disk call. It converts a key code to an ASCII character (`kbd_key_to_ascii`, 0x114c5; used by name entry). Function 0x15 (`disk_query_drive_info`, 0x111db) is missing from the table. Function 0x28 (`disk_get_drive_path`, 0x113fa) returns 3 bytes for a drive (written to 0x70528 and 0x7052c).
 - Ghidra boundaries: 0x113ad is the shared tail of 0x113a5 (IOP 0x12) and `kbd_key_available`. 0x113dd-0x113f6 is a hidden function (save disk status == 3); Ghidra shows only its tail 0x113f7 (`return 0`). 0x114d2 is a hidden helper that prints one character through `iop_print_message`. 0x14c93 (mouse set position, IOP 0x0d) is inside 0x14c87. 0x149a2 is a separate entry in front of 0x149ba.
 
 ## Image decoders (confirmed)
@@ -37,7 +39,7 @@ Both decoders use the nibble reader `image_read_nibble` (0x12d7a, position `g_de
 - Scaling: `gfx_blit_scaled_4bpp` / `gfx_blit_scaled_8bpp` (7.7 fixed point, row reuse when the source row repeats). Callers near 0x1b8xx (picture drawing).
 - Tiled fill: `gfx_blit_tiled_4to8_masked` repeats a 4-bpp pattern with wrap, optional 1-bit mask; used by the dungeon view (0x4f..0x51).
 - `ui_fill_rect_dithered` draws a checkerboard of one color (disabled UI look).
-- `gfx_alloc_dos_bitmap`: image buffer header is 6 bytes (bpp at -6, width at -4, height at -2), as in `notes.md`.
+- `gfx_alloc_dos_bitmap`: image buffer header is 6 bytes (bpp at -6, width at -4, height at -2).
 
 ## Text glyphs
 
