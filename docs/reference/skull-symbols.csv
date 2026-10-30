@@ -435,7 +435,7 @@ address,name,signature,subsystem
 0x00026873,run_target_scanner,"void run_target_scanner(uint8_t scanner, int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x00026896,creature_ai_add_candidate,"void creature_ai_add_candidate(uint8_t kind, const uint8_t *target, const int8_t *entry, uint8_t scan_kind, int8_t bonus, uint16_t param, int8_t step, int8_t plan)",creatures
 0x0002697b,ai_count_matching_items,"int16_t ai_count_matching_items(int16_t flag, uint16_t first_thing, uint8_t cell, int into_groups, int into_containers)",creatures
-0x00026a67,get_item_counts,"uint8_t *get_item_counts(const uint8_t *targets, int16_t kind)",creatures
+0x00026a67,ai_get_item_counts,"uint8_t *ai_get_item_counts(const uint8_t *targets, int16_t kind)",creatures
 0x00026d16,test_condition,"int test_condition(uint8_t condition, uint16_t value, int8_t plan)",creatures
 0x00027578,creature_ai_scan_idle,"void creature_ai_scan_idle(int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x0002759e,creature_ai_scan_targets,"void creature_ai_scan_targets(int8_t kind, int8_t step, const uint8_t *targets, uint8_t bonus, uint16_t param)",creatures
@@ -460,7 +460,7 @@ address,name,signature,subsystem
 0x00027b3a,creature_ai_scan_by_condition,"void creature_ai_scan_by_condition(int8_t ignore_path, uint8_t step, const uint8_t *targets, int8_t kind)",creatures
 0x00027be3,creature_ai_scan_by_condition_15,"void creature_ai_scan_by_condition_15(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
 0x00027bf6,creature_ai_scan_party,"void creature_ai_scan_party(int8_t plan, int8_t step, const uint8_t *targets)",creatures
-0x00027cd2,exec_plan_command,int8_t exec_plan_command(int8_t command),creatures
+0x00027cd2,ai_exec_plan_command,int8_t ai_exec_plan_command(int8_t command),creatures
 0x00027e28,creature_ai_cmd_follow_candidate_path,int8_t creature_ai_cmd_follow_candidate_path(void),creatures
 0x00027eeb,creature_ai_cmd_shoot_random,void creature_ai_cmd_shoot_random(void),creatures
 0x00027f28,creature_ai_cmd_move_forward,int8_t creature_ai_cmd_move_forward(void),creatures
@@ -518,7 +518,7 @@ address,name,signature,subsystem
 0x0002b35d,creature_ai_act_transform,void creature_ai_act_transform(void),creatures
 0x0002b570,creature_ai_act_explode_or_spawn,int creature_ai_act_explode_or_spawn(void),creatures
 0x0002b724,creature_ai_act_cloud_explosion,void creature_ai_act_cloud_explosion(void),creatures
-0x0002b75e,execute_action,int execute_action(void),creatures
+0x0002b75e,ai_execute_action,int ai_execute_action(void),creatures
 0x0002b96a,ai_square_is_obstacle,"int ai_square_is_obstacle(int16_t x, int16_t y)",creatures
 0x0002b9fc,ai_square_blocks_line,"int ai_square_blocks_line(int16_t x, int16_t y)",creatures
 0x0002bb78,ai_blocks_line_to_target,"int ai_blocks_line_to_target(int16_t x, int16_t y)",creatures

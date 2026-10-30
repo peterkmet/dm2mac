@@ -14,7 +14,7 @@ IndentCaseLabels: false
 PointerAlignment: Right
 SortIncludes: CaseSensitive
 IncludeBlocks: Merge
-IncludeIsMainRegex: '(_(data|move|action|damage|inventory|video|none|hooks|things|walls|tree|feedback))?$'
+IncludeIsMainRegex: '(_(data|move|action|damage|inventory|video|none|hooks|things|walls|tree|feedback|path))?$'
 IncludeCategories:
   - Regex: '^<(opl3|SDL3)/'
     Priority: 2

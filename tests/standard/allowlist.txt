@@ -148,9 +148,9 @@ hex ui/view_things.c:arrow_scales rule 3.12: a table of SKULL.EXE
 hex ui/view_things.c:missile_scale rule 3.12: a table of SKULL.EXE
 hex ui/view_things.c:sparkle_field rule 3.12: a table of SKULL.EXE
 hex ui/view_things.c:thing_scale rule 3.12: a table of SKULL.EXE
-long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
-long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
+long engine/ai_action.c:ai_exec_plan_command rule 5.8: one short case for each plan command
+long engine/ai_path.c:test_entered rule 5.8: one short case for each search target kind
 module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit
