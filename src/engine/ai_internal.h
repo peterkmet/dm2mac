@@ -243,7 +243,8 @@ int ai_next_path_step(void);
 bool ai_plan_path(void);
 
 /* Shared state of the creature movement (ai_move.c, ai_path.c): the move directions past the map, the search maps, the
-   AI marker levels, the last read square. */
+   AI marker levels, the last read square, the light sums and the party map of the last refresh, the search direction
+   bits. */
 /* The directions of a move test past the four map directions. */
 #define DIR_LEVEL_UP    4
 #define DIR_LEVEL_DOWN  5
@@ -269,5 +270,10 @@ typedef struct {
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
 extern AiSquareScan g_ai_square_scan; /* exported for the tests */
+
+/* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
+extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
+/* The shift register that picks the first search direction; exported for the tests. */
+extern uint16_t g_search_direction_bits;
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */
