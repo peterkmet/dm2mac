@@ -16,8 +16,15 @@ from dm2test.interface import (
     GAME_LEADER_HAND, c_screen, diff, draw_game_screen, open_hand, set_action, update_action_area,
 )
 from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
-from dm2test.structs import ActionArea, Game
+from dm2test.structs import ActionArea, Bitmap, Game
 from dm2test.input import click_feedback
+
+
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)  # the test indexes the result
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)  # the test reads .contents
+    lib.area_begin_draw.restype = ctypes.POINTER(ctypes.POINTER(Bitmap))  # the test reads .contents
 
 
 # Original functions.
@@ -42,8 +49,6 @@ def emu():
 
 
 def c_spell_bytes(lib, runes):
-    lib.magic_find_spell.restype = ctypes.c_void_p
-    lib.magic_find_spell.argtypes = [ctypes.c_char_p]
     p = lib.magic_find_spell(bytes(runes) + b"\0")
     return ctypes.string_at(p, SPELL_SIZE) if p else None
 
@@ -126,7 +131,6 @@ class MagicScenario(CreatureScenario):
 
 @pytest.fixture
 def magic(lib, ui_gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return MagicScenario(lib, ui_gdat, start, tmp_path)
 
 
@@ -148,7 +152,6 @@ def make_party(scenario, rng):
 
 def flasks(lib, n):
     """n potion things of the dungeon, turned into empty flasks (GDAT index 0x14)."""
-    lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
     out = []
     for i in range(lib.dungeon_thing_count(C.THING_POTION)):
         t = C.THING_POTION << C.THING_TYPE_SHIFT | i
@@ -159,8 +162,6 @@ def flasks(lib, n):
 
 def set_flask(scenario, thing):
     lib = scenario.lib
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     w = lib.thing_word(thing, 2) & 0x80FF | 0x14 << C.POTION_TYPE_SHIFT
     lib.thing_set_word(thing, 2, w)
     record = scenario.emu.read_u32(0x7F288 + 4 * C.THING_POTION) + (thing & C.THING_INDEX_MASK) * 4
@@ -190,9 +191,6 @@ def cast(scenario, champ, index, power):
     """Casts spell index with power in both; returns the two results as CastResult values. The base skill that the
     original packs into a failure result must be the base skill of the spell."""
     lib = scenario.lib
-    lib.magic_find_spell.restype = ctypes.c_void_p
-    lib.magic_find_spell.argtypes = [ctypes.c_char_p]
-    lib.magic_cast_spell.argtypes = [ctypes.c_int16, ctypes.c_void_p, ctypes.c_int]
     spell = lib.magic_find_spell(bytes(spell_runes(index, power)) + b"\0")
     assert spell and ctypes.string_at(spell, SPELL_SIZE) == SPELL_TABLE_BYTES[index * SPELL_SIZE:(index + 1) * SPELL_SIZE]
     mine = lib.magic_cast_spell(champ, spell, power)
@@ -419,7 +417,6 @@ def test_icon_click_feedback_matches_original(port, cast_ui):
         # a corner of the spell half of the icon: the leader half would refine the click to a leader command
         icon = cmd - CMD_PARTY_ICON
         rect = (ctypes.c_int16 * 4)()
-        lib.input_click_command.restype = ctypes.c_uint16
         next(1 for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
              if lib.input_click_command(INPUT_MODE_MOVE, x, y, INPUT_BUTTON_LEFT, rect) == cmd)
         x = rect[0] + rect[2] - 1 if icon in (1, 2) else rect[0]
@@ -444,7 +441,6 @@ def test_magic_light_events_match_original(magic):
     from dm2test.structs import TimelineEvent
     from dm2test.scenario import COMMAND_RECORD
     lib, emu = magic.lib, magic.emu
-    lib.magic_event_light.argtypes = [ctypes.c_void_p]
     rng = random.Random(18)
     for level in range(-15, 16):
         magic.set_magic(struct.pack("<h", rng.randrange(-300, 300)) + bytes(4))
@@ -517,14 +513,11 @@ def record_address(emu, thing):
 
 
 def set_word(lib, emu, thing, offset, value):
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     lib.thing_set_word(thing, offset, value)
     emu.write(record_address(emu, thing) + offset, struct.pack("<H", value))
 
 
 def word(lib, thing, offset):
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
     return lib.thing_word(thing, offset)
 
 
@@ -579,7 +572,6 @@ def assert_map_state(lib, original, where):
     for name, (addr, fmt) in MINION_GLOBALS.items():
         assert getattr(m, name) == struct.unpack(fmt, emu.read(addr, struct.calcsize(fmt)))[0], (where, name)
     assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == emu.read_u32(0x70518), where
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     for t in (C.THING_CONTAINER, C.THING_PROJECTILE):
         n = lib.dungeon_thing_count(t)
         assert ctypes.string_at(lib.dungeon_thing_record(t << C.THING_TYPE_SHIFT), n * THING_SIZES[t]) == \
@@ -598,9 +590,6 @@ def squares_of(lib, kinds):
 
 def static_groups(lib):
     """(group, map, x, y) of the static creature groups on the squares of the dungeon."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
     out = []
     for m in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(m)):
@@ -618,8 +607,6 @@ def leads(lib, m, x, y, delta):
     """True when the dungeon has a map at delta levels from map m at the position of (x, y)."""
     from dm2test.structs import Position
 
-    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
-    lib.dungeon_location_on_map.restype = Position
     return lib.dungeon_location_on_map(Position(m, x, y), delta).map >= 0
 
 
@@ -683,12 +670,6 @@ def test_minion_maps_match_original(port, map_ui, ui_gdat):
     lib, original = port, map_ui
     emu = original.emu
     emu.write_u32(G_LEVEL_DIGIT_TABLE, original.digits)
-    lib.item_is_minion_map.argtypes = [ctypes.c_uint16]
-    lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
-    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
-    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)
-    lib.creature_group_info.argtypes = [ctypes.c_uint16]
     maps = [C.THING_CONTAINER << C.THING_TYPE_SHIFT | i for i in range(lib.dungeon_thing_count(C.THING_CONTAINER))
             if lib.dungeon_thing_valid(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i)
             and lib.item_is_minion_map(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i)]
@@ -823,9 +804,6 @@ def test_warp_to_marker_matches_original(magic):
     # The party on every square with a warp marker text (subtypes 15 and 16) and on squares around them: the move to the
     # marker of its id, the marker that a one-way warp shows, the result.
     lib, emu = magic.lib, magic.emu
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
     places = []
     for m in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(m)):
@@ -856,16 +834,7 @@ FAR_ICON_CELL = {0: 2, 1: 1, 2: 0, 3: 0}
 def test_a_missile_icon_past_a_short_strip_draws_nothing(port, original):
     # regression: a missile of the minion map took icon 3 to 6 of its strip also when the strip had fewer icons (a
     # damaged GRAPHICS.DAT) and read past the strip; the port draws no icon past the end
-    from dm2test.structs import Bitmap
     lib, emu = port, original.emu
-    lib.item_is_minion_map.argtypes = lib.view_missile_kind.argtypes = [ctypes.c_uint16]
-    lib.mmap_draw.argtypes = lib.projectile_dir.argtypes = [ctypes.c_uint16]
-    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
-    lib.area_begin_draw.argtypes = [ctypes.c_bool]
-    lib.area_begin_draw.restype = ctypes.POINTER(ctypes.POINTER(Bitmap))  # the first field of Offscreen
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
     thing = next(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i for i in range(lib.dungeon_thing_count(C.THING_CONTAINER))
                  if lib.item_is_minion_map(C.THING_CONTAINER << C.THING_TYPE_SHIFT | i))
     set_word(lib, emu, thing, 6, 0xFFFF)

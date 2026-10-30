@@ -41,8 +41,6 @@ def tree(lib, gdat, start, tmp_path):
     scenario.emu.stub(MOUSE_AREA_ALLOC_NODE, lambda *_: 0)
     scenario.emu.call(INPUT_INIT_TABLES)
     lib.input_init()
-    lib.input_click_command.restype = ctypes.c_uint16
-    lib.input_key_command.restype = ctypes.c_uint16
     # the action area state: the original after the load; the C port starts it with the screen
     mode = struct.unpack("<h", scenario.emu.read(G_ACTION_AREA_MODE, 2))[0]
     action = ActionArea.in_dll(lib, "g_action")
@@ -189,7 +187,6 @@ def test_keys_walk_and_turn_in_the_main_loop(session, lib):
     # A game step every 8 timer ticks; the forward key moves the party (a slow walk ends a step later), the right
     # key turns it, the pause key stops the game time until it is pressed again.
     game, loop = session
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     time, x, y, direction = game.game_time, game.party_x, game.party_y, game.party_dir
     run_ticks(lib, 16)
     assert game.game_time == time + 2 and loop.tick_threshold == 8
@@ -274,7 +271,6 @@ def test_save_start_prints_the_hand_object_name_once(tmp_path):
 
 @pytest.fixture
 def loop(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Loop(lib, gdat, start, tmp_path)
 
 
@@ -319,8 +315,6 @@ INPUT_BUTTON_LEFT, MODE_INVENTORY, CMD_SLEEP, KEY_INVENTORY, KEY_WAKE = C.INPUT_
 def test_sleep_and_wake_match_original(loop, lib):
     # The inventory key, then a click on the sleep button of the inventory: a game step on each tick while the
     # party sleeps; the wake key ends it.
-    lib.input_click_command.restype = ctypes.c_uint16
-    lib.input_key_command.restype = ctypes.c_uint16
     loop.key(KEY_INVENTORY)
     for t in range(16):
         loop.tick()

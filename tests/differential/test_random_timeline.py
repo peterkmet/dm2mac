@@ -35,7 +35,6 @@ def emu(game_dir):
 ])
 def test_random_matches_original(lib, emu, seed, name, addr, args, mask):
     func = getattr(lib, name)
-    func.restype = ctypes.c_uint32
     c_seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     c_seed.value = seed
     emu.write_u32(G_RANDOM_SEED, seed)
