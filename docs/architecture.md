@@ -41,7 +41,7 @@ A module is one public header, the files `<module>.c` and `<module>_<part>.c`, a
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
 `data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), `engine/champion`
 (`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
-`ui_hooks.c`). The tables do not show the internal headers.
+`ui_hooks.c`), and `ui/view` (`view.c`, `view_things.c`, `view_walls.c`). The tables do not show the internal headers.
 
 ### data/
 
