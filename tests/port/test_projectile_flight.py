@@ -6,10 +6,9 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import MainLoop
 from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.structs import Bitmap, ProjectileLaunch
+from dm2test.structs import Bitmap, MainLoop, ProjectileLaunch
 
 
 @pytest.fixture(scope="module")

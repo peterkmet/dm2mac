@@ -10,8 +10,8 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, key_command, press, set_mode)
 from dm2test.input import run_ticks
-from dm2test.scenario import Location, Position
-from dm2test.structs import Bitmap, Game
+from dm2test.scenario import Position
+from dm2test.structs import Bitmap, Game, Location
 from dm2test.lib import load_lib
 
 
@@ -295,7 +295,7 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
 
 def test_new_game_starts_with_an_empty_automap_and_no_cheats(lib, automap, game_dir):
     game, data = automap
-    from dm2test.dialog import Session
+    from dm2test.structs import Session
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
     lib.game_set_cheats(C.CHEAT_ALL)
@@ -494,7 +494,7 @@ def test_reveal_map_draws_every_square_and_keeps_the_seen_squares(lib, automap):
 
 
 def champion_word(lib, offset, value=None):
-    from dm2test.interface import champion_records
+    from dm2test.scenario import champion_records
     word = ctypes.c_int16.from_buffer(champion_records(lib), offset)
     if value is not None:
         word.value = value

@@ -15,9 +15,7 @@ from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from dm2test.control import PALETTE_COLORS, RGB
-from dm2test.structs import Game
-from dm2test.dialog import Session
-from dm2test.scenario import Location
+from dm2test.structs import Game, Location, Session
 from dm2test.lib import load_lib
 
 

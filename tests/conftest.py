@@ -9,21 +9,13 @@ pytest_plugins = [
     "dm2test.control",
     "dm2test.creature",
     "dm2test.dialog",
+    "dm2test.gamefiles",
     "dm2test.gdat",
     "dm2test.input",
     "dm2test.interface",
     "dm2test.modes",
     "dm2test.scenario",
 ]
-
-
-@pytest.fixture
-def game_dir():
-    from dm2test.markers import GAME
-
-    if not (GAME / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
-    return GAME
 
 
 def pytest_configure(config):

@@ -4,9 +4,12 @@ import ctypes
 import struct
 
 from dm2test import constants as C
+from dm2test.addresses import G_FONT_BITMAP, G_SKY_OBJECTS, G_UI_COLORS, MONEY_INIT_COIN_TABLE, SKY_OBJECTS_SIZE, WEATHER
 from dm2test.gdat import image_info
 from dm2test.markers import ROOT
-from dm2test.structs import Bitmap, Game, GdatKey
+from dm2test.structs import Bitmap, Game, GdatKey, Location, mirror
+from dm2tools.emu import Emu
+from dm2tools.le import load_image
 
 
 DUN_SET_PARTY_LOCATION, VIEW_LOAD_SQUARE = 0x1C82D, 0x52BF6
@@ -17,7 +20,7 @@ LOAD_BEGIN, LOAD_END = 0x372D6, 0x37586
 VIEW_DRAW_DUNGEON, ZONE_UNPACK_LAYOUT, ZONE_ALLOC_RECORD = 0x54B3F, 0x19D0E, 0x19F29
 G_ZONE_LIST, G_COLOR_RAMPS, G_COLOR_RAMP_OF_COLOR, G_VIEWPORT_BITMAP = 0x71796, 0x7F208, 0x7F20C, 0x7F240
 G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS = 0x75BFE, 0x75BFC, 0x7F40A, 0x802D2
-G_VIEW_CLEAR, G_SKY_OBJECTS, G_WEATHER_VISIBLE, G_LIGHT_LEVEL = 0x802D0, 0x80438, 0x8047B, 0x7F282
+G_VIEW_CLEAR, G_WEATHER_VISIBLE, G_LIGHT_LEVEL = 0x802D0, 0x8047B, 0x7F282
 G_PARTY_X, G_PARTY_DIR, G_PUSH_MODE, G_PUSH_PENDING_GROUP = 0x7F26C, 0x7F254, 0x7F3A4, 0x72FFC
 # The original functions that the C port does not have: the image cache, the GDAT index, and the memory manager are served from the C port and Python; the viewport arrow does nothing.
 NO_OPS = (0x3F3C2, 0x3F406, 0x3F352, 0x3F422, 0x3F49D, 0x3BCA5, 0x3BC8E, 0x3BCBA, 0x210DC, 0x50BF4)
@@ -31,10 +34,12 @@ VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
+@mirror("gfx.h")
 class ScreenPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
+@mirror("gfx.h")
 class ScreenSize(ctypes.Structure):
     _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
 
@@ -43,8 +48,6 @@ class OriginalView:
     """The original view drawing of start.DAT in the emulator, with the GDAT data of the C port."""
 
     def __init__(self, lib, gdat, data):
-        from dm2tools.emu import Emu
-        from dm2tools.le import load_image
         self.lib, self.gdat = lib, gdat
         self.emu = emu = Emu(load_image(ROOT / "game" / "SKULL.EXE"), max_insns=100_000_000)
         emu.uc.mem_map(HEAP, HEAP_SIZE)
@@ -89,7 +92,6 @@ class OriginalView:
         emu.write(self.viewport - 6, struct.pack("<BBhh", 8, 0, VIEW_W, VIEW_H))
         emu.write_u32(G_VIEWPORT_BITMAP, self.viewport)
         self.next_index = 1
-        from dm2test.interface import G_FONT_BITMAP, G_UI_COLORS, MONEY_INIT_COIN_TABLE
         emu.write_u32(G_UI_COLORS, self.entry_data(1, 0, 0x0D, 0xFE))  # the shops show item names and prices
         emu.write_u32(G_FONT_BITMAP, self.put(self.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300] + bytes(0x80)))
         emu.call(MONEY_INIT_COIN_TABLE)
@@ -213,24 +215,22 @@ class OriginalView:
 
 def draw_both(sc):
     """The view of the party in both, each with its own light level and sky objects."""
-    from dm2test import view as tv
-    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER, Location
     lib, emu, game = sc.lib, sc.emu, sc.game
     light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
     sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     saved = seed.value
-    kept = [(addr, emu.read(addr, 4)) for addr in (tv.G_PARTY_MOVE_STEPS, tv.G_PUSH_MODE, tv.G_PUSH_PENDING_GROUP)]
+    kept = [(addr, emu.read(addr, 4)) for addr in (G_PARTY_MOVE_STEPS, G_PUSH_MODE, G_PUSH_PENDING_GROUP)]
     steps, sc.party.move_steps = sc.party.move_steps, 0  # the view of the party square, not of a walk
     theirs = sc.view.draw(game.party_map, game.party_x, game.party_y, game.party_dir, light, sky)
     for addr, data in kept:
         emu.write(addr, data)
-    seed.value = tv.VIEW_SEED
+    seed.value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "g_view_viewport")
-    ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
+    ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
     lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.view_draw_dungeon(Location(game.party_x, game.party_y), game.party_dir)
-    mine = ctypes.string_at(viewport.pixels, tv.VIEW_W * tv.VIEW_H)
+    mine = ctypes.string_at(viewport.pixels, VIEW_W * VIEW_H)
     sc.party.move_steps = steps
     seed.value = saved
     emu.write_u32(VIEW_SEED_ADDR, saved)

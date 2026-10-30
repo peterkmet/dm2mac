@@ -12,8 +12,10 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.creature import CreatureScenario
-from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, c_screen, champion_bytes, champion_records,
-                               diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
+from dm2test.interface import (
+    GAME_LEADER_HAND, c_screen, diff, draw_game_screen, open_hand, set_action, update_action_area,
+)
+from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
 from dm2test.structs import ActionArea, Game
 from dm2test.input import click_feedback
 from dm2test.lib import load_lib
@@ -252,7 +254,8 @@ def spell_ui(original):
     emu.stub(INV_RENDER_HAND_ICON, lambda *_: 0)  # the hand icon bitmap of the mouse cursor (not set up here)
     # the name of a new object in the leader hand scrolls the message area: the IBMIOP move as in test_interface;
     # the restore of the interface clears g_iop_buffer, so it is set at each scroll
-    from dm2test.interface import G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, VGA, ZONE_GET_RECT
+    from dm2test.interface import G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W, ZONE_GET_RECT
+    from dm2test.addresses import VGA
     from unicorn import UC_HOOK_CODE
     from unicorn.x86_const import UC_X86_REG_EIP
     buffer = original.alloc(0x400)

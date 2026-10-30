@@ -7,11 +7,11 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit
+from dm2test.dialog import DialogState, InputMatch, find_point, main_loop_quit
 from dm2test.scenario import Scenario, WALL_END_GAME, square_event
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
-from dm2test.structs import Game
+from dm2test.structs import Game, Session
 from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
 
@@ -153,7 +153,7 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
 def test_hide_game_view_cancels_the_champion_drag(lib):
     # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
     drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     hidden = ctypes.c_bool.from_address(ctypes.addressof(MainLoop.in_dll(lib, "g_main_loop")) + MainLoop.view_hidden.offset)
     DialogState.in_dll(lib, "g_dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
     lib.play_hide_view()
@@ -436,9 +436,10 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     # champ_init_party_state of a new game: the champion of the mirror (sensor 0x7e) on square (0, 0) of map 0 joins at
     # once with the objects on that square, faces the party, and leads; no inventory, no mouth, no message. start.DAT
     # is the game after this join: both take the champion out of the party and put its objects back on the square.
-    from dm2test.structs import LeaderHand
+    from dm2test.structs import LeaderHand, UiState
     from dm2test.input import Loop
-    from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
+    from dm2test.addresses import G_CHAMPIONS
+    from dm2test.scenario import CHAMPION_SIZE, champion_records
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     loop = Loop(lib, gdat, start, tmp_path)
     emu, game = loop.emu, loop.game
@@ -486,7 +487,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play
     emu = sc.emu
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     loop = MainLoop.in_dll(lib, "g_main_loop")
     request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
     assert sc.game.champion_count == 1 and not loop.end
@@ -610,7 +611,7 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     # The original runs sleep (0x8e) and the save menu (0x8c, Alt+S) only while neither the eye (0x7f224) nor the
     # mouth (0x7f21c) is held.
     from dm2test.input import run_ticks, session
-    from dm2test.interface import UiState
+    from dm2test.structs import UiState
     from dm2test.scenario import Command
     session.__wrapped__(lib, gdat, start, tmp_path)
     lib.input_key_down.argtypes = [ctypes.c_uint16]

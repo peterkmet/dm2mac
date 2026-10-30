@@ -4,6 +4,7 @@ import ctypes
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test.markers import ROOT
 from dm2test.structs import ImageInfo
 
@@ -35,8 +36,7 @@ u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 @pytest.fixture(scope="module")
 def gd(lib):
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GDAT)
     lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     lib.gdat_free.argtypes = [ctypes.c_void_p]
     lib.gdat_item_count.argtypes = [ctypes.c_void_p]

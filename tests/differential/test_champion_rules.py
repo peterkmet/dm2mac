@@ -9,8 +9,8 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
-from dm2test.scenario import Scenario
+from dm2test.addresses import G_CHAMPIONS
+from dm2test.scenario import CHAMPION_SIZE, Scenario, champion_bytes, champion_records, sync_champions
 from dm2test.structs import Game
 from dm2test.lib import load_lib
 
@@ -673,7 +673,7 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
 
 def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
     """Loads start.DAT, or starts a new game from DUNGEON.DAT (session_load), in the session of the fixture."""
-    from dm2test.dialog import Session
+    from dm2test.structs import Session
     if new_game:
         (tmp_path / "DATA").mkdir()
         (tmp_path / "DATA" / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")

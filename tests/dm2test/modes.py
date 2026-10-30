@@ -5,8 +5,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.dialog import Session
 from dm2test.input import run_ticks
+from dm2test.structs import Session
 
 
 VANILLA, ADVANCED = C.GAME_MODE_VANILLA, C.GAME_MODE_ADVANCED

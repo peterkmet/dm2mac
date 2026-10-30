@@ -5,7 +5,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.scenario import Location, Position, square_things
+from dm2test.scenario import Position, square_things
+from dm2test.structs import Location
 from dm2test.lib import load_lib
 
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1

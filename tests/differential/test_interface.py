@@ -9,13 +9,15 @@ from unicorn.x86_const import UC_X86_REG_EIP
 
 from dm2test import constants as C
 from dm2test.interface import (
-    CHAMP_DRAW_ALL_STATES, CHAMPION_SIZE, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME,
-    G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT,
-    SCREEN_W, TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VGA, VIEW_W,
-    ZONE_GET_RECT, UiState, c_screen, c_view, champion_bytes, champion_records, diff, draw_game_screen, open_hand, set_action, set_leader_hand, set_magic,
-    sync_champions, things_of, update_action_area,
+    CHAMP_DRAW_ALL_STATES, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME, G_IOP_BUFFER,
+    G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W,
+    TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VIEW_W, ZONE_GET_RECT,
+    c_screen, c_view, diff, draw_game_screen, open_hand, set_action, set_leader_hand, set_magic, things_of,
+    update_action_area,
 )
-from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand
+from dm2test.addresses import VGA
+from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, UiState
 from dm2test.view import ScreenPoint, ScreenSize, u8_p
 from dm2test.lib import load_lib
 
