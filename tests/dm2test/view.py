@@ -218,7 +218,6 @@ def draw_both(sc):
     seed.value = VIEW_SEED
     viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, VIEW_W * VIEW_H)
-    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.view_draw_dungeon(Location(game.party_x, game.party_y), game.party_dir)
     mine = ctypes.string_at(viewport.pixels, VIEW_W * VIEW_H)
     sc.party.move_steps = steps

@@ -88,7 +88,6 @@ class Loop(Scenario):
         lib.money_init_coin_table()
         lib.ui_draw_game_screen()
         lib.input_init()
-        lib.input_key_down.argtypes = [ctypes.c_uint16]
         lib.play_start_session()
         emu.call(GAME_START_SESSION)
         emu.run(LOOP_START, LOOP_STEP)
@@ -161,7 +160,6 @@ G_FEEDBACK_WAITING, G_FEEDBACK_BUSY = 0x7F474, 0x7F488
 def find_click(lib, mode, cmd):
     """The first screen point whose left click in input mode gives command cmd, and the rect of its zone."""
     rect = (ctypes.c_int16 * 4)()
-    lib.input_click_command.restype = ctypes.c_uint16
     x, y = next((x, y) for y in range(C.SCREEN_H) for x in range(C.SCREEN_W)
                 if lib.input_click_command(mode, x, y, C.INPUT_BUTTON_LEFT, rect) == cmd)
     return x, y, tuple(rect)

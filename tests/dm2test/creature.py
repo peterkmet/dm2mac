@@ -1,6 +1,5 @@
 """The creature scenario harness and its random champions."""
 
-import ctypes
 import struct
 
 import pytest
@@ -13,7 +12,6 @@ CreatureScenario = Scenario  # the scenario harness runs the creatures
 
 @pytest.fixture
 def creatures(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return CreatureScenario(lib, gdat, start, tmp_path)
 
 
