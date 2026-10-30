@@ -243,8 +243,6 @@ bool view_between_steps(void);
 Location view_step_relative(Location at, int16_t dir, int forward, int right);
 /* The offset (dx, dy) on the map as the party looking to dir sees it. */
 RelativeOffset view_relative_offset(int16_t dir, int dx, int dy);
-/* True when the thing is an item: a weapon up to a miscellaneous item. */
-bool view_is_item(uint16_t thing);
 /* The grid cell of a thing in its square for the party looking to dir. */
 int view_get_thing_position(uint16_t thing, int16_t dir);
 /* The cell (0 to 3) of a grid cell that holds objects, -1 for the others. */

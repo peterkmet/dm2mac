@@ -1832,7 +1832,7 @@ bool ai_thing_matches_filter(uint16_t thing, int16_t filter)
                                               GDAT_TYPE_VALUE, ORNAMENT_KEY_TARGET);
         else
             value = (int16_t)kind;
-    } else if (type >= THING_WEAPON && type <= THING_MISC) {
+    } else if (thing_is_item(thing)) {
         value = (int16_t)item_get_index(thing);
     } else {
         return false;

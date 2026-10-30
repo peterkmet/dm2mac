@@ -133,6 +133,11 @@ static inline uint16_t thing_make(int type, int index)
 {
     return (uint16_t)(type << THING_TYPE_SHIFT | index);
 }
+/* True for a thing of an item type (THING_WEAPON to THING_MISC). */
+static inline bool thing_is_item(uint16_t thing)
+{
+    return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
+}
 /* A cell argument: any cell. */
 #define CELL_ANY 0xff
 
