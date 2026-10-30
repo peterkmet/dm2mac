@@ -39,7 +39,7 @@ Outside the layers, `src/third_party/` holds the vendored `opl3/` (the OPL3 emul
 
 A module is one public header, the files `<module>.c` and `<module>_<part>.c`, and an optional `<module>_internal.h`. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
-`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), `engine/champion`
+`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_action.c`, `ai_data.c`, `ai_move.c`, `ai_path.c`), `engine/champion`
 (`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
 `ui_hooks.c`). The tables do not show the internal headers.
 

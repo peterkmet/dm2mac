@@ -1,4 +1,4 @@
-"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (ai_move.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
+"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (ai_move.c, ai_path.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
 AI context, the dungeon, and the random seed must be equal."""
 
 import ctypes
@@ -39,7 +39,7 @@ SCAN_C, SCAN_ORIGINAL = struct.Struct("<2B5h3B4Bx"), struct.Struct("<14B")
 SCAN_UNUSED = 7
 # Functions of later parts that both sides stub: (address, stack arguments).
 
-# Original functions of ai_move.c.
+# Original functions of ai_move.c and ai_path.c.
 F = {
     "ai_square_is_obstacle": 0x2B96A, "ai_square_blocks_line": 0x2B9FC,
     "ai_blocks_line_to_target": 0x2BB78, "ai_trace_line": 0x2BBAD,
