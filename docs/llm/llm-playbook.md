@@ -119,7 +119,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Trade: the merchant shows its goods on its side of the counter. Put your offer (coins, or goods to sell) on your side of the counter: `drop_object` with cell 2 or 3 (the near cells of the square ahead). The merchant compares the value of the offer with the price of the goods. It accepts, refuses, or haggles, and gives change in coins. If `drop_object` gives `no floor to drop on ahead`, the square ahead does not take objects: write it in `lessons.md`.
 - Hint: take the bought goods and the change with `take_object` on cells 2 and 3. If `take_object` gives `no object at this cell` for an object that you see, note it in `bugs.md`.
 - A merchant needs time to answer: send `wait` with some ticks after the offer, then look at the counter again.
-- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display has chosen an item). A click above the center of the display shows the next item, a click below the center shows the previous item. `click_wall_ahead` clicks the center; to page, use `act click` with `x` and `y`. Check in a screenshot where the display is.
+- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display has chosen an item). A click above the center of the display shows the next item, a click below the center shows the previous item. Hint: `click_wall_ahead` clicks the center; to page, use `act click` with `x` and `y`. Check in a screenshot where the display is.
 - Write each merchant and shop, its goods, and its prices in the map of the level and in `items.md`.
 
 ## Minions
@@ -319,7 +319,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 |---|---|---|
 | `move_forward`, `move_back`, `move_left`, `move_right` | none | Left and right step to the side. The inventory must be closed. |
 | `turn_left`, `turn_right` | none | The inventory must be closed. |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, alcove, or shop display ahead; otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
+| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. The leader hand must be empty. See `view.piles`. |
 | `drop_object` | `cell` 0-4 | The leader drops the object in the hand: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
@@ -417,7 +417,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of any other picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists the pile from top (`objects[0]`, also in `top`) to bottom; `take_object` takes `objects[0]`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
-- `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror, a shop display), a door button, or an alcove.
+- `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
 
 Visibility rule: the party square is in the view. A square is in the view when the square beside it toward the center is in the view and open, or when the square in front of it (one row nearer) is in the view and open. The rows end at the first center square that blocks sight (a wall, a closed fake wall, or a closed door). Nothing behind it is in the view. A square outside the map is a wall.
