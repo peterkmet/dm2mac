@@ -54,7 +54,7 @@ Then the program plays the start movies and shows the start menu. Click to skip 
 
 The start menu starts a new game, loads a save slot, shows a picture, or quits ([game-flow.md](rules/game-flow.md#start-of-a-run)).
 
-RESTART in the save menu shows no mode screen and keeps the mode, even the mode that the mode screen selected.
+RESTART in the save menu shows no mode screen and keeps the current mode.
 
 ## Saved games
 
@@ -73,7 +73,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 
 `F9` loads `QUICK.DAT` without a dialog. The message area shows one of these lines:
 
-- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks for confirmation, as after a game that is not saved.
+- `GAME LOADED`: the game goes on from the quick save, with the sound and music volumes of the quick save. A later QUIT asks for confirmation, as for an unsaved game.
 - `NO QUICK SAVE`: the file does not exist. The game goes on.
 - `QUICK SAVE DAMAGED`: the file does not load. The game goes on unchanged. When the game cannot restore the running game either, the program ends ([save.md](formats/save.md#quick-save-files)).
 - `UNABLE TO SAVE`: the game cannot keep a copy of the running game before the load, so it does not load. The game goes on.
@@ -160,7 +160,7 @@ The automap shows the seen squares of all maps of the party level, each at its p
 
 - The squares use the icons of the minion map: walls, floors, pits, stairs, doors, wall and floor ornaments, teleporter fields, and the level digits. The automap shows the static creatures that have a map icon (trees and other creatures that do not move); moving creatures, merchants, and items do not show. A red frame and the champion icons mark the party square. The side of the frame toward the direction that the party faces is white.
 - A wall that the dungeon view shows at the edge of a map shows as a wall ([view.md](rules/view.md#automap)).
-- A white frame of 1 pixel surrounds the whole level with the margins of its maps, just outside its last squares. It shows the end of the level, even for squares that are not seen.
+- A white frame of 1 pixel surrounds the level with the margins of its maps, just outside its last squares. It marks the end of the level, even where squares are not seen.
 - An imaginary wall (a closed fake wall that the party can walk through) shows as the wall icon with a light gray checkerboard.
 - A pressure pad (a floor plate that the dungeon view shows) shows as a small gray square in the middle of its square. A hidden floor trigger does not show.
 - Unseen squares stay black. With the reveal map cheat, all squares of the level show.
@@ -170,7 +170,7 @@ The automap shows the seen squares of all maps of the party level, each at its p
 
 ### Seen squares
 
-Each game step marks the squares that the dungeon view shows as seen. In dark light the party sees fewer rows. The light cheat shows all rows. The rule is in [view.md](rules/view.md#seen-squares).
+Each game step marks the squares that the dungeon view shows as seen. In low light the party sees fewer rows. The light cheat shows all rows. The rule is in [view.md](rules/view.md#seen-squares).
 
 A new game starts with an empty automap.
 
@@ -181,7 +181,7 @@ The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
 - Food and water: food and water do not go down over time. Eating and drinking still raise them.
-- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt stays unhurt; a creature that others cannot hit stays so. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
+- One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt, or that others cannot hit, survives. The health that a creature loses by itself (over time, or by its own missile attack) does not kill it. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
 - Reveal map: the automap shows every square of the level. The seen squares do not change.
 
@@ -205,11 +205,11 @@ The damage star of a hit stays one game step longer in the action area than in t
 
 ### Smooth projectile flight
 
-A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps. On each timer tick (60 Hz) the game draws the view again, with each projectile part of the way from its place at the last game step to its place now. So the flight shows one game step later than the game rules move the projectile.
+A projectile moves one cell (half a square) per game step, as in the original game. In the advanced mode the dungeon view shows the flight between the game steps. On each timer tick (60 Hz) the game draws the view again, with each projectile part of the way from its place at the last game step to its current place. The flight shows one game step later than the game rules move the projectile.
 
-- A projectile that is new or was not in the view of the game step before shows at its place now.
+- A new projectile, or one not in the view at the last game step, shows at its current place.
 - The flight shows only when the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.
-- It does not show in the inventory, during the sleep or the pause, while the automap, the cheat screen, or the options menu is open, and in the vanilla and turn-based modes.
+- It does not show in the inventory, during sleep or pause, while the automap, the cheat screen, or the options menu is open, or in the vanilla and turn-based modes.
 - The flight changes no game state ([view.md](rules/view.md#deviations-from-the-original)).
 
 ### Options menu
