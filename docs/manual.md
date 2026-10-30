@@ -2,7 +2,7 @@
 
 DM2Mac plays Dungeon Master II as the original PC game does. This manual covers only what is new: how to start
 the game, the vanilla and advanced modes, and the advanced-mode extras. For the game itself, see the original game's
-manual. Item values are in [items.md](reference/items.md).
+manual. Item values are in [items.md](items.md).
 
 ## Run the game
 
@@ -10,7 +10,7 @@ Install the game as the [README](../README.md#play) says, or [build it](developm
 (`build/dm2.exe` on Windows) from the folder that holds your copy of the game.
 
 On first startup the game copies the 10 files it needs from your folder, ZIP archive, or CD image into `game/`
-([Game files and install](formats/game-files.md)). On Windows, the game's messages go to `game/dm2.log`.
+([Game files and install](formats/install.md)). On Windows, the game's messages go to `game/dm2.log`.
 
 ## Options
 

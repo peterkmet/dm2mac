@@ -12,7 +12,7 @@ _Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays t
 
 /* The timer: the PIT ticks of the original. */
 #define PIT_CLOCK_HZ 1193182 /* PIT input clock */
-#define PIT_DIVISOR  4971    /* 240 Hz, see docs/formats/runtime.md */
+#define PIT_DIVISOR  4971    /* 240 Hz, see docs/reference/runtime.md */
 #define TICK_NS      ((Uint64)SDL_NS_PER_SECOND * PIT_DIVISOR / PIT_CLOCK_HZ)
 
 /* The sizes of the window textures. */

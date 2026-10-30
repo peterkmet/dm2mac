@@ -16,7 +16,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 ## Message area
 
 - 3 rows in zone 15, 7 pixels apart, with `g_message_area_y = (zone height - 20) / 2` above the first row. A row clears 90 game steps after its last text (`g_message_expiry`).
-- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, function `0x105` of the runtime layer `IBMIOP.EXE` ([runtime.md](../formats/runtime.md#ibmiopexe-runtime-layer)) moves the area up by one row; then the first 6 pixel rows of the row bitmap go to the bottom 6 pixel rows of the area.
+- A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, function `0x105` of the runtime layer `IBMIOP.EXE` ([runtime.md](../reference/runtime.md#ibmiopexe-runtime-layer)) moves the area up by one row; then the first 6 pixel rows of the row bitmap go to the bottom 6 pixel rows of the area.
 - Text before a `\n` goes to the next row; a wrapped line continues at column 12.
 
 ## Slots and panels

@@ -35,6 +35,8 @@ The compiler therefore rejects an include from a higher layer:
 Outside the layers, `src/third_party/` holds the vendored `opl3/` (the OPL3 emulator) and `tinf/` (the deflate decompressor for ZIP archives). Every layer reaches it through
 `-isystem src/third_party`.
 
+Other folders: `tools/dm2tools/` holds the Python tools, `tools/ghidra/` the decompile scripts, `tests/` the tests ([Tests](development.md#tests)), and `docs/` the documentation. Git ignores `game/` (the original files), `reference/` (the Ghidra output and original material), and `tests/saves/`; link them into a new worktree.
+
 ## Modules
 
 A module is one public header, the files `<module>.c` and `<module>_<part>.c`, and an optional `<module>_internal.h`. Each header states its prefixes and has one purpose
@@ -149,7 +151,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 `main` (`platform/main.c`) runs these steps in order:
 
 1. It reads the options and selects the game mode (`--mode`; otherwise the advanced mode).
-2. It checks the game files and installs them from a source if needed ([game-files.md](formats/game-files.md#startup)). It loads GRAPHICS.DAT and the `--save` file, and opens the window, the `--control` socket, and the
+2. It checks the game files and installs them from a source if needed ([install.md](formats/install.md#startup)). It loads GRAPHICS.DAT and the `--save` file, and opens the window, the `--control` socket, and the
    music. It sets the platform hooks: `g_os_full_path_hook`, `g_optmenu_filter_hook`, and
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.

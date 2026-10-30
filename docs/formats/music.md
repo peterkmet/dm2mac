@@ -30,7 +30,7 @@ The port (`music_update_for_map` in `src/ui/music.c`) reads the songs from GDAT 
 
 Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi_midi_send_event` (`0x5e489`), `hmi_midi_send_track_setup` (`0x66fb8`). Port: `src/data/hmp.c`.
 
-- Header: `+0x20` u32 offset of the loop table, `+0x30` u32 track count, `+0x34` u32 `0xc0`, `+0x38` u32 song timer rate, `+0x3c` u32 `0x7e` (126 s) ([runtime.md](runtime.md#pit-divisor-and-tick-rates)). Track chunks start at `+0x388`: u32 track number, u32 chunk size, u32 MIDI channel, then the data.
+- Header: `+0x20` u32 offset of the loop table, `+0x30` u32 track count, `+0x34` u32 `0xc0`, `+0x38` u32 song timer rate, `+0x3c` u32 `0x7e` (126 s) ([runtime.md](../reference/runtime.md#pit-divisor-and-tick-rates)). Track chunks start at `+0x388`: u32 track number, u32 chunk size, u32 MIDI channel, then the data.
 - Delta times: 7-bit groups, low group first. The last byte has bit 7 set (the opposite of standard MIDI).
 - Timing: each tick adds 1 to the elapsed ticks of each track. A track plays its next event if its delta is at most the elapsed ticks. After each event, the elapsed ticks restart at 0. Thus the first event plays at tick `max(d, 1)` (`d` = first delta), and each later event plays its delta after the previous event. An event with time `T` (sum of the deltas) plays at tick `T + 1` if the first delta is 0, otherwise at tick `T`. Tracks play in track order within a tick.
 - Track 0 events are not sent. Controllers `0x67` to `0x79` are HMI commands and do not go to the driver. The songs use `0x6c` (no effect), `0x6d` (its value is a loop point id; the value of the next event, an `0x6e` controller, sets the loop count of that loop point), and `0x6f` (loop). `0xff 0x2f` ends a track.
