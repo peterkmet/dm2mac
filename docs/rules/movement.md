@@ -1,6 +1,6 @@
 # Main loop, input, and movement
 
-The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/ui/play.c`, `src/ui/input.c`, `src/ui/input_tree.c`, `src/ui/input_feedback.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Timing and the game step
 
@@ -10,7 +10,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
 
 ## The input tree
 
-- The tables in `SKULL.EXE` and `src/ui/input.c`:
+- The tables in `SKULL.EXE` and `src/ui/input_tree.c`:
   - Nodes: condition (bit 7 for a node with children), argument, child list or zone.
   - Child lists: bit 7 starts a list.
   - A root node for each of the 10 input modes.

@@ -1,173 +1,42 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Mouse and keyboard input: the input tree of SKULL.EXE maps clicks and keys to commands; the command queue. */
-#include "input.h"
-#include <stdlib.h>
+/* Mouse and keyboard input: the cursor, the event ring, clicks in the dungeon view and the command queue. */
 #include <string.h>
 #include "action.h"
 #include "action_area.h"
 #include "advanced.h"
-#include "champion.h"
 #include "creature.h"
 #include "dialog.h"
-#include "draw.h"
-#include "dungeon.h"
 #include "game.h"
 #include "game_text.h"
-#include "gdat.h"
 #include "ids.h"
-#include "interface_state.h"
+#include "input_internal.h"
 #include "item.h"
-#include "le.h"
 #include "magic.h"
 #include "minion.h"
-#include "minion_map.h"
 #include "money.h"
 #include "move.h"
 #include "music.h"
 #include "play.h"
 #include "recruit.h"
-#include "save.h"
 #include "sensor.h"
 #include "session.h"
 #include "sound_request.h"
-#include "text.h"
-#include "ui.h"
 #include "video.h"
 #include "view.h"
 #include "zone.h"
 
-/* Sizes of the input tables of SKULL.EXE. */
-#define INPUT_NODE_COUNT    76
-#define INPUT_CHILD_COUNT   83
-#define INPUT_ZONE_COUNT    62
-#define INPUT_COMMAND_COUNT 264
-#define INPUT_KEY_COUNT     121
-#define CURSOR_ZONE_COUNT   18
-#define CLICK_FEEDBACK_SIZE 236
-
-/* Bits of an input tree node and of a child list entry. */
-#define NODE_HAS_CHILDREN 0x80
-#define NODE_INDEX_MASK   0x7f /* a child list entry: the node index */
-
-/* Bits of the command and key lists: the list start, the command, and the off flag of a command entry. */
-#define LIST_START   0x8000
-#define COMMAND_MASK 0x07ff
-#define COMMAND_OFF  0x0008
-
-/* Bits of the layout zone of an input zone or a command entry. */
-#define ZONE_IN_PANEL       0x8000
-#define ZONE_IN_ACTION_AREA 0x4000
-#define ZONE_ID_MASK        0x3fff
-
-/* Sizes of the event ring, the command queue, and the key buffer. */
-#define EVENT_RING          11
-#define EVENT_LIMIT         7
-#define EVENT_LIMIT_SPECIAL 9
-#define COMMAND_QUEUE       3
-#define KEY_BUFFER          16
-
-/* Mouse event types of the event ring besides the buttons. */
-#define EVENT_ENTER_AREA  0x40
-#define EVENT_LEAVE_AREA  0x60
-#define EVENT_CLICK_OTHER 0x10 /* a click type of the original that the port never queues */
-/* the mouse event types that find a click command: bits 0, 1, and 4 */
-#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
-
 /* Sizes and hot spots of the cursor images. */
-#define ARROW_W            12
-#define HAND_W             16
-#define CURSOR_H           16
-#define FACE_CURSOR_SKIP   4 /* color 4 of the face keeps the fill color of the dragged champion cursor */
-#define FACE_HOT_X         8
-#define FACE_HOT_Y         6
-#define OBJECT_SHADOW      2 /* the offset of the black shadow of the held object cursor */
-#define OBJECT_HOT         8 /* the hot spot of the held object cursor: the center of the icon */
-#define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
+#define ARROW_W          12
+#define HAND_W           16
+#define CURSOR_H         16
+#define FACE_CURSOR_SKIP 4 /* color 4 of the face keeps the fill color of the dragged champion cursor */
+#define FACE_HOT_X       8
+#define FACE_HOT_Y       6
+#define OBJECT_HOT       8 /* the hot spot of the held object cursor: the center of the icon */
 
 /* Cursor kinds of a cursor zone. */
 #define CURSOR_KIND_HAND     1
 #define CURSOR_KIND_CHAMPION 2
-
-/* Changes of a cursor zone when the active input zones change. */
-#define CURSOR_ADD    0x01
-#define CURSOR_REMOVE 0x02
-
-/* The conditions of the input tree nodes with children. */
-#define NODE_IF_ALWAYS            0
-#define NODE_IF_SCREEN_MODE       1
-#define NODE_IF_BUTTON_COUNT      2
-#define NODE_IF_INVENTORY         3
-#define NODE_IF_CHAMPION_ALIVE    4
-#define NODE_IF_CHAMPION_IN_CELL  5
-#define NODE_IF_DRAGGING          6
-#define NODE_IF_ICON_IN_CELL      7
-#define NODE_IF_ACTION_COUNT      8
-#define NODE_IF_RUNE_SET          9
-#define NODE_IF_MINION_MAP_LAYOUT 10
-#define NODE_IF_ACTION_MODE       11
-
-/* The condition argument of a minion map without option buttons. */
-#define MAP_WITHOUT_OPTIONS 5
-
-/* The places of the click feedback scripts. */
-#define SCRIPT_QUEUE            0x00
-#define SCRIPT_EXECUTE          0x01
-#define SCRIPT_MOVE_FIRST       0x02
-#define SCRIPT_HAND_FIRST       0x5c
-#define SCRIPT_PARTY_ICON_FIRST 0x66
-#define SCRIPT_ACTION_CANCEL    0x7a
-#define SCRIPT_ROTATE_FIRST     0x82
-#define SCRIPT_RUNE             0x92
-#define SCRIPT_REMOVE_RUNE      0x96
-#define SCRIPT_CAST_SPELL       0x9e
-#define SCRIPT_ACTION_FIRST     0xa2
-#define SCRIPT_INVENTORY_CLOSE  0xb1
-#define SCRIPT_SLEEP            0xb6
-#define SCRIPT_SAVE             0xbb
-#define SCRIPT_MAP_OPTION_FIRST 0xc0
-#define SCRIPT_DIALOG_BUTTON    0xdc
-#define SCRIPT_DIALOG_BUTTON_2  0xe3
-#define SCRIPT_VIEWPORT         0xea
-
-/* A script of a command group is SIZE long per command. */
-#define SCRIPT_MOVE_SIZE       15
-#define SCRIPT_HAND_SIZE       5
-#define SCRIPT_PARTY_ICON_SIZE 5
-#define SCRIPT_ROTATE_SIZE     8
-#define SCRIPT_ACTION_SIZE     5
-#define SCRIPT_MAP_OPTION_SIZE 7
-
-/* Feedback script opcodes (low 6 bits; bit 6: run on, bit 7: end). */
-#define FB_DELAY              0x00
-#define FB_RELEASE_QUEUE      0x01
-#define FB_WAIT_QUEUE         0x02
-#define FB_WAIT_STEP          0x03
-#define FB_QUEUE              0x04
-#define FB_EXECUTE            0x05
-#define FB_QUEUE_AND_RELEASE  0x06
-#define FB_PICTURE            0x07
-#define FB_SPELL_ICON         0x08
-#define FB_HAND_ICON          0x09
-#define FB_RUNE_BUTTON        0x0a
-#define FB_ENTERED_RUNES      0x0b
-#define FB_ACTION_NAME        0x0c
-#define FB_INVENTORY_BUTTON   0x0d
-#define FB_MAP_OPTION_BUTTONS 0x0e
-#define FB_DIALOG_BUTTON      0x0f
-#define FB_DIALOG_BUTTON_2    0x10
-
-/* Bits of a feedback script opcode. */
-#define FB_OP_MASK 0x3f
-#define FB_RUN_ON  0x40
-#define FB_END     0x80
-
-/* The arguments of a picture opcode: a GDAT image and its transparent color; a dialog button has the first three. */
-#define PICTURE_CATEGORY   0
-#define PICTURE_INDEX      1
-#define PICTURE_ENTRY      2
-#define PICTURE_KEY        3
-#define PICTURE_ARGS       4
-#define DIALOG_BUTTON_ARGS PICTURE_KEY
 
 /* The squares of a wall ornament click: the party square, left, right, front. */
 #define WALL_CELL_PARTY 0
@@ -179,46 +48,11 @@
 /* The push resistance of a creature that never moves: a click on it only sounds. */
 #define PUSH_RESISTANCE_FIXED 0xff
 
-/* Relative cells of the squares of a view click. */
-#define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
-#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS      /* the possessions of a static creature show in the back half */
-#define ALCOVE_CELL                CELL_BACK_RIGHT /* the alcove in front keeps its objects in this relative cell */
-
-/* The middle part of the viewport without a push arrow. */
-#define ARROW_CENTER_X       20 /* half size of the middle part of the viewport, without an arrow */
-#define ARROW_CENTER_Y       15
-#define ARROW_PRESSED_OFFSET 1 /* the graphic entry of a pressed movement arrow after the released one */
-
 /* The PC scan codes that have a character (kbd_key_to_ascii), and the scan code of a key code. */
 #define CHAR_SCAN_FIRST 0x02
 #define CHAR_SCAN_LAST  0x39
 #define SCAN_CODE_MASK  0xff
 
-typedef struct {
-    uint8_t cond, arg;
-    uint16_t link;
-} InputNode;
-typedef struct {
-    uint16_t zone;
-    int16_t commands, keys;
-    uint8_t cursor;
-} InputZone;
-typedef struct {
-    uint16_t zone;
-    uint8_t kind, priority;
-} CursorZone;
-typedef struct {
-    uint16_t command, zone;
-    uint8_t buttons, flags;
-} InputCommand;
-typedef struct {
-    uint16_t command, key;
-} InputKey;
-/* The feedback bitmap of the clicked button, open or closed. */
-typedef struct {
-    Offscreen o;
-    bool opened;
-} Feedback;
 /* The party direction, the party square, and the square in front of it at the click. */
 typedef struct {
     int16_t dir;
@@ -231,603 +65,6 @@ typedef struct {
     int16_t pos, cell;
     int kind;
 } ViewCell;
-
-/* The input tree nodes: condition (bit 7: the node has children), condition argument, child list or zone. */
-static const InputNode input_nodes[INPUT_NODE_COUNT] = {
-    {0x00, 0,   0 },
-    {0x00, 0,   1 },
-    {0x00, 0,   2 },
-    {0x00, 0,   3 },
-    {0x00, 0,   4 },
-    {0x00, 1,   5 },
-    {0x00, 5,   6 },
-    {0x00, 5,   7 },
-    {0x83, 0,   4 },
-    {0x00, 2,   8 },
-    {0x00, 6,   9 },
-    {0x00, 6,   10},
-    {0x83, 1,   5 },
-    {0x00, 3,   11},
-    {0x00, 7,   12},
-    {0x00, 7,   13},
-    {0x83, 2,   6 },
-    {0x00, 4,   14},
-    {0x00, 8,   15},
-    {0x00, 8,   16},
-    {0x83, 3,   7 },
-    {0x84, 0,   8 },
-    {0x00, 0,   17},
-    {0x00, 0,   18},
-    {0x00, 0,   19},
-    {0x00, 0,   20},
-    {0x00, 0,   21},
-    {0x00, 0,   22},
-    {0x00, 0,   23},
-    {0x00, 1,   25},
-    {0x00, 0,   26},
-    {0x00, 1,   27},
-    {0x00, 2,   28},
-    {0x00, 3,   29},
-    {0x85, 0,   10},
-    {0x86, 99,  11},
-    {0x00, 0,   30},
-    {0x00, 1,   31},
-    {0x00, 2,   32},
-    {0x00, 3,   33},
-    {0x87, 0,   12},
-    {0x00, 1,   34},
-    {0x00, 2,   35},
-    {0x00, 3,   36},
-    {0x88, 1,   13},
-    {0x00, 0,   37},
-    {0x00, 1,   38},
-    {0x00, 2,   39},
-    {0x00, 3,   40},
-    {0x00, 5,   41},
-    {0x8a, 3,   14},
-    {0x00, 255, 42},
-    {0x00, 15,  43},
-    {0x00, 30,  44},
-    {0x89, 2,   15},
-    {0x00, 5,   45},
-    {0x00, 6,   47},
-    {0x82, 1,   16},
-    {0x82, 0,   17},
-    {0x8b, 0,   19},
-    {0x00, 4,   46},
-    {0x00, 7,   48},
-    {0x00, 7,   49},
-    {0x00, 1,   50},
-    {0x00, 2,   51},
-    {0x00, 3,   52},
-    {0x00, 1,   53},
-    {0x00, 2,   54},
-    {0x00, 3,   55},
-    {0x00, 5,   58},
-    {0x00, 6,   59},
-    {0x00, 5,   60},
-    {0x00, 6,   61},
-    {0x00, 4,   56},
-    {0x00, 4,   57},
-    {0x00, 0,   24},
-};
-/* The child lists of the nodes: node indices, bit 7 starts a list. */
-static const uint8_t input_children[INPUT_CHILD_COUNT] = {
-    0x80, 0x81, 0x82, 0x84, 0x85, 0x06, 0x07, 0x89, 0x0a, 0x0b, 0x8d, 0x0e, 0x0f, 0x91, 0x12, 0x13, 0x88,
-    0x0c, 0x10, 0x14, 0xcb, 0x9e, 0x1f, 0x20, 0x21, 0xa2, 0x1d, 0xa4, 0x25, 0x26, 0x27, 0x23, 0xa9, 0x2a,
-    0x2b, 0xad, 0x2e, 0x2f, 0x30, 0x31, 0xb3, 0x34, 0x35, 0xc2, 0x43, 0x44, 0x4a, 0x47, 0x48, 0x3e, 0xbf,
-    0x40, 0x41, 0x49, 0x45, 0x46, 0x3d, 0xb9, 0x3a, 0xa8, 0x2c, 0x36, 0x32, 0x3c, 0x37, 0x38, 0x97, 0x16,
-    0x3b, 0x15, 0x03, 0x98, 0x03, 0x9a, 0x1c, 0x1b, 0x03, 0x95, 0x1a, 0x19, 0x3b, 0x03, 0x80,
-};
-/* The root node of each input mode. */
-static const InputNode input_mode_roots[INPUT_MODE_COUNT] = {
-    {0x80, 0, 0 },
-    {0x80, 0, 1 },
-    {0x80, 0, 2 },
-    {0x80, 0, 3 },
-    {0x81, 0, 18},
-    {0x80, 0, 20},
-    {0x80, 0, 21},
-    {0x80, 0, 22},
-    {0x80, 0, 23},
-    {0x80, 0, 9 },
-};
-/* The input zones: layout zone (bit 15: in the inventory panel, bit 14: in the action area), command list,
-   key list (-1 none), cursor zone. */
-static const InputZone input_zones[INPUT_ZONE_COUNT] = {
-    {0x0002, 0,  0,  0 },
-    {0x0002, 1,  1,  0 },
-    {0x0002, 2,  2,  0 },
-    {0x0002, 3,  3,  0 },
-    {0x0002, 4,  4,  0 },
-    {0x00a1, 5,  5,  3 },
-    {0x00a1, 6,  6,  3 },
-    {0x009c, 7,  -1, 14},
-    {0x00a2, 8,  7,  4 },
-    {0x00a2, 9,  8,  4 },
-    {0x009d, 10, -1, 15},
-    {0x00a3, 11, 9,  5 },
-    {0x00a3, 12, 10, 5 },
-    {0x009e, 13, -1, 16},
-    {0x00a4, 14, 11, 6 },
-    {0x00a4, 15, 12, 6 },
-    {0x009f, 16, -1, 17},
-    {0x0009, 17, 13, 7 },
-    {0x0007, 18, -1, 8 },
-    {0x0007, 19, -1, 9 },
-    {0x0002, 20, -1, 10},
-    {0x0007, 21, -1, 8 },
-    {0x0002, 22, -1, 10},
-    {0x81ee, 23, -1, 11},
-    {0x0002, 55, 14, 18},
-    {0x002f, 24, -1, 12},
-    {0x0031, 25, -1, 0 },
-    {0x0032, 26, -1, 0 },
-    {0x0033, 27, -1, 0 },
-    {0x0034, 28, -1, 0 },
-    {0x000b, 29, -1, 13},
-    {0x000b, 30, -1, 13},
-    {0x000b, 31, -1, 13},
-    {0x000b, 32, -1, 13},
-    {0x000b, 33, -1, 1 },
-    {0x000b, 34, -1, 1 },
-    {0x000b, 35, -1, 1 },
-    {0x000b, 36, -1, 1 },
-    {0x000b, 37, -1, 1 },
-    {0x000b, 38, -1, 1 },
-    {0x000b, 39, -1, 1 },
-    {0x000b, 40, -1, 1 },
-    {0x000b, 41, -1, 1 },
-    {0x000b, 42, -1, 1 },
-    {0x000b, 43, -1, 1 },
-    {0x000b, 44, -1, 2 },
-    {0x000b, 45, -1, 2 },
-    {0x000b, 46, -1, 1 },
-    {0x0002, 47, -1, 0 },
-    {0x0002, 48, -1, 0 },
-    {0x0002, 49, -1, 0 },
-    {0x0002, 50, -1, 0 },
-    {0x0002, 51, -1, 0 },
-    {0x0002, 52, -1, 0 },
-    {0x0002, 53, -1, 0 },
-    {0x0002, 54, -1, 0 },
-    {0x0002, 56, -1, 0 },
-    {0x0002, 57, -1, 0 },
-    {0x0002, 58, -1, 0 },
-    {0x0002, 59, 14, 0 },
-    {0x0002, 60, -1, 0 },
-    {0x0002, 61, 14, 0 },
-};
-/* The cursor zones of the input zones (from 1): layout zone (bit 15: in the viewport; get_input_zone_rect adds the
-   origin of the panel zone 7, which equals the viewport origin), cursor kind (1: hand or held object, 2: dragged
-   champion), priority (a higher priority comes first). */
-static const CursorZone cursor_zones[CURSOR_ZONE_COUNT] = {
-    {0x000b, 0, 1 },
-    {0x005c, 1, 1 },
-    {0x00a1, 1, 1 },
-    {0x00a2, 1, 1 },
-    {0x00a3, 1, 1 },
-    {0x00a4, 1, 1 },
-    {0x0009, 0, 1 },
-    {0x0007, 1, 15},
-    {0x0007, 1, 15},
-    {0x823b, 0, 15},
-    {0x81ee, 0, 15},
-    {0x002f, 2, 15},
-    {0x000b, 0, 1 },
-    {0x009c, 0, 2 },
-    {0x009d, 0, 2 },
-    {0x009e, 0, 2 },
-    {0x009f, 0, 2 },
-    {0x8267, 0, 15},
-};
-/* The command lists: command (bit 15 starts a list), zone, mouse buttons, flags (bit 3: off). */
-static const InputCommand input_commands[INPUT_COMMAND_COUNT] = {
-    {0x80d7, 0x0197, 0x02, 0x80},
-    {0x00d8, 0x0197, 0x10, 0x40},
-    {0x00d9, 0x0199, 0x02, 0x00},
-    {0x00e0, 0x01b2, 0x02, 0x00},
-    {0x00da, 0x019b, 0x02, 0x00},
-    {0x80ef, 0x0002, 0x02, 0x80},
-    {0x00ef, 0x0002, 0x01, 0x40},
-    {0x808f, 0x0007, 0x02, 0x80},
-    {0x008f, 0x0002, 0x01, 0x40},
-    {0x0090, 0x000d, 0x02, 0x40},
-    {0x8090, 0x000d, 0x02, 0x40},
-    {0x0052, 0x0002, 0x01, 0x40},
-    {0x8091, 0x0002, 0x02, 0x80},
-    {0x0091, 0x0002, 0x01, 0x40},
-    {0x800b, 0x00a1, 0x02, 0x80},
-    {0x8007, 0x00a1, 0x01, 0x40},
-    {0x0007, 0x009c, 0x02, 0x80},
-    {0x00ea, 0x00b9, 0x02, 0x80},
-    {0x0014, 0x00d1, 0x02, 0x80},
-    {0x0015, 0x00d2, 0x02, 0x00},
-    {0x8007, 0x009c, 0x02, 0x80},
-    {0x800b, 0x00a2, 0x02, 0x80},
-    {0x8008, 0x00a2, 0x01, 0x40},
-    {0x00eb, 0x00ba, 0x02, 0x80},
-    {0x0016, 0x00d3, 0x02, 0x80},
-    {0x0017, 0x00d4, 0x02, 0x00},
-    {0x8008, 0x009d, 0x02, 0x80},
-    {0x800b, 0x00a3, 0x02, 0x80},
-    {0x8009, 0x00a3, 0x01, 0x40},
-    {0x00ec, 0x00bb, 0x02, 0x80},
-    {0x0018, 0x00d5, 0x02, 0x80},
-    {0x0019, 0x00d6, 0x02, 0x00},
-    {0x8009, 0x009e, 0x02, 0x80},
-    {0x800b, 0x00a4, 0x02, 0x80},
-    {0x800a, 0x00a4, 0x01, 0x40},
-    {0x00ed, 0x00bc, 0x02, 0x80},
-    {0x001a, 0x00d7, 0x02, 0x80},
-    {0x001b, 0x00d8, 0x02, 0x00},
-    {0x800a, 0x009f, 0x02, 0x80},
-    {0x8001, 0x0028, 0x02, 0x80},
-    {0x0003, 0x002a, 0x02, 0x00},
-    {0x0002, 0x0029, 0x02, 0x00},
-    {0x0006, 0x002d, 0x02, 0x00},
-    {0x0005, 0x002c, 0x02, 0x00},
-    {0x0004, 0x002b, 0x02, 0x00},
-    {0x8050, 0x0007, 0x02, 0x10},
-    {0x8050, 0x0007, 0x02, 0x10},
-    {0x808c, 0x8232, 0x02, 0x80},
-    {0x008e, 0x8234, 0x02, 0x00},
-    {0x000b, 0x8236, 0x02, 0x00},
-    {0x000b, 0x0002, 0x01, 0x40},
-    {0x008d, 0x8238, 0x02, 0x80},
-    {0x0048, 0x8267, 0x02, 0x00},
-    {0x801c, 0x81fb, 0x02, 0x80},
-    {0x001d, 0x81fc, 0x02, 0x00},
-    {0x001e, 0x81fd, 0x02, 0x00},
-    {0x001f, 0x81fe, 0x02, 0x00},
-    {0x0020, 0x81ff, 0x02, 0x00},
-    {0x0021, 0x8200, 0x02, 0x00},
-    {0x0022, 0x8201, 0x02, 0x00},
-    {0x0046, 0x8221, 0x02, 0x00},
-    {0x0047, 0x8222, 0x02, 0x00},
-    {0x0023, 0x8202, 0x02, 0x00},
-    {0x0024, 0x8203, 0x02, 0x00},
-    {0x0025, 0x8204, 0x02, 0x00},
-    {0x0026, 0x8205, 0x02, 0x00},
-    {0x0027, 0x8206, 0x02, 0x00},
-    {0x0028, 0x8207, 0x02, 0x00},
-    {0x0029, 0x8208, 0x02, 0x00},
-    {0x002a, 0x8209, 0x02, 0x00},
-    {0x002b, 0x820a, 0x02, 0x00},
-    {0x002c, 0x820b, 0x02, 0x00},
-    {0x002d, 0x820c, 0x02, 0x00},
-    {0x002e, 0x820d, 0x02, 0x00},
-    {0x002f, 0x820e, 0x02, 0x00},
-    {0x0030, 0x820f, 0x02, 0x00},
-    {0x0031, 0x8210, 0x02, 0x00},
-    {0x0032, 0x8211, 0x02, 0x00},
-    {0x0033, 0x8212, 0x02, 0x00},
-    {0x0034, 0x8213, 0x02, 0x00},
-    {0x0035, 0x8214, 0x02, 0x00},
-    {0x0036, 0x8215, 0x02, 0x00},
-    {0x0037, 0x8216, 0x02, 0x00},
-    {0x0038, 0x8217, 0x02, 0x00},
-    {0x0039, 0x8218, 0x02, 0x00},
-    {0x8093, 0x8236, 0x02, 0x80},
-    {0x008d, 0x8238, 0x02, 0x80},
-    {0x0093, 0x0002, 0x01, 0x40},
-    {0x8092, 0x81ee, 0x02, 0x80},
-    {0x807d, 0x0031, 0x02, 0x80},
-    {0x007e, 0x0032, 0x02, 0x80},
-    {0x007f, 0x0033, 0x02, 0x80},
-    {0x0080, 0x0034, 0x02, 0x80},
-    {0x807d, 0x0031, 0x02, 0x80},
-    {0x807e, 0x0032, 0x02, 0x80},
-    {0x807f, 0x0033, 0x02, 0x80},
-    {0x8080, 0x0034, 0x02, 0x80},
-    {0x8075, 0x0046, 0x02, 0x80},
-    {0x0074, 0x004a, 0x02, 0x00},
-    {0x005f, 0x004f, 0x02, 0x40},
-    {0x005f, 0x0075, 0x02, 0x08},
-    {0x005f, 0x0076, 0x02, 0x08},
-    {0x8077, 0x0047, 0x02, 0x80},
-    {0x0076, 0x004b, 0x02, 0x00},
-    {0x0060, 0x0050, 0x02, 0x40},
-    {0x0060, 0x0077, 0x02, 0x08},
-    {0x0060, 0x0078, 0x02, 0x08},
-    {0x8079, 0x0048, 0x02, 0x80},
-    {0x0078, 0x004c, 0x02, 0x00},
-    {0x0061, 0x0051, 0x02, 0x40},
-    {0x0061, 0x0079, 0x02, 0x08},
-    {0x0061, 0x007a, 0x02, 0x08},
-    {0x807b, 0x0049, 0x02, 0x80},
-    {0x007a, 0x004d, 0x02, 0x00},
-    {0x0062, 0x0052, 0x02, 0x40},
-    {0x0062, 0x007b, 0x02, 0x08},
-    {0x0062, 0x007c, 0x02, 0x08},
-    {0x805d, 0x0060, 0x02, 0x80},
-    {0x005e, 0x0061, 0x02, 0x00},
-    {0x0070, 0x003b, 0x02, 0x80},
-    {0x0071, 0x003f, 0x02, 0x20},
-    {0x805d, 0x0060, 0x02, 0x80},
-    {0x005e, 0x0061, 0x02, 0x00},
-    {0x0070, 0x003b, 0x02, 0x80},
-    {0x0071, 0x003f, 0x02, 0x20},
-    {0x0072, 0x0040, 0x02, 0x20},
-    {0x805d, 0x0060, 0x02, 0x80},
-    {0x005e, 0x0061, 0x02, 0x00},
-    {0x0070, 0x003b, 0x02, 0x80},
-    {0x0071, 0x003f, 0x02, 0x20},
-    {0x0072, 0x0040, 0x02, 0x20},
-    {0x0073, 0x0041, 0x02, 0x20},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x0056, 0x0065, 0x02, 0x00},
-    {0x0057, 0x0066, 0x02, 0x00},
-    {0x0058, 0x0067, 0x02, 0x00},
-    {0x0059, 0x0068, 0x02, 0x00},
-    {0x0055, 0x0063, 0x02, 0x10},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x0056, 0x0065, 0x02, 0x00},
-    {0x0057, 0x0066, 0x02, 0x00},
-    {0x0058, 0x0067, 0x02, 0x00},
-    {0x0059, 0x0068, 0x02, 0x00},
-    {0x0071, 0x006e, 0x02, 0x80},
-    {0x0055, 0x0063, 0x02, 0x10},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x0056, 0x0065, 0x02, 0x00},
-    {0x0057, 0x0066, 0x02, 0x00},
-    {0x0058, 0x0067, 0x02, 0x00},
-    {0x0059, 0x0068, 0x02, 0x00},
-    {0x0071, 0x006e, 0x02, 0x80},
-    {0x0072, 0x006f, 0x02, 0x80},
-    {0x0055, 0x0063, 0x02, 0x10},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x0056, 0x0065, 0x02, 0x00},
-    {0x0057, 0x0066, 0x02, 0x00},
-    {0x0058, 0x0067, 0x02, 0x00},
-    {0x0059, 0x0068, 0x02, 0x00},
-    {0x0071, 0x006e, 0x02, 0x80},
-    {0x0072, 0x006f, 0x02, 0x80},
-    {0x0073, 0x0070, 0x02, 0x80},
-    {0x0055, 0x0063, 0x02, 0x10},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x005d, 0x0060, 0x02, 0x00},
-    {0x005e, 0x0061, 0x02, 0x00},
-    {0x8065, 0x00f5, 0x02, 0x80},
-    {0x0066, 0x00f6, 0x02, 0x00},
-    {0x0067, 0x00f7, 0x02, 0x00},
-    {0x0068, 0x00f8, 0x02, 0x00},
-    {0x0069, 0x00f9, 0x02, 0x00},
-    {0x006a, 0x00fa, 0x02, 0x00},
-    {0x806c, 0x00fc, 0x02, 0x80},
-    {0x006b, 0x00fe, 0x02, 0x00},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x003a, 0x00e5, 0x02, 0x00},
-    {0x003b, 0x00e6, 0x02, 0x00},
-    {0x003c, 0x00e7, 0x02, 0x00},
-    {0x003d, 0x00e8, 0x02, 0x00},
-    {0x003e, 0x00e9, 0x02, 0x00},
-    {0x003f, 0x00ea, 0x02, 0x00},
-    {0x0040, 0x00eb, 0x02, 0x00},
-    {0x0041, 0x00ec, 0x02, 0x00},
-    {0x8070, 0x003b, 0x02, 0x80},
-    {0x00e4, 0x00dd, 0x02, 0x00},
-    {0x00e5, 0x00de, 0x02, 0x00},
-    {0x00e6, 0x00df, 0x02, 0x00},
-    {0x00e7, 0x00e0, 0x02, 0x00},
-    {0x00e8, 0x00e1, 0x02, 0x00},
-    {0x00e9, 0x00e2, 0x02, 0x00},
-    {0x80ee, 0x000b, 0x02, 0x10},
-    {0x80db, 0x81c8, 0x02, 0xa0},
-    {0x0095, 0x8160, 0x02, 0x00},
-    {0x0096, 0x8161, 0x02, 0x00},
-    {0x0097, 0x8162, 0x02, 0x00},
-    {0x0098, 0x8163, 0x02, 0x00},
-    {0x0099, 0x8164, 0x02, 0x00},
-    {0x009a, 0x8165, 0x02, 0x00},
-    {0x009b, 0x8166, 0x02, 0x00},
-    {0x009c, 0x8167, 0x02, 0x00},
-    {0x009d, 0x8171, 0x02, 0x00},
-    {0x009e, 0x8172, 0x02, 0x00},
-    {0x009f, 0x8173, 0x02, 0x00},
-    {0x00a0, 0x8174, 0x02, 0x00},
-    {0x00a1, 0x8175, 0x02, 0x00},
-    {0x00a2, 0x8176, 0x02, 0x00},
-    {0x00a3, 0x8177, 0x02, 0x00},
-    {0x00a4, 0x8178, 0x02, 0x00},
-    {0x80db, 0x41c8, 0x02, 0xa0},
-    {0x0095, 0x4160, 0x02, 0x00},
-    {0x0096, 0x4161, 0x02, 0x00},
-    {0x0097, 0x4162, 0x02, 0x00},
-    {0x0098, 0x4163, 0x02, 0x00},
-    {0x0099, 0x4164, 0x02, 0x00},
-    {0x009a, 0x4165, 0x02, 0x00},
-    {0x009b, 0x4166, 0x02, 0x00},
-    {0x009c, 0x4167, 0x02, 0x00},
-    {0x009d, 0x4171, 0x02, 0x00},
-    {0x009e, 0x4172, 0x02, 0x00},
-    {0x009f, 0x4173, 0x02, 0x00},
-    {0x00a0, 0x4174, 0x02, 0x00},
-    {0x00a1, 0x4175, 0x02, 0x00},
-    {0x00a2, 0x4176, 0x02, 0x00},
-    {0x00a3, 0x4177, 0x02, 0x00},
-    {0x00a4, 0x4178, 0x02, 0x00},
-    {0x80db, 0x81c8, 0x02, 0xa0},
-    {0x80db, 0x81c9, 0x02, 0xa0},
-    {0x00dc, 0x81c8, 0x02, 0x20},
-    {0x80db, 0x81c9, 0x02, 0xa0},
-    {0x00dc, 0x81cc, 0x02, 0x20},
-    {0x00dd, 0x81cd, 0x02, 0x20},
-    {0x80db, 0x41c8, 0x02, 0xa0},
-    {0x80db, 0x41c9, 0x02, 0xa0},
-    {0x00dc, 0x41c8, 0x02, 0x20},
-    {0x80db, 0x41c9, 0x02, 0xa0},
-    {0x00dc, 0x41cc, 0x02, 0x20},
-    {0x00dd, 0x41cd, 0x02, 0x20},
-    {0x8049, 0x8275, 0x02, 0x80},
-    {0x004a, 0x8224, 0x02, 0x00},
-    {0x004b, 0x0002, 0x02, 0x00},
-    {0x004b, 0x0002, 0x01, 0x00},
-    {0x80db, 0x81ca, 0x02, 0xa0},
-    {0x00dc, 0x81cb, 0x02, 0x20},
-    {0x00dd, 0x81cc, 0x02, 0x20},
-    {0x00de, 0x81cd, 0x02, 0x20},
-    {0x80db, 0x41ca, 0x02, 0xa0},
-    {0x00dc, 0x41cb, 0x02, 0x20},
-    {0x00dd, 0x41cc, 0x02, 0x20},
-    {0x00de, 0x41cd, 0x02, 0x20},
-    {0x80db, 0x81cd, 0x02, 0xa0},
-    {0x00dc, 0x81cc, 0x02, 0x20},
-    {0x00dd, 0x81c3, 0x02, 0x10},
-    {0x80db, 0x81cd, 0x02, 0xa0},
-    {0x00dc, 0x81cc, 0x02, 0x20},
-    {0x00de, 0x81c5, 0x02, 0x20},
-    {0x00dd, 0x81c3, 0x02, 0x10},
-    {0x80db, 0x41cd, 0x02, 0xa0},
-    {0x00dc, 0x41cc, 0x02, 0x20},
-    {0x00dd, 0x41c3, 0x02, 0x10},
-    {0x80db, 0x41cd, 0x02, 0xa0},
-    {0x00dc, 0x41cc, 0x02, 0x20},
-    {0x00de, 0x41c5, 0x02, 0x20},
-    {0x00dd, 0x41c3, 0x02, 0x10},
-    {0x8000, 0x0000, 0x00, 0x00},
-};
-/* The key lists: command (bit 15 starts a list), key code (scan code, 0x200 shift, 0x400 control, 0x800 alt). */
-static const InputKey input_keys[INPUT_KEY_COUNT] = {
-    {0x80d7, 0x001c},
-    {0x00e0, 0x0410},
-    {0x80ef, 0x001c},
-    {0x808f, 0x001c},
-    {0x0090, 0x0001},
-    {0x808c, 0x081f},
-    {0x0090, 0x0001},
-    {0x0052, 0x0039},
-    {0x8091, 0x0001},
-    {0x800b, 0x0002},
-    {0x8007, 0x0002},
-    {0x008c, 0x081f},
-    {0x800b, 0x0003},
-    {0x8008, 0x0003},
-    {0x008c, 0x081f},
-    {0x800b, 0x0004},
-    {0x8009, 0x0004},
-    {0x008c, 0x081f},
-    {0x800b, 0x0005},
-    {0x800a, 0x0005},
-    {0x008c, 0x081f},
-    {0x8001, 0x004b},
-    {0x0003, 0x004c},
-    {0x0002, 0x004d},
-    {0x0006, 0x004f},
-    {0x0005, 0x0050},
-    {0x0004, 0x0051},
-    {0x00f0, 0x0047},
-    {0x00f1, 0x0048},
-    {0x00f2, 0x0049},
-    {0x80a5, 0x000e},
-    {0x00a7, 0x001c},
-    {0x00a8, 0x021e},
-    {0x00a8, 0x001e},
-    {0x00a9, 0x0230},
-    {0x00a9, 0x0030},
-    {0x00aa, 0x022e},
-    {0x00aa, 0x002e},
-    {0x00ab, 0x0220},
-    {0x00ab, 0x0020},
-    {0x00ac, 0x0212},
-    {0x00ac, 0x0012},
-    {0x00ad, 0x0221},
-    {0x00ad, 0x0021},
-    {0x00ae, 0x0222},
-    {0x00ae, 0x0022},
-    {0x00af, 0x0223},
-    {0x00af, 0x0023},
-    {0x00b0, 0x0217},
-    {0x00b0, 0x0017},
-    {0x00b1, 0x0224},
-    {0x00b1, 0x0024},
-    {0x00b2, 0x0225},
-    {0x00b2, 0x0025},
-    {0x00b3, 0x0226},
-    {0x00b3, 0x0026},
-    {0x00b4, 0x0232},
-    {0x00b4, 0x0032},
-    {0x00b5, 0x0231},
-    {0x00b5, 0x0031},
-    {0x00b6, 0x0218},
-    {0x00b6, 0x0018},
-    {0x00b7, 0x0219},
-    {0x00b7, 0x0019},
-    {0x00b8, 0x0210},
-    {0x00b8, 0x0010},
-    {0x00b9, 0x0213},
-    {0x00b9, 0x0013},
-    {0x00ba, 0x021f},
-    {0x00ba, 0x001f},
-    {0x00bb, 0x0214},
-    {0x00bb, 0x0014},
-    {0x00bc, 0x0216},
-    {0x00bc, 0x0016},
-    {0x00bd, 0x022f},
-    {0x00bd, 0x002f},
-    {0x00be, 0x0211},
-    {0x00be, 0x0011},
-    {0x00bf, 0x022d},
-    {0x00bf, 0x002d},
-    {0x00c0, 0x0215},
-    {0x00c0, 0x0015},
-    {0x00c1, 0x022c},
-    {0x00c1, 0x002c},
-    {0x00c2, 0x000b},
-    {0x00c3, 0x0002},
-    {0x00c4, 0x0003},
-    {0x00c5, 0x0004},
-    {0x00c6, 0x0005},
-    {0x00c7, 0x0006},
-    {0x00c8, 0x0007},
-    {0x00c9, 0x0008},
-    {0x00ca, 0x0009},
-    {0x00cb, 0x000a},
-    {0x00c2, 0x0052},
-    {0x00c3, 0x004f},
-    {0x00c4, 0x0050},
-    {0x00c5, 0x0051},
-    {0x00c6, 0x004b},
-    {0x00c7, 0x004c},
-    {0x00c8, 0x004d},
-    {0x00c9, 0x0047},
-    {0x00ca, 0x0048},
-    {0x00cb, 0x0049},
-    {0x00d3, 0x0053},
-    {0x00cc, 0x000c},
-    {0x00cd, 0x020a},
-    {0x00ce, 0x020b},
-    {0x00cf, 0x0028},
-    {0x00d0, 0x0235},
-    {0x00d1, 0x0202},
-    {0x00d2, 0x0033},
-    {0x00d3, 0x0034},
-    {0x00d4, 0x0027},
-    {0x00d5, 0x0227},
-    {0x00d6, 0x0039},
-    {0x00df, 0x000f},
-    {0x004b, 0x0001},
-    {0x800b, 0x0039},
-    {0x8093, 0x0039},
-    {0x8000, 0x0000},
-};
-/* The click feedback scripts (see run_click_feedback). */
-static const uint8_t click_feedback_scripts[CLICK_FEEDBACK_SIZE] = {
-    0x86, 0x85, 0x47, 0x01, 0x03, 0x03, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x02, 0xff, 0x82, 0x47, 0x01,
-    0x03, 0x05, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x04, 0xff, 0x82, 0x47, 0x01, 0x03, 0x07, 0xff, 0x46,
-    0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x06, 0xff, 0x82, 0x47, 0x01, 0x03, 0x09, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07,
-    0x01, 0x03, 0x08, 0xff, 0x82, 0x47, 0x01, 0x03, 0x0b, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x0a, 0xff,
-    0x82, 0x47, 0x01, 0x03, 0x0d, 0xff, 0x46, 0x00, 0x04, 0x03, 0x07, 0x01, 0x03, 0x0c, 0xff, 0x82, 0x49, 0x00, 0x00,
-    0x06, 0x85, 0x49, 0x01, 0x00, 0x06, 0x85, 0x48, 0x00, 0x00, 0x06, 0x85, 0x48, 0x01, 0x00, 0x06, 0x85, 0x48, 0x02,
-    0x00, 0x06, 0x85, 0x48, 0x03, 0x00, 0x06, 0x85, 0x47, 0x01, 0x04, 0x0f, 0xff, 0x00, 0x06, 0x85, 0x47, 0x01, 0x04,
-    0x11, 0xff, 0x00, 0x04, 0x85, 0x47, 0x01, 0x04, 0x13, 0xff, 0x00, 0x04, 0x85, 0x4a, 0x00, 0x06, 0x85, 0x47, 0x01,
-    0x05, 0x0a, 0xff, 0x00, 0x06, 0x85, 0x4b, 0x00, 0x06, 0x86, 0x4c, 0x00, 0x00, 0x06, 0x86, 0x4c, 0x01, 0x00, 0x06,
-    0x86, 0x4c, 0x02, 0x00, 0x06, 0x86, 0x4d, 0x02, 0x00, 0x06, 0x86, 0x4d, 0x04, 0x00, 0x06, 0x85, 0x4d, 0x08, 0x00,
-    0x06, 0x86, 0x4e, 0x01, 0x05, 0x00, 0x04, 0x8e, 0x00, 0x4e, 0x02, 0x05, 0x00, 0x04, 0x8e, 0x00, 0x4e, 0x04, 0x05,
-    0x00, 0x04, 0x8e, 0x00, 0x4e, 0x08, 0x05, 0x00, 0x04, 0x8e, 0x00, 0x4f, 0x1a, 0xfe, 0x00, 0x00, 0x04, 0x85, 0x50,
-    0x1a, 0xfe, 0x01, 0x00, 0x04, 0x85, 0x06, 0x83,
-};
 
 /* The arrow and the hand cursors: 4 bpp, color 12 clear. */
 static const uint8_t cursor_arrow[ARROW_W * CURSOR_H / 2] = {
@@ -848,451 +85,22 @@ static const uint8_t cursor_hand[HAND_W * CURSOR_H / 2] = {
     0xc0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xcc, 0xcc, 0xcc, 0xc0, 0xff, 0xff, 0xff, 0xff,
 };
 
-static struct {
-    uint8_t child_list_start[INPUT_CHILD_COUNT]; /* position of each child list */
-    int16_t command_list_start[INPUT_COMMAND_COUNT];
-    int16_t key_list_start[INPUT_KEY_COUNT];
-    enum InputMode mode, saved_mode;
-    struct {
-        int16_t type, x, y;
-    } events[EVENT_RING];
-    int event_head, event_tail, event_count;
-    bool events_locked;
-    bool deferred;
-    int16_t deferred_x, deferred_y;
-    int deferred_type;
-    bool dropped_left; /* a left click did not fit: a right release still may */
-    uint16_t keys[KEY_BUFFER];
-    int key_count;
-    Command current; /* the command of the last event */
-    Command queue[COMMAND_QUEUE];
-    int queue_head, queue_tail;
-    int disabled;          /* commands queued by feedback scripts that wait */
-    int wait;              /* ticks without new commands */
-    const uint8_t *script; /* the running click feedback script */
-    int script_delay;
-    uint32_t last_ticks;
-    bool feedback_waiting; /* the script waits for the next queue run */
-    bool arrow_pressed;
-    int arrow_zone, arrow_entry;
-    bool zone_active[INPUT_ZONE_COUNT];     /* the input zones of the input tree of the mode */
-    uint8_t cursor_list[CURSOR_ZONE_COUNT]; /* the shown cursor zones (from 1), by priority */
-    int cursor_count;
-    uint8_t champion_cursor[FACE_SIZE * FACE_SIZE];                 /* the dragged champion cursor */
-    uint8_t champion_cursor_key;                                    /* its clear color */
-    uint8_t object_cursor[OBJECT_CURSOR_SIZE * OBJECT_CURSOR_SIZE]; /* the held object cursor */
-} in;
+InputState g_input;
 
 InputMatch g_input_match = {.zone = ZONE_NONE, .origin = -1};
 bool g_input_feedback_busy;
 int16_t g_input_mouse_x = -1;
 int16_t g_input_mouse_y = -1;
 
-/* ---- Setup ---- */
-
-void input_init(void)
-{
-    memset(&in, 0, sizeof in);
-    in.event_tail = EVENT_RING - 1;
-    int n = 0;
-    for (int i = 0; i < INPUT_COMMAND_COUNT; i++)
-        if (input_commands[i].command & LIST_START)
-            in.command_list_start[n++] = (int16_t)i;
-    n = 0;
-    for (int i = 0; i < INPUT_KEY_COUNT; i++)
-        if (input_keys[i].command & LIST_START)
-            in.key_list_start[n++] = (int16_t)i;
-    n = 0;
-    for (int i = 0; i < INPUT_CHILD_COUNT; i++)
-        if (input_children[i] & NODE_HAS_CHILDREN)
-            in.child_list_start[n++] = (uint8_t)i;
-}
-
-bool input_is_waiting(void)
-{
-    return in.wait != 0;
-}
-
-bool input_is_idle(void)
-{
-    return !in.key_count && !in.event_count && !in.deferred && in.queue_head == in.queue_tail && !in.script &&
-           !in.feedback_waiting && !g_input_feedback_busy;
-}
-
-/* ---- The input tree ---- */
-
-/* The champion in the cell relative to the party direction, -1 none. */
-static int party_cell_champion(int16_t cell)
-{
-    return champ_get_index_in_cell(dir_turn(cell, g_game.party_dir));
-}
-
-/* The condition of a node with children, tested with the argument of each child. */
-static bool condition_holds(int cond, int arg)
-{
-    switch (cond) {
-    case NODE_IF_ALWAYS:
-        return true;
-    case NODE_IF_SCREEN_MODE:
-        return arg == g_dialog.screen_mode;
-    case NODE_IF_BUTTON_COUNT:
-        return arg == g_dialog.button_count;
-    case NODE_IF_INVENTORY:
-        if (arg == g_ui.inventory)
-            return true;
-        if (arg <= CHAMPION_MAX)
-            return false;
-        return !g_ui.inventory || arg - CHAMPION_MAX != g_ui.inventory;
-    case NODE_IF_CHAMPION_ALIVE:
-        return champion(arg)->health != 0;
-    case NODE_IF_CHAMPION_IN_CELL:
-        return party_cell_champion(arg) >= 0;
-    case NODE_IF_DRAGGING:
-        return arg ? g_input_drag_state != 0 : g_input_drag_state == 0;
-    case NODE_IF_ICON_IN_CELL:
-        if (g_action.champion)
-            return false;
-        return arg >= CELL_COUNT || party_cell_champion(arg) >= 0;
-    case NODE_IF_ACTION_COUNT:
-        return g_action.champion && arg == g_champ_action_count;
-    case NODE_IF_RUNE_SET:
-        return g_action.champion && arg & 1 << champion(g_action.champion - 1)->rune_count;
-    case NODE_IF_MINION_MAP_LAYOUT:
-        if (!g_action.champion)
-            return false;
-        return arg == (g_action.flags & MAP_HAS_OPTIONS ? g_champ_action_count : MAP_WITHOUT_OPTIONS);
-    case NODE_IF_ACTION_MODE:
-        return arg == g_action.mode;
-    }
-    return false;
-}
-
-static const InputNode *node_child(const InputNode *node, int i)
-{
-    return &input_nodes[input_children[in.child_list_start[node->link] + i] & NODE_INDEX_MASK];
-}
-
-static bool node_child_end(const InputNode *node, int i)
-{
-    return i > 0 && input_children[in.child_list_start[node->link] + i] & NODE_HAS_CHILDREN;
-}
-
-/* The screen rectangle of an input zone. */
-static bool get_input_zone_rect(uint16_t zone, int16_t *rect)
-{
-    if (!zone_get_rect(zone & ZONE_ID_MASK, rect))
-        return false;
-    if (zone & (ZONE_IN_PANEL | ZONE_IN_ACTION_AREA)) {
-        ScreenPoint origin = zone_get_position(zone & ZONE_IN_PANEL ? ZONE_VIEWPORT : ZONE_ACTION_ORIGIN);
-        rect[RECT_X] = (int16_t)(rect[RECT_X] + origin.x);
-        rect[RECT_Y] = (int16_t)(rect[RECT_Y] + origin.y);
-    }
-    return true;
-}
-
-static bool point_in_rect(const int16_t *r, int16_t x, int16_t y)
-{
-    return x >= r[RECT_X] && x <= r[RECT_X] + r[RECT_W] - 1 && y >= r[RECT_Y] && y <= r[RECT_Y] + r[RECT_H] - 1;
-}
-
-static const InputCommand *node_commands(const InputNode *node)
-{
-    int list = input_zones[node->link].commands;
-    return list == -1 ? NULL : &input_commands[in.command_list_start[list]];
-}
-
-/* The zone that the position of a command zone is relative to: the inventory panel, the action area, or none. */
-static int16_t origin_of_zone(uint16_t zone)
-{
-    if (zone & ZONE_IN_PANEL)
-        return ZONE_VIEWPORT;
-    if (zone & ZONE_IN_ACTION_AREA)
-        return ZONE_ACTION_ORIGIN;
-    return -1;
-}
-
-/* Remembers the matched command entry: its zone, the click position, its place in its list, and its rect. */
-static void select_entry(const InputCommand *list, const InputCommand *e, int16_t x, int16_t y, const int16_t *rect)
-{
-    uint16_t command = e->command & COMMAND_MASK;
-    g_input_match.zone = e->zone & ZONE_ID_MASK;
-    g_input_match.origin = origin_of_zone(e->zone);
-    g_input_match.value = command;
-    g_input_match.choice = (int16_t)(command - ((list->command & COMMAND_MASK) - 1));
-    g_input_match.x = x;
-    g_input_match.y = y;
-    memcpy(g_input_match.rect, rect, sizeof g_input_match.rect);
-}
-
-/* The command of the first entry of a command list whose buttons and zone take the click, 0 for none; rect becomes
-   the rect of its zone. */
-static uint16_t match_click_in_list(const InputCommand *list, int16_t x, int16_t y, int buttons, int16_t *rect)
-{
-    if (!list)
-        return 0;
-    const InputCommand *e = list;
-    do {
-        if (!(e->flags & COMMAND_OFF) && buttons & e->buttons && get_input_zone_rect(e->zone, rect) &&
-            point_in_rect(rect, x, y)) {
-            select_entry(list, e, x, y, rect);
-            g_input_match.key = 0;
-            return e->command & COMMAND_MASK;
-        }
-        e++;
-    } while (!(e->command & LIST_START));
-    rect[RECT_W] = 0;
-    rect[RECT_H] = 0;
-    return 0;
-}
-
-/* Remembers the entry of command in a command list as the matched entry, or only the command without an entry; rect
-   becomes the rect of the zone of the entry. As in the original, the walk ends at the first entry without a command;
-   a list needs that end entry. */
-static void select_command_in_list(uint16_t command, const InputCommand *list, int16_t *rect)
-{
-    g_input_match.origin = -1;
-    if (list)
-        for (const InputCommand *e = list; e->command & COMMAND_MASK; e++)
-            if (!(e->flags & COMMAND_OFF) && (e->command & COMMAND_MASK) == command) {
-                get_input_zone_rect(e->zone, rect);
-                select_entry(list, e, rect[RECT_X], rect[RECT_Y], rect);
-                return;
-            }
-    if (list) {
-        rect[RECT_W] = 0;
-        rect[RECT_H] = 0;
-    }
-    g_input_match.zone = ZONE_NONE;
-    g_input_match.x = 0;
-    g_input_match.y = 0;
-    g_input_match.value = command;
-    g_input_match.choice = 0;
-}
-
-/* The command of a click in the input tree below node, 0 for none; rect becomes the rect of its zone. */
-static uint16_t find_click_command(const InputNode *node, int16_t x, int16_t y, int buttons, int16_t *rect)
-{
-    uint16_t command = 0;
-    for (int i = 0; !node_child_end(node, i); i++) {
-        const InputNode *child = node_child(node, i);
-        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
-            continue;
-        if (child->cond & NODE_HAS_CHILDREN) {
-            command = find_click_command(child, x, y, buttons, rect);
-        } else {
-            int16_t r[RECT_SIZE];
-            if (!get_input_zone_rect(input_zones[child->link].zone, r) || !point_in_rect(r, x, y))
-                continue;
-            command = match_click_in_list(node_commands(child), x, y, buttons, rect);
-        }
-        if (command)
-            return command;
-    }
-    return command;
-}
-
-/* The command of key in the input tree below node, 0 for none; rect becomes the rect of the zone of its command. */
-static uint16_t find_key_command(const InputNode *node, uint16_t key, int16_t *rect)
-{
-    uint16_t command = 0;
-    for (int i = 0; !node_child_end(node, i); i++) {
-        const InputNode *child = node_child(node, i);
-        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
-            continue;
-        if (child->cond & NODE_HAS_CHILDREN) {
-            command = find_key_command(child, key, rect);
-            if (command)
-                return command;
-            continue;
-        }
-        int list = input_zones[child->link].keys;
-        if (list == -1)
-            continue;
-        const InputKey *k = &input_keys[in.key_list_start[list]];
-        do {
-            if (k->key == key) {
-                command = k->command & COMMAND_MASK;
-                select_command_in_list(command, node_commands(child), rect);
-                g_input_match.key = key;
-                break;
-            }
-            k++;
-        } while (!(k->command & LIST_START));
-        if (command)
-            return command;
-    }
-    return command;
-}
-
-/* The command entry of command in the input tree under node, NULL for none. As in the original, the walk of an entry
-   list ends at the first entry without a command; a list needs that end entry. */
-static const InputCommand *find_command_entry(const InputNode *node, uint16_t command)
-{
-    for (int i = 0; !node_child_end(node, i); i++) {
-        const InputNode *child = node_child(node, i);
-        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
-            continue;
-        if (child->cond & NODE_HAS_CHILDREN) {
-            const InputCommand *e = find_command_entry(child, command);
-            if (e)
-                return e;
-            continue;
-        }
-        const InputCommand *e = node_commands(child);
-        if (e)
-            for (; e->command & COMMAND_MASK; e++)
-                if ((e->command & COMMAND_MASK) == command)
-                    return e;
-    }
-    return NULL;
-}
-
-/* In the advanced mode a right click in a dialog with a cancel button chooses that button; true when it did. */
-static bool right_click_cancels_dialog(int type)
-{
-    if (type != INPUT_BUTTON_RIGHT || g_game_mode != GAME_MODE_ADVANCED || in.mode != INPUT_MODE_DIALOG ||
-        !g_dialog.right_choice)
-        return false;
-    g_input_match.choice = (int16_t)g_dialog.right_choice;
-    return true;
-}
-
-uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect)
-{
-    uint16_t command = find_click_command(&input_mode_roots[mode], x, y, buttons, rect);
-    if (g_game_mode != GAME_MODE_ADVANCED || buttons != INPUT_BUTTON_LEFT)
-        return command;
-    for (int16_t champion_index = 0; champion_index < CHAMPION_MAX; champion_index++) {
-        int16_t box[RECT_SIZE], target[RECT_SIZE];
-        uint16_t open = (uint16_t)(CMD_INVENTORY_FIRST + champion_index);
-        uint16_t store = (uint16_t)(CMD_STORE_FIRST + champion_index);
-        if (!zone_get_rect(ZONE_STATUS_BOX + champion_index, box) || !point_in_rect(box, x, y))
-            continue;
-        if (command && command != open && command != store)
-            return command;
-        const InputCommand *e =
-            find_command_entry(&input_mode_roots[mode], g_game.leader_hand != THING_NONE ? store : open);
-        if (e && get_input_zone_rect(e->zone, target))
-            return find_click_command(&input_mode_roots[mode], target[RECT_X], target[RECT_Y], buttons, rect);
-        return command;
-    }
-    return command;
-}
-
-uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect)
-{
-    if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
-        return CMD_OPTIONS;
-    uint16_t command = find_key_command(&input_mode_roots[mode], key, rect);
-    if (command || g_game_mode != GAME_MODE_ADVANCED)
-        return command;
-    if (mode == INPUT_MODE_MOVE && (key == KEY_QUICK_SAVE || key == KEY_QUICK_LOAD))
-        return key == KEY_QUICK_SAVE ? CMD_QUICK_SAVE : CMD_QUICK_LOAD;
-    if (mode == INPUT_MODE_MOVE && (key == KEY_AUTOMAP || key == KEY_AUTOMAP_M))
-        return CMD_AUTOMAP;
-    if (mode == INPUT_MODE_MOVE && key == KEY_CHEATS)
-        return CMD_CHEATS;
-    if (mode == INPUT_MODE_INVENTORY && key == KEY_AUTOMAP && !g_ui.candidate)
-        return CMD_INVENTORY_LEADER;
-    uint16_t keypad = advanced_movement_key(key);
-    return keypad ? find_key_command(&input_mode_roots[mode], keypad, rect) : 0;
-}
-
-/* Marks the zones of the input tree below node whose conditions hold. */
-static void mark_active_zones(const InputNode *node, bool *active)
-{
-    for (int i = 0; !node_child_end(node, i); i++) {
-        const InputNode *child = node_child(node, i);
-        if (!condition_holds(node->cond & ~NODE_HAS_CHILDREN, child->arg))
-            continue;
-        if (child->cond & NODE_HAS_CHILDREN)
-            mark_active_zones(child, active);
-        else
-            active[child->link] = true;
-    }
-}
-
-/* Shows the cursor zone c in front of the zones of the same or a lower priority. */
-static void add_cursor_zone(int c)
-{
-    if (memchr(in.cursor_list, c, (size_t)in.cursor_count))
-        return;
-    int p = 0;
-    while (p < in.cursor_count && cursor_zones[in.cursor_list[p] - 1].priority > cursor_zones[c - 1].priority)
-        p++;
-    memmove(&in.cursor_list[p + 1], &in.cursor_list[p], (size_t)(in.cursor_count - p));
-    in.cursor_list[p] = (uint8_t)c;
-    in.cursor_count++;
-}
-
-/* Hides the cursor zone c. */
-static void remove_cursor_zone(int c)
-{
-    uint8_t *e = memchr(in.cursor_list, c, (size_t)in.cursor_count);
-    if (!e)
-        return;
-    memmove(e, e + 1, (size_t)(&in.cursor_list[--in.cursor_count] - e));
-}
-
-/* Marks the active input zones of the mode. A cursor zone of a zone that becomes active shows, of a zone that
-   becomes inactive hides; with both changes it stays as it is, as in the original. */
-static void update_active_zones(void)
-{
-    bool active[INPUT_ZONE_COUNT] = {false};
-    uint8_t change[CURSOR_ZONE_COUNT + 1] = {0};
-    mark_active_zones(&input_mode_roots[in.mode], active);
-    for (int i = 0; i < INPUT_ZONE_COUNT; i++)
-        if (active[i] != in.zone_active[i]) {
-            change[input_zones[i].cursor] |= active[i] ? CURSOR_ADD : CURSOR_REMOVE;
-            in.zone_active[i] = active[i];
-        }
-    for (int c = 1; c <= CURSOR_ZONE_COUNT; c++) {
-        if (change[c] == CURSOR_ADD)
-            add_cursor_zone(c);
-        if (change[c] == CURSOR_REMOVE)
-            remove_cursor_zone(c);
-    }
-}
-
-void input_set_mode(enum InputMode mode)
-{
-    if (mode != in.mode)
-        input_flush();
-    in.mode = mode;
-    update_active_zones();
-}
-
-enum InputMode input_get_mode(void)
-{
-    return in.mode;
-}
-
-void input_refresh_mode(void)
-{
-    update_active_zones();
-}
-
-void input_push_mode(enum InputMode mode)
-{
-    in.saved_mode = in.mode;
-    input_reset_states();
-    input_set_mode(mode);
-}
-
-void input_pop_mode(void)
-{
-    input_set_mode(in.saved_mode);
-}
-
 /* ---- The cursor ---- */
 
 enum CursorKind input_cursor_at(int16_t x, int16_t y)
 {
     int kind = 0;
-    for (int i = 0; i < in.cursor_count; i++) {
-        const CursorZone *z = &cursor_zones[in.cursor_list[i] - 1];
+    for (int i = 0; i < g_input.cursor_count; i++) {
+        const CursorZone *z = &g_input_cursor_zones[g_input.cursor_list[i] - 1];
         int16_t r[RECT_SIZE];
-        if (get_input_zone_rect(z->zone, r) && point_in_rect(r, x, y)) {
+        if (input_get_zone_rect(z->zone, r) && rect_contains_point(r, x, y)) {
             kind = z->kind;
             break;
         }
@@ -1312,11 +120,11 @@ void input_set_champion_cursor(int16_t champion_index)
     memset(face->pixels, 0, (FACE_SIZE + 1) / 2 * FACE_SIZE);
     uint8_t colors[FACE_ICON_COLORS];
     ui_draw_champion_face_icon(face, champion_index, colors);
-    Bitmap cursor = {in.champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
-    memset(in.champion_cursor, UI_KEY, sizeof in.champion_cursor);
+    Bitmap cursor = {g_input.champion_cursor, FACE_SIZE, FACE_SIZE, IMAGE_8BPP};
+    memset(g_input.champion_cursor, UI_KEY, sizeof g_input.champion_cursor);
     const int16_t r[RECT_SIZE] = {0, 0, FACE_SIZE, FACE_SIZE};
     ui_blit_bitmap(&(BlitSource){.bitmap = face, .transparent = FACE_CURSOR_SKIP, .colormap = colors}, &cursor, r);
-    in.champion_cursor_key = colors[UI_KEY];
+    g_input.champion_cursor_key = colors[UI_KEY];
     draw_free_temp();
 }
 
@@ -1329,20 +137,20 @@ CursorImage input_cursor_image(enum CursorKind cursor)
         uint8_t key = g_leader_hand.palette[HAND_ICON_KEY];
         uint8_t shadow[HAND_ICON_COLORS];
         memset(shadow, g_ui_colors[UI_BLACK], sizeof shadow);
-        memset(in.object_cursor, key, sizeof in.object_cursor);
+        memset(g_input.object_cursor, key, sizeof g_input.object_cursor);
         const Bitmap icon = {g_leader_hand.cursor, HAND_ICON_SIZE, HAND_ICON_SIZE, IMAGE_8BPP};
-        Bitmap image = {in.object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
+        Bitmap image = {g_input.object_cursor, OBJECT_CURSOR_SIZE, OBJECT_CURSOR_SIZE, IMAGE_8BPP};
         const int16_t s[RECT_SIZE] = {OBJECT_SHADOW, OBJECT_SHADOW, HAND_ICON_SIZE, HAND_ICON_SIZE};
         const int16_t r[RECT_SIZE] = {0, 0, HAND_ICON_SIZE, HAND_ICON_SIZE};
         ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = shadow}, &image, s);
         ui_blit_bitmap(&(BlitSource){.bitmap = &icon, .transparent = HAND_ICON_KEY, .colormap = g_leader_hand.palette},
                        &image, r);
-        return (CursorImage){in.object_cursor,   NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
-                             OBJECT_CURSOR_SIZE, OBJECT_HOT, OBJECT_HOT, key};
+        return (CursorImage){g_input.object_cursor, NULL,       IMAGE_8BPP, OBJECT_CURSOR_SIZE,
+                             OBJECT_CURSOR_SIZE,    OBJECT_HOT, OBJECT_HOT, key};
     }
     case CURSOR_CHAMPION:
-        return (CursorImage){in.champion_cursor, NULL,       IMAGE_8BPP, FACE_SIZE,
-                             FACE_SIZE,          FACE_HOT_X, FACE_HOT_Y, in.champion_cursor_key};
+        return (CursorImage){g_input.champion_cursor,    NULL, IMAGE_8BPP, FACE_SIZE, FACE_SIZE, FACE_HOT_X, FACE_HOT_Y,
+                             g_input.champion_cursor_key};
     default:
         return (CursorImage){cursor_arrow, g_ui_colors, IMAGE_4BPP, ARROW_W, CURSOR_H, 0, 0, UI_KEY};
     }
@@ -1370,26 +178,26 @@ void input_draw_cursor(uint8_t *screen, int16_t x, int16_t y)
 
 void input_mouse_click(int16_t x, int16_t y, int type)
 {
-    if (in.events_locked) {
-        in.deferred = true;
-        in.deferred_x = x;
-        in.deferred_y = y;
-        in.deferred_type = type;
+    if (g_input.events_locked) {
+        g_input.deferred = true;
+        g_input.deferred_x = x;
+        g_input.deferred_y = y;
+        g_input.deferred_type = type;
         return;
     }
     int limit =
-        (type == INPUT_LEFT_RELEASED && !in.dropped_left) || type == EVENT_ENTER_AREA || type == EVENT_LEAVE_AREA
+        (type == INPUT_LEFT_RELEASED && !g_input.dropped_left) || type == EVENT_ENTER_AREA || type == EVENT_LEAVE_AREA
             ? EVENT_LIMIT_SPECIAL
             : EVENT_LIMIT;
-    in.dropped_left = false;
-    if (in.event_count < limit) {
-        in.event_tail = (in.event_tail + 1) % EVENT_RING;
-        in.events[in.event_tail].type = (int16_t)type;
-        in.events[in.event_tail].x = x;
-        in.events[in.event_tail].y = y;
-        in.event_count++;
+    g_input.dropped_left = false;
+    if (g_input.event_count < limit) {
+        g_input.event_tail = (g_input.event_tail + 1) % EVENT_RING;
+        g_input.events[g_input.event_tail].type = (int16_t)type;
+        g_input.events[g_input.event_tail].x = x;
+        g_input.events[g_input.event_tail].y = y;
+        g_input.event_count++;
     } else if (type == INPUT_BUTTON_LEFT) {
-        in.dropped_left = true;
+        g_input.dropped_left = true;
     }
 }
 
@@ -1406,32 +214,30 @@ void input_mouse_up(int16_t x, int16_t y, int button)
         input_mouse_click(x, y, INPUT_LEFT_RELEASED);
 }
 
-/* Queues the click that came while the events were locked. */
-static void flush_deferred_click(void)
+void input_flush_deferred_click(void)
 {
-    if (!in.deferred)
+    if (!g_input.deferred)
         return;
-    in.deferred = false;
-    input_mouse_click(in.deferred_x, in.deferred_y, in.deferred_type);
+    g_input.deferred = false;
+    input_mouse_click(g_input.deferred_x, g_input.deferred_y, g_input.deferred_type);
 }
 
-/* Queues a key event when the event ring has space, and unlocks the events. */
-static void enqueue_key(uint16_t key)
+void input_enqueue_key(uint16_t key)
 {
-    if (in.event_count < EVENT_LIMIT) {
-        in.event_tail = (in.event_tail + 1) % EVENT_RING;
-        in.events[in.event_tail].type = INPUT_KEY;
-        in.events[in.event_tail].x = (int16_t)key;
-        in.event_count++;
+    if (g_input.event_count < EVENT_LIMIT) {
+        g_input.event_tail = (g_input.event_tail + 1) % EVENT_RING;
+        g_input.events[g_input.event_tail].type = INPUT_KEY;
+        g_input.events[g_input.event_tail].x = (int16_t)key;
+        g_input.event_count++;
     }
-    in.events_locked = false;
-    flush_deferred_click();
+    g_input.events_locked = false;
+    input_flush_deferred_click();
 }
 
 void input_key_down(uint16_t key)
 {
-    if (in.key_count < KEY_BUFFER)
-        in.keys[in.key_count++] = key;
+    if (g_input.key_count < KEY_BUFFER)
+        g_input.keys[g_input.key_count++] = key;
 }
 
 void input_key_repeat(uint16_t key)
@@ -1442,549 +248,36 @@ void input_key_repeat(uint16_t key)
 
 void input_flush(void)
 {
-    in.key_count = 0;
-    int pos = (in.event_tail + 1) % EVENT_RING;
-    if (pos != in.event_head || in.event_count) {
+    g_input.key_count = 0;
+    int pos = (g_input.event_tail + 1) % EVENT_RING;
+    if (pos != g_input.event_head || g_input.event_count) {
         /* only area changes and released left buttons stay */
-        int write = in.event_head;
-        int read = in.event_head;
+        int write = g_input.event_head;
+        int read = g_input.event_head;
         int kept = 0;
-        for (int n = in.event_count; n > 0; n--) {
-            int t = in.events[read].type;
+        for (int n = g_input.event_count; n > 0; n--) {
+            int t = g_input.events[read].type;
             if (t == EVENT_ENTER_AREA || t == EVENT_LEAVE_AREA || t == INPUT_LEFT_RELEASED) {
-                in.events[write] = in.events[read];
+                g_input.events[write] = g_input.events[read];
                 write = (write + 1) % EVENT_RING;
                 kept++;
             }
             read = (read + 1) % EVENT_RING;
         }
-        in.event_count = kept;
-        in.event_tail = (write + EVENT_RING - 1) % EVENT_RING;
+        g_input.event_count = kept;
+        g_input.event_tail = (write + EVENT_RING - 1) % EVENT_RING;
     }
-    in.disabled = 0;
-    in.queue_head = 0;
-    in.queue_tail = 0;
+    g_input.disabled = 0;
+    g_input.queue_head = 0;
+    g_input.queue_tail = 0;
     g_input_match.zone = ZONE_NONE;
     g_input_match.origin = -1;
     g_input_match.x = 0;
     g_input_match.y = 0;
     g_input_match.value = 0;
     g_input_match.choice = 0;
-    in.events_locked = false;
-    flush_deferred_click();
-}
-
-/* ---- Click feedback ---- */
-
-void input_refine_champion_click(Command *c)
-{
-    int command = c->command;
-    if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST) {
-        int n = command - CMD_HAND_FIRST;
-        int16_t hand = n % SLOT_HAND_COUNT;
-        int16_t champion_index = party_cell_champion(n / SLOT_HAND_COUNT);
-        if (champion_index < 0 || champion(champion_index)->action_delay[hand] ||
-            !champ_list_actions(champion_index, champion(champion_index)->slots[hand], hand))
-            c->command = 0;
-        else
-            c->command = (uint16_t)(CMD_HAND_FIRST + champion_index * SLOT_HAND_COUNT + hand);
-        return;
-    }
-    if (command < CMD_PARTY_ICON_FIRST || command > CMD_PARTY_ICON_LAST)
-        return;
-    int icon = command - CMD_PARTY_ICON_FIRST; /* the cell relative to the party direction */
-    int16_t champion_index = party_cell_champion(icon);
-    if (champion_index < 0) {
-        c->command = 0;
-        return;
-    }
-    const int16_t *r = c->rect;
-    /* the distances to the edges of the icon that face the party center */
-    int16_t dy = (int16_t)(icon < HALF_CELLS ? r[RECT_Y] + r[RECT_H] - 1 - c->y : c->y - r[RECT_Y]);
-    int16_t dx = (int16_t)(icon == CELL_FRONT_RIGHT || icon == CELL_BACK_RIGHT ? c->x - r[RECT_X]
-                                                                               : r[RECT_X] + r[RECT_W] - 1 - c->x);
-    if (dx <= dy)
-        c->command = (uint16_t)(CMD_LEADER_FIRST + icon);
-    else if (champion(champion_index)->action_delay[ACTION_SPELL])
-        c->command = 0;
-}
-
-/* The script of a pressed dialog button: by the button count of the open dialog and the command, as in the
-   original. */
-static int pressed_button_script(uint16_t command)
-{
-    switch (g_dialog.button_count) {
-    case 1:
-    case 2:
-    case 7:
-        return SCRIPT_DIALOG_BUTTON_2;
-    case 3:
-        return command == CMD_DIALOG_BUTTON_FIRST ? SCRIPT_DIALOG_BUTTON_2 : SCRIPT_DIALOG_BUTTON;
-    case 4:
-        return SCRIPT_DIALOG_BUTTON;
-    case 5:
-    case 6:
-        return command <= CMD_DIALOG_BUTTON_FIRST + 1 ? SCRIPT_DIALOG_BUTTON : SCRIPT_EXECUTE;
-    default:
-        return SCRIPT_EXECUTE;
-    }
-}
-
-const uint8_t *input_click_feedback_script(Command *c)
-{
-    input_refine_champion_click(c);
-    uint16_t command = c->command;
-    int offset;
-    if (!command || command > CMD_OPTIONS)
-        return NULL;
-    if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME ||
-        (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) ||
-        (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) ||
-        (command >= CMD_SOUND_VOLUME_FIRST && command <= CMD_MUSIC_VOLUME_LAST) ||
-        (command >= CMD_EDIT_CHAMPION_NAME && command <= CMD_EDIT_CANCEL))
-        offset = SCRIPT_EXECUTE;
-    else if (command <= CMD_MOVE_LEFT)
-        offset = (command - CMD_TURN_LEFT) * SCRIPT_MOVE_SIZE + SCRIPT_MOVE_FIRST;
-    else if (command >= CMD_HAND_FIRST && command <= CMD_HAND_LAST)
-        offset = (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT * SCRIPT_HAND_SIZE + SCRIPT_HAND_FIRST;
-    else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST)
-        offset = (command - CMD_PARTY_ICON_FIRST) * SCRIPT_PARTY_ICON_SIZE + SCRIPT_PARTY_ICON_FIRST;
-    else if (command == CMD_ACTION_CANCEL)
-        offset = SCRIPT_ACTION_CANCEL;
-    else if (command == CMD_ROTATE_LEFT || command == CMD_ROTATE_RIGHT)
-        offset = (command - CMD_ROTATE_LEFT) * SCRIPT_ROTATE_SIZE + SCRIPT_ROTATE_FIRST;
-    else if (command >= CMD_RUNE_FIRST && command <= CMD_RUNE_LAST)
-        offset = SCRIPT_RUNE;
-    else if (command == CMD_REMOVE_RUNE)
-        offset = SCRIPT_REMOVE_RUNE;
-    else if (command == CMD_CAST_SPELL)
-        offset = SCRIPT_CAST_SPELL;
-    else if (command >= CMD_ACTION_FIRST && command <= CMD_ACTION_LAST)
-        offset = (command - CMD_ACTION_FIRST) * SCRIPT_ACTION_SIZE + SCRIPT_ACTION_FIRST;
-    else if (command == CMD_INVENTORY_LEADER || command == CMD_RECRUIT_CANCEL)
-        offset = SCRIPT_INVENTORY_CLOSE;
-    else if (command == CMD_SLEEP)
-        offset = SCRIPT_SLEEP;
-    else if (command == CMD_SAVE)
-        offset = SCRIPT_SAVE;
-    else if (command >= CMD_MAP_OPTION_FIRST && command <= CMD_MAP_OPTION_LAST)
-        offset = (command - CMD_MAP_OPTION_FIRST) * SCRIPT_MAP_OPTION_SIZE + SCRIPT_MAP_OPTION_FIRST;
-    else if (command >= CMD_DIALOG_BUTTON_FIRST && command <= CMD_DIALOG_BUTTON_LAST)
-        offset = pressed_button_script(command);
-    else
-        offset = command == CMD_VIEWPORT ? SCRIPT_VIEWPORT : SCRIPT_QUEUE;
-    return click_feedback_scripts + offset;
-}
-
-void rect_center_in(int16_t *rect, const int16_t *src, int16_t w, int16_t h)
-{
-    rect[RECT_W] = w;
-    rect[RECT_X] = (int16_t)(src[RECT_X] + ((src[RECT_W] - w + 1) >> 1));
-    rect[RECT_H] = h;
-    rect[RECT_Y] = (int16_t)(src[RECT_Y] + ((src[RECT_H] - h + 1) >> 1));
-}
-
-static void queue_current(void)
-{
-    in.queue[in.queue_tail] = in.current;
-    in.queue_tail = (in.queue_tail + 1) % COMMAND_QUEUE;
-}
-
-/* The commands that wait in the queue keep the input disabled until they run. */
-static void release_queue(void)
-{
-    in.disabled = (in.queue_tail - in.queue_head + COMMAND_QUEUE) % COMMAND_QUEUE;
-}
-
-/* Opens the feedback bitmap of the clicked button when it is closed; r becomes a w x h rect centered in it. */
-static void feedback_init_rect(Feedback *f, int16_t *r, int16_t w, int16_t h)
-{
-    if (!f->opened) {
-        memcpy(f->o.rect, in.current.rect, sizeof f->o.rect);
-        offscreen_create(&f->o, ZONE_NONE, false);
-        f->opened = true;
-    }
-    rect_center_in(r, f->o.rect, w, h);
-}
-
-/* Draws the picture of the arguments at p centered in the clicked button. */
-static void feedback_picture(Feedback *f, const uint8_t *p)
-{
-    int category = p[PICTURE_CATEGORY];
-    int index = p[PICTURE_INDEX];
-    int entry = p[PICTURE_ENTRY];
-    const Bitmap *image = draw_gdat_image(category, index, entry);
-    if (!image)
-        return;
-    int16_t r[RECT_SIZE];
-    feedback_init_rect(f, r, image->width, image->height);
-    offscreen_blit(&f->o,
-                   &(BlitSource){.bitmap = image,
-                                 .transparent = (int8_t)p[PICTURE_KEY], /* 0xff in the script is GFX_OPAQUE */
-                                 .colormap = draw_gdat_image_palette(category, index, entry)},
-                   r);
-}
-
-/* Draws the pressed rune button with the rune of the pressed button in the next rune set. */
-static void feedback_rune_button(Feedback *f)
-{
-    const Bitmap *image = draw_gdat_image(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED);
-    if (!image)
-        return;
-    int16_t r[RECT_SIZE];
-    feedback_init_rect(f, r, image->width, image->height);
-    offscreen_blit(
-        &f->o,
-        &(BlitSource){.bitmap = image,
-                      .transparent = GFX_OPAQUE,
-                      .colormap = draw_gdat_image_palette(CAT_INTERFACE, UI_INDEX_SPELL, GFX_SPELL_RUNE_PRESSED)},
-        r);
-    /* the rune of the pressed button in the next rune set */
-    int set = champion(g_action.champion - 1)->rune_count;
-    int rune = in.current.command - CMD_RUNE_FIRST;
-    char text[RUNE_TEXT_SIZE] = {(char)(set * SPELL_RUNES_PER_SET + SPELL_RUNE_GLYPH_FIRST + rune), '\0'};
-    ScreenSize size = text_measure(text);
-    rect_center_in(r, f->o.rect, size.w, size.h);
-    offscreen_draw_text_at(&f->o, r[RECT_X], r[RECT_Y] + r[RECT_H] - 1,
-                           (TextColors){g_ui_colors[UI_BLACK], g_ui_colors[UI_CYAN]}, text);
-}
-
-/* Copies the drawn action area to the screen. */
-static void present_action_area(void)
-{
-    offscreen_flush(area_begin_draw(false), true);
-}
-
-/* Draws the pressed hand icon of the action champion, or of the champion of a hand command, in the action area. */
-static void feedback_hand_icon(int icon)
-{
-    int16_t champion_index = g_action.champion - 1;
-    if (!g_action.champion) {
-        if (in.current.command < CMD_HAND_FIRST || in.current.command > CMD_HAND_LAST)
-            return;
-        champion_index = (in.current.command - CMD_HAND_FIRST) / SLOT_HAND_COUNT;
-    }
-    area_draw_hand_icon(champion_index, icon, true);
-    present_action_area();
-}
-
-/* Draws the pressed spell icon of the champion in the party cell in the action area. */
-static void feedback_spell_icon(int16_t cell)
-{
-    int16_t champion_index = party_cell_champion(cell);
-    if (champion_index < 0)
-        return;
-    area_draw_spell_icon(champion_index, true);
-    present_action_area();
-}
-
-/* Runs a drawing opcode of a feedback script with its arguments at p; returns the next opcode. */
-static const uint8_t *feedback_draw_op(Feedback *f, uint8_t op, const uint8_t *p)
-{
-    switch (op & FB_OP_MASK) {
-    case FB_PICTURE:
-        feedback_picture(f, p);
-        p += PICTURE_ARGS;
-        break;
-    case FB_RUNE_BUTTON:
-        feedback_rune_button(f);
-        break;
-    case FB_SPELL_ICON:
-        feedback_spell_icon(*p++);
-        break;
-    case FB_HAND_ICON:
-        feedback_hand_icon(*p++);
-        break;
-    case FB_ACTION_NAME:
-        area_draw_name(*p++, true);
-        present_action_area();
-        break;
-    case FB_ENTERED_RUNES:
-        area_draw_entered_runes(true);
-        present_action_area();
-        break;
-    case FB_MAP_OPTION_BUTTONS:
-        mmap_draw_option_buttons(*p++);
-        present_action_area();
-        break;
-    case FB_INVENTORY_BUTTON:
-        if (g_ui.inventory) {
-            game_set_inventory_buttons(g_ui.buttons | *p);
-            ui_draw_champion_state(g_ui.inventory - 1);
-        }
-        p++;
-        break;
-    case FB_DIALOG_BUTTON:
-    case FB_DIALOG_BUTTON_2:
-        dialog_draw_button(true, (GdatKey){p[PICTURE_CATEGORY], p[PICTURE_INDEX], p[PICTURE_ENTRY]});
-        p += DIALOG_BUTTON_ARGS;
-        f->opened = false; /* the original forgets the open feedback bitmap */
-        dialog_present();
-        break;
-    default:
-        break;
-    }
-    return p;
-}
-
-/* Runs the opcode op of a feedback script with its arguments at p; returns the next opcode. */
-static const uint8_t *feedback_run_op(Feedback *f, uint8_t op, const uint8_t *p, bool *queue_full)
-{
-    switch (op & FB_OP_MASK) {
-    case FB_DELAY:
-        in.script_delay = *p++;
-        break;
-    case FB_RELEASE_QUEUE:
-        release_queue();
-        break;
-    case FB_WAIT_QUEUE:
-        in.feedback_waiting = true;
-        break;
-    case FB_WAIT_STEP:
-        g_input_feedback_busy = true;
-        break;
-    case FB_QUEUE:
-    case FB_QUEUE_AND_RELEASE:
-        if ((in.queue_tail + 1) % COMMAND_QUEUE == in.queue_head) {
-            if (!in.disabled)
-                in.disabled = 1;
-            *queue_full = true; /* the script waits */
-            break;
-        }
-        queue_current();
-        if ((op & FB_OP_MASK) == FB_QUEUE_AND_RELEASE)
-            release_queue();
-        break;
-    case FB_EXECUTE:
-        /* the command may run a nested input_poll (a dialog); the script continues after the opcode, or repeats it
-           when the command waits */
-        in.script = p;
-        if (!command_execute(&in.current))
-            p = in.script ? in.script - 1 : p - 1;
-        else if (g_input_command_stop)
-            release_queue();
-        break;
-    default:
-        return feedback_draw_op(f, op, p);
-    }
-    return p;
-}
-
-/* Runs the click feedback script for elapsed timer ticks: pictures of pressed buttons, then the command. */
-static void run_click_feedback(int elapsed)
-{
-    if (in.script_delay) {
-        if (elapsed < in.script_delay) {
-            in.script_delay -= elapsed;
-            return;
-        }
-        in.script_delay = 0;
-    }
-    if (in.disabled || in.feedback_waiting || g_input_feedback_busy || !in.script)
-        return;
-    Feedback f = {0};
-    bool queue_full = false;
-    uint8_t op;
-    do {
-        op = in.script[0];
-        const uint8_t *p = feedback_run_op(&f, op, in.script + 1, &queue_full);
-        if (queue_full)
-            break;
-        in.script = p;
-        if (op & FB_END) {
-            in.script = NULL;
-            break;
-        }
-    } while (op & FB_RUN_ON);
-    if (f.opened)
-        offscreen_flush(&f.o, true);
-}
-
-/* The open viewport screen takes the keys and the mouse events until it closes; the mouse drags the automap. */
-static void forward_to_screen(void)
-{
-    uint16_t key;
-    while (g_advanced_screen && (key = input_read_key()))
-        advanced_screen_event(INPUT_KEY, key, 0);
-    while (g_advanced_screen && in.event_count) {
-        int type = in.events[in.event_head].type;
-        int16_t x = in.events[in.event_head].x;
-        int16_t y = in.events[in.event_head].y;
-        in.event_count--;
-        in.event_head = (in.event_head + 1) % EVENT_RING;
-        advanced_screen_event(type, x, y);
-    }
-    if (g_advanced_screen) {
-        advanced_automap_drag(g_input_mouse_x, g_input_mouse_y);
-        return;
-    }
-    input_flush(); /* the input after the close key does not reach the game */
-    uint16_t pending = advanced_take_pending_key();
-    if (pending)
-        input_key_down(pending);
-}
-
-/* The command of the next waiting event, 0 when the events run out; in.current takes the command, its position and
-   the rect of its zone. */
-static uint16_t next_event_command(void)
-{
-    uint16_t command = 0;
-    while (!command && in.event_count) {
-        int type = in.events[in.event_head].type;
-        int16_t x = in.events[in.event_head].x;
-        int16_t y = in.events[in.event_head].y;
-        in.event_count--;
-        in.event_head = (in.event_head + 1) % EVENT_RING;
-        int16_t rect[RECT_SIZE] = {0};
-        if (type < INPUT_KEY) {
-            if (type & INPUT_LEFT_RELEASED)
-                command = CMD_CANCEL_CAPTURE;
-            else if (type & EVENT_CLICK_TYPES) {
-                if (type == INPUT_BUTTON_LEFT)
-                    area_end_damage_hold(x, y);
-                if (!right_click_cancels_dialog(type))
-                    command = input_click_command(in.mode, x, y, type, rect);
-            }
-        } else if (type == INPUT_KEY) {
-            command = input_key_command(in.mode, (uint16_t)x, rect);
-        } else if (type == EVENT_ENTER_AREA) {
-            command = CMD_DRAG_CANCEL;
-        } else if (type == EVENT_LEAVE_AREA) {
-            command = CMD_CANCEL_PUSH;
-        }
-        if (command) {
-            in.current.x = g_input_match.x;
-            in.current.y = g_input_match.y;
-            memcpy(in.current.rect, rect, sizeof rect);
-            in.current.command = command;
-        }
-    }
-    return command;
-}
-
-void input_poll(void)
-{
-    int elapsed = (int)(g_main_loop.timer_ticks - in.last_ticks);
-    if (!elapsed)
-        return;
-    in.last_ticks = g_main_loop.timer_ticks;
-    if (g_advanced_screen) {
-        forward_to_screen();
-        return;
-    }
-    if (!in.disabled && !in.feedback_waiting && !g_input_feedback_busy) {
-        while (!in.script) {
-            for (int i = 0; i < in.key_count; i++)
-                enqueue_key(in.keys[i]);
-            in.key_count = 0;
-            in.events_locked = true;
-            uint16_t command = next_event_command();
-            in.events_locked = false;
-            flush_deferred_click();
-            if (!command)
-                break;
-            in.script = input_click_feedback_script(&in.current);
-            elapsed = 0;
-        }
-    }
-    run_click_feedback(elapsed);
-}
-
-void input_reset_states(void)
-{
-    game_release_eye_and_mouth();
-    move_set_push_mode(false);
-    g_input_feedback_busy = false;
-    in.feedback_waiting = false;
-    in.script = NULL;
-    game_clear_drag();
-}
-
-/* ---- Movement arrows ---- */
-
-void input_cancel_push_mode(void)
-{
-    if (!g_party.push_mode)
-        return;
-    move_set_push_mode(false);
-    ui_draw_movement_arrows();
-}
-
-/* Draws a movement arrow released or pressed. */
-static void show_move_arrow(int entry, int zone, bool pressed)
-{
-    in.arrow_pressed = pressed;
-    in.arrow_zone = zone;
-    in.arrow_entry = entry;
-    Offscreen o;
-    offscreen_create(&o, zone, true);
-    gfx_fill_bitmap(o.bitmap, g_ui_colors[UI_BLACK]);
-    offscreen_draw_gdat_image(
-        &o, (GdatKey){CAT_INTERFACE, UI_INDEX_ARROWS, entry + (pressed ? ARROW_PRESSED_OFFSET : 0)}, zone, GFX_OPAQUE);
-    offscreen_flush(&o, true);
-    draw_free_temp();
-}
-
-void input_release_move_arrow(void)
-{
-    /* the push arrow under the mouse stays pressed; after the push mode the arrows are already drawn released */
-    if (!in.arrow_pressed || (g_party.push_mode && g_party.push_arrow != PUSH_ARROW_NONE))
-        return;
-    if (g_party.push_mode)
-        show_move_arrow(in.arrow_entry, in.arrow_zone, false);
-    else
-        in.arrow_pressed = false;
-}
-
-void input_update_viewport_arrow(void)
-{
-    /* by push arrow: the movement arrow entry and zone, the turn from the party direction to the push and to the
-       party step (0: ahead) */
-    static const struct {
-        uint8_t entry;
-        uint16_t zone;
-        int8_t push_turn, step_turn;
-    } push_arrows[PUSH_ARROW_COUNT] = {
-        {GFX_PUSH_ARROWS + 4,  ZONE_ARROW_FIRST + 2, 0,          0         },
-        {GFX_PUSH_ARROWS + 2,  ZONE_ARROW_FIRST + 1, TURN_RIGHT, 0         },
-        {GFX_PUSH_ARROWS + 6,  ZONE_ARROW_FIRST + 3, TURN_BACK,  TURN_RIGHT},
-        {GFX_PUSH_ARROWS + 8,  ZONE_ARROW_FIRST + 4, TURN_BACK,  TURN_BACK },
-        {GFX_PUSH_ARROWS + 10, ZONE_ARROW_FIRST + 5, TURN_BACK,  TURN_LEFT },
-        {GFX_PUSH_ARROWS,      ZONE_ARROW_FIRST,     TURN_LEFT,  0         },
-    };
-    if (!g_view_arrows_enabled || g_party.push_pending_group != THING_NONE)
-        return;
-    int16_t r[RECT_SIZE];
-    if (!zone_get_rect(ZONE_VIEWPORT, r))
-        return;
-    int x = g_input_mouse_x - r[RECT_X];
-    int y = g_input_mouse_y - r[RECT_Y];
-    move_set_push_arrow(PUSH_ARROW_NONE);
-    input_release_move_arrow();
-    if (x < 0 || y < 0 || x >= VIEWPORT_WIDTH || y >= VIEWPORT_HEIGHT)
-        return;
-    int dx = x - VIEWPORT_WIDTH / 2;
-    int dy = y - VIEWPORT_HEIGHT / 2;
-    int arrow;
-    if (abs(dx) < ARROW_CENTER_X) {
-        if (abs(dy) < ARROW_CENTER_Y)
-            return;
-        arrow = dy >= 0 ? PUSH_ARROW_DOWN : PUSH_ARROW_UP;
-    } else if (dx < 0) {
-        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_LEFT : dy >= 0 ? PUSH_ARROW_DOWN_LEFT : PUSH_ARROW_UP;
-    } else {
-        arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
-    }
-    int step = dir_turn(push_arrows[arrow].step_turn, g_game.party_dir);
-    if (dungeon_square_blocks_movement(dungeon_square_at(
-            (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
-        return;
-    Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                      (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir])};
-    if (!creature_can_be_pushed(front, dir_turn(push_arrows[arrow].push_turn, g_game.party_dir), false, NULL))
-        return;
-    show_move_arrow(push_arrows[arrow].entry, push_arrows[arrow].zone, true);
-    move_set_push_arrow(arrow);
+    g_input.events_locked = false;
+    input_flush_deferred_click();
 }
 
 /* ---- Clicks in the dungeon view ---- */
@@ -1993,7 +286,7 @@ void input_update_viewport_arrow(void)
 static bool point_in_zone(int16_t zone, int16_t x, int16_t y)
 {
     int16_t r[RECT_SIZE];
-    return zone_get_rect(zone, r) && point_in_rect(r, x, y);
+    return zone_get_rect(zone, r) && rect_contains_point(r, x, y);
 }
 
 /* A click on a wall ornament of the view (cell: a WALL_CELL_* square). */
@@ -2178,7 +471,7 @@ static bool click_zones_hit(const ViewSquares *v, int16_t x, int16_t y, uint16_t
 {
     for (int i = 0; i < g_view_click_zone_count; i++) {
         const ViewClickZone *z = &g_view_click_zones[i];
-        if (!point_in_rect(z->rect, x, y))
+        if (!rect_contains_point(z->rect, x, y))
             continue;
         switch (z->kind) {
         case CLICK_OBJECT:
@@ -2308,9 +601,9 @@ static void execute_session_command(int command)
     switch (command) {
     case CMD_SAVE:
         if (g_game.champion_count && !g_ui.candidate) {
-            in.disabled--;
+            g_input.disabled--;
             session_save();
-            in.disabled++;
+            g_input.disabled++;
         }
         break;
     case CMD_VOLUME:
@@ -2371,7 +664,7 @@ static bool execute_party_command(const Command *c, bool idle)
         }
         area_update(false);
     } else if (command >= CMD_LEADER_FIRST && command <= CMD_LEADER_LAST) {
-        champ_set_leader(party_cell_champion(command - CMD_LEADER_FIRST));
+        champ_set_leader(input_party_cell_champion(command - CMD_LEADER_FIRST));
         ui_draw_all_champion_states(false);
     } else if (command >= CMD_INVENTORY_FIRST && command <= CMD_INVENTORY_LEADER) {
         execute_inventory_command(command - CMD_INVENTORY_FIRST);
@@ -2421,7 +714,7 @@ static bool execute_champion_command(int command, bool idle)
         action_area_open_hand((command - CMD_HAND_FIRST) / SLOT_HAND_COUNT,
                               (command - CMD_HAND_FIRST) % SLOT_HAND_COUNT);
     } else if (command >= CMD_PARTY_ICON_FIRST && command <= CMD_PARTY_ICON_LAST) {
-        int16_t champion_index = party_cell_champion(command - CMD_PARTY_ICON_FIRST);
+        int16_t champion_index = input_party_cell_champion(command - CMD_PARTY_ICON_FIRST);
         if (champion_index >= 0)
             action_area_open_spells(champion_index);
     } else if (command >= CMD_COIN_FIRST && command <= CMD_COIN_LAST) {
@@ -2475,7 +768,7 @@ bool command_execute(Command *c)
          (g_game.party_move_cooldown ||
           (g_game.throw_cooldown && g_game.throw_dir == dir_turn(g_game.party_dir, command - CMD_MOVE_FORWARD)))) ||
         (g_party.move_steps && (command == CMD_TURN_LEFT || command == CMD_TURN_RIGHT || command == CMD_VIEWPORT)) ||
-        (command == CMD_VIEWPORT && !view_shows_party()) || in.wait) {
+        (command == CMD_VIEWPORT && !view_shows_party()) || g_input.wait) {
         game_set_command_stop(true);
         return false;
     }
@@ -2494,24 +787,24 @@ bool command_execute(Command *c)
 
 void input_set_wait(int steps)
 {
-    in.wait = steps;
+    g_input.wait = steps;
 }
 
 void command_process_queue(void)
 {
-    if (in.wait)
-        in.wait--;
-    in.feedback_waiting = false;
+    if (g_input.wait)
+        g_input.wait--;
+    g_input.feedback_waiting = false;
     do {
         input_poll();
-        if (in.queue_head == in.queue_tail || g_advanced_screen)
+        if (g_input.queue_head == g_input.queue_tail || g_advanced_screen)
             return;
-        int head = in.queue_head;
-        in.queue_head = (head + 1) % COMMAND_QUEUE;
-        if (!command_execute(&in.queue[head]))
-            in.queue_head = head;
-        else if (in.disabled)
-            in.disabled--;
+        int head = g_input.queue_head;
+        g_input.queue_head = (head + 1) % COMMAND_QUEUE;
+        if (!command_execute(&g_input.queue[head]))
+            g_input.queue_head = head;
+        else if (g_input.disabled)
+            g_input.disabled--;
     } while (!g_input_command_stop && !g_main_loop.quit);
 }
 
@@ -2519,24 +812,24 @@ void command_process_queue(void)
 
 void input_simulate_command_click(uint16_t command)
 {
-    const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
+    const InputCommand *e = input_find_command_entry(&g_input_mode_roots[g_input.mode], command);
     int16_t r[RECT_SIZE];
-    if (e && get_input_zone_rect(e->zone, r))
+    if (e && input_get_zone_rect(e->zone, r))
         input_mouse_click(r[RECT_X], r[RECT_Y], e->buttons);
 }
 
 bool input_command_rect(uint16_t command, int16_t *rect)
 {
-    const InputCommand *e = find_command_entry(&input_mode_roots[in.mode], command);
-    return e && get_input_zone_rect(e->zone, rect);
+    const InputCommand *e = input_find_command_entry(&g_input_mode_roots[g_input.mode], command);
+    return e && input_get_zone_rect(e->zone, rect);
 }
 
 uint16_t input_read_key(void)
 {
-    if (!in.key_count)
+    if (!g_input.key_count)
         return 0;
-    uint16_t key = in.keys[0];
-    memmove(in.keys, in.keys + 1, --in.key_count * sizeof in.keys[0]);
+    uint16_t key = g_input.keys[0];
+    memmove(g_input.keys, g_input.keys + 1, --g_input.key_count * sizeof g_input.keys[0]);
     return key;
 }
 
