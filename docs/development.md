@@ -48,7 +48,7 @@ All options are in the [Player manual](manual.md).
 3. Build: `make windows`, or `make windows DM_DIR=<path to the dm folder>` to copy the SDL package of the `dm` folder.
 4. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
 
-The Windows program has no control socket and no turn-based mode. Its log: [manual.md](manual.md#run-the-game).
+The Windows program has no control socket and no turn-based mode. For its log, see [manual.md](manual.md#run-the-game).
 
 Test the program with Wine:
 
