@@ -119,7 +119,7 @@ In advanced and turn-based modes, the quick save `QUICK.DAT` is in the `--saves`
 
 - Before the load, the game writes the running game to `QUICK.TMP`. If this write fails, the quick load stops.
 - If `QUICK.DAT` does not load, the game loads `QUICK.TMP` back. After a load or a restore, the game deletes `QUICK.TMP`.
-- If `QUICK.TMP` does not load either, the game is lost: `QUICK.TMP` stays, and the game writes an error line to the log. Advanced mode ends the program (`EXIT_GAME_LOST`, [game-flow.md](../rules/game-flow.md#deviations-from-the-original)); turn-based mode continues without a game ([llm-mode.md](../llm/llm-mode.md#turn-based-commands)).
+- If `QUICK.TMP` does not load either, the game is lost: `QUICK.TMP` stays, and the game writes an error line to the log. Advanced mode ends the program (`EXIT_GAME_LOST`, [game-flow.md](../rules/game-flow.md#deviations-from-the-original)); turn-based mode continues without a game ([turn-based.md](../llm/turn-based.md#turn-based-commands)).
 
 ## SETTINGS.TXT
 

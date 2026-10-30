@@ -262,12 +262,12 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
 - [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.
 - [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
-- [ ] M13. With the control socket ([Movies](llm/llm-mode.md#movies)): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
+- [ ] M13. With the control socket ([Movies](llm/turn-based.md#movies)): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
 
 ## T. Turn-based mode
 
-Details: [The turn-based mode](llm/llm-mode.md#the-turn-based-mode). Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
+Details: [Turn-based mode](llm/turn-based.md). Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
 
 - [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows immediately; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
 - [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
@@ -292,4 +292,4 @@ Copy `SDL3.dll` next to `build/dm2.exe` and set up Wine ([Windows build](develop
 
 ## Known deviations
 
-Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [llm-mode.md](llm/llm-mode.md#deviations-from-the-original).
+Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [turn-based.md](llm/turn-based.md#deviations-from-the-original).

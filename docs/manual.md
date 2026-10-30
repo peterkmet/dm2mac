@@ -18,7 +18,7 @@ You need these only when you start the game from Terminal or a shortcut:
 
 | Option | What it does |
 |---|---|
-| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([LLM mode](llm/llm-mode.md), macOS only). |
+| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([Turn-based mode](llm/turn-based.md), macOS only). |
 | `--save PATH` | Loads a save and starts it immediately, in advanced mode unless `--mode` says otherwise. |
 | `--filter NAME` | The window's pixel-art filter: `none`, `scale2x`, or `scale3x`. The `DM2_FILTER` environment variable does the same. |
 | `--data DIR` | Uses the game files in `DIR` instead of `game/`, and skips the check and the install. Saves go to `DIR/DATA`. |
@@ -44,7 +44,7 @@ RESTART in the save menu keeps the mode.
 |---|---|
 | `vanilla` | The original game, nothing added. |
 | `advanced` | The default. The original game with the [advanced features](#advanced-features). |
-| `turnbased` | A program plays the game turn by turn ([LLM mode](llm/llm-mode.md)). macOS only. |
+| `turnbased` | A program plays the game turn by turn ([Turn-based mode](llm/turn-based.md)). macOS only. |
 
 The game rules are the same in all modes, except for the cheats and the few changes under
 [Advanced features](#advanced-features).

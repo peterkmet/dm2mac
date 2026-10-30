@@ -957,7 +957,7 @@ static const char *click(const char *r)
     return NULL;
 }
 
-/* A raw key: a key name of docs/llm/llm-mode.md or a key code. */
+/* A raw key: a key name of docs/llm/control-socket.md or a key code. */
 static const char *key(const char *r)
 {
     char name[ACTION_NAME_SIZE];
@@ -1111,7 +1111,7 @@ static const char *batch_stop_reason(void)
 }
 
 /* The next act_many item, a "name" or an {"action": "name", "args": {...}} object, copied to out; ELEMENT_END at the
-   end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/llm/llm-mode.md). */
+   end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/llm/turn-based.md). */
 static ElementResult next_element(char *out, size_t size)
 {
     const char *p = turn.batch.next;

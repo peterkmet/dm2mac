@@ -77,7 +77,7 @@ To run several files, add `-n auto`.
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
-| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [llm-mode.md](llm/llm-mode.md) (`test_vocabulary.py`). |
+| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
 | `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups because they draw without active groups. |
 
 Tests of the control socket and the turn-based mode:
@@ -140,7 +140,7 @@ The checks that no test covers are in [manual-test-checklist.md](manual-test-che
   range notes, and [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
 - [Items](reference/items.md): the values of every item.
 - [Manual test checklist](manual-test-checklist.md): the checks that no test covers.
-- [LLM mode](llm/llm-mode.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
+- [Control socket](llm/control-socket.md), [Turn-based mode](llm/turn-based.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
   plays the game.
 - [TODO](todo.md): the open work. [Changelog](../CHANGELOG.md): the changes.
 

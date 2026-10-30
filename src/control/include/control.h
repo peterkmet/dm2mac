@@ -4,7 +4,7 @@
 /* Prefixes: control_ */
 
 /* The line protocol of the control of the running game: one JSON request per line, one JSON reply per line
-   (docs/llm/llm-mode.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
+   (docs/llm/control-socket.md). platform/transport.c carries the lines over the socket; no socket, no SDL. */
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -28,8 +28,8 @@ const char *control_find_value(const char *line, const char *key);
 bool control_get_string(const char *line, const char *key, char *out, size_t size);
 /* The integer value of key; missing when the key is absent or not a number. */
 int64_t control_get_int(const char *line, const char *key, int64_t missing);
-/* The key code of a key name (docs/llm/llm-mode.md): a key name, a character of the US layout, with modifier prefixes;
-   0 none. */
+/* The key code of a key name (docs/llm/control-socket.md): a key name, a character of the US layout, with modifier
+   prefixes; 0 none. */
 uint16_t control_key_code(const char *name);
 
 /* Replies and turns */
