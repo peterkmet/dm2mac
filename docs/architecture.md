@@ -286,7 +286,7 @@ no console.
 - Each test module loads its own copy of the library (`load_lib` in `tests/dm2test/lib.py`), so each module has
   its own C globals.
 - `g_game_mode` is the vanilla mode in the library.
-- A test of a modal loop sets `g_play_frame_hook` to its own frame and resets it to NULL after.
+- A test of a modal loop sets `g_play_frame_hook` to its own frame and resets it to NULL afterwards.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of
   [coding-standard.md](coding-standard.md#2-headers-and-includes)).
 
