@@ -2,7 +2,7 @@
 
 Input: `reference/decomp/SKULL.c` (1362 functions), image `build/skull.bin` (code object 0x10000-0x695ac, data object 0x70000-0x828f0).
 
-All 1195 direct call targets in the code are function starts in `reference/decomp/SKULL.c` (one exception: 0x68c0f, inside clib). Functions that are reached only through function pointers can be missing.
+All 1195 direct call targets in the code are function starts in `reference/decomp/SKULL.c` (one exception: 0x68c0f, inside clib). Functions that are reached only through function pointers may be missing.
 
 ## Big blocks
 
@@ -12,7 +12,7 @@ All 1195 direct call targets in the code are function starts in `reference/decom
 | IOP glue and HMI | 0x5a87c-0x62272 | 114 | INT 0xFC glue, bit decoder, HMI SOS (timer, digital, detection, MIDI), clib `malloc`/`free`. |
 | Watcom clib and HMI low level | 0x62272-0x695ac | 211 | Startup, file I/O, string, heap, errno; HMI PIT/IRQ code, DPMI helpers, HMI driver loaders, HMI MIDI internals. |
 
-Watcom links object files in order, and libraries after them. The game code calls only about 50 library functions (see `anchors.csv`). Module boundaries inside the game block are not visible in the binary (no padding, no alignment). The ranges below use semantic boundaries (call clusters, shared globals, strings).
+Watcom links object files in order, and libraries after them. The game code calls only about 50 library functions (see `anchors.csv`). Module boundaries inside the game block are not visible in the binary (no padding, no alignment). The ranges below use boundaries by meaning (call clusters, shared globals, strings).
 
 ## Module map of the game block (approximate)
 
@@ -35,7 +35,7 @@ Watcom links object files in order, and libraries after them. The game code call
 | 0x1fef6-0x2005b | End of game, quit | `session_end`, `session_quit` |
 | 0x200b4-0x21301 | Input mode tables (0x72ed1), click and key to command mapping, input poll | `input_set_mode`, `input_mouse_click`, `input_poll`, `input_flush` |
 | 0x21394-0x224a9 | Leader selection, command execution, command queue | `champ_set_leader`, `command_execute`, `command_process_queue` |
-| 0x22544-0x24629 | Party actions and movement, stairs, turn (uses sensors and sounds) | `click_in_viewport`, `move_party`, `creature_push_group` |
+| 0x22544-0x24629 | Party actions and movement, stairs, turning (uses sensors and sounds) | `click_in_viewport`, `move_party`, `creature_push_group` |
 | 0x24691-0x249db | Main loop and `main` | `game_loop`, `main` |
 | 0x24a88-0x2f636 | Creature AI: group update (0x25420), AI command dispatcher 0x2b75e with handlers 0x2a088-0x2b724, movement and attack 0x2b96a-0x2f636; command tables at 0x74f7e | `ai_begin`, `ai_update_group`, `execute_action` |
 | 0x2f8d6-0x3188a | Creature groups: get group at square, damage, death; 0x3188a is the largest function (9583 bytes) | `creature_get_group_at`, `creature_drop_possessions`, `creature_damage_current_group` |
@@ -64,54 +64,54 @@ The notes `range-1.md` to `range-8.md` cover the 8 ranges of [skull-map.md](../s
 
 - Ranges 3 and 4 both hold creature AI. The cut at 0x2b96a is after the AI command dispatcher 0x2b75e and its handlers. 0x2b96a is called from 0x26d16 (range 3) and 0x2d792 (range 4).
 - Range 5 is the largest. The memory manager and the GRAPHICS.DAT loader share globals (0x7fa30-0x7fa7c), so they stay together.
-- Ranges 7 and 8 are library code. The C port replaces it (no HMI, no DOS/4GW). Their names are role names with the prefixes `clib_`, `hmi_`, `dpmi_`, `iop_`; the driver internals are not analyzed in depth.
+- Ranges 7 and 8 are library code, which the C port replaces (no HMI, no DOS/4GW). Their names are role names with the prefixes `clib_`, `hmi_`, `dpmi_`, `iop_`; the driver internals are not analyzed in depth.
 
 ## Call graph hubs
 
 | Address | Callers | Name |
 |---|---|---|
-| `0x0001d2da` | 161 | dun_get_thing_data |
-| `0x0001d30b` | 86 | dun_get_next_thing |
-| `0x0003c5d3` | 66 | gdat_entry_index |
-| `0x00010f43` | 59 | mem_copy |
-| `0x0002fba9` | 47 | creature_get_group_at |
-| `0x0001c6b7` | 46 | rand_below |
-| `0x0001efa8` | 44 | dun_get_thing_gdat_index (thing to item database type and index) |
-| `0x0001c687` | 42 | math_max16 |
-| `0x0001d391` | 42 | dun_get_square_first_thing |
-| `0x0001c724` | 40 | dun_set_current_map |
-| `0x0003bbba` | 39 | mem_alloc |
-| `0x0001c6f6` | 39 | rand_2bits |
-| `0x00056390` | 37 | timeline_add_event |
-| `0x0001c67e` | 36 | math_min16 |
-| `0x00019cfc` | 35 | zone_get_rect |
-| `0x0001ca96` | 35 | dun_get_square |
-| `0x0001c6a1` | 32 | rand_next |
-| `0x0001f8d9` | 31 | creature_get_info |
-| `0x0004b108` | 31 | move_thing (move thing, central movement function) |
-| `0x00014c68` | 29 | mouse_show |
-| `0x00014c55` | 29 | mouse_hide |
-| `0x0001f12f` | 28 | item_get_attr (item attribute word from GRAPHICS.DAT (type 0x0b)) |
-| `0x00015baa` | 27 | sndreq_request_with_fallback (play sound at position (decompile failed)) |
-| `0x0001f9a3` | 27 | creature_get_flags (creature attribute word for group) |
-| `0x0001c6dc` | 27 | rand_bit |
-| `0x0003f337` | 27 | image_cache_get |
-| `0x00010f51` | 26 | mem_zero |
-| `0x0001c690` | 25 | math_clamp16 |
-| `0x0001f274` | 24 | dun_get_thing_gdat_category (GRAPHICS.DAT category of a thing) |
-| `0x0003ec2b` | 24 | gdat_get_image |
-| `0x0003a921` | 23 | gdat_get_text |
-| `0x0001d542` | 23 | dun_unlink_thing_from_square |
-| `0x0003c92e` | 21 | gdat_entry_exists |
-| `0x0003bca5` | 20 | mem_free_size |
-| `0x0001d3db` | 20 | dun_link_thing_to_square |
-| `0x0001d2cc` | 19 | dun_get_square_first_thing_data |
-| `0x00012ad2` | 18 | gfx_blit |
-| `0x000458f4` | 18 | champ_get_index_in_cell |
-| `0x0001936f` | 18 | zone_compute_rect (layout zone computation) |
-| `0x0003ee1d` | 18 | gdat_get_image_palette (GRAPHICS.DAT image lookup) |
-| `0x0001be6a` | 18 | gfx_offscreen_draw_gdat_image (draw item or creature picture) |
-| `0x0001863d` | 16 | dun_get_direction_to (direction from one square to another) |
-| `0x0001d113` | 16 | dun_get_linked_teleporter_dest (stairs or teleport destination) |
-| `0x0002f636` | 16 | ai_thing_matches_filter (creature or object flag test) |
-| `0x0004e616` | 16 | flush_picture (flush view picture (draw context 0x8018a)) |
+| `0x1d2da` | 161 | `dun_get_thing_data` |
+| `0x1d30b` | 86 | `dun_get_next_thing` |
+| `0x3c5d3` | 66 | `gdat_entry_index` |
+| `0x10f43` | 59 | `mem_copy` |
+| `0x2fba9` | 47 | `creature_get_group_at` |
+| `0x1c6b7` | 46 | `rand_below` |
+| `0x1efa8` | 44 | `dun_get_thing_gdat_index` (thing to item database type and index) |
+| `0x1c687` | 42 | `math_max16` |
+| `0x1d391` | 42 | `dun_get_square_first_thing` |
+| `0x1c724` | 40 | `dun_set_current_map` |
+| `0x3bbba` | 39 | `mem_alloc` |
+| `0x1c6f6` | 39 | `rand_2bits` |
+| `0x56390` | 37 | `timeline_add_event` |
+| `0x1c67e` | 36 | `math_min16` |
+| `0x19cfc` | 35 | `zone_get_rect` |
+| `0x1ca96` | 35 | `dun_get_square` |
+| `0x1c6a1` | 32 | `rand_next` |
+| `0x1f8d9` | 31 | `creature_get_info` |
+| `0x4b108` | 31 | `move_thing` (central movement function) |
+| `0x14c68` | 29 | `mouse_show` |
+| `0x14c55` | 29 | `mouse_hide` |
+| `0x1f12f` | 28 | `item_get_attr` (item attribute word from GRAPHICS.DAT, type 0x0b) |
+| `0x15baa` | 27 | `sndreq_request_with_fallback` (play sound at position; decompile failed) |
+| `0x1f9a3` | 27 | `creature_get_flags` (creature attribute word for group) |
+| `0x1c6dc` | 27 | `rand_bit` |
+| `0x3f337` | 27 | `image_cache_get` |
+| `0x10f51` | 26 | `mem_zero` |
+| `0x1c690` | 25 | `math_clamp16` |
+| `0x1f274` | 24 | `dun_get_thing_gdat_category` (GRAPHICS.DAT category of a thing) |
+| `0x3ec2b` | 24 | `gdat_get_image` |
+| `0x3a921` | 23 | `gdat_get_text` |
+| `0x1d542` | 23 | `dun_unlink_thing_from_square` |
+| `0x3c92e` | 21 | `gdat_entry_exists` |
+| `0x3bca5` | 20 | `mem_free_size` |
+| `0x1d3db` | 20 | `dun_link_thing_to_square` |
+| `0x1d2cc` | 19 | `dun_get_square_first_thing_data` |
+| `0x12ad2` | 18 | `gfx_blit` |
+| `0x458f4` | 18 | `champ_get_index_in_cell` |
+| `0x1936f` | 18 | `zone_compute_rect` (layout zone computation) |
+| `0x3ee1d` | 18 | `gdat_get_image_palette` (GRAPHICS.DAT image lookup) |
+| `0x1be6a` | 18 | `gfx_offscreen_draw_gdat_image` (draw item or creature picture) |
+| `0x1863d` | 16 | `dun_get_direction_to` (direction from one square to another) |
+| `0x1d113` | 16 | `dun_get_linked_teleporter_dest` (stairs or teleport destination) |
+| `0x2f636` | 16 | `ai_thing_matches_filter` (creature or object flag test) |
+| `0x4e616` | 16 | `flush_picture` (flush view picture, draw context 0x8018a) |
