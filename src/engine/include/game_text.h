@@ -43,8 +43,6 @@ typedef struct {
 } TextArgs;
 
 extern TextArgs g_text_args;
-/* The folder of the game files and the saves: the drive path codes of the dialog texts. */
-extern char g_text_drive_path[TEXT_SIZE];
 
 /* Fields of an action text. */
 #define FIELD_SKILL      0

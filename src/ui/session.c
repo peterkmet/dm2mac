@@ -549,15 +549,24 @@ static void run_menu(void)
     } while (g_session.new_game == MENU_REDRAW && !g_main_loop.quit);
 }
 
-/* The sound and music volumes, the interface and the coin table of a loaded game, then its play. */
-static void start_loaded_game(void)
+/* The start of a loaded game for the three loads: the sound and music volumes, the interface and the coin table,
+   then its play. A quick load (session_start_save) leaves the volumes and the input to its caller and puts the party
+   on its map here. */
+static void start_loaded_game(bool quick)
 {
-    sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
-    sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
+    if (!quick) {
+        sound_set_volume_and_test(g_game.sound_volume, DEVICE_SOUND);
+        sound_set_volume_and_test(g_game.music_volume, DEVICE_MUSIC);
+    }
     ui_reset();
     money_init_coin_table();
+    if (quick) {
+        ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
+        arrive_on_party_map();
+    }
     play_start_session();
-    input_flush();
+    if (!quick)
+        input_flush();
 }
 
 bool session_init(void)
@@ -569,7 +578,7 @@ bool session_init(void)
     } while (!session_load() && !g_main_loop.quit);
     if (g_main_loop.quit)
         return false;
-    start_loaded_game();
+    start_loaded_game(false);
     return true;
 }
 
@@ -583,7 +592,7 @@ bool session_start_new_game(void)
     game_clear_end();
     game_set_completed(false);
     arrive_on_party_map();
-    start_loaded_game();
+    start_loaded_game(false);
     return true;
 }
 
@@ -591,11 +600,7 @@ bool session_start_save(const char *path)
 {
     if (!read_save(path))
         return false;
-    ui_reset();
-    money_init_coin_table();
-    ui_fill_zone_screen(ZONE_SCREEN, 0); /* play_start_session runs champ_init_party_state */
-    arrive_on_party_map();
-    play_start_session();
+    start_loaded_game(true);
     return true;
 }
 
