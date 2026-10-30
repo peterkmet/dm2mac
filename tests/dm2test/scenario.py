@@ -10,6 +10,7 @@ from dm2test.gdat import ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
+from dm2test.structs import CurrentMap, Party
 from dm2tools.emu import SCRATCH
 from dm2test.view import OriginalView
 
@@ -161,24 +162,6 @@ class Location(ctypes.Structure):
 class Position(ctypes.Structure):
     """A square with its map (dungeon.h, Position)."""
     _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
-
-
-class CurrentMap(ctypes.Structure):
-    """The current map of the square reads (dungeon.h, CurrentMap)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("map", "square_x", "square_y", "square_map", "ref_dir")] + [
-        ("alt_view_active", ctypes.c_int), ("alt_view_x", ctypes.c_int16), ("alt_view_y", ctypes.c_int16),
-        ("alt_view_dir", ctypes.c_int16), ("alt_view_map", ctypes.c_int16)]
-
-
-class Party(ctypes.Structure):
-    """The movement state of the party (move.h, Party)."""
-    _fields_ = [
-        ("move_steps", ctypes.c_int16), ("move_command", ctypes.c_uint16), ("view_x", ctypes.c_int16),
-        ("view_y", ctypes.c_int16), ("view_dir", ctypes.c_int16),
-        ("new_map", ctypes.c_int16), ("fell", ctypes.c_int16), ("dest_x", ctypes.c_int16), ("dest_y", ctypes.c_int16),
-        ("dest_map", ctypes.c_int16), ("dest_cell", ctypes.c_int16), ("dest_dir", ctypes.c_int16),
-        ("teleporter_flag", ctypes.c_int), ("redraw", ctypes.c_uint32), ("push_pending_group", ctypes.c_uint16),
-        ("push_mode", ctypes.c_bool), ("push_arrow", ctypes.c_int16)]
 
 
 def port_globals(party, current_map):
