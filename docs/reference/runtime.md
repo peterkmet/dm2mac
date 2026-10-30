@@ -18,6 +18,7 @@ The DOS runtime of `SKULL.EXE` has three parts: the installer's Super VGA (SVGA)
 - Music: the HMP song timer event runs at 120 Hz. One HMP delta tick is 1/120 s at tempo 100 %.
 - The digital driver's service event runs at 120 Hz.
 - Game time: `IBMIOP.EXE` calls the game timer callback (`INT 0x2d`, handler `FUN_00010cc2`) on every 4th of its timer interrupts: nominal 60 Hz. Each call adds 1 to `DAT_0007f256`. A game step is due when the sum reaches `DAT_0007f268` = 8. Nominal game step rate: 7.5 Hz (133 ms). `DAT_0007f268 = 1` while the party sleeps (`FUN_00021d6c`, `command_execute`).
+- The port sets `PIT_DIVISOR` (`src/platform/platform.c:15`) to the same divisor `4971` and drives the HMP player at 120 Hz; [movement.md](../rules/movement.md#timing-and-the-game-step) describes the port's timer tick and game step.
 
 The divisor 4971 and the 120 Hz music tick are certain. The 60 Hz and 7.5 Hz game rates are unverified, because the real rate of the `INT 0x2d` callback is unknown ([Unknown values](#unknown-values)).
 
@@ -43,8 +44,3 @@ Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` 
 `DM2.BAT` starts `IBMIOP SKULL.EXE`. `IBMIOP.EXE` is a real-mode resident layer that `SKULL.EXE` calls through `int 0xfc` with a shared buffer (`DAT_0008048c`). It sets video mode `0x13`, writes the palette (port `0x3c8`), reads `skull.cfg`, handles the keyboard and timer, and runs the movie script. `SKULL.EXE` has 34 call sites with function numbers `0x00` to `0x30` and `0x103` to `0x10a` (for example `0x0f` timer callback, `0x2a` timer reinstall, `0x2e`, `0x2f`, `0x30` on startup and exit).
 
 [skull-map.md](skull-map.md#ibmiop-int-0xfc-service-table) lists these `int 0xfc` functions. The platform layer of the port replaces them (video, palette, input, timer).
-
-## Deviations from the original
-
-- The port sets `PIT_DIVISOR` in `src/platform/platform.c` to `4971` (240.02 Hz) and drives the HMP player at 120 Hz. [movement.md](../rules/movement.md#timing-and-the-game-step) describes the port's timer tick and game step.
-- The port plays the SVGA movie script only; the VGA script (`*.VGA`, `CREDITS.PCX`) is not used ([movies.md](../formats/movies.md#deviations-from-the-original)).
