@@ -1,6 +1,6 @@
 # Development
 
-The port builds with `make`, tests with `make test`, and checks with `make check`. For the structure of the code, see [Architecture](architecture.md).
+Build the port with `make`, test it with `make test`, and check it with `make check`. For the structure of the code, see [Architecture](architecture.md).
 
 The port is built in three steps:
 
@@ -20,18 +20,18 @@ uv sync
 
 | Command | Result |
 |---|---|
-| `make` | The game `build/dm2` and the test library `build/libdm2.dylib`. The build has 0 warnings. |
-| `make lib` | The library only. It has no SDL code. |
-| `make SANITIZE=1` | The build with the address and undefined-behavior sanitizers. |
-| `make lib CFLAGS_EXTRA=-DNAME` | One build with extra compiler flags. A change of the flags recompiles all objects. |
-| `make windows` | `build/dm2.exe` for Windows x86-64. |
+| `make` | Builds the game `build/dm2` and the test library `build/libdm2.dylib`. The build has 0 warnings. |
+| `make lib` | Builds only the library, which has no SDL code. |
+| `make SANITIZE=1` | Builds with the address and undefined-behavior sanitizers. |
+| `make lib CFLAGS_EXTRA=-DNAME` | Builds the library with extra compiler flags. Changing the flags recompiles all objects. |
+| `make windows` | Builds `build/dm2.exe` for Windows x86-64. |
 | `make dist` | `build/DM2Mac-macos-arm64.zip`: the release zip for macOS. |
 | `make dist-win` | `build/DM2Mac-windows-x64.zip`: the release zip for Windows (`DM_DIR` names the `dm` folder). |
-| `make clean` | Remove `build/`. |
+| `make clean` | Removes `build/`. |
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
-Put your DOS game (the folder, the ZIP archive, or the CD image) into the project folder ([game-files.md](formats/game-files.md#sources)), then start the game:
+Put your DOS game (its folder, ZIP archive, or CD image) into the project folder ([game-files.md](formats/game-files.md#sources)), then start the game:
 
 ```sh
 build/dm2                                   # New game (mode screen)
@@ -44,20 +44,19 @@ All options are in the [Player manual](manual.md).
 ### Windows build
 
 1. Install MinGW-w64: `brew install mingw-w64`.
-2. Unpack `SDL3-devel-3.4.18-mingw.tar.gz` from the [SDL releases](https://github.com/libsdl-org/SDL/releases) into `build/sdl-mingw/`. Without it, the `make` rule copies `build/sdl-mingw` of the `dm` folder (default `../dm`).
-3. Build: `make windows`, or `make windows DM_DIR=<path to the dm folder>` to copy the SDL package of the `dm` folder.
+2. Unpack `SDL3-devel-3.4.18-mingw.tar.gz` from the [SDL releases](https://github.com/libsdl-org/SDL/releases) into `build/sdl-mingw/`. Otherwise, the `make` rule copies `build/sdl-mingw` from the `dm` folder (default `../dm`), a folder that already holds the package.
+3. Build: `make windows`, or `make windows DM_DIR=<path to the dm folder>` to copy the SDL package from a different `dm` folder.
 4. Copy `SDL3.dll` from `build/sdl-mingw/SDL3-3.4.18/x86_64-w64-mingw32/bin/` next to `build/dm2.exe`.
 
 The Windows program has no control socket and no turn-based mode. For its log, see [manual.md](manual.md#run-the-game).
 
-Test the program with Wine:
+To test the program with Wine, first run `WINEPREFIX=build/wineprefix wineboot --init` once from the wine binary's
+folder. Then start the program:
 
 ```sh
 WINE=<path to the wine binary>
 WINEPREFIX=build/wineprefix "$WINE" build/dm2.exe
 ```
-
-On first use, run `WINEPREFIX=build/wineprefix wineboot --init` from the folder of the wine binary.
 
 ## Tests
 
@@ -65,7 +64,7 @@ On first use, run `WINEPREFIX=build/wineprefix wineboot --init` from the folder 
 make test
 ```
 
-`make test` runs `tools/test-suite`. The script runs `uv run pytest -n auto -q` and writes the log to `build/test-suite.log`. It skips the run when the git tree is clean and a green full run of the same tree is recorded. To run one file:
+`make test` runs `tools/test-suite`. The script runs `uv run pytest -n auto -q` and writes the log to `build/test-suite.log`. It skips the run if the git tree is clean and a green full run of the same tree is recorded. To run one file:
 
 ```sh
 uv run pytest -q tests/<folder>/test_x.py
@@ -78,22 +77,22 @@ To run several files, add `-n auto`.
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
-| `tests/standard/` | The coding standard (`test_standard.py`), the relative links of the docs (`test_docs.py`), and the protocol vocabulary of [llm-mode.md](llm/llm-mode.md) (`test_vocabulary.py`). |
-| `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups, because they draw without active groups. |
+| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [llm-mode.md](llm/llm-mode.md) (`test_vocabulary.py`). |
+| `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups because they draw without active groups. |
 
-The tests of the control socket and the turn-based mode:
+Tests of the control socket and the turn-based mode:
 
 | File | What it proves |
 |---|---|
-| `tests/port/test_state_json.py` | The JSON of the state, the view, and the map. |
-| `tests/port/test_turnbased.py` | The protocol, the turn end rules, the stops, `act_many`, `save`, `load`, and `new_game`. |
+| `tests/port/test_state_json.py` | The JSON for the state, the view, and the map. |
+| `tests/port/test_turnbased.py` | The protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`. |
 | `tests/tools/test_play_client.py` | `dm2-play`: the act forms, `--brief`, and the call log. |
 
 ```sh
 uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
 ```
 
-`tests/dm2test/` has the shared helpers, for example the paths of the project and the skip marker `needs_game`. Tests that need the original files are skipped when `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; the library copy of each module is in [architecture.md](architecture.md#the-test-library).
+`tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library).
 
 | Command | Result |
 |---|---|
@@ -106,7 +105,8 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 ## Layout
 
 - `src/`: the C port in five layers; see [Architecture](architecture.md).
-- `tools/dm2tools/`: the Python tools. `tools/ghidra/`: the decompile scripts.
+- `tools/dm2tools/`: the Python tools.
+- `tools/ghidra/`: the decompile scripts.
 - `tests/`: see [Tests](#tests).
 - `docs/`: the documentation.
 - Git-ignored data: `game/` (the original files), `reference/` (the Ghidra output and original material), `tests/saves/`. Link them into a new worktree.
@@ -129,7 +129,7 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
 
 ## Manual checks
 
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md); the checks of the turn-based mode are in its section [T](manual-test-checklist.md#t-turn-based-mode).
+The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md); the turn-based mode checks are in its section [T](manual-test-checklist.md#t-turn-based-mode).
 
 ## Documentation
 
