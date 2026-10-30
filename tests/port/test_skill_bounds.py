@@ -2,20 +2,12 @@
 
 import ctypes
 
-import pytest
-
 from dm2test import constants as C
 from dm2test.interface import GAME_CHAMPIONS
 
 KALAN_GAUNTLET_SKILL = 186  # the third action of the Kalan Gauntlet: "SK18SK6" reads as skill 186
 TAIL = 1024  # bytes after the champion records: the rest of g_game and the globals behind it
 EXPERIENCE = 100000
-
-
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.champ_add_experience.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_uint32]
-    lib.champ_get_skill_level.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_bool]
 
 
 def test_a_skill_outside_the_table_is_untrained_and_writes_nothing(lib, session):

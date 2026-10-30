@@ -15,12 +15,6 @@ CURE = 50  # more than the poison
 DUE_LATER = 0x10000  # game steps from now: the filler events never come due in the test
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.timeline_add_event.argtypes = [ctypes.POINTER(TimelineEvent)]
-    lib.timeline_delete_event.argtypes = [ctypes.c_int]
-
-
 def poisoned_past_the_count(lib, game):
     """Champion 0 gets a poison event in a slot past the event count of the timeline; returns its slot."""
     filler = [lib.timeline_add_event(ctypes.byref(TimelineEvent(time_map=game.game_time + DUE_LATER, type=C.EVENT_AURA)))

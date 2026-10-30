@@ -35,8 +35,6 @@ class Movie:
     """An open stream and the copy of the file bytes that it points into."""
 
     def __init__(self, lib, data):
-        lib.mve_open.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
-        lib.mve_step.argtypes = [ctypes.c_void_p]
         self.lib, self.data, self.m = lib, ctypes.create_string_buffer(data, len(data)), MveStream()
         self.opened = lib.mve_open(ctypes.byref(self.m), self.data, len(data))
 

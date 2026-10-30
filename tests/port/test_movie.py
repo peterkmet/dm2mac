@@ -37,8 +37,6 @@ class MoviePicture(ctypes.Structure):
 def movies(lib, game_dir, tmp_path):
     """Starts scripts on a data folder of links to game/: start(script, mode, **files) with files that replace a
     link (a game/ name, bytes, or None for a missing file); yields start."""
-    lib.movie_start.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_uint64]
-    lib.movie_update.argtypes = [ctypes.c_uint64]
     mode = ctypes.c_int.in_dll(lib, "g_game_mode")
 
     def start(script, game_mode, **files):
@@ -168,8 +166,6 @@ def test_script_end_restores_the_game_screen(lib, movies):
 def test_control_state_and_click_during_a_movie(lib, movies):
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
-    lib.transport_open.argtypes = [ctypes.c_char_p]
-    lib.transport_open.restype = ctypes.c_bool
     assert lib.transport_open(path.encode())
     stop = threading.Event()
 

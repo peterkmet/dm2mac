@@ -13,14 +13,6 @@ FORMS = ["folder", "zip-folder", "zip-root", "iso", "iso-raw"]
 MODE2 = 2
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.source_open.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
-    lib.source_open.restype = ctypes.c_void_p
-    lib.source_close.argtypes = [ctypes.c_void_p]
-    lib.source_read.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32]
-
-
 def write_zip(path, files, root=""):
     with zipfile.ZipFile(path, "w") as archive:
         for name, data in files.items():
