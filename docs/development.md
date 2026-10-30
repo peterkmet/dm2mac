@@ -31,7 +31,7 @@ uv sync
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
-Put your DOS game (its folder, ZIP archive, or CD image) into the project folder ([game-files.md](formats/game-files.md#sources)), then start the game:
+Put your DOS game (its folder, ZIP archive, or CD image) into the project folder ([install.md](formats/install.md#sources)), then start the game:
 
 ```sh
 build/dm2                                   # New game (mode screen)
@@ -100,16 +100,13 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | `make format` | `clang-format` over the C files ([coding-standard.md](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
-| `uv run dm2-items docs/reference/items.md` | Regenerates [items.md](reference/items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
+| `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
+| `dm2tools.emu` (Python, in `tools/dm2tools/emu.py`) | Run a `SKULL.EXE` function in an x86 emulator. `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
+| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
 
 ## Layout
 
-- `src/`: the C port in five layers; see [Architecture](architecture.md).
-- `tools/dm2tools/`: the Python tools.
-- `tools/ghidra/`: the decompile scripts.
-- `tests/`: see [Tests](#tests).
-- `docs/`: the documentation.
-- Git-ignored data: `game/` (the original files), `reference/` (the Ghidra output and original material), `tests/saves/`. Link them into a new worktree.
+The layers of `src/` and its modules are in [Architecture](architecture.md).
 
 ## Coding standard
 
@@ -133,36 +130,4 @@ The checks that no test covers are in [manual-test-checklist.md](manual-test-che
 
 ## Documentation
 
-- [Player manual](manual.md): the options, the modes, the controls, and the cheats.
-- [Architecture](architecture.md) and [Coding standard](coding-standard.md): the structure of the code.
-- [Decompiling](decompiling.md), [SKULL.EXE map](reference/skull-map.md),
-  [skull-symbols.csv](reference/skull-symbols.csv), [SKULL.EXE address layout](reference/symbols/ranges.md) with its
-  range notes, and [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
-- [Items](reference/items.md): the values of every item.
-- [Manual test checklist](manual-test-checklist.md): the checks that no test covers.
-- [Control socket](llm/control-socket.md), [Turn-based mode](llm/turn-based.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
-  plays the game.
-- [TODO](todo.md): the open work. [Changelog](../CHANGELOG.md): the changes.
-
-Data formats:
-
-- [Graphics data files](formats/graphics.md)
-- [Movies](formats/movies.md)
-- [Music](formats/music.md)
-- [Digital sound effects](formats/sound.md)
-- [Save file format](formats/save.md)
-- [Runtime layer and timing](formats/runtime.md)
-- [Game files and install](formats/game-files.md)
-- [ZIP archives](formats/zip.md)
-- [CD images](formats/cd-image.md)
-
-Game rules:
-
-- [Start menu, save and load, dialogs, and end of game](rules/game-flow.md)
-- [Main loop, input, and movement](rules/movement.md)
-- [Dungeon view](rules/view.md)
-- [Interface panels and text](rules/interface.md)
-- [Champions, inventory, items, money, and shops](rules/champions.md)
-- [Creatures, projectiles, magic, and minions](rules/creatures.md)
-- [Weather, day and night, light, and Skullkeep machines](rules/world.md)
-- [Advanced mode](rules/advanced-mode.md)
+The pages are listed by audience in [docs/README.md](README.md).

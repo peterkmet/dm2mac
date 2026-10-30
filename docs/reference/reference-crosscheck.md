@@ -151,7 +151,7 @@ Disagreements:
 - `IBMIOP` function `0x0e`, third word: buttons (port) or cursor height (reDM2). Open.
 - `IBMIOP` function `0x10a`: palette (port) or cursor image (reDM2). Open.
 
-Neither project has measured the game tick rate yet ([runtime.md](../formats/runtime.md#unknown-values)).
+Neither project has measured the game tick rate yet ([runtime.md](runtime.md#unknown-values)).
 
 ## Test methods of reDM2
 

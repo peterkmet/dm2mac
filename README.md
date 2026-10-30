@@ -51,8 +51,8 @@ In both modes the mouse and the arrow keys work as in the original game. The key
 ## For developers
 
 DM2Mac is a C11 and SDL3 reimplementation of `SKULL.EXE`, built from its own Ghidra decompilation and checked
-against the original in an emulator. Build instructions, tests, and the documentation index are in
-[Development](docs/development.md). On macOS, a program such as an LLM can play the game turn by turn
+against the original in an emulator. Build instructions and tests are in [Development](docs/development.md); the documentation index is
+[docs/README.md](docs/README.md). On macOS, a program such as an LLM can play the game turn by turn
 ([Control socket](docs/llm/control-socket.md), [Turn-based mode](docs/llm/turn-based.md)).
 
 ## Acknowledgements

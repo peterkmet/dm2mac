@@ -71,7 +71,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
 
-Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: [runtime.md](../formats/runtime.md#pit-divisor-and-tick-rates).
+Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: [runtime.md](runtime.md#pit-divisor-and-tick-rates).
 
 ## IBMIOP INT 0xFC service table
 
@@ -354,7 +354,7 @@ For library functions (clib, DPMI, HMI), only the names are firm, not the signat
 
 ## Open questions
 
-1. Game tick rate: the actual rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](../formats/runtime.md#unknown-values)).
+1. Game tick rate: the actual rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](runtime.md#unknown-values)).
 2. Thing types 11-13 and square type 7 in DM2.
 3. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 4. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.

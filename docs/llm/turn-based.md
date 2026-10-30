@@ -1,6 +1,6 @@
 # Turn-based mode
 
-The commands, turns, batches, reply fields, and actions of the turn-based mode, and the requests during a movie. The start of the game, `dm2-play`, the protocol, and the errors of the real-time commands are in [Control socket](control-socket.md).
+The commands, turns, batches, reply fields, and actions of the turn-based mode, and the requests during a movie. The start of the game, `dm2-play`, the protocol, and the errors of the real-time commands are in [Control socket](control-socket.md). How an LLM run works: [LLM runs](llm-runs.md).
 
 ## Turn-based commands
 
