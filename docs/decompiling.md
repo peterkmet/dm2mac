@@ -7,7 +7,7 @@
 - macOS with [Homebrew](https://brew.sh).
 - [uv](https://docs.astral.sh/uv/).
 - Ghidra and OpenJDK 21 from Homebrew. `tools/ghidra/decompile.sh` uses `brew --prefix ghidra`. It uses `JAVA_HOME` if set, otherwise `brew --prefix openjdk@21`.
-- [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`, only for `tools/dosbox-nointro.sh` ([Development](development.md#tests)).
+- [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`, only for `tools/dosbox-nointro.sh` ([Development](development.md#tools)).
 - Your own copy of the original game files in `game/`, including `game/SKULL.EXE`.
 
 ## Quickstart

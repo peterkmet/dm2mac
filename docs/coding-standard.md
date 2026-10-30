@@ -349,7 +349,7 @@ dependency group (version 23). [format]
 -Wstrict-prototypes -Wvla -Wimplicit-fallthrough`. `make windows` (MinGW-w64 GCC, the same flags) also builds with 0
 warnings before a merge to `main`; for a series of commits, it runs once at the end.
 
-`make check` runs the checks ([Development](development.md#tests)). The checks of `tests/standard/test_standard.py`, by
+`make check` runs the checks ([Development](development.md#tools)). The checks of `tests/standard/test_standard.py`, by
 their allowlist key:
 
 | Key | Fails on |

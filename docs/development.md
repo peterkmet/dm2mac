@@ -1,6 +1,6 @@
 # Development
 
-Build the port with `make`, test it with `make test`, and check it with `make check`. For the structure of the code, see [Architecture](architecture.md).
+Build the port with `make`, test it with `make test`, and check it with `make check`. For the structure of the code, see [Architecture](architecture.md) (layers and modules). Follow the [Coding standard](coding-standard.md) for every change in `src/`. The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md) (turn-based mode: [section T](manual-test-checklist.md#t-turn-based-mode)). The pages by audience are in [docs/README.md](README.md).
 
 The port is built in three steps:
 
@@ -78,21 +78,12 @@ To run several files, add `-n auto`.
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
 | `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
-| `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups because they draw without active groups. |
 
-Tests of the control socket and the turn-based mode:
-
-| File | What it proves |
-|---|---|
-| `tests/port/test_state_json.py` | The JSON for the state, the view, and the map. |
-| `tests/port/test_turnbased.py` | The protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`. |
-| `tests/tools/test_play_client.py` | `dm2-play`: the act forms, `--brief`, and the call log. |
-
-```sh
-uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
-```
+The tests of the control socket and the turn-based mode are `tests/port/test_state_json.py` (the JSON of the state, the view, and the map), `tests/port/test_turnbased.py` (the protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`), and `tests/tools/test_play_client.py` (`dm2-play`).
 
 `tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library).
+
+## Tools
 
 | Command | Result |
 |---|---|
@@ -103,14 +94,6 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
 | `dm2tools.emu` (Python, in `tools/dm2tools/emu.py`) | Run a `SKULL.EXE` function in an x86 emulator. `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
 | `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
-
-## Layout
-
-The layers of `src/` and its modules are in [Architecture](architecture.md).
-
-## Coding standard
-
-Follow [Coding standard](coding-standard.md) for every change in `src/`.
 
 ## Add a game rule
 
@@ -124,10 +107,3 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
    [docs/rules/](rules/).
 7. Run `make check`.
 
-## Manual checks
-
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md); the turn-based mode checks are in its section [T](manual-test-checklist.md#t-turn-based-mode).
-
-## Documentation
-
-The pages are listed by audience in [docs/README.md](README.md).

@@ -1,5 +1,6 @@
 """Scenario tests with the emulator oracle: creature groups, the creature AI, projectiles, explosions,
-magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal."""
+magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal.
+The view tests give the original zeroed active groups because they draw without active groups."""
 
 import ctypes
 
