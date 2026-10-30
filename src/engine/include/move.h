@@ -47,7 +47,7 @@
 /* Results of move_thing. */
 typedef enum { MOVE_DONE, MOVE_LEFT_DUNGEON, MOVE_WAIT } MoveResult;
 
-/* Movement state of the party (the original globals); tests/dm2test/scenario.py mirrors the layout. */
+/* Movement state of the party (the original globals); tests/dm2test/structs.py mirrors the layout. */
 typedef struct {
     int16_t move_steps;                                    /* game steps until a slow party move ends */
     uint16_t move_command;                                 /* the move that ends the walk */

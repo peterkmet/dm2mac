@@ -968,10 +968,10 @@ def add_thing(ai, type_, words, map_, x, y, cell):
 
 def add_projectile(ai, payload, direction, map_, x, y, cell):
     """A projectile with its move event (the direction in data byte 3) in both."""
-    from dm2test.save import Event
+    from dm2test.structs import TimelineEvent
     lib, emu = ai.lib, ai.emu
     thing = add_thing(ai, C.THING_PROJECTILE, (payload, 0x40, 0), map_, x, y, cell)
-    event = Event((ai.sc.time() + 50) | map_ << C.EVENT_MAP_SHIFT, C.EVENT_PROJECTILE_MOVE, 0,
+    event = TimelineEvent((ai.sc.time() + 50) | map_ << C.EVENT_MAP_SHIFT, C.EVENT_PROJECTILE_MOVE, 0,
                   (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
     buf = ai.sc.view.alloc(12)
     emu.write(buf, bytes(event))

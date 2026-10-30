@@ -8,7 +8,7 @@ import pytest
 from dm2test import constants as C
 from dm2test.gdat import item_sizes
 from dm2test.input import Loop
-from dm2test.interface import LeaderHand
+from dm2test.structs import Game, LeaderHand
 from dm2test.scenario import square_event
 from dm2test.lib import load_lib
 
@@ -18,7 +18,7 @@ def lib():
     return load_lib()
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
-HAND_OFFSET = 252 + 4 * C.CHAMPION_SIZE  # offsetof(Game, leader_hand) in save.h
+HAND_OFFSET = Game.leader_hand.offset
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
 LEFT = C.INPUT_BUTTON_LEFT
 GOLD_COIN = 0x108

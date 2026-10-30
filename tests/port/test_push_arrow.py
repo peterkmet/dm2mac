@@ -6,9 +6,8 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import run_ticks
-from dm2test.scenario import Party
+from dm2test.structs import Bitmap, Party
 from dm2test.lib import load_lib
-from dm2test.view import Bitmap
 
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
 LEFT_ARROW_ZONE = C.ZONE_ARROW_FIRST  # the zone of PUSH_ARROW_LEFT

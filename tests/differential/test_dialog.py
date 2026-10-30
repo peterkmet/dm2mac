@@ -12,7 +12,7 @@ from dm2test.dialog import (
     G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
     main_loop_quit,
 )
-from dm2test.gdat import GdatKey
+from dm2test.structs import GdatKey
 from dm2test.interface import (
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff,
 )
@@ -118,8 +118,8 @@ def test_volume_dialog_matches_original(ui, original):
     frame = ctypes.CFUNCTYPE(None)(lambda: close_dialog(lib))
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = ctypes.cast(frame, ctypes.c_void_p).value
     try:
-        from dm2test.scenario import WorldGame
-        game = WorldGame.in_dll(lib, "g_game")
+        from dm2test.structs import Game
+        game = Game.in_dll(lib, "g_game")
         for sound, music in ((7, 7), (0, 3), (5, 0)):
             set_screen_mode(lib, emu, 1)
             game.sound_volume, game.music_volume = sound, music

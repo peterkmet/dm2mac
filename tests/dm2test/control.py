@@ -11,17 +11,10 @@ from contextlib import contextmanager
 import pytest
 
 from dm2test import constants as C
-from dm2test.scenario import WorldGame
 
 
 SCREEN_W, SCREEN_H, PALETTE_COLORS, RGB = C.SCREEN_W, C.SCREEN_H, C.PALETTE_COLORS, 3
 CHAMPION_SIZE, NAME_SIZE, SCAN_QUOTE = C.CHAMPION_SIZE, C.CHAMPION_NAME_SIZE, 0x28
-
-
-class GameWithChampions(WorldGame):
-    """save.h Game up to the champion records."""
-    _fields_ = [("global_flags", ctypes.c_uint8 * 8), ("global_bytes", ctypes.c_uint8 * 64),
-                ("global_words", ctypes.c_uint16 * 64), ("champions", ctypes.c_uint8 * CHAMPION_SIZE * 4)]
 
 
 @pytest.fixture

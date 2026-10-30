@@ -139,7 +139,8 @@ def test_quick_save_and_quick_load(lib, advanced):
 
 def sound_level(lib):
     """The mixed level of a sample of 100 at full volume: the master volume of the sounds."""
-    from dm2test.audio import UPSAMPLE, Sound, mix
+    from dm2test.audio import UPSAMPLE, mix
+    from dm2test.structs import Sound
     lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
     lib.sound_play.restype = ctypes.c_bool
     lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
@@ -152,9 +153,9 @@ def sound_level(lib):
 
 
 def test_quick_load_sets_the_loaded_volumes(lib, advanced):
-    from dm2test.scenario import WorldGame
+    from dm2test.structs import Game
     from dm2test.audio import Music
-    game = WorldGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     music = Music.in_dll(lib, "g_music")
     game.sound_volume, game.music_volume = 5, 3
     press(lib, KEY_F5)
@@ -431,7 +432,7 @@ def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):
 
 
 def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced):
-    from dm2test.interface import ActionArea
+    from dm2test.structs import ActionArea
     action = ActionArea.in_dll(lib, "g_action")
     rect = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_ACTION_AREA, rect)

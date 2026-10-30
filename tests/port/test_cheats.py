@@ -9,8 +9,8 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.save import Event, Timeline
-from dm2test.scenario import CurrentMap, Location, Party, Position
+from dm2test.structs import CurrentMap, Party, Timeline, TimelineEvent
+from dm2test.scenario import Location, Position
 from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -129,9 +129,9 @@ def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(li
     lib.game_set_cheats(C.CHEAT_KILL)
     game.game_time += 100  # the scheduled update lies before the next game step
     timeline = Timeline.in_dll(lib, "g_timeline")
-    before = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    before = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(TimelineEvent))
     lib.creature_alert(group, Location(x, y), 0, 0, 3)
-    after = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    after = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(TimelineEvent))
     assert after == before
 
 
@@ -252,12 +252,6 @@ def test_damaged_chts_block_gives_no_cheats(lib, gdat, game, tmp_path, damage):
     else:
         data[{"magic": -6, "version": -2, "bits": -1}[damage]] |= 0x80
     assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, bytes(data)) == 0
-
-
-
-class TimelineEvent(ctypes.Structure):
-    _fields_ = [("time_map", ctypes.c_uint32), ("type", ctypes.c_uint8), ("priority", ctypes.c_uint8),
-                ("data", ctypes.c_uint8 * C.TIMELINE_EVENT_DATA_SIZE)]
 
 
 @pytest.mark.parametrize("cheat", [False, True])

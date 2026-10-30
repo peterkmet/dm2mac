@@ -147,7 +147,7 @@ def test_level_digits_match_original(lib, new_game):
 def test_timer_sensors_start_like_original(lib, new_game):
     # sensor_start_timers of a new game. DUNGEON.DAT has 18 timer sensors, all off: every second one is turned on
     # (state bit) and busy in both, at a game time that is not 0; then the timer events and the busy bits match.
-    from dm2test.save import Timeline
+    from dm2test.structs import Timeline
     emu = new_game.emu
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     base = emu.read_u32(G_THING_DATA + 12)

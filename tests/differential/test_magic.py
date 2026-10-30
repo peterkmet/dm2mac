@@ -12,10 +12,10 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.creature import CreatureScenario
-from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, c_screen, champion_bytes, champion_records,
+from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, c_screen, champion_bytes, champion_records,
                                diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
+from dm2test.structs import ActionArea, Game
 from dm2test.input import click_feedback
-from dm2test.save import Game
 from dm2test.lib import load_lib
 
 
@@ -382,7 +382,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
             assert getattr(action, field) == struct.unpack("<h", emu.read(addr, 2))[0], (where, field)
         game = Game.in_dll(lib, "g_game")
         assert bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(game) + GAME_MAGIC)) == emu.read(G_MAGIC_LIGHT, 6), where
-        from dm2test.save import Timeline
+        from dm2test.structs import Timeline
         tl = Timeline.in_dll(lib, "g_timeline")
         events = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * 12)
         assert events == emu.read(emu.read_u32(G_TIMELINE_EVENTS), tl.capacity * 12), where
@@ -443,14 +443,14 @@ TIMELINE_EVENT_MAGIC_LIGHT = 0x5917D
 
 def test_magic_light_events_match_original(magic):
     # The light and darkness events of every level: the magic light changes and the next event of the fading light.
-    from dm2test.save import Event
+    from dm2test.structs import TimelineEvent
     from dm2test.scenario import COMMAND_RECORD
     lib, emu = magic.lib, magic.emu
     lib.magic_event_light.argtypes = [ctypes.c_void_p]
     rng = random.Random(18)
     for level in range(-15, 16):
         magic.set_magic(struct.pack("<h", rng.randrange(-300, 300)) + bytes(4))
-        e = Event(magic.time() | magic.game.party_map << C.EVENT_MAP_SHIFT, C.EVENT_MAGIC_LIGHT, 0, (ctypes.c_uint8 * 6)(*struct.pack("<h", level), 0, 0, 0, 0))
+        e = TimelineEvent(magic.time() | magic.game.party_map << C.EVENT_MAP_SHIFT, C.EVENT_MAGIC_LIGHT, 0, (ctypes.c_uint8 * 6)(*struct.pack("<h", level), 0, 0, 0, 0))
         emu.write(COMMAND_RECORD, bytes(e))
         lib.magic_event_light(ctypes.byref(e))
         emu.call(TIMELINE_EVENT_MAGIC_LIGHT, COMMAND_RECORD)
@@ -558,10 +558,11 @@ def map_ui(spell_ui, lib):
 
 
 def place_party(lib, emu, map_, x, y, d):
-    from dm2test.scenario import CurrentMap, GameRecord, Position
+    from dm2test.scenario import Position
+    from dm2test.structs import CurrentMap, Game
     CurrentMap.in_dll(lib, "g_current_map").map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
-    GameRecord.in_dll(lib, "g_game").party_dir = d
+    Game.in_dll(lib, "g_game").party_dir = d
     emu.write(G_PARTY_DIR, struct.pack("<H", d))
     lib.dungeon_set_party_position(Position(map_, x, y))
     emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
@@ -858,7 +859,7 @@ FAR_ICON_CELL = {0: 2, 1: 1, 2: 0, 3: 0}
 def test_a_missile_icon_past_a_short_strip_draws_nothing(port, original):
     # regression: a missile of the minion map took icon 3 to 6 of its strip also when the strip had fewer icons (a
     # damaged GRAPHICS.DAT) and read past the strip; the port draws no icon past the end
-    from dm2test.view import Bitmap
+    from dm2test.structs import Bitmap
     lib, emu = port, original.emu
     lib.item_is_minion_map.argtypes = lib.view_missile_kind.argtypes = [ctypes.c_uint16]
     lib.mmap_draw.argtypes = lib.projectile_dir.argtypes = [ctypes.c_uint16]

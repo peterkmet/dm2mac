@@ -6,10 +6,6 @@ import ctypes
 UPSAMPLE = 4
 
 
-class Sound(ctypes.Structure):
-    _fields_ = [("data", ctypes.POINTER(ctypes.c_int8)), ("length", ctypes.c_uint32)]
-
-
 class SoundCue(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int) for name in ("category", "index", "entry", "priority", "volume")]
 

@@ -5,7 +5,8 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.audio import UPSAMPLE, Sound, SoundLevel, SoundOffset, mix
+from dm2test.audio import UPSAMPLE, SoundLevel, SoundOffset, mix
+from dm2test.structs import Sound
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image

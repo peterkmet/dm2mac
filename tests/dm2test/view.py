@@ -4,9 +4,9 @@ import ctypes
 import struct
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey, image_info
+from dm2test.gdat import image_info
 from dm2test.markers import ROOT
-from dm2test.save import Game
+from dm2test.structs import Bitmap, Game, GdatKey
 
 
 DUN_SET_PARTY_LOCATION, VIEW_LOAD_SQUARE = 0x1C82D, 0x52BF6
@@ -31,24 +31,12 @@ VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
-class Bitmap(ctypes.Structure):
-    _fields_ = [("pixels", u8_p), ("width", ctypes.c_int16), ("height", ctypes.c_int16), ("bpp", ctypes.c_uint8)]
-
-
 class ScreenPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
 class ScreenSize(ctypes.Structure):
     _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
-
-
-class WeatherGame(ctypes.Structure):
-    _fields_ = Game._fields_ + [("leader", ctypes.c_uint16), ("cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
-                                ("time_b", ctypes.c_uint32), ("countdown", ctypes.c_uint16), ("unknown_dir", ctypes.c_uint16),
-                                ("sound_volume", ctypes.c_uint8), ("music_volume", ctypes.c_uint8),
-                                ("weather_visible", ctypes.c_uint8), ("heavy_rain", ctypes.c_uint8), ("wind_dir", ctypes.c_uint8),
-                                ("rain_intensity", ctypes.c_uint8), ("sky_darkness", ctypes.c_uint8), ("cloud_cover", ctypes.c_uint8)]
 
 
 class OriginalView:
@@ -199,7 +187,7 @@ class OriginalView:
         emu.write(G_PUSH_MODE, bytes(4))
         emu.write(G_PUSH_PENDING_GROUP, struct.pack("<h", -1))
         emu.write(G_SKY_STATE, struct.pack("<H", self.entry_index(8, gfx_set, 0x0B, 0x66)))
-        game = WeatherGame.in_dll(lib, "g_game")
+        game = Game.in_dll(lib, "g_game")
         emu.write(G_RAIN_INTENSITY, bytes([game.rain_intensity, game.wind_dir]))
         emu.write_u32(G_RANDOM_SEED, VIEW_SEED)
         emu.write(self.viewport, bytes(VIEW_W * VIEW_H))
@@ -238,7 +226,7 @@ def draw_both(sc):
     for addr, data in kept:
         emu.write(addr, data)
     seed.value = tv.VIEW_SEED
-    viewport = tv.Bitmap.in_dll(lib, "g_view_viewport")
+    viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memset(viewport.pixels, 0, tv.VIEW_W * tv.VIEW_H)
     lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.view_draw_dungeon(Location(game.party_x, game.party_y), game.party_dir)

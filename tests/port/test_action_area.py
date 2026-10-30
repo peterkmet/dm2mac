@@ -8,7 +8,7 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.lib import load_lib
-from dm2test.save import Game
+from dm2test.structs import Game
 
 ACTION_HAND = 1  # the slot of the action hand
 STEP_TICKS = 40  # timer ticks that run a click to its end
