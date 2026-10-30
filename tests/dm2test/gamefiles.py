@@ -1,15 +1,31 @@
-"""The game file table of src/data/gamefile.c for the tests: a mirror of GameFile and small generated files."""
+"""The game file table of src/data/gamefile.c for the tests: a mirror of GameFile and small generated files; and the
+skip of a test when a game file is missing."""
 
 import ctypes
 import zlib
 from pathlib import Path
 
+import pytest
+
+from dm2test.markers import GAME, ROOT
 from dm2test.structs import mirror
 
 NAMES = [
     "INTRPLAY.PCX", "FTL", "INTRO", "END", "CREDITS", "DRUM.BNK", "MELODIC.BNK",
     "DATA/SONGLIST.DAT", "DATA/GRAPHICS.DAT", "DATA/DUNGEON.DAT",
 ]  # fmt: skip
+
+
+def require(path: Path) -> Path:
+    """The path of a game file; skips the test when it is missing."""
+    if not path.exists():
+        pytest.skip(f"{path.relative_to(ROOT)} missing")
+    return path
+
+
+@pytest.fixture
+def game_dir():
+    return require(GAME / "SKULL.EXE").parent
 
 
 @mirror("gamefile.h")

@@ -11,7 +11,8 @@ from unicorn.x86_const import UC_X86_REG_ESP
 
 from dm2test import constants as C
 from dm2test.addresses import G_CHAMPIONS, G_FONT_BITMAP, G_UI_COLORS, MONEY_INIT_COIN_TABLE, VGA
-from dm2test.markers import ROOT
+from dm2test.gamefiles import require
+from dm2test.markers import GAME
 from dm2test.save import GRAPHICS, START
 from dm2test.scenario import champion_records
 from dm2test.structs import ActionArea, Game, GdatKey, ImageInfo
@@ -101,12 +102,9 @@ class OriginalUi(OriginalView):
 
 @pytest.fixture(scope="module")
 def ui_gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
-    if not START.exists():
-        pytest.skip("tests/saves/start.DAT missing")
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(GRAPHICS)
+    require(START)
+    require(GAME / "SKULL.EXE")
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]

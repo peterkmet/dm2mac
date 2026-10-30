@@ -9,8 +9,9 @@ from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC
 
 from dm2test import constants as C
 from dm2test.addresses import G_CHAMPIONS, G_FONT_BITMAP, G_SKY_OBJECTS, G_UI_COLORS, SKY_OBJECTS_SIZE, VGA, WEATHER
+from dm2test.gamefiles import require
 from dm2test.gdat import image_info
-from dm2test.markers import ROOT
+from dm2test.markers import GAME
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, original_save
 from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
@@ -192,8 +193,7 @@ class Command(ctypes.Structure):
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GRAPHICS)
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
@@ -203,10 +203,8 @@ def gdat(lib):
 
 @pytest.fixture(scope="module")
 def start():
-    if not START.exists():
-        pytest.skip("tests/saves/start.DAT missing")
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(START)
+    require(GAME / "SKULL.EXE")
     return START.read_bytes()
 
 
