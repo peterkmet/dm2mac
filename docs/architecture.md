@@ -75,6 +75,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/game.h` | `game_` | The main loop state of the game rules: step timing, map changes, and timeline events. |
 | `engine/game_text.h` | `gtext_` | Game texts and UI colors: decoding, formatting, and [GDAT](formats/graphics.md#gdat-items) text items. |
 | `engine/hooks.h` | none | Calls from the game rules into the user interface, for events that must run the interface inside a rule. |
+| `engine/interface_state.h` | none | The interface state that the rules and the drawing share: the panels, the input mode, the mouse. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |
 | `engine/merchant.h` | `shop_` | Merchant trading: the creature AI plan commands that a shopkeeper runs while the party stands in front of it. |

@@ -16,6 +16,7 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "move.h"
 #include "music.h"
 #include "random.h"

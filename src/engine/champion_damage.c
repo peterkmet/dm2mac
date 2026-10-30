@@ -8,6 +8,7 @@
 #include "dungeon.h"
 #include "game.h"
 #include "hooks.h"
+#include "interface_state.h"
 #include "item.h"
 #include "move.h"
 #include "num.h"

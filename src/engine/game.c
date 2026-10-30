@@ -8,6 +8,7 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "hooks.h"
+#include "interface_state.h"
 #include "le.h"
 #include "magic.h"
 #include "move.h"
@@ -29,10 +30,6 @@
 #define LIGHT_BURN_PERIOD_MASK         0x1ff /* held lights burn down each 512 game steps */
 
 MainLoop g_main_loop = {.tick_threshold = STEP_TICKS, .running = true};
-UiState g_ui;
-bool g_input_command_stop;
-int g_input_drag_state;
-int g_input_mouse_buttons;
 Session g_session = {.slot = SAVE_SLOT_NONE};
 /* The cheat bits that are on (CHEAT_*). */
 static uint8_t cheats;

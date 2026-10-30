@@ -23,6 +23,7 @@
 #include "icon.h"
 #include "input.h"
 #include "install.h"
+#include "interface_state.h"
 #include "mode_screen.h"
 #include "movie.h"
 #include "music.h"

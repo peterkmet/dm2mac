@@ -9,6 +9,7 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "play.h"
 #include "save.h"
 #include "sound.h"

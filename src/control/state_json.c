@@ -15,6 +15,7 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"

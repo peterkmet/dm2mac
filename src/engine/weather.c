@@ -10,6 +10,7 @@
 #include "gfx.h"
 #include "hooks.h"
 #include "ids.h"
+#include "interface_state.h"
 #include "item.h"
 #include "move.h"
 #include "num.h"
