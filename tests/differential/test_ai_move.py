@@ -11,12 +11,7 @@ from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
 from dm2test.scenario import Position
 from dm2test.structs import Location
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88
 DUN_SET_CURRENT_MAP = 0x1C724

@@ -6,17 +6,14 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.structs import Bitmap, MainLoop, ProjectileLaunch
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.view_flight_shift.restype = ViewPoint
     lib.view_flight_shift.argtypes = [ViewPoint, ViewPoint, ctypes.c_int, ctypes.c_int]
-    return lib
 
 
 class ViewPoint(ctypes.Structure):

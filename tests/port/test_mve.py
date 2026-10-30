@@ -7,12 +7,7 @@ from collections import Counter
 
 import pytest
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 MVE_ERROR, MVE_OK, MVE_END, MVE_AUDIO, MVE_SHOW = C.MVE_ERROR, C.MVE_OK, C.MVE_END, C.MVE_AUDIO, C.MVE_SHOW
 WIDTH_MAX, HEIGHT_MAX, COLORS, RGB = C.MVE_WIDTH_MAX, C.MVE_HEIGHT_MAX, C.MVE_PALETTE_COLORS, C.MVE_RGB

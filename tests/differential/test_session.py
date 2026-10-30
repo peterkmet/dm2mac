@@ -12,14 +12,9 @@ from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
 from dm2test.scenario import square_things
-from dm2test.lib import load_lib
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
 DUNGEON_LOAD, MEM_ALLOC, GDAT_ENTRY_INDEX, WEATHER_INIT = 0x36909, 0x3BBBA, 0x3C5D3, 0x59F38

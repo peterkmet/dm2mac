@@ -6,7 +6,6 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.interface import GAME_CHAMPIONS
-from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.structs import Timeline, TimelineEvent
 
@@ -16,12 +15,10 @@ CURE = 50  # more than the poison
 DUE_LATER = 0x10000  # game steps from now: the filler events never come due in the test
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.timeline_add_event.argtypes = [ctypes.POINTER(TimelineEvent)]
     lib.timeline_delete_event.argtypes = [ctypes.c_int]
-    return lib
 
 
 def poisoned_past_the_count(lib, game):

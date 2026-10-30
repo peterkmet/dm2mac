@@ -17,14 +17,9 @@ from dm2test.interface import (
     SCREEN_H, SCREEN_W, VIEW_W, c_screen, c_view, diff,
 )
 from dm2test.addresses import VGA
-from dm2test.lib import load_lib
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 UI_DIALOG_DRAW, UI_DIALOG_PRESENT, UI_DIALOG_RUN, UI_VOLUME_DIALOG = 0x1A37D, 0x1A001, 0x1A0A4, 0x1AA75
 SAVE_OPEN_SLOT_DIALOG, SAVE_DRAW_SLOT_SELECTION, SAVE_DRAW_NAME_ENTRY = 0x37AB0, 0x37D9F, 0x37C33

@@ -6,7 +6,6 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 from dm2test.structs import Location
 
 STALE_INDEX = 200  # an active group index of the saved game, past the active groups of this session
@@ -15,9 +14,8 @@ MANY_GROUPS = 1000  # more groups than an active index byte can count
 THING_RECORD_SIZE = 16  # bytes of a group record
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.creature_is_flying.restype = ctypes.c_bool
     lib.creature_is_flying.argtypes = [ctypes.c_uint16]
     lib.creature_get_group_at.restype = ctypes.c_uint16
@@ -26,7 +24,6 @@ def lib():
     lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.thing_word.restype = ctypes.c_uint16
     lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    return lib
 
 
 def walking_group(lib, gdat):

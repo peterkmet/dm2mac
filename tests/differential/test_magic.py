@@ -18,12 +18,7 @@ from dm2test.interface import (
 from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
 from dm2test.structs import ActionArea, Game
 from dm2test.input import click_feedback
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 # Original functions.
 MAGIC_FIND_SPELL, MAGIC_CAST_SPELL, TIMELINE_ADD_EVENT = 0x421FD, 0x422F5, 0x56390

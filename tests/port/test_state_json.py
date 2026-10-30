@@ -10,18 +10,15 @@ from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, ViewSquare
 from dm2test.scenario import Position
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.seen_visible.argtypes = [Position, ctypes.c_int16, ctypes.POINTER(SeenSquare)]
     lib.seen_visible.restype = ctypes.c_int
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
     lib.seen_is_seen.restype = ctypes.c_bool
-    return lib
 
 STATE, VIEW, MAP = C.STATE_JSON_STATE, C.STATE_JSON_VIEW, C.STATE_JSON_MAP
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED

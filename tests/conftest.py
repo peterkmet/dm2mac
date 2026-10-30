@@ -13,6 +13,7 @@ pytest_plugins = [
     "dm2test.gdat",
     "dm2test.input",
     "dm2test.interface",
+    "dm2test.lib",
     "dm2test.modes",
     "dm2test.scenario",
 ]

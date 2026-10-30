@@ -8,12 +8,7 @@ from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE,
 from dm2test.markers import ROOT
 from dm2tools.emu import Emu
 from dm2tools.le import load_image
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 IMAGE_DECODE_4BPP = 0x12E4F
 IMAGE_DECODE_4BPP_DELTA = 0x13258

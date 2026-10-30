@@ -23,14 +23,11 @@ from dm2test.dialog import DialogState
 from dm2test.input import run_ticks
 from dm2test.scenario import Position
 from dm2test.structs import Session
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
-    return lib
 
 # the keypad key of each letter: turn left, forward, turn right, strafe left, back, strafe right
 LETTER_KEYPAD = {SCAN_Q: C.KEYPAD_TURN_LEFT, SCAN_W: C.KEYPAD_FORWARD, SCAN_E: C.KEYPAD_TURN_RIGHT, SCAN_A: C.KEYPAD_LEFT,

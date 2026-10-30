@@ -13,12 +13,7 @@ from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
 from dm2test.structs import Location, ProjectileLaunch
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 PROJECTILE_CREATE, EXPLOSION_CREATE, MOVE_CHECK_MISSILES = 0x16457, 0x16746, 0x4A0FE
 SENSOR_LAUNCH_MISSILE, CHAMP_LAUNCH_PROJECTILE, CREATURE_ATTACK_CHAMPION = 0x57A63, 0x47773, 0x18758

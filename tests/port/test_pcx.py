@@ -4,12 +4,7 @@ import ctypes
 
 import pytest
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 PCX_OK, PCX_ERR_DATA = C.PCX_OK, C.PCX_ERR_DATA
 WIDTH, HEIGHT, COLORS, RGB = C.SCREEN_W, C.SCREEN_H, C.PCX_PALETTE_COLORS, C.PCX_RGB

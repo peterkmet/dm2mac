@@ -12,12 +12,7 @@ import pytest
 
 from dm2tools.control_client import request
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 SCRIPT_NONE, SCRIPT_START, SCRIPT_COMPLETED, SCRIPT_PARTY_DEAD = (
     C.MOVIE_SCRIPT_NONE, C.MOVIE_SCRIPT_START, C.MOVIE_SCRIPT_COMPLETED, C.MOVIE_SCRIPT_PARTY_DEAD)

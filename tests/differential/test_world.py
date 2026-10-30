@@ -18,14 +18,11 @@ from dm2test.scenario import (
 )
 from dm2test.addresses import G_SKY_OBJECTS, SKY_OBJECTS_SIZE, WEATHER
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.light_add_square_light.argtypes = [ctypes.c_int, ctypes.c_int16, Location, ctypes.c_uint]
-    return lib
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC

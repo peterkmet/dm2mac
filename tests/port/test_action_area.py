@@ -7,16 +7,14 @@ import pytest
 from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
-from dm2test.lib import load_lib
 from dm2test.structs import Game
 
 ACTION_HAND = 1  # the slot of the action hand
 STEP_TICKS = 40  # timer ticks that run a click to its end
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     lib.item_is_moneybox.restype = ctypes.c_bool
     lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
@@ -25,7 +23,6 @@ def lib():
     lib.input_command_rect.restype = ctypes.c_bool
     lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     lib.input_cursor_at.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    return lib
 
 
 def test_an_open_money_box_shows_the_leader_hand_object_as_the_cursor(lib, session):

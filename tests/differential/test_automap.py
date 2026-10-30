@@ -12,17 +12,14 @@ from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_
 from dm2test.input import run_ticks
 from dm2test.scenario import Position
 from dm2test.structs import Bitmap, Game, Location
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
     lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.seen_is_seen.restype = ctypes.c_bool
-    return lib
 
 NORTH, EAST, SOUTH, WEST = C.DIR_NORTH, C.DIR_EAST, C.DIR_SOUTH, C.DIR_WEST
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}

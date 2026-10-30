@@ -7,6 +7,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from dm2test.markers import BUILD, ROOT
 
 LIBRARY = BUILD / "libdm2.dylib"
@@ -40,3 +42,9 @@ def load_lib():
     ctypes.c_void_p.in_dll(lib, "g_os_full_path_hook").value = ctypes.cast(FULL_PATH, ctypes.c_void_p).value
     shutil.rmtree(folder)  # the loaded image stays mapped after the file is gone
     return lib
+
+
+@pytest.fixture(scope="module")
+def lib():
+    """One library copy per test module (rule 11.5)."""
+    return load_lib()

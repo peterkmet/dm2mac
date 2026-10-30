@@ -16,12 +16,7 @@ from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from dm2test.control import PALETTE_COLORS, RGB
 from dm2test.structs import Game, Location, Session
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
 TURN_WAIT_MAX_TICKS = 5000
