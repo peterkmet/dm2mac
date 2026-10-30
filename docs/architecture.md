@@ -42,8 +42,8 @@ Other folders: `tools/dm2tools/` holds the Python tools, `tools/ghidra/` the dec
 A module is one public header, the files `<module>.c` and `<module>_<part>.c`, and an optional `<module>_internal.h`. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
 `data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_action.c`, `ai_data.c`, `ai_move.c`, `ai_path.c`), `engine/champion`
-(`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
-`ui_hooks.c`), and `ui/view` (`view.c`, `view_things.c`, `view_walls.c`). The tables do not show the internal headers.
+(`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), `ui/input` (`input.c`, `input_feedback.c`,
+`input_tree.c`), `ui/ui` (`ui.c`, `ui_hooks.c`), and `ui/view` (`view.c`, `view_things.c`, `view_walls.c`). The tables do not show the internal headers.
 
 ### data/
 
@@ -130,7 +130,8 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | Header | Prefixes | Purpose |
 |---|---|---|
 | `control/control.h` | `control_` | The line protocol for controlling the running game: one JSON request per line, one JSON reply per line; no socket, no SDL. |
-| `control/state_json.h` | `json_` `state_json_` | The JSON text writer for control replies, and the game state as JSON: party, champions, view, map. |
+| `control/json.h` | `json_` | The JSON text writer of the control replies. |
+| `control/state_json.h` | `state_json_` | The game state as JSON: party, champions, view, map. |
 | `control/turn.h` | `turn_` | Turns of the turn-based mode: an action puts its inputs into the input queue, and the game runs one game step per frame until the party can act again. |
 
 ### platform/
@@ -240,7 +241,7 @@ The control code's interface, all in `build/libdm2.dylib`:
 | `platform/transport.h` (the socket, plain POSIX) | `transport_open(path)` listens on the socket, replaces an old socket file, and returns true on success. `transport_poll()`, one call per frame, accepts a client, answers requests, and ends turns. `transport_close()` closes the sockets and removes the socket file. |
 | `control/control.h` (the line protocol) | `control_frame()` runs one game step of the pending turn. `control_is_turn_pending()` is true while a turn runs. |
 | `control/turn.h` | `turn_is_pending`, `turn_act`, `turn_act_many`, `turn_wait`, `turn_poll`, `turn_reply`, and `turn_drop_reply`. The action table is in `turn.c`, one function per action. |
-| `control/state_json.h` (no SDL) | `state_json_state`, `state_json_view`, and `state_json_map` append one JSON object to a `Json` buffer. `state_json_string(part)` returns a new string; free it with `free`. |
+| `control/state_json.h` (no SDL) | `state_json_state`, `state_json_view`, and `state_json_map` append one JSON object to a `Json` buffer (`control/json.h`). `state_json_string(part)` returns a new string; free it with `free`. |
 
 ## Global state
 

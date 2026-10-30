@@ -36,7 +36,7 @@
   - `0`/`1` assigned to a `bool` field or passed to a `bool` setter: `engine/champion.c:376`, `platform/main.c:262,263,686,692`.
   - `&` beside `||`, `&&` or `?` without parentheses: `ui/input_feedback.c:174-176`, `ui/minion_map.c:203,205,240,360,478`, `ui/ui.c:1349`.
   - `++`/`--` inside a call argument: `ui/input_tree.c:982`, `ui/input_feedback.c:327-341`.
-  - A `#define` that only renames another constant (rule 3.5): `engine/include/aspect.h:63`, `ui/view_internal.h:176,177`, `control/include/state_json.h:18`.
+  - A `#define` that only renames another constant (rule 3.5): `engine/include/aspect.h:63`, `ui/view_internal.h:176,177`, `control/include/state_json.h:19`.
   - A raw record write outside its accessor: `time_map++` outside `timeline.h` at `engine/sensor.c:1362,1465,1474,1557`, `engine/timeline.c:285`, `engine/projectile.c:870,970`; `thing_set_word(…, THING_NEXT, THING_NONE)` outside `dungeon.c`, 18 sites in `ai_action.c`, `ai_move.c`, `champion_action.c`, `champion_inventory.c`, `creature.c`, `money.c`, `projectile.c`, `save.c`, `sensor.c`, `timeline.c`.
   - A hand-written hand-slot test beside `action_is_hand_slot`: `engine/item.c:509`, `engine/champion_inventory.c:107,265`.
   - One section comment form per file: `engine/move.c` mixes `/* ---- X ---- */` (lines 184, 274, 332, 714, 1355) with `/* X. */` (lines 1507, 1540, 1596, 1631, 1662).
