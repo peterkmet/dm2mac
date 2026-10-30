@@ -1,6 +1,6 @@
 # Control socket
 
-Start the game with the control socket, send requests with `dm2-play`, and use the protocol and the real-time commands. The turn-based commands, the actions, and the movies are in [Turn-based mode](turn-based.md).
+Start the game with the control socket, send requests with `dm2-play`, and use the protocol and the real-time commands. The turn-based commands, the actions, and the movies are in [Turn-based mode](turn-based.md). How an LLM run works: [LLM runs](llm-runs.md).
 
 `build/dm2 --control PATH` opens a Unix domain socket. A program or an LLM (for example Claude Code through Bash) sends requests over it and reads the replies: the game state, the view, and screenshots. The window shows the game, so a person can watch.
 
