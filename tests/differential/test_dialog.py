@@ -14,8 +14,9 @@ from dm2test.dialog import (
 )
 from dm2test.structs import GdatKey, Session
 from dm2test.interface import (
-    SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff,
+    SCREEN_H, SCREEN_W, VIEW_W, c_screen, c_view, diff,
 )
+from dm2test.addresses import VGA
 from dm2test.lib import load_lib
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
@@ -210,7 +211,8 @@ NAME_KEYS = [0x2D, C.KEY_BACKSPACE, 0x10, 0x02, 0x39, C.KEY_ENTER, C.KEY_BACKSPA
 def run_name_editor(lib, original, keys, fields=None):
     """Runs the name editor of champion 0 in both with the typed keys (fields: the 28 bytes of name and title to start
     with). Returns the views after each key of both, the record bytes before, and the record bytes after of both."""
-    from dm2test.interface import G_CHAMPIONS, champion_records
+    from dm2test.addresses import G_CHAMPIONS
+    from dm2test.scenario import champion_records
     from dm2test.structs import UiState
     emu = original.emu
     lib.input_init()

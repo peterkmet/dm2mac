@@ -97,8 +97,9 @@ CHAMPION_ACTION_DELAY, CHAMPION_HANDS = 0x2A, 0xC3
 def test_champion_clicks_match_original(tree, lib):
     # Clicks on the champion hands (status boxes) and on the champion icons (party icons): 1 to 4 champions in
     # random cells and party directions, busy hands and spells, empty hands, random points in the icon.
-    from dm2test.interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
-    from dm2test.scenario import CHAMPION_CELL, COMMAND_RECORD, G_CHAMPION_COUNT, Command
+    from dm2test.scenario import (
+        CHAMPION_CELL, CHAMPION_SIZE, COMMAND_RECORD, G_CHAMPION_COUNT, Command, champion_bytes, champion_records, sync_champions,
+    )
     rng = random.Random(16)
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     results = set()
@@ -349,7 +350,7 @@ def test_damage_and_aura_events_match_original(loop, lib):
     # The timeline of the main loop: the damage display of a champion ends (event 0x0c); the aura of a champion
     # weakens twice (event 0x48), the second time below 0.
     from dm2test.structs import TimelineEvent
-    from dm2test.interface import champion_bytes, sync_champions
+    from dm2test.scenario import champion_bytes, sync_champions
     champion_bytes(lib, 0, CHAMPION_AURA, [3, 50, 0])
     champion_bytes(lib, 0, CHAMPION_DAMAGE_EVENT, [0, 0])  # the damage display shows, its event is the first one
     sync_champions(lib, loop)

@@ -6,9 +6,12 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.addresses import G_CHAMPIONS
 from dm2test.interface import c_screen, diff
-from dm2test.scenario import Scenario
-from dm2test.structs import MainLoop
+from dm2test.scenario import (
+    CHAMPION_SIZE, G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, Scenario, champion_records, ignore_stale, port_globals,
+)
+from dm2test.structs import CurrentMap, Game, MainLoop, Party
 
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
@@ -17,7 +20,6 @@ INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0
 @pytest.fixture
 def session(lib, gdat, start, tmp_path):
     """start.DAT ready to play, as build/dm2 --save starts it."""
-    from dm2test.structs import CurrentMap, Game, Party
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
@@ -112,7 +114,6 @@ class Loop(Scenario):
 
     def assert_tick(self, where):
         """The main loop state, the game time, the cooldowns, the movement state, the pending damage, and the champions."""
-        from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale, port_globals
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
         mine |= {"sleeping": ctypes.c_bool.in_dll(self.lib, "g_party_sleeping").value, "time": game.game_time,
@@ -127,7 +128,6 @@ class Loop(Scenario):
 
     def champions(self):
         """(C, original) champion records without the redraw flags: the original status box drawing is a stub."""
-        from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records
 
         def records(data):
             out = []

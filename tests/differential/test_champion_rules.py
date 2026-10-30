@@ -9,8 +9,8 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
-from dm2test.scenario import Scenario
+from dm2test.addresses import G_CHAMPIONS
+from dm2test.scenario import CHAMPION_SIZE, Scenario, champion_bytes, champion_records, sync_champions
 from dm2test.structs import Game
 from dm2test.lib import load_lib
 

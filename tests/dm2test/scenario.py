@@ -4,15 +4,20 @@ import ctypes
 import struct
 
 import pytest
+from unicorn import UC_HOOK_CODE, UC_PROT_ALL
+from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EIP, UC_X86_REG_ESP
 
 from dm2test import constants as C
+from dm2test.addresses import G_CHAMPIONS, G_FONT_BITMAP, G_SKY_OBJECTS, G_UI_COLORS, SKY_OBJECTS_SIZE, VGA, WEATHER
 from dm2test.gdat import image_info
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, original_save
 from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
 from dm2tools.emu import SCRATCH
-from dm2test.view import OriginalView
+from dm2test.view import (
+    G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS, G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_SKY_STATE, G_VIEW_CLEAR, OriginalView,
+)
 
 
 def original_view_of(lib, gdat, start):
@@ -78,18 +83,7 @@ FORWARD_REVERSE_HOLD = 0x5723C
 # The weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
 MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
-# Weather globals of the original: name -> (address, struct format); the C values come from World.
-WEATHER = {
-    "weather_visible": (0x8047B, "<B"), "heavy_rain": (0x8047C, "<B"), "wind_dir": (0x8047F, "<B"),
-    "rain_intensity": (0x8047E, "<B"), "sky_darkness": (0x8047A, "<B"), "cloud_cover": (0x80479, "<B"),
-    "storm_multiplier": (0x80480, "<B"), "storm_step": (0x80477, "<B"), "storm_curve": (0x80474, "<B"),
-    "storm_intensity": (0x80470, "<H"), "next_hour_time": (0x80430, "<I"),
-    "strike_threshold": (0x8046C, "<h"), "storm_previous": (0x8046A, "<H"), "hour_light": (0x80472, "<h"),
-    "day_time_offset": (0x80434, "<I"), "first_init": (0x76184, "<i"), "thunder_toggle": (0x76188, "<i"),
-    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "g_light_source_sum": (0x7F970, "<h"),
-    "g_explosion_light_sum": (0x7F974, "<h"),
-}
-G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
+G_VIEW_CLEAR_RECT = 0x8002C
 # The sound requests: the original sound table (the sounds that the map graphics load) is a stub, every sound of
 # GRAPHICS.DAT counts as loaded, as in the C port; the original sound_play_requests runs with stubs for its two HMI
 # driver calls. The tests compare the requests that reach sound_play_requests and the order, loudness, and pan of the
@@ -167,8 +161,24 @@ def port_globals(party, current_map):
             | {name: getattr(party, name) for name in PARTY_GLOBALS})
 
 
-G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, C.CHAMPION_SIZE
+G_PENDING_WOUNDS, G_PENDING_DAMAGE, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, C.CHAMPION_SIZE
 CHAMPION_REDRAW = 0x32  # the redraw flags: the original status box drawing does not run in these tests
+
+
+def champion_records(lib):
+    """The 4 champion records of the C game state."""
+    return (ctypes.c_uint8 * (4 * CHAMPION_SIZE)).from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + Game.champions.offset)
+
+
+def champion_bytes(lib, champ, offset, data):
+    """Writes data into champion champ of the C game state."""
+    records = champion_records(lib)
+    for i, b in enumerate(data):
+        records[champ * CHAMPION_SIZE + offset + i] = b
+
+
+def sync_champions(lib, original):
+    original.emu.write(G_CHAMPIONS, bytes(champion_records(lib)))
 
 
 def int16(value):
@@ -219,8 +229,6 @@ class Scenario(CreatureOracle):
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
-        from dm2test.interface import G_FONT_BITMAP, G_UI_COLORS, VGA
-        from unicorn import UC_PROT_ALL
         emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
         emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))
         font = view.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
@@ -258,8 +266,6 @@ class Scenario(CreatureOracle):
     def map_graphics_tail(self):
         """gdat_load_map_graphics runs load_map_graphics, then the original world_update_day_night(0) like the C
         callers of view_enter_map."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EIP
         call = WORLD_UPDATE_DAY_NIGHT - (MAP_GRAPHICS_TAIL + 7)
         self.emu.write(MAP_GRAPHICS_TAIL, b"\x31\xc0\xe8" + struct.pack("<i", call) + b"\xc3")
 
@@ -275,8 +281,6 @@ class Scenario(CreatureOracle):
     def record_explosions(self):
         """Records the arguments of the explosion_create calls of the original (type, attack, x, y, cell); the
         explosions themselves run in both."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_ESP
         self.explosions = []
 
         def hook(uc, *_):
@@ -310,7 +314,6 @@ class Scenario(CreatureOracle):
             return self.sound_keys.index(key) + 1
 
         def play(uc, *_):
-            from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EDX
             count, requests = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX)
             descs = emu.read_u32(G_SAMPLE_DESCS)
             for i in range(count):
@@ -322,7 +325,6 @@ class Scenario(CreatureOracle):
             self.started.append((emu.read_u32(G_SOS_SAMPLE_DATA), volume >> 7, emu.read_u32(G_SOS_PAN)))
             return channel + 1  # a handle; the voice is free again at once (sample done)
 
-        from unicorn import UC_HOOK_CODE
         self.started = []  # the sounds that the original starts: (sample data, loudness, pan)
         emu.stub(SOUND_FIND_LOADED, find_loaded)
         emu.uc.hook_add(UC_HOOK_CODE, play, begin=SOUND_PLAY_REQUESTS, end=SOUND_PLAY_REQUESTS)
@@ -399,22 +401,21 @@ class Scenario(CreatureOracle):
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
-        from dm2test import view as tv
         lib, emu, view = self.lib, self.emu, self.view
         map_ = struct.unpack("<h", emu.read(0x7F262, 2))[0]
         graphics, flags = lib.dungeon_map_graphics(map_), lib.dungeon_map_flags(map_)
         gfx_set = graphics >> 4 & 0xF
-        emu.write(tv.G_MAP_GFX_SET, bytes([gfx_set]))
-        emu.write(tv.G_CUR_MAP_DOOR_TYPES, bytes([graphics >> 8 & 0xF if flags & 0x80 else 0xFF,
-                                                  graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
-        emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
-        emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
+        emu.write(G_MAP_GFX_SET, bytes([gfx_set]))
+        emu.write(G_CUR_MAP_DOOR_TYPES, bytes([graphics >> 8 & 0xF if flags & 0x80 else 0xFF,
+                                               graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
+        emu.write(G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
+        emu.write(G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
         emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
         emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
-        emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
+        emu.write(G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
         lib.weather_sky_objects.restype = ctypes.c_void_p
-        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
-        emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
+        emu.write(G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
+        emu.write(G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
             emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
         emu.write(G_SOUND_REQUEST_COUNT, bytes(2))  # sound_wait_and_clear_requests
@@ -423,8 +424,6 @@ class Scenario(CreatureOracle):
     def clear_uninitialized_event_bytes(self):
         """The original leaves some event bytes uninitialized (stack garbage); the C port clears them. This clears
         them in each event that the original queues: (data byte, mask of the bytes to keep) by event type."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
@@ -450,15 +449,11 @@ class Scenario(CreatureOracle):
 
     def set_local(self, at, offset, value):
         """Sets the dword at ESP + offset when the original reaches at: a local that it leaves uninitialized."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_ESP
         self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: self.emu.write_u32(uc.reg_read(UC_X86_REG_ESP) + offset, value),
                              begin=at, end=at)
 
     def skip(self, begin, end):
         """Runs the original from end when it reaches begin: a code part of a later step."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EIP
         self.skips = getattr(self, "skips", {})
         self.skips[begin] = self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.reg_write(UC_X86_REG_EIP, end),
                                                  begin=begin, end=begin)
@@ -466,9 +461,6 @@ class Scenario(CreatureOracle):
     def fix_square_events(self):
         """The original sensor_schedule_square_event leaves 2 data bytes (and the priority of a hold) uninitialized;
         this runs it with them cleared, like the C port, and then the original timeline_add_event."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EIP, \
-            UC_X86_REG_ESP
         emu = self.emu
 
         def hook(uc, *_):
@@ -595,7 +587,6 @@ class Scenario(CreatureOracle):
     @property
     def damage(self):
         """True when a champion has pending damage or lost health since the last read (the coverage of a test)."""
-        from dm2test.interface import champion_records
         records = bytes(champion_records(self.lib))
         health = tuple(struct.unpack_from("<h", records, i * CHAMPION_SIZE + 0x36)[0] for i in range(4))
         last, self._health = getattr(self, "_health", health), health
@@ -603,7 +594,6 @@ class Scenario(CreatureOracle):
 
     def champion_records(self):
         """(C, original) champion records without the redraw flags."""
-        from dm2test.interface import champion_records
         mine, theirs = bytearray(champion_records(self.lib)), bytearray(self.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
         for record in (mine, theirs):
             for i in range(4):

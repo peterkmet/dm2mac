@@ -494,7 +494,7 @@ def test_reveal_map_draws_every_square_and_keeps_the_seen_squares(lib, automap):
 
 
 def champion_word(lib, offset, value=None):
-    from dm2test.interface import champion_records
+    from dm2test.scenario import champion_records
     word = ctypes.c_int16.from_buffer(champion_records(lib), offset)
     if value is not None:
         word.value = value

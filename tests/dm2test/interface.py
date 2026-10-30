@@ -2,6 +2,7 @@
 hands, and action area."""
 
 import ctypes
+import os
 import struct
 
 import pytest
@@ -9,17 +10,17 @@ from unicorn import UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_ESP
 
 from dm2test import constants as C
+from dm2test.addresses import G_CHAMPIONS, G_FONT_BITMAP, G_UI_COLORS, MONEY_INIT_COIN_TABLE, VGA
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS, START
+from dm2test.scenario import champion_records
 from dm2test.structs import ActionArea, Game, GdatKey, ImageInfo
 from dm2test.view import OriginalView, u8_p
 
 
 SCREEN_W, SCREEN_H = C.SCREEN_W, C.SCREEN_H
 DATA_START, DATA_END = 0x70000, 0x828F0  # the data object of SKULL.EXE
-VGA = 0xA0000
 VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
-CHAMPION_SIZE = C.CHAMPION_SIZE
 GAME_CHAMPIONS = Game.champions.offset
 
 # Original functions.
@@ -27,12 +28,12 @@ GFX_DRAW_TEXT, TEXT_FORMAT, TEXT_MEASURE, TEXT_WRAP_LINE = 0x10E3F, 0x3A6AB, 0x5
 SCREEN_PRESENT_VIEWPORT = 0x138D9
 GFX_FILL_ZONE_SCREEN, UI_DRAW_MOVEMENT_ARROWS, CHAMP_INIT_PARTY_STATE = 0x13B4D, 0x42AE4, 0x49D46
 CHAMP_DRAW_ALL_STATES, INV_TOGGLE, UI_UPDATE_ACTION_AREA = 0x4904F, 0x3A464, 0x3FE68
-TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, ZONE_GET_RECT, MONEY_INIT_COIN_TABLE = 0x5599F, 0x5570F, 0x19CFC, 0x154E0
+TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, ZONE_GET_RECT = 0x5599F, 0x5570F, 0x19CFC
 # Hardware and input services that the drawing calls: no-ops here.
 NO_OPS = (0x14C55, 0x14C68, 0x13A87, 0x13B7C, 0x1C5FD, 0x20707, 0x206FF, 0x14889, 0x3BDDA)
 # Original globals.
-G_UI_COLORS, G_FONT_BITMAP, G_MESSAGE_LINE, G_MESSAGE_AREA_Y = 0x7F210, 0x80414, 0x80410, 0x80418
-G_GAME_TIME, G_CHAMPIONS, G_LEADER_HAND = 0x7F22C, 0x7FBD0, 0x7FBB4
+G_MESSAGE_LINE, G_MESSAGE_AREA_Y = 0x80410, 0x80418
+G_GAME_TIME, G_LEADER_HAND = 0x7F22C, 0x7FBB4
 G_EYE, G_MOUTH, G_ACTION_CHAMPION, G_ACTION_HAND = 0x7F224, 0x7F21C, 0x7FB70, 0x7FB72
 G_ACTION_DIRTY, G_ACTION_DELAY, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_RESULT_AMMO = (
     0x7FB2C, 0x7FB68, 0x7FB78, 0x7FB6E, 0x7FB74)
@@ -155,11 +156,6 @@ def port(lib, ui_gdat, original, tmp_path):
     return lib
 
 
-def champion_records(lib):
-    """The 4 champion records of the C game state."""
-    return (ctypes.c_uint8 * (4 * CHAMPION_SIZE)).from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + GAME_CHAMPIONS)
-
-
 def c_screen(lib):
     return ctypes.string_at(ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_video_fb")), SCREEN_W * SCREEN_H)
 
@@ -171,7 +167,6 @@ def c_view(lib):
 
 def diff(a, b, width):
     """The first differing pixels, for a readable failure."""
-    import os
     if os.environ.get("DM2_DUMP"):
         open(os.environ["DM2_DUMP"] + ".mine", "wb").write(a)
         open(os.environ["DM2_DUMP"] + ".theirs", "wb").write(b)
@@ -212,17 +207,6 @@ def things_of(lib, kind, limit, test=None):
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
 GAME_MAGIC = Game.magic_light.offset
-
-
-def champion_bytes(lib, champ, offset, data):
-    """Writes data into champion champ of the C game state."""
-    records = champion_records(lib)
-    for i, b in enumerate(data):
-        records[champ * CHAMPION_SIZE + offset + i] = b
-
-
-def sync_champions(lib, original):
-    original.emu.write(G_CHAMPIONS, bytes(champion_records(lib)))
 
 
 def set_magic(lib, original, invisible, haste):

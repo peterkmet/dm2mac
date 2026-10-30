@@ -7,7 +7,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.input import run_ticks
-from dm2test.interface import champion_records
+from dm2test.scenario import champion_records
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, key_command, press, set_mode)
 from dm2test.lib import load_lib
 

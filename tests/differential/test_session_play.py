@@ -438,7 +438,8 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     # is the game after this join: both take the champion out of the party and put its objects back on the square.
     from dm2test.structs import LeaderHand, UiState
     from dm2test.input import Loop
-    from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records
+    from dm2test.addresses import G_CHAMPIONS
+    from dm2test.scenario import CHAMPION_SIZE, champion_records
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     loop = Loop(lib, gdat, start, tmp_path)
     emu, game = loop.emu, loop.game

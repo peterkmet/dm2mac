@@ -9,9 +9,10 @@ import pytest
 from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.scenario import (
-    CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, approaches, sensor_squares, square_event, square_things, squares,
+    CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, Command, approaches,
+    sensor_squares, square_event, square_things, squares,
 )
+from dm2test.addresses import SKY_OBJECTS_SIZE
 from dm2test.structs import Location
 
 
@@ -67,7 +68,7 @@ def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
     # Four champions (copies of the first) in random cells, random places and directions, moves in all four
     # directions: on a bump into a wall the champions of the two cells on that side take the damage.
     import random
-    from dm2test.interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
     rng = random.Random(15)
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     scenario.game.champion_count = C.CHAMPION_MAX
