@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Repository checks of the docs: every relative Markdown link in the docs resolves."""
+"""Repository checks of the docs: every relative Markdown link and every anchor in the docs resolves."""
 
 import re
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
+LINK = re.compile(r"\]\(([^)#\s]+)(?:#([^)]*))?\)")
+HEADING = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
 
 
 def markdown_files():
@@ -19,9 +20,36 @@ def tracked_paths():
     return set(files) | {str(Path(f).parent) for f in files if f}
 
 
+def slugs(path):
+    """GitHub slugs of the headings of a page, outside fenced code; a repeated heading gets -N."""
+    found, count, fenced = set(), {}, False
+    for line in path.read_text().split("\n"):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        match = None if fenced else HEADING.match(line)
+        if match:
+            slug = re.sub(r"[^\w\- ]", "", match.group(1).replace("`", "").lower()).replace(" ", "-")
+            n = count.get(slug, 0)
+            count[slug] = n + 1
+            found.add(slug if n == 0 else f"{slug}-{n}")
+    return found
+
+
 def test_doc_links_resolve():
     tracked = tracked_paths()
     broken = [f"{path.relative_to(ROOT)}: {target}" for path in markdown_files() if path.exists()
-              for target in LINK.findall(path.read_text())
+              for target, _ in LINK.findall(path.read_text())
               if "://" not in target and not target.startswith("mailto:") and (path.parent / target).resolve().relative_to(ROOT).as_posix() not in tracked]
     assert not broken, "broken links:\n" + "\n".join(broken)
+
+
+def test_doc_anchors_resolve():
+    broken = []
+    for path in markdown_files():
+        if not path.exists():
+            continue
+        for target, anchor in LINK.findall(path.read_text()):
+            page = (path.parent / target).resolve()
+            if anchor and "://" not in target and page.suffix == ".md" and page.exists() and anchor not in slugs(page):
+                broken.append(f"{path.relative_to(ROOT)}: {target}#{anchor}")
+    assert not broken, "dead anchors:\n" + "\n".join(broken)

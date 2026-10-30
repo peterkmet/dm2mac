@@ -17,7 +17,6 @@
 #include "control.h"
 #include "draw.h"
 #include "game.h"
-#include "game_text.h"
 #include "gamefile.h"
 #include "gdat.h"
 #include "icon.h"
@@ -621,7 +620,6 @@ static bool open_game(const Options *options, int factor)
     snprintf(g_session.data_dir, sizeof g_session.data_dir, "%s", options->data);
     if (options->saves)
         snprintf(g_session.save_dir, sizeof g_session.save_dir, "%s", options->saves);
-    snprintf(g_text_drive_path, sizeof g_text_drive_path, "%s", options->data);
 
     if (!load_graphics(options->data))
         return false;

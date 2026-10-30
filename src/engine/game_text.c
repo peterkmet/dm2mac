@@ -5,6 +5,7 @@
 #include <string.h>
 #include "champion.h"
 #include "dungeon.h"
+#include "game.h"
 #include "gdat.h"
 #include "ids.h"
 #include "save.h"
@@ -49,7 +50,6 @@
 #define NO_ORNAMENT_TEXT    0xff
 
 TextArgs g_text_args = {-1, {0}, 0};
-char g_text_drive_path[TEXT_SIZE];
 const uint8_t *g_ui_colors;
 
 /* The two-letter name of each field of an action text, by FIELD_* number. */
@@ -127,14 +127,14 @@ char *gtext_format(const char *fmt, char *dst)
         } else if (code == FORMAT_TITLE || code == FORMAT_TITLE_2) {
             gtext_gdat(CAT_INTERFACE, FORMAT_TITLE_INDEX, code == FORMAT_TITLE ? 0 : GFX_FORMAT_TITLE_2, value);
         } else if (code == FORMAT_DATA_PATH || code == FORMAT_SAVE_PATH || code == FORMAT_DISK_PATH) {
-            size_t len = strlen(g_text_drive_path);
-            while (len > 1 && g_text_drive_path[len - 1] == '/')
+            const char *dir = g_session.data_dir;
+            size_t len = strlen(dir);
+            while (len > 1 && dir[len - 1] == '/')
                 len--;
-            const char *name = g_text_drive_path + len;
-            while (name > g_text_drive_path && name[-1] != '/')
+            const char *name = dir + len;
+            while (name > dir && name[-1] != '/')
                 name--;
-            snprintf(value, sizeof value, "%.*s", (int)(g_text_drive_path + len - name),
-                     name); /* the last folder only */
+            snprintf(value, sizeof value, "%.*s", (int)(dir + len - name), name); /* the last folder only */
             for (char *p = value; *p; p++)
                 *p = (char)toupper((unsigned char)*p); /* the font has no lowercase */
         } /* the error, memory, and file name codes of the DOS layer give "" */

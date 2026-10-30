@@ -325,9 +325,7 @@ this document names. The rule numbers follow the coding standard of the Dungeon 
 
 ## 11. Tests
 
-[Development](development.md#tests) describes the test layout: `tests/differential/` (the port against the
-original in the emulator), `tests/port/` (the port alone), `tests/tools/` (the Python tools),
-`tests/standard/` (this standard), and the helpers in `tests/dm2test/`. The rules that the standard check
+[Development](development.md#tests) describes the test layout. The rules that the standard check
 enforces: [tests]
 
 1. A test module imports helpers from `tests/dm2test/` and the tools from `tools/dm2tools/` only, never from another test module or from
@@ -336,6 +334,9 @@ enforces: [tests]
 3. A test calls the accessors of the port; it does not decode a record by bit shifts. [review only]
 4. No machine path in a test (`/Users/`, `/private/tmp/`).
 5. Each test module loads its own copy of the library (`dm2test.lib`); no test compiles the library.
+6. `tests/dm2test/` imports only in the levels of the docstring of `tests/dm2test/__init__.py`: a module imports only from
+   lower levels or from earlier modules of its own level. The `lib` fixture is defined once, in `dm2test.lib`. Every
+   `dm2test` module with a `@pytest.fixture` is in `pytest_plugins` of `tests/conftest.py`.
 
 ## Format
 

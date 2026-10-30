@@ -1164,7 +1164,7 @@ CLANG_CALL = re.compile(r"""["']clang["']\s*,""")
 
 
 def test_tests_follow_the_rules():
-    """No test module imports another test module or conftest, names a machine path or compiles the library."""
+    """No test module imports another test module or conftest, names a machine path or compiles the library (11.1, 11.4, 11.5); dm2test follows 11.6."""
     ok = allowed()
     found = []
     for path in sorted(TESTS.rglob("*.py")):
@@ -1174,4 +1174,33 @@ def test_tests_follow_the_rules():
         for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
             if TEST_IMPORT.match(line) or MACHINE_PATH.search(line) or CLANG_CALL.search(line):
                 found.append(f"tests {target}  | {number}: {line.strip()}")
+    found += dm2test_findings()
     report("tests", found)
+
+
+def dm2test_findings():
+    """Rule 11.6: the import levels of dm2test, the one lib fixture, the plugin list."""
+    helpers = TESTS / "dm2test"
+    docstring = re.match(r'"""(.*?)"""', (helpers / "__init__.py").read_text(), re.S).group(1)
+    order = []
+    for line in re.findall(r"^\d+\. (.+)$", docstring, re.M):
+        order += [name.strip() for name in line.split(",")]
+    found = []
+    plugins = re.search(r"pytest_plugins = \[(.*?)\]", (TESTS / "conftest.py").read_text(), re.S).group(1)
+    listed = set(re.findall(r'"dm2test\.(\w+)"', plugins))
+    for path in sorted(helpers.glob("*.py")):
+        name, text = path.stem, path.read_text()
+        if name == "__init__":
+            continue
+        if name not in order:
+            found.append(f"tests dm2test/{path.name}  | module is not in a level of the docstring")
+            continue
+        for imported in re.findall(r"^\s*from dm2test\.(\w+) import", text, re.M):
+            if imported not in order or order.index(imported) >= order.index(name):
+                found.append(f"tests dm2test/{path.name}  | imports {imported}, not an earlier module")
+        if "@pytest.fixture" in text and name not in listed:
+            found.append(f"tests dm2test/{path.name}  | has a fixture, not in pytest_plugins")
+    for path in sorted(TESTS.rglob("*.py")):
+        if path.name != "lib.py" and re.search(r"^def lib\(", path.read_text(errors="replace"), re.M):
+            found.append(f"tests {path.relative_to(ROOT).as_posix()}  | defines the lib fixture")
+    return found
