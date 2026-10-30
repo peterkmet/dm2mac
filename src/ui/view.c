@@ -3,6 +3,7 @@
 #include <string.h>
 #include "ai.h"
 #include "game.h"
+#include "ids.h"
 #include "input.h"
 #include "item.h"
 #include "num.h"
@@ -11,6 +12,95 @@
 #include "sound_request.h"
 #include "view_internal.h"
 #include "weather.h"
+
+/* Value keys (CAT_WALLSET, graphics set, 0x0b, key). */
+#define MAP_KEY_WALL_COLOR   0x64 /* transparent color of the map pictures */
+#define MAP_KEY_FLIP_FLAGS   0x65
+#define MAP_KEY_NEAR_MARGINS 0x70 /* ceiling and floor clip margins when the squares of depth 1 are walls */
+#define MAP_KEY_FAR_MARGINS  0x71 /* the same for the squares of depth 2 */
+/* Value keys of the ornament categories (category, ornament, 0x0b, key). */
+#define ORN_KEY_RATIO_2      0x14 /* width : height of the picture at depth 2, as 2 bytes */
+#define ORN_KEY_RATIO_3      0x15
+
+/* Zones of the view elements, and cells of their 5 x 5 grid. */
+#define CELL_FAR_MIDDLE 2 /* the middle cell of the far row */
+
+/* Doors: button frames, zone offsets, color keys, scales, and the ornament rows that take clicks. */
+#define DOOR_SIDE_SCALE  43 /* the door side picture in front of the party */
+#define DOOR_SIDE_DEPTH  2
+/* The square type bits of a square byte. */
+#define SQUARE_TYPE_BITS 0xe0
+
+/* Animation, light, scales, and text spacing of the view pictures. */
+#define GAME_TIME_FRAMES  7 /* bits of the game time that animate pictures */
+#define HALF_TIME_FRAMES  4
+#define LIGHT_STEP        10 /* view shade per light level */
+#define VIEW_SHADE_MAX    63
+#define SHADE_SHIFT       6 /* SHADE_FULL = 1 << SHADE_SHIFT */
+#define SCALE_ROUND_SHIFT 7 /* a ratio in 1/128, rounded to 1/64 */
+
+/* View positions. */
+#define POS_LINKED 21 /* positions that can hold a seamless passage */
+#define POS_DRAWN  20
+
+/* The smallest click zone of a picture. */
+#define CLICK_MIN_WIDTH  14
+#define CLICK_MIN_HEIGHT 11
+#define CLICK_LOW_HEIGHT 15 /* a lower picture moves its zone up to its middle */
+#define CLICK_HALF_SIZE  7  /* a narrow or low zone starts this far before the middle of its picture */
+
+/* The hit test of the creature in front of the party. */
+#define HIT_SIDE_LIMIT 75 /* percent of the half picture width: a click beyond it hits a side */
+#define HIT_DEPTH      1  /* the depth at which the creature in front is drawn for a hit test */
+
+/* The hit test of a wall ornament. */
+#define HIT_SMALL_SIZE 32 /* a smaller ornament takes every click on its wall */
+
+/* The items a chest holds. */
+#define CHEST_CAPACITY          8
+/* ATTR_SLOTS: no container takes the item. */
+#define ATTR_SLOTS_NO_CONTAINER 0x8000
+
+/* The wall patterns of a view row: the walls of a row (center, left, right) give 8 patterns. */
+#define ROW_PATTERNS    8
+/* The wall bits of a row, and the far squares that the corner walls hide. */
+#define ROW_WALLS       7 /* row wall bits: center, left, right */
+#define ROW_SIDE_WALLS  6
+#define HIDE_FAR_LEFT   (VIEW_POS_BIT(19) | VIEW_POS_BIT(21)) /* far squares hidden behind the corner walls */
+#define HIDE_FAR_RIGHT  (VIEW_POS_BIT(20) | VIEW_POS_BIT(22))
+/* The walking view: floor and ceiling shift, and the shift of the sky. */
+#define WALK_FLOOR_DY   3
+#define WALK_CEILING_DY (-2)
+
+/* Thing grids: a cell of 4 x 4 per square, at (lateral + 10, forward) from the eye of the party. */
+#define GRID_LATERAL_CENTER 10
+#define GRID_LATERAL_LIMIT  10
+#define GRID_FORWARD_LIMIT  17
+
+/* The bits of the octant of a diagonal step toward the party. */
+#define OCTANT_SAME_SHIFT  1
+#define OCTANT_RIGHT_SHIFT 2
+
+/* The sky pictures of the rain. */
+#define RAIN_ALONG        0x71 /* sky pictures 0x71 to 0x74: rain seen along the wind, 0x6d to 0x70 across it */
+#define RAIN_ACROSS       0x6d
+/* The rain picture after RAIN_ALONG or RAIN_ACROSS by the rain intensity; 0 for a drizzle. */
+#define RAIN_LEVEL_LIGHT  1
+#define RAIN_LEVEL_MEDIUM 2
+#define RAIN_LEVEL_STRONG 3
+/* The tile rows of the rain and of a wet picture: the picture size minus a trim and a random spread. */
+#define WET_TILE_TRIM     60
+#define WET_TILE_EXTRA    16
+
+/* Flip parity kinds and the map flip flags (value key MAP_KEY_FLIP_FLAGS). */
+#define PARITY_SQUARE          0x00
+/* The map flip flags. */
+#define FLIP_CEILING_BY_SQUARE 0x02
+#define FLIP_CEILING_BY_TIME   0x04
+#define FLIP_FLOOR_BY_SQUARE   0x08
+#define FLIP_FLOOR_BY_TIME     0x10
+#define FLIP_CEILING_BY_PARTY  0x20
+#define FLIP_FLOOR_BY_PARTY    0x40
 
 /* The scale (1/64) of the pictures at each depth. */
 const uint8_t g_view_depth_scale[POS_DEPTH_MAX + 1] = {96, 64, 43, 28, 19};

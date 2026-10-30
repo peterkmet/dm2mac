@@ -3,12 +3,118 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game_text.h"
+#include "ids.h"
 #include "item.h"
 #include "money.h"
 #include "sensor.h"
 #include "ui.h"
 #include "view_internal.h"
 #include "weather.h"
+
+/* Value keys (CAT_WALLSET, graphics set, 0x0b, key). */
+#define MAP_KEY_WALL_MARGINS 0x6e /* + 1 beyond depth 1: left and right clip margins of a wall beside open squares */
+/* The entry step back from a missing flipped wall to the plain wall. */
+#define MAP_WALL_FLIPPED_MISSING (GFX_MAP_WALL_FLIPPED - GFX_MAP_WALL)
+/* Value keys of the ornament categories (category, ornament, 0x0b, key). */
+#define ORN_KEY_COLOR            0x04 /* transparent color */
+#define ORN_KEY_PLACE            0x05 /* anchor in the high byte, grid cell + 1 in the low byte */
+#define ORN_KEY_NO_FLIP          0x07
+#define ORN_KEY_ZONE_ROW         0x08 /* door ornaments and buttons: zone row */
+#define ORN_KEY_OFFSCREEN_COLOR  0x11 /* transparent color of the picture in its offscreen bitmap */
+#define ORN_KEY_DAMAGE_COLOR     0x12
+#define ORN_KEY_BIG_NEAR         0x60 /* floor ornament: scale 0x60 on the squares beside the party */
+#define ORN_KEY_WET              0x63 /* drawn wet by the rain */
+/* Wall ornament pictures of a frame. */
+#define ORN_PICTURE_SIDE         0
+#define ORN_PICTURE_FRONT        1
+#define ORN_PICTURE_RIGHT        2
+/* No picture entry in a table, and the value entry of the portrait place of a portrait ornament. */
+#define ENTRY_NONE               0xff
+#define PORTRAIT_OFFSET_ENTRY    0xfd
+
+/* Zones of the view elements, and cells of their 5 x 5 grid. */
+#define ZONE_ROW_SIZE     4 /* zones of one ornament row */
+#define CELL_LEFT_MIDDLE  10
+#define CELL_RIGHT_MIDDLE 14
+/* Zone anchors of the two sides of a door frame. */
+#define ANCHOR_DOOR_RIGHT 4
+#define ANCHOR_DOOR_LEFT  3
+
+/* Doors: button frames, zone offsets, color keys, scales, and the ornament rows that take clicks. */
+#define DOOR_BUTTON_FRAMES   5
+#define DOOR_HALF_OFFSET     6 /* zone of the right door half, relative to the door zone */
+#define DOOR_LEFT_OFFSET     3
+#define DOOR_KEY_DEFAULT     10
+#define ORNAMENT_KEY_DEFAULT 9
+#define DOOR_NEAR_SCALE      113
+#define DOOR_ROW_NEAR        3 /* door ornament rows 3 and 4: the doors at depth 1 and 0 take clicks */
+/* Door frame parts. */
+#define DOOR_FRAME_TOP       0x01
+#define DOOR_FRAME_LEFT      0x02
+#define DOOR_FRAME_RIGHT     0x04
+
+/* Animation, light, scales, and text spacing of the view pictures. */
+#define WALK_SCALE         52  /* the sky shrinks to 52/64 while the party walks */
+#define SCALE_WIDE_SIDE    114 /* wall ornament scales at the far sides */
+#define SCALE_FAR_SIDE     76
+#define SCALE_BIG_NEAR     96 /* floor ornaments with ORN_KEY_BIG_NEAR beside the party */
+#define WALL_TEXT_LINE_GAP 2  /* line gap of wall text */
+
+/* Cell masks of the things drawing: bit n is cell n of the 5 x 5 grid of a square, row 0 the far row. */
+#define THINGS_BEHIND_DOOR 0x40001000
+#define THINGS_DOOR_CELL   0x00001000
+
+/* View positions. */
+#define DEPTH_FRONT           1 /* the squares in front of the party */
+#define POS_CEILING_PIT_LAST  8
+#define POS_FLOOR_PIT_BLOCKED 11 /* from here on, an open pit hides its floor picture */
+/* The side columns two squares to the left or right of the view axis. */
+#define LATERAL_FAR_SIDE      2
+
+/* Shops: a wall sensor (WALL_CLICK_RESET with a shop ornament) shows the item of the display sensor (SENSOR_SHOP)
+   on its target square, with the item name and the merchant prices in coins. */
+#define SHOP_CLASS_TEXT      0x10 /* + list * 3: the class set of the items of the list */
+#define ORN_KEY_SHOP_LABEL   0xf2 /* (CAT_WALL_ORNAMENT, ornament, 0x0c, key): offsets of the name and prices */
+#define ORN_KEY_SHOP_SELL    0xf1
+#define ORN_KEY_SHOP_BUY     0xf0
+/* The item flag and the price table bit of a shop. */
+#define ITEM_FLAG_UNIQUE     0x1000 /* ATTR_FLAGS: the shop shows the item only when it exists */
+#define SHOP_TABLE_CREATE    0x8000 /* table word: a new item is made when the display shows it */
+/* The class text step of a price list, the coins of a price, and the coin picture size. */
+#define SHOP_CLASS_TEXT_STEP 3
+#define SHOP_PRICE_COINS     6
+#define COIN_WIDTH           8
+#define COIN_HEIGHT          7
+#define DISPLAY_POS          POS_FRONT /* only the wall in front shows the name and prices */
+
+/* The view positions of the door tables and of the door top frame tables. */
+#define DOOR_POSITIONS     14
+#define DOOR_TOP_POSITIONS 9
+/* Door frame parts together. */
+#define DOOR_FRAME_SIDES   (DOOR_FRAME_LEFT | DOOR_FRAME_RIGHT)
+#define DOOR_FRAME_ALL     (DOOR_FRAME_TOP | DOOR_FRAME_SIDES)
+/* Glyphs of the wall text font after the letters: space and period. */
+#define GLYPH_SPACE        0x1a
+#define GLYPH_PERIOD       0x1b
+/* The wall text font has 8 x 8 glyphs. */
+#define GLYPH_SIZE         8
+/* The walking view: floor and ceiling shift, and the shift of the sky. */
+#define WALK_SKY_DY        (-3)
+#define WALK_SKY_HIGH_DY   2
+
+/* Sky objects: clouds, rain, and the landmarks of an outdoor map. */
+#define SKY_LANDMARK_DISTANCE 210 /* screen offset per square of lateral distance */
+/* The mirror kinds of a sky object: by the floor or the ceiling parity. */
+#define SKY_FLIP_FLOOR        0x08
+#define SKY_FLIP_CEILING      0x02
+#define SKY_FLIP_FLOOR_2      0x40
+#define SKY_FLIP_CEILING_2    0x20
+/* The move kinds of a sky object: fixed, or a landmark at its place on the map. */
+#define SKY_FIXED             0
+#define SKY_LANDMARK          1
+
+/* The map flip flags. */
+#define FLIP_CEILING_PITS 0x01
 
 /* The position on the other side of the view axis. */
 static const int8_t view_mirror[VIEW_SQUARE_COUNT] = {
