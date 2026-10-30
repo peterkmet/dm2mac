@@ -16,14 +16,7 @@ THING_RECORD_SIZE = 16  # bytes of a group record
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.creature_is_flying.restype = ctypes.c_bool
-    lib.creature_is_flying.argtypes = [ctypes.c_uint16]
-    lib.creature_get_group_at.restype = ctypes.c_uint16
-    lib.creature_get_group_at.argtypes = [Location]
-    lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
+    lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
 
 
 def walking_group(lib, gdat):
@@ -58,7 +51,6 @@ def test_the_active_groups_end_below_the_inactive_index(lib, gdat, tmp_path):
     path = tmp_path / "groups.dat"
     path.write_bytes(struct.pack("<6H16H", 0, 0, 0, 0, 0, 0, *counts) + bytes(THING_RECORD_SIZE * MANY_GROUPS))
     assert lib.dungeon_load(str(path).encode()) == 1
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
     lib.gdat_select(gdat)
     walker = next(t for t in range(256) if not lib.creature_info(gdat, t)[0] & C.CREATURE_STATIC)
     for i in range(MANY_GROUPS):

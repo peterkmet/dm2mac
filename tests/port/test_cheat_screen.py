@@ -32,20 +32,8 @@ class Cursor(ctypes.Structure):
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.magic_get_spell.restype = ctypes.POINTER(Spell)
-    lib.cheats_get_spell_line.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
-    lib.cheats_get_cursor.restype = Cursor
-    lib.cheats_move_selection.argtypes = [ctypes.c_int16]
-    lib.cheats_process_click.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.magic_cast_cheat_spell.argtypes = [ctypes.c_int16, ctypes.c_void_p]
-    lib.game_has_cheat.argtypes = [ctypes.c_uint8]
-    lib.game_has_cheat.restype = ctypes.c_bool
-    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
-    lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
-    lib.item_set_gdat_index.argtypes = [ctypes.c_uint16, ctypes.c_int]
-    lib.item_gdat_index.argtypes = [ctypes.c_uint16]
-    lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
+    lib.magic_get_spell.restype = ctypes.POINTER(Spell)  # the test reads .contents
+    lib.cheats_get_cursor.restype = Cursor  # Cursor is a mirror of this module
 
 
 @pytest.fixture
@@ -189,7 +177,6 @@ def test_cheat_cast_without_a_living_champion_says_so(lib, screen):
         lib.cheats_run_selected_row()
         select(lib, 0)
         assert lib.cheats_run_selected_row() == CLOSE
-        lib.text_message_row.restype = ctypes.c_char_p
         rows = [lib.text_message_row(r) for r in range(C.MESSAGE_ROWS)]
         assert b"NO CHAMPION CAN CAST" in rows
     finally:

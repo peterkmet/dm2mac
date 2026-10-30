@@ -3,8 +3,6 @@
 import ctypes
 import struct
 
-import pytest
-
 from dm2test import constants as C
 from dm2test.save import GRAPHICS
 
@@ -13,15 +11,6 @@ KEY_ROWS, ROW_SIZE, ROW_VALUE = 20, 8, 6
 CAT_WEAPON, TYPE_VALUE, ATTR_ICON_ANIMATION = 0x10, 0x0B, 0x06
 GFX_ITEM_ICON = 0x18
 NO_STEP = 0x0402  # mode 4 (by charges and time), step 0, 2 frames
-
-
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
-    lib.gdat_free.argtypes = [ctypes.c_void_p]
-    lib.item_icon_index.argtypes = [ctypes.c_uint16, ctypes.c_int16, ctypes.c_bool]
 
 
 def with_icon_animation(data, index, value):

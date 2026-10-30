@@ -18,14 +18,6 @@ class IsoFile(ctypes.Structure):
     _fields_ = [("sector", ctypes.c_uint32), ("size", ctypes.c_uint32)]
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.iso_open.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    lib.iso_close.argtypes = [ctypes.c_void_p]
-    lib.iso_find.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(IsoFile)]
-    lib.iso_read.argtypes = [ctypes.c_void_p, ctypes.POINTER(IsoFile), ctypes.c_char_p, ctypes.c_uint32]
-
-
 @pytest.fixture
 def open_image(lib, tmp_path):
     opened = []

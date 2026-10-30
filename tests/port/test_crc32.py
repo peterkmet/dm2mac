@@ -1,16 +1,8 @@
 """The CRC-32 of PNG and ZIP (src/data/crc32.c) against zlib."""
 
-import ctypes
 import zlib
 
 import pytest
-
-
-
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.crc32_update.argtypes = [ctypes.c_uint32, ctypes.c_char_p, ctypes.c_size_t]
-    lib.crc32_update.restype = ctypes.c_uint32
 
 
 @pytest.mark.parametrize("data", [b"", b"a", b"123456789", bytes(range(256)) * 40])
