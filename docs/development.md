@@ -79,8 +79,6 @@ To run several files, add `-n auto`.
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
 | `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
 
-The tests of the control socket and the turn-based mode are `tests/port/test_state_json.py` (the JSON of the state, the view, and the map), `tests/port/test_turnbased.py` (the protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`), and `tests/tools/test_play_client.py` (`dm2-play`).
-
 `tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library).
 
 ## Tools
@@ -93,7 +91,7 @@ The tests of the control socket and the turn-based mode are `tests/port/test_sta
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
 | `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
 | `dm2tools.emu` (Python, in `tools/dm2tools/emu.py`) | Run a `SKULL.EXE` function in an x86 emulator. `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
-| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
+| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It needs [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
 
 ## Add a game rule
 
