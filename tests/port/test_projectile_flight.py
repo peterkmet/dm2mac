@@ -6,10 +6,9 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import MainLoop, session  # noqa: F401 (session is a fixture)
+from dm2test.input import MainLoop
 from dm2test.lib import load_lib
-from dm2test.modes import ADVANCED, VANILLA, advanced, set_mode  # noqa: F401 (advanced is a fixture)
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.view import Bitmap
 
 
@@ -59,7 +58,7 @@ def snapshot(lib, gdat, folder, n):
     return path.read_bytes()
 
 
-def test_flight_views_move_the_projectile_and_change_no_game_state(lib, gdat, advanced, tmp_path):  # noqa: F811
+def test_flight_views_move_the_projectile_and_change_no_game_state(lib, gdat, advanced, tmp_path):
     game, _ = advanced
     loop = MainLoop.in_dll(lib, "g_main_loop")
     view = Bitmap.in_dll(lib, "g_view_viewport")

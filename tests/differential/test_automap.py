@@ -8,9 +8,9 @@ import pytest
 from dm2test import constants as C
 from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
-                           VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import GameRecord, Location, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
+                           VANILLA, key_command, press, set_mode)
+from dm2test.input import run_ticks
+from dm2test.scenario import GameRecord, Location, Position
 from dm2test.lib import load_lib
 
 
@@ -38,7 +38,7 @@ SAVE_OK = C.SAVE_OK
 
 
 @pytest.fixture
-def automap(lib, advanced):  # noqa: F811
+def automap(lib, advanced):
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
@@ -114,7 +114,7 @@ def test_marks_start_and_squares_ahead(lib, automap):
     assert seen_squares(lib, m) == expected(lib, m, x, y, d)
 
 
-def test_vanilla_marks_no_square(lib, session):  # noqa: F811
+def test_vanilla_marks_no_square(lib, session):
     # Only the advanced mode marks the view of the party (game.c): a vanilla walk and turn mark nothing.
     game, _ = session
     set_mode(lib, VANILLA)
@@ -187,7 +187,7 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
         assert ahead(x, y, d, depth) in seen and ahead(x, y, d, depth + 1) not in seen, (level, light)
 
 
-def write(lib, gdat, path, mode):  # noqa: F811
+def write(lib, gdat, path, mode):
     set_mode(lib, mode)
     try:
         assert lib.save_write(str(path).encode(), str(path.with_suffix(".BAK")).encode(), b"AUTOMAP", gdat) == SAVE_OK
@@ -202,7 +202,7 @@ def block_size(lib):
 
 
 @pytest.fixture
-def saves(lib, gdat, automap, tmp_path):  # noqa: F811
+def saves(lib, gdat, automap, tmp_path):
     """A marked game saved in vanilla and in the advanced mode; the seen squares."""
     game, _ = automap
     run_ticks(lib, 20)
@@ -215,7 +215,7 @@ def saves(lib, gdat, automap, tmp_path):  # noqa: F811
     return game, seen, vanilla, write(lib, gdat, tmp_path / "A.DAT", ADVANCED)
 
 
-def load(lib, gdat, path, data):  # noqa: F811
+def load(lib, gdat, path, data):
     path.write_bytes(data)
     return lib.save_load(str(path).encode(), gdat)
 
@@ -229,7 +229,7 @@ def test_advanced_save_appends_the_amap_block(lib, saves):
     assert block[6:8] == bytes([lib.dungeon_map_width(0), lib.dungeon_map_height(0)])
 
 
-def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
+def test_amap_block_round_trip(lib, gdat, saves, tmp_path):
     game, seen, vanilla, mine = saves
     lib.seen_reset()
     assert load(lib, gdat, tmp_path / "L.DAT", mine) == SAVE_OK
@@ -239,7 +239,7 @@ def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
 
 
 @pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value", "chts"])
-def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):  # noqa: F811
+def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):
     game, seen, vanilla, mine = saves
     n = len(vanilla)
     data = bytearray(mine)
@@ -258,7 +258,7 @@ def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damag
     assert not seen_squares(lib, game.party_map)
 
 
-def test_original_loader_ignores_the_amap_block(lib, gdat, saves, game_dir):  # noqa: F811
+def test_original_loader_ignores_the_amap_block(lib, gdat, saves, game_dir):
     # The original load of SKULL.EXE stops at the last bit of the game state: the block changes nothing it reads.
     from dm2test.save import RECORD_GLOBALS, original_load
     _, _, vanilla, mine = saves

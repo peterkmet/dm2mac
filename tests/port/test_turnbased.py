@@ -16,8 +16,7 @@ from dm2test.markers import ROOT
 from dm2tools.control_client import request
 from dm2test.control import PALETTE_COLORS, RGB, GameWithChampions
 from dm2test.dialog import Session
-from dm2test.input import session  # noqa: F401 (a fixture)
-from dm2test.scenario import Location, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location
 from dm2test.lib import load_lib
 
 
@@ -39,7 +38,7 @@ NORTH = C.DIR_NORTH
 
 
 @pytest.fixture
-def tb(lib, gdat, session):  # noqa: F811
+def tb(lib, gdat, session):
     """start.DAT in the turn-based mode with the control socket open and a thread that runs control_frame as the turn
     loop of main.c does; yields the socket path, the game record, the main loop."""
     poll, frame, pending = lib.transport_poll, lib.control_frame, lib.control_is_turn_pending

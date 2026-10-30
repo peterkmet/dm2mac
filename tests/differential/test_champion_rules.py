@@ -10,8 +10,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
-from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
-from dm2test.input import session  # noqa: F401 (fixture)
+from dm2test.scenario import Scenario
 from dm2test.lib import load_lib
 
 
@@ -128,7 +127,7 @@ class Rules:
 
 
 @pytest.fixture
-def rules(lib, gdat, start, tmp_path):  # noqa: F811
+def rules(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Rules(Scenario(lib, gdat, start, tmp_path), lib, random.Random(151))
 
@@ -551,7 +550,7 @@ def coin_values_changed(values):
     return bytes(data)
 
 
-def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):  # noqa: F811
+def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):
     # regression: with a coin of value 0 (a damaged GRAPHICS.DAT) the exchange of the coins of a box looped forever
     from dm2test.markers import ROOT
     lib = load_lib()  # an own coin table: a library reads it once
@@ -632,7 +631,7 @@ POTION, MISC = C.THING_POTION, C.THING_MISC
 
 
 @pytest.mark.parametrize("dead", [False, True])
-def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, dead):  # noqa: F811
+def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, dead):
     # A save with magic light events (powers in and out of the table), invisibility, an aura on the first champion,
     # poison, and the timed effects of eaten items (34 and 50 have skill modifiers that count when consumed): the
     # load restores the light, the invisibility, the aura value (not on a dead champion), the poison, and the item
@@ -691,7 +690,7 @@ def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
 
 
 @pytest.mark.parametrize("new_game", [False, True])
-def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):
     # A load or a new game after a repeated action, a raised skill and pending damage starts with no repeats, no
     # raised skills and no pending damage.
     repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
@@ -705,7 +704,7 @@ def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir,
 
 
 @pytest.mark.parametrize("new_game", [False, True])
-def test_load_and_new_game_clear_pending_push(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+def test_load_and_new_game_clear_pending_push(lib, gdat, start, session, game_dir, tmp_path, new_game):
     # A push that waits for a creature group in the last game does not wait in a loaded or a new game: the start of
     # its play clears the group.
     from dm2test.scenario import Party

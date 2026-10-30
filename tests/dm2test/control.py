@@ -25,7 +25,7 @@ class GameWithChampions(WorldGame):
 
 
 @pytest.fixture
-def control(lib, gdat, session):  # noqa: F811
+def control(lib, gdat, session):
     """start.DAT ready to play with its palette and the control socket open; yields the socket path, the game record,
     the main loop."""
     palette = (ctypes.c_uint8 * (PALETTE_COLORS * RGB)).in_dll(lib, "g_video_palette")

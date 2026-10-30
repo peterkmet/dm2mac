@@ -23,7 +23,7 @@ def set_mode(lib, mode):
 
 
 @pytest.fixture
-def advanced(lib, session, tmp_path):  # noqa: F811
+def advanced(lib, session, tmp_path):
     """start.DAT in the advanced mode, with the game folder in tmp_path; vanilla again after the test."""
     (tmp_path / "DATA").mkdir()
     state = Session.in_dll(lib, "g_session")

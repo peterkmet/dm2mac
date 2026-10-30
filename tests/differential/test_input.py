@@ -10,11 +10,10 @@ import pytest
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS
-from dm2test.input import (  # noqa: F401 (session is a fixture)
+from dm2test.input import (
     INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND, INPUT_INIT_TABLES, KEY_FORWARD, KEY_PAUSE, KEY_TURN_RIGHT, Loop, run_ticks,
-    session,
 )
-from dm2test.scenario import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario
 from dm2test.lib import load_lib
 
 

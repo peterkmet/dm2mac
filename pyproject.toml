@@ -34,9 +34,6 @@ src = ["tests", "tools/dm2tools"]
 [tool.ruff.lint]
 select = ["E4", "E9", "F"]
 
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["F811"]  # fixtures imported from other test modules
-
 [tool.pytest.ini_options]
 timeout = 120
 testpaths = ["tests"]

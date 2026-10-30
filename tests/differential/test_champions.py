@@ -9,7 +9,7 @@ from dm2test import constants as C
 from dm2test.gdat import item_sizes
 from dm2test.input import Loop
 from dm2test.interface import LeaderHand
-from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
+from dm2test.scenario import square_event
 from dm2test.lib import load_lib
 
 
@@ -28,7 +28,7 @@ DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = C.SQUARE_DOOR_STATE, C.DOOR_STATE_OPEN, C.D
 
 
 @pytest.fixture
-def loop(lib, gdat, start, tmp_path):  # noqa: F811
+def loop(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Loop(lib, gdat, start, tmp_path)
 
@@ -310,7 +310,7 @@ def test_recruit_and_cancel(loop, lib):
 PORTRAIT_DATA_TYPE, CHAMPION_DATA_SIZE, CH_HEALTH = 8, 52, 0x36
 
 
-def test_recruit_with_a_short_champion_data_item(loop, lib, gdat):  # noqa: F811
+def test_recruit_with_a_short_champion_data_item(loop, lib, gdat):
     # regression: the recruit read the 52 bytes of the champion data past the end of a shorter item (a damaged
     # GRAPHICS.DAT); the port then leaves the values of the champion at 0
     from dm2test.interface import CHAMPION_SIZE, champion_records

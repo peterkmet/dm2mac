@@ -5,8 +5,7 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import Location, Position, gdat, start, square_things  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Location, Position, square_things
 from dm2test.lib import load_lib
 
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1
@@ -51,13 +50,13 @@ def test_imaginary_wall_is_a_closed_fake_wall_with_flag_0(lib):
     assert not lib.automap_is_imaginary_wall(FLOOR << 5 | FLAG_0)
 
 
-def test_dungeon_has_imaginary_walls_that_the_party_walks_through(lib, session):  # noqa: F811
+def test_dungeon_has_imaginary_walls_that_the_party_walks_through(lib, session):
     found = [s for *_, s in all_squares(lib) if lib.automap_is_imaginary_wall(s)]
     assert found
     assert all(not lib.dun_square_blocks_movement(s) for s in found)
 
 
-def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):  # noqa: F811
+def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):
     visible, hidden = [], []
     for map_, x, y, s in all_squares(lib):
         if s >> 5 != FLOOR:
@@ -75,7 +74,7 @@ def level_square(lib, x, y):
     return (p.map, p.x, p.y) if lib.automap_level_square(Location(x, y), ctypes.byref(p)) else None
 
 
-def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: F811
+def test_level_square_takes_the_map_that_has_the_square(lib, session):
     # The owner rule of the original minion map; a position without an owner keeps the square of its first map.
     assert level_square(lib, 22, 44) == (0, 1, 8)    # the party square
     assert level_square(lib, 52, 28) == (40, 6, 6)   # map 12 has SQUARE_UNKNOWN there, map 40 a wall
@@ -84,7 +83,7 @@ def test_level_square_takes_the_map_that_has_the_square(lib, session):  # noqa: 
     assert level_square(lib, 21, 0) is None          # no map covers it
 
 
-def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # noqa: F811
+def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):
     lib.seen_reset()
     assert not lib.automap_level_seen(Location(52, 28))
     lib.seen_mark(Position(12, 25, 1), C.DIR_NORTH)  # the view marks the square of map 12 that shows map 40
@@ -92,7 +91,7 @@ def test_level_position_is_seen_when_any_covering_map_saw_it(lib, session):  # n
     lib.seen_reset()
 
 
-def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
+def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):
     # The view draws the edge wall of map 12 at (13, -1) (dungeon_square_edge); the automap shows it once a square
     # of map 12 next to it is seen.
     assert level_square(lib, 40, 26) == (12, 13, -1)
@@ -105,7 +104,7 @@ def test_edge_wall_in_a_margin_that_no_map_covers(lib, session):  # noqa: F811
     lib.seen_reset()
 
 
-def test_edge_wall_over_an_unknown_square_of_another_map(lib, session):  # noqa: F811
+def test_edge_wall_over_an_unknown_square_of_another_map(lib, session):
     # Map 17 has SQUARE_UNKNOWN at the level position (34, 60), the margin of map 24 below (4, 3); the view of map 24
     # draws the edge wall there, so the automap shows it too.
     game, _ = session

@@ -10,8 +10,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
-from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import Location, Position, gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Location, Position
 from dm2test.lib import load_lib
 
 

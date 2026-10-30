@@ -7,12 +7,14 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit, program_start_after  # noqa: F401 (an autouse fixture)
-from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit
+from dm2test.scenario import Scenario, WALL_END_GAME, square_event
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
 from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
+
+pytestmark = pytest.mark.usefixtures("program_start_after")
 
 
 @pytest.fixture(scope="module")

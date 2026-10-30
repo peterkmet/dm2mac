@@ -10,10 +10,11 @@ from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
-from dm2test.dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
 from dm2test.scenario import square_things
 from dm2test.lib import load_lib
+
+pytestmark = pytest.mark.usefixtures("program_start_after")
 
 
 @pytest.fixture(scope="module")

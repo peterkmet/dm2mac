@@ -5,6 +5,17 @@ import pytest
 
 from dm2test.markers import GAME, ROOT
 
+pytest_plugins = [
+    "dm2test.control",
+    "dm2test.creature",
+    "dm2test.dialog",
+    "dm2test.gdat",
+    "dm2test.input",
+    "dm2test.interface",
+    "dm2test.modes",
+    "dm2test.scenario",
+]
+
 
 @pytest.fixture
 def game_dir():

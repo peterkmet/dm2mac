@@ -13,15 +13,15 @@ import pytest
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
-from dm2test.control import control, pumped  # noqa: F401 (control is a fixture)
-from dm2test.modes import (  # noqa: F401 (advanced is a fixture)
+from dm2test.control import pumped
+from dm2test.modes import (
     ADVANCED, INPUT_MODE_DIALOG, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, INPUT_MODE_NAME, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_A,
     SCAN_D, SCAN_E, SCAN_Q, SCAN_S, SCAN_W, SCREEN_W, STEP_TICKS, TEXT_LINE_HEIGHT, UI_WHITE, VANILLA, ZONE_MESSAGE_AREA,
-    advanced, key_command, press, set_mode,
+    key_command, press, set_mode,
 )
 from dm2test.dialog import DialogState, Session
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.input import run_ticks
+from dm2test.scenario import Position
 from dm2test.lib import load_lib
 
 
@@ -52,7 +52,7 @@ def shows(lib, text):
     return before == last_message_row(lib) and len({p for row in before for p in row}) > 1
 
 
-def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path):  # noqa: F811
+def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path):
     # The library starts in vanilla, as the original: W does not move the party, F5 writes no file.
     game, _ = session
     (tmp_path / "DATA").mkdir()
@@ -67,7 +67,7 @@ def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path): 
     assert not list((tmp_path / "DATA").iterdir())
 
 
-def test_letter_keys_give_the_keypad_commands_only_where_the_letters_have_none(lib, session):  # noqa: F811
+def test_letter_keys_give_the_keypad_commands_only_where_the_letters_have_none(lib, session):
     # In the advanced mode a letter without a command of its own gives the command of its keypad key (the movement
     # mode); in the text modes (slot name, champion name) it still types its letter.
     DialogState.in_dll(lib, "g_dialog").button_count = SLOT_BUTTONS_SAVE
@@ -247,7 +247,7 @@ def test_quick_keys_work_only_in_the_dungeon_view(lib, advanced):
     assert [p.name for p in data.iterdir()] == ["QUICK.DAT"]
 
 
-def test_state_tells_the_game_mode(control, lib):  # noqa: F811
+def test_state_tells_the_game_mode(control, lib):
     path, *_ = control
     for mode, name in ((ADVANCED, "advanced"), (VANILLA, "vanilla")):
         set_mode(lib, mode)
@@ -255,7 +255,7 @@ def test_state_tells_the_game_mode(control, lib):  # noqa: F811
             assert request({"cmd": "state"}, path)["game_mode"] == name
 
 
-def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
+def test_state_tells_the_automap_and_the_cheats(control, lib):
     path, *_ = control
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     cheats = {"cheat_light": C.CHEAT_LIGHT, "cheat_immortal": C.CHEAT_IMMORTAL, "cheat_food": C.CHEAT_FOOD,
@@ -273,7 +273,7 @@ def test_state_tells_the_automap_and_the_cheats(control, lib):  # noqa: F811
         lib.game_set_cheats(0)
 
 
-def test_control_click_on_the_open_automap_ends_the_drag(control, lib):  # noqa: F811
+def test_control_click_on_the_open_automap_ends_the_drag(control, lib):
     # A control click gives the press and the release: moving the pointer afterwards does not scroll the map.
     path, game, _ = control
     lib.seen_mark(Position(game.party_map, game.party_x, game.party_y), game.party_dir)
@@ -421,7 +421,7 @@ def test_program_starts_in_advanced_unless_vanilla(game_dir, tmp_path, args, nam
         shutil.rmtree(folder)
 
 
-def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):  # noqa: F811
+def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):
     assert key_command(lib, INPUT_MODE_INVENTORY, C.KEY_AUTOMAP) == 0
     name_editor = key_command(lib, INPUT_MODE_NAME, C.KEY_AUTOMAP)
     set_mode(lib, ADVANCED)
@@ -430,7 +430,7 @@ def test_tab_closes_the_inventory_in_the_advanced_mode_only(lib, session):  # no
     set_mode(lib, VANILLA)
 
 
-def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced):  # noqa: F811
+def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced):
     from dm2test.interface import ActionArea
     action = ActionArea.in_dll(lib, "g_action")
     rect = (ctypes.c_int16 * 4)()
@@ -459,7 +459,7 @@ def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced
     set_mode(lib, VANILLA)
 
 
-def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advanced_mode(lib, session):  # noqa: F811
+def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advanced_mode(lib, session):
     # In the advanced mode a left click on a status box outside the hands stores the leader hand object in the
     # inventory of the champion, or with an empty leader hand opens the inventory; the hands keep their commands, and a
     # right click gives the same command as in vanilla.
@@ -487,7 +487,7 @@ def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advance
     hand.value = C.THING_NONE
 
 
-def test_key_repeat_waits_for_idle_input(lib, session):  # noqa: F811
+def test_key_repeat_waits_for_idle_input(lib, session):
     # The advanced mode takes an autorepeat of a held key only when no input waits: the party stops at the release.
     lib.input_key_down.argtypes = lib.input_key_repeat.argtypes = [ctypes.c_uint16]
     lib.input_read_key.restype = ctypes.c_uint16

@@ -114,7 +114,7 @@ class OriginalUi(OriginalView):
 
 
 @pytest.fixture(scope="module")
-def gdat(lib):
+def ui_gdat(lib):
     if not GRAPHICS.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     if not START.exists():
@@ -140,20 +140,20 @@ def gdat(lib):
 
 
 @pytest.fixture(scope="module")
-def original(lib, gdat):
-    return OriginalUi(lib, gdat, START.read_bytes())
+def original(lib, ui_gdat):
+    return OriginalUi(lib, ui_gdat, START.read_bytes())
 
 
 @pytest.fixture()
-def port(lib, gdat, original, tmp_path):
+def port(lib, ui_gdat, original, tmp_path):
     """The C port with start.DAT loaded and a cleared screen; the original gets the same champions back."""
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(START.read_bytes())
-    assert lib.save_load(str(path).encode(), gdat) == 0
-    lib.draw_init(gdat)
-    assert lib.zone_load(gdat) == 1
-    assert lib.pal_load_color_ramps(gdat) == 1
-    assert lib.text_init(gdat) == 1
+    assert lib.save_load(str(path).encode(), ui_gdat) == 0
+    lib.draw_init(ui_gdat)
+    assert lib.zone_load(ui_gdat) == 1
+    assert lib.pal_load_color_ramps(ui_gdat) == 1
+    assert lib.text_init(ui_gdat) == 1
     game = Game.in_dll(lib, "g_game")
     lib.view_enter_map(game.party_map)
     lib.money_init_coin_table()

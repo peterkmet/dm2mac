@@ -8,7 +8,7 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.lib import load_lib
-from dm2test.scenario import Party, gdat  # noqa: F401 (gdat is a fixture)
+from dm2test.scenario import Party
 
 
 @pytest.fixture(scope="module")
@@ -207,7 +207,7 @@ def is_door_switch(lib, t):
 
 
 @pytest.mark.skipif(not DUNGEON.exists(), reason="game/DATA/DUNGEON.DAT missing")
-def test_door_switch_on_a_door_square_without_a_door(lib, gdat):  # noqa: F811
+def test_door_switch_on_a_door_square_without_a_door(lib, gdat):
     # regression: a door switch whose door square starts with another thing wrote the door flag into that thing
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
     things = things_on_squares(lib)
@@ -229,7 +229,7 @@ def test_door_switch_on_a_door_square_without_a_door(lib, gdat):  # noqa: F811
 
 
 @pytest.mark.skipif(not DUNGEON.exists(), reason="game/DATA/DUNGEON.DAT missing")
-def test_teleporter_to_a_map_outside_the_dungeon(lib, gdat):  # noqa: F811
+def test_teleporter_to_a_map_outside_the_dungeon(lib, gdat):
     # regression: the link pass took the target map of a teleporter past the last map as the current map
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
     things = things_on_squares(lib)

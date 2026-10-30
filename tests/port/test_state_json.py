@@ -11,7 +11,7 @@ from dm2test.markers import ROOT
 from dm2test.control import GameWithChampions
 from dm2test.input import MainLoop
 from dm2test.interface import ActionArea
-from dm2test.scenario import Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.scenario import Party, Position
 from dm2test.lib import load_lib
 
 
@@ -53,7 +53,7 @@ def turnbased(lib):
     mode.value = VANILLA
 
 
-def load(lib, gdat, data, tmp_path):  # noqa: F811
+def load(lib, gdat, data, tmp_path):
     """A save ready to play, as build/dm2 --save starts it (dm2test.input.session); returns the game record."""
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(data)
@@ -74,7 +74,7 @@ def load(lib, gdat, data, tmp_path):  # noqa: F811
 
 
 @pytest.fixture
-def game(lib, gdat, start, tmp_path):  # noqa: F811
+def game(lib, gdat, start, tmp_path):
     return load(lib, gdat, start, tmp_path)
 
 
@@ -135,7 +135,7 @@ def test_hand_menus_do_not_change_the_open_menu(lib, game):
     assert len(state["action_menu"]["actions"]) == count.value > 0
 
 
-def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
+def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):
     """weather and day_time are present only while outdoor is true (outside.DAT)."""
     state = part(lib, STATE)
     assert state["outdoor"] is False and "weather" not in state and "day_time" not in state

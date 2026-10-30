@@ -8,7 +8,6 @@ import pytest
 from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.save import GRAPHICS
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 KEYS = 0x2BF6  # the key table: a big-endian row count at +2, the rows at +20
 KEY_ROWS, ROW_SIZE, ROW_VALUE = 20, 8, 6
@@ -39,7 +38,7 @@ def with_icon_animation(data, index, value):
     raise AssertionError("no icon animation key of the weapon")
 
 
-def test_an_icon_step_of_0_gives_the_first_icon(lib, gdat, start, tmp_path):  # noqa: F811
+def test_an_icon_step_of_0_gives_the_first_icon(lib, gdat, start, tmp_path):
     # regression: an icon animation by charges and time with a step of 0 divided by 0
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)

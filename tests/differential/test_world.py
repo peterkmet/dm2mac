@@ -12,9 +12,9 @@ from dm2test import constants as C
 from dm2test.audio import SoundCue
 from dm2test.gdat import GdatKey
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
-from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
-    COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Location, Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
+from dm2test.scenario import (
+    G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
+    Location, Scenario, WeatherState, WorldGame, sky_list, square_event, squares,
 )
 from dm2test.save import Game, Timeline
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both

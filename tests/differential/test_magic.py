@@ -14,10 +14,8 @@ from dm2tools.le import load_image
 from dm2test.creature import CreatureScenario
 from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, c_screen, champion_bytes, champion_records,
                                diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
-from dm2test.interface import gdat, original, port  # noqa: F401 (fixtures)
 from dm2test.input import click_feedback
 from dm2test.save import Game
-from dm2test.scenario import start  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
 
 
@@ -100,8 +98,8 @@ def clear_magic_event_bytes(emu):
 class MagicScenario(CreatureScenario):
     """start.DAT with four champions."""
 
-    def __init__(self, lib, gdat, start, tmp_path):
-        super().__init__(lib, gdat, start, tmp_path)
+    def __init__(self, lib, ui_gdat, start, tmp_path):
+        super().__init__(lib, ui_gdat, start, tmp_path)
         emu = self.emu
         clear_magic_event_bytes(emu)
         self.game_record = Game.in_dll(lib, "g_game")
@@ -130,9 +128,9 @@ class MagicScenario(CreatureScenario):
 
 
 @pytest.fixture
-def magic(lib, gdat, start, tmp_path):
+def magic(lib, ui_gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    return MagicScenario(lib, gdat, start, tmp_path)
+    return MagicScenario(lib, ui_gdat, start, tmp_path)
 
 
 def make_party(scenario, rng):
@@ -677,7 +675,7 @@ class Pool:
             set_word(self.lib, emu, record, 0, C.THING_NONE)
 
 
-def test_minion_maps_match_original(port, map_ui, gdat):
+def test_minion_maps_match_original(port, map_ui, ui_gdat):
     # The minion maps of the dungeon in the hand of the first champion, of each kind (no location, minion,
     # location, without options), with a minion (a link projectile in the possessions of a creature group) and a
     # marker at random squares, at random party places and directions, with the option buttons, over game ticks that
@@ -740,7 +738,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
             set_word(lib, emu, group, 2, free_projectile)
             set_word(lib, emu, thing, 2, group)
             size = ctypes.c_uint32()
-            lib.gdat_item(gdat, lib.gdat_find(gdat, C.CAT_CREATURE, word(lib, group, 4) & 0xFF, C.GDAT_TYPE_CREATURE_DATA, 0xFD), ctypes.byref(size))
+            lib.gdat_item(ui_gdat, lib.gdat_find(ui_gdat, C.CAT_CREATURE, word(lib, group, 4) & 0xFF, C.GDAT_TYPE_CREATURE_DATA, 0xFD), ctypes.byref(size))
             sequence = rng.randrange(max(1, size.value // 8))  # another animation frame: another cell of the minion
             if lib.creature_group_info(group)[0] & 1:
                 set_word(lib, emu, group, 8, sequence)

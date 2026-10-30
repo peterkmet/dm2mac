@@ -35,7 +35,7 @@ def reset_session(lib):
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = None
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def program_start_after(lib):
     yield
     reset_session(lib)
