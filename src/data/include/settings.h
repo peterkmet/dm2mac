@@ -23,6 +23,10 @@ typedef struct {
 } Settings;
 
 /* Queries */
+/* The lower-case name of filter in SETTINGS.TXT, NULL for a value that is not a filter. */
+const char *settings_filter_name(enum SettingsFilter filter);
+/* The filter of a lower-case name, or 0 for an unknown name; 0 is not a filter. */
+int settings_filter_parse(const char *name);
 /* The values of the settings text: a missing line or a bad value gives the default (no filter), an unknown key and a
    line of 64 characters or more are skipped, a text above SETTINGS_MAX_SIZE gives all defaults;
    exported for the tests. */
