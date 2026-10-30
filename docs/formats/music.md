@@ -22,7 +22,7 @@ The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIS
 3. Otherwise a fade starts. The fade counter is `0x7f`. Each call sets the song volume to the counter and decrements it. At counter `1`, the new song starts.
 4. A `SONGLIST.DAT` byte 0 calls `FUN_0001095d` (`music_play_song`) with 0, which starts no song, so GDAT song 0 never plays through this path.
 
-Music master volume: `sound_set_volume` with the level `l` (0 to 7) and 10 calls `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
+Music master volume: `sound_set_volume` (level `l` 0 to 7, second argument 10) calls `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 
 The port (`music_update_for_map` in `src/ui/music.c`) reads the songs from GDAT `(4, n, 3, 0)` and runs the fade once per game step.
 
