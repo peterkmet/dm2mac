@@ -7,8 +7,8 @@ without opening the decompiled code.
 Every rule names its check in `tests/standard/test_standard.py` in brackets, or says "review only" when no
 mechanical check is possible, or names its exception. `tests/standard/allowlist.txt` holds the accepted
 exceptions, one per line: `<check> <target> <reason>`. A reason is `rule <n.m>: <text>` for an exception that
-this document names. The rules keep the numbers of the standard of the Dungeon Master port `dm`; a rule of `dm`
-that this port cannot use keeps its number with "No rule in dm2".
+this document names. The rule numbers follow the coding standard of the Dungeon Master port `dm`; rules 3.6 and
+10.6 do not apply to this port and are unused, so that the other numbers stay the same.
 
 ## 1. Layers and modules
 
@@ -41,7 +41,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    `rand_2bits` while it draws. A split would change the order of the original or need many hooks. Its allowlist
    lines have the target `ui/action_area.c:<function>` and give `rule 1.5` with the fields. Until the engine has
    setters for them, the minion map (`ui/minion_map.c`, `g_minion_map`) and `ui_render_hand_icon` (`ui/ui.c`,
-   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields (the setters: [Todo](todo.md), "Fable review: style items for new checks"). A write is an assignment, an
+   `g_leader_hand.cursor`, `.palette`) also have `rule 1.5` lines with the fields ([Todo](todo.md) lists the setters). A write is an assignment, an
    increment or a decrement, a `memcpy`, `memmove` or `memset` into the global, or a pointer to the global without
    `const`. `ui/` and `control/` do not write through a pointer that an engine query returns, except into the fields
    that this rule allows (review only). [engine-write]
@@ -132,8 +132,7 @@ that this port cannot use keeps its number with "No rule in dm2".
 
 5. Each constant has one definition, in the header of the module that owns it; other modules include that
    header. A constant that only one `.c` file uses stays file-private in that file. They do not define the value again under the same or another name. The check compares names in headers and `.c` files; equal values under different names are review only. [duplicate]
-6. No rule in dm2: the port reads no engine image, so it has no image addresses (`KAOS_`) and no image
-   tables.
+6. Unused: the port reads no engine image, so it has no image addresses and no image tables.
 7. Graphic, zone, icon and string numbers live in `data/ids.h`, grouped by kind (`GFX_` for the graphic entry
    numbers of `GRAPHICS.DAT`, `ZONE_`, `ICON_`, `TEXT_`), sorted by value, one name per value. A zone that a
    rule passes to a hook is in `data/ids.h` too; `engine/` includes it. The categories of the file format
@@ -297,8 +296,8 @@ that this port cannot use keeps its number with "No rule in dm2".
    comment at the place, and an entry in "Deviations from the original" of its page in `docs/formats/`,
    `docs/rules/`, or `docs/llm/llm-mode.md`. [review only]
 4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`, `XXX`); open work goes to `docs/todo.md`. [todo]
-5. Keep existing comments. New comments only where needed, one line, about what the code does, never about
-   its history. [review only]
+5. Add a comment only where needed: one line about what the code does, never about its history. Do not delete
+   existing comments. [review only]
 
 ## 10. Data and errors
 
@@ -315,7 +314,7 @@ that this port cannot use keeps its number with "No rule in dm2".
    defined value, mark it with a short comment, record it as a deviation in `docs/formats/`, `docs/rules/`, or
    `docs/llm/llm-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
    player sees. [review only]
-6. No rule in dm2: the port plays one game, so no code detects the adventure (`g_adventure`).
+6. Unused: the port plays one game, so no code detects which game it plays.
 7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
    between bytes and a struct variable: read and write the fields through the byte order helpers of rule 3.10.
    Outside `data/`, no cast to `(uint8_t *)`, `(int8_t *)` or `(char *)`, also with `const`.
