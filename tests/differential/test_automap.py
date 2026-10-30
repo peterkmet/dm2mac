@@ -10,7 +10,8 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, key_command, press, set_mode)
 from dm2test.input import run_ticks
-from dm2test.scenario import GameRecord, Location, Position
+from dm2test.scenario import Location, Position
+from dm2test.structs import Bitmap, Game
 from dm2test.lib import load_lib
 
 
@@ -327,7 +328,7 @@ def party_frame(lib, dx=0):
     """A pixel of the red frame around the party square, dx squares right of the middle: the middle of the left side, or
     of the top side when the party faces west (the side toward the party direction is white)."""
     x, y, w, h = viewport(lib)
-    west = GameRecord.in_dll(lib, "g_game").party_dir == C.DIR_WEST
+    west = Game.in_dll(lib, "g_game").party_dir == C.DIR_WEST
     px, py = (CELL // 2, 0) if west else (0, CELL // 2)
     return screen(lib)[(y + (h - CELL) // 2 + py) * SCREEN_W + x + (w - CELL) // 2 + dx * CELL + px]
 
@@ -550,8 +551,6 @@ def test_quick_load_takes_the_saved_cheats(lib, automap):
     assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL, "a session start keeps the cheats"
 
 
-
-
 TREE, MOVING, CREATURE_STATIC = 20, 27, 0x0001  # a static tree of the outdoor maps; a creature that map 0 takes
 GROUP_CREATURE = 4  # the creature type byte of a group record
 
@@ -592,11 +591,6 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
 
 MINION, CAT_CONTAINER, MAP_ITEM_ICONS, ICON_KEY = 48, 0x14, 0x40, 10  # a moving creature without a map icon strip
 ICON_SIZE, ICON_GAP = 7, 1
-
-
-class Bitmap(ctypes.Structure):
-    _fields_ = [("pixels", ctypes.POINTER(ctypes.c_uint8)), ("width", ctypes.c_int16), ("height", ctypes.c_int16),
-                ("bpp", ctypes.c_uint8)]
 
 
 def icon_pixels(lib, category, index, entry, icon):

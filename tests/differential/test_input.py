@@ -14,6 +14,7 @@ from dm2test.input import (
     INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND, INPUT_INIT_TABLES, KEY_FORWARD, KEY_PAUSE, KEY_TURN_RIGHT, Loop, run_ticks,
 )
 from dm2test.scenario import COMMAND_RECORD, TIMELINE_ADD_EVENT, Scenario
+from dm2test.structs import ActionArea
 from dm2test.lib import load_lib
 
 
@@ -26,10 +27,6 @@ G_INPUT_MODE_ROOTS, G_MATCH_RECT, G_MATCH_X, G_MATCH_Y = 0x72ED1, 0x7F46C, 0x7F5
 MODES = range(10)
 G_ACTION_AREA_MODE = 0x757B8
 G_DIALOG_SCREEN_MODE, G_DIALOG_BUTTON_COUNT = 0x717BC, 0x7F200
-
-
-class ActionArea(ctypes.Structure):
-    _fields_ = [("champion", ctypes.c_int16), ("hand", ctypes.c_int16), ("mode", ctypes.c_int16)]
 
 
 @pytest.fixture(scope="module")
@@ -351,7 +348,7 @@ EVENT_HIDE_DAMAGE, EVENT_AURA = C.EVENT_HIDE_DAMAGE, C.EVENT_AURA
 def test_damage_and_aura_events_match_original(loop, lib):
     # The timeline of the main loop: the damage display of a champion ends (event 0x0c); the aura of a champion
     # weakens twice (event 0x48), the second time below 0.
-    from dm2test.save import Event
+    from dm2test.structs import TimelineEvent
     from dm2test.interface import champion_bytes, sync_champions
     champion_bytes(lib, 0, CHAMPION_AURA, [3, 50, 0])
     champion_bytes(lib, 0, CHAMPION_DAMAGE_EVENT, [0, 0])  # the damage display shows, its event is the first one
@@ -359,7 +356,7 @@ def test_damage_and_aura_events_match_original(loop, lib):
     now, map_ = loop.game.game_time, loop.game.party_map
     for delay, type_, priority, data in ((2, EVENT_HIDE_DAMAGE, 0, (0,) * 6), (3, EVENT_AURA, 1, (7, 0, 0, 0, 0, 0)),
                                          (5, EVENT_AURA, 1, (60, 0, 0, 0, 0, 0))):
-        e = Event((now + delay) | map_ << C.EVENT_MAP_SHIFT, type_, priority, (ctypes.c_uint8 * 6)(*data))
+        e = TimelineEvent((now + delay) | map_ << C.EVENT_MAP_SHIFT, type_, priority, (ctypes.c_uint8 * 6)(*data))
         loop.emu.write(COMMAND_RECORD, bytes(e))
         lib.timeline_add_event(ctypes.byref(e))
         loop.emu.call(TIMELINE_ADD_EVENT, COMMAND_RECORD)

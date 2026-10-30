@@ -14,7 +14,8 @@ import pytest
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
-from dm2test.control import PALETTE_COLORS, RGB, GameWithChampions
+from dm2test.control import PALETTE_COLORS, RGB
+from dm2test.structs import Game
 from dm2test.dialog import Session
 from dm2test.scenario import Location
 from dm2test.lib import load_lib
@@ -68,7 +69,7 @@ def tb(lib, gdat, session):
     game, loop = session
     loop.end = 0  # a game over of another test ends with the test
     try:
-        yield path, GameWithChampions.from_address(ctypes.addressof(game)), loop
+        yield path, Game.from_address(ctypes.addressof(game)), loop
     finally:
         stop.set()
         thread.join()

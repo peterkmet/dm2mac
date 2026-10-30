@@ -5,15 +5,16 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey, ImageInfo, image_info
+from dm2test.gdat import image_info
+from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, ImageInfo, Party, ViewSquare
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
-from dm2test.save import GRAPHICS, START, Game, original_load
-from dm2test.scenario import CurrentMap, Location, Party, Position
+from dm2test.save import GRAPHICS, START, original_load
+from dm2test.scenario import Location, Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
-    Bitmap, OriginalView, ScreenSize, WeatherGame, u8_p,
+    OriginalView, ScreenSize, u8_p,
 )
 from dm2test.lib import load_lib
 
@@ -152,7 +153,7 @@ def original_view(lib, gdat, start):
 
 
 def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
     # 0: no walk; the current map of the dungeon reads becomes map_
     CurrentMap.in_dll(lib, "g_current_map").map, Party.in_dll(lib, "g_party").move_steps = -1, walking
@@ -172,7 +173,7 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
 def test_view_picture_matches_original(lib, loaded, original_view):
     # The start view, then random squares of all maps in random directions and light levels: walls, ornaments,
     # wall texts, doors, stairs, pits, landmarks of the outdoor maps. A sweep of 1500 views matched too.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible)
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
     game.weather_visible = 0
@@ -195,7 +196,7 @@ def test_view_picture_matches_original(lib, loaded, original_view):
 
 def test_outdoor_sky_matches_original(lib, loaded, original_view):
     # Outdoor maps with rain and clouds of the saved weather, and the landmarks.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible, game.sky_darkness,
              game.cloud_cover)
     outdoor = [m for m in range(lib.dungeon_map_count())
@@ -233,7 +234,7 @@ G_MAP_COLUMNS = 0x7F3C8
 
 def test_door_states_match_original(lib, loaded, original_view):
     # start.DAT has no half open or broken door: set the door state of 10 doors in front of the party in both.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     lib.dungeon_square_byte.restype = u8_p
     emu = original_view.emu
@@ -382,7 +383,7 @@ def views_with_things(lib, count, seed):
 
 def test_thing_grids_match_original(lib, loaded, original_view):
     # The creature cells, the creatures in the object grid, and the cells with objects and missiles.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     ctypes.memset((ctypes.c_uint8 * GRID_SIZE).in_dll(lib, "g_view_object_grid"), 0xFF, GRID_SIZE)
     for map_, x, y, direction in views_with_things(lib, 300, 23):
@@ -418,7 +419,7 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,
                                                ctypes.POINTER(ScreenSize)]
     lib.zone_compute_anchored_rect.restype = ctypes.c_void_p
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
@@ -508,7 +509,7 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
     # a possession (also creatures that hide it, and static creatures in other animation frames), then compare the
     # whole view picture.
     lib.thing_word.restype = ctypes.c_uint16
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     things = Things(lib, original_view.emu)
     weapons = [t for t in range(lib.dungeon_thing_count(C.THING_WEAPON))
@@ -610,7 +611,7 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
     # Each shop of start.DAT seen from the front: the display steps to the next item (the shop flag 4 of the save),
     # then stays; a click below the center steps back, a click above steps forward, a click at the center steps back. The item, its name, and the prices
     # in coins, in 3 light levels.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     emu = original_view.emu
     lib.thing_word.restype = ctypes.c_uint16
@@ -679,7 +680,7 @@ def test_shop_with_an_empty_price_table_steps_through_the_item_indices(lib, gdat
     path.write_bytes(data)
     damaged = ctypes.c_void_p()
     assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     lib.gdat_select(damaged)
     try:
@@ -704,7 +705,7 @@ def test_wet_image_matches_original(lib, loaded, original_view):
     # The rain background of wet ornaments of all widths, with small widths where the tile row of the rain bitmap
     # (rect width x rain height - 16 - 0 to 31 pixels) is shorter than its random start. There the original tiles
     # from past the end of the rain bitmap; the port fills the color key.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.rain_intensity, game.wind_dir)
     gdat, emu = original_view.gdat, original_view.emu
     map_ = next(m for m in range(lib.dungeon_map_count())
@@ -781,7 +782,7 @@ def used_click_zones(raw):
 def test_view_click_zones_match_original(lib, loaded, original_view):
     # The click zones that the view drawing records (objects, alcoves, wall ornaments, door buttons, possessions)
     # for random places of all maps, as in test_view_picture_matches_original.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible)
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
     game.weather_visible = 0
@@ -811,7 +812,7 @@ def test_view_click_zones_match_original(lib, loaded, original_view):
 
 def test_walking_view_matches_original(lib, loaded, original_view):
     # While the party walks, only the walk rectangle of the view is drawn.
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map, game.weather_visible)
     original_view.emu.write(G_WEATHER_VISIBLE, b"\0")
     game.weather_visible = 0
@@ -870,12 +871,6 @@ def test_present_viewport_copies_the_still_view(lib, gdat, loaded):
 
 GDAT_KEYS, GDAT_KEY_ROWS, GDAT_ROW_SIZE, GDAT_ROW_VALUE = 0x2BF6, 20, 8, 6  # the key table of GRAPHICS.DAT
 ORN_KEY_FRAMES, FRAMES_FROM_ONE = 0x0D, 0x8000
-
-
-class ViewSquare(ctypes.Structure):
-    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
-    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
-                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
 
 
 def with_value(data, key, value):
@@ -942,7 +937,7 @@ def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved_party = (game.party_x, game.party_y, game.party_dir, game.party_map)
 
     def things(m, x, y):
@@ -1049,7 +1044,7 @@ def test_an_explosion_tint_of_a_narrow_picture_draws_nothing(lib, gdat, loaded):
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
-    game = WeatherGame.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     map_, x, y, d = game.party_map, game.party_x, game.party_y, game.party_dir
     tinted = [t for t in EXPLOSION_TYPES
               if lib.gdat_find(gdat, C.CAT_EXPLOSION, t, C.GDAT_TYPE_IMAGE, C.GFX_EXPLOSION_TINT) >= 0

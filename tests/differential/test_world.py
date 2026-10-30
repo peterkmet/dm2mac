@@ -10,13 +10,12 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.audio import SoundCue
-from dm2test.gdat import GdatKey
+from dm2test.structs import Game, GdatKey, Timeline
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (
     G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Location, Scenario, WeatherState, WorldGame, sky_list, square_event, squares,
+    Location, Scenario, WeatherState, sky_list, square_event, squares,
 )
-from dm2test.save import Game, Timeline
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
 from dm2test.lib import load_lib
 
@@ -54,7 +53,7 @@ def world(lib, gdat, start, tmp_path):
 def set_weather(sc, **values):
     """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
-    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
     for name, value in values.items():
         if name == "light_level":
             ctypes.c_int.in_dll(lib, "g_view_light_level").value = value
@@ -587,7 +586,7 @@ DUN_UNLINK_THING_FROM_SQUARE, DUN_LINK_THING_TO_SQUARE = 0x1D542, 0x1D3DB
 
 def sound_keys(lib, gdat):
     """GDAT sounds of the kinds that the game requests."""
-    from dm2test.scenario import Sound
+    from dm2test.structs import Sound
     s = Sound()
     keys = []
     for category in (C.CAT_DUNGEON, C.CAT_WALL_ORNAMENT, C.CAT_FLOOR_ORNAMENT, C.CAT_EXPLOSION, C.CAT_CREATURE, C.CAT_CHAMPION,

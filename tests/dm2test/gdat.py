@@ -5,22 +5,11 @@ import ctypes
 import pytest
 
 from dm2test.markers import ROOT
+from dm2test.structs import ImageInfo
 
 
 GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 OK, ERR_IO, ERR_FORMAT, ERR_NOT_IMAGE, ERR_DATA, ERR_SPACE = 0, -1, -2, -4, -5, -6
-
-class GdatKey(ctypes.Structure):
-    """The GdatKey of gdat.h: category, index, entry."""
-
-    _fields_ = [("category", ctypes.c_int), ("index", ctypes.c_int), ("entry", ctypes.c_int)]
-
-
-class ImageInfo(ctypes.Structure):
-    """The ImageInfo of gdat.h: width, height, bits per pixel, decoded byte size."""
-
-    _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int), ("bpp", ctypes.c_int), ("size", ctypes.c_size_t)]
-
 
 class GdatSizes(ctypes.Structure):
     """The start of struct gdat of gdat.c: the file, the item count, the item offsets and sizes."""

@@ -1,6 +1,4 @@
-"""The save file helpers: the original load and save in the emulator, the C round trip, and the C save structs."""
-
-import ctypes
+"""The save file helpers: the original load and save in the emulator, and the C round trip."""
 
 from dm2test import constants as C
 from dm2test.markers import ROOT
@@ -78,19 +76,3 @@ def c_round_trip(lib, gdat, data, tmp_path):
     assert lib.save_write(str(path).encode(), str(bak).encode(), name, gdat) == SAVE_OK
     assert bak.read_bytes() == data
     return path.read_bytes()
-
-
-class Game(ctypes.Structure):
-    _fields_ = [("game_time", ctypes.c_uint32), ("champion_count", ctypes.c_uint16), ("party_x", ctypes.c_uint16),
-                ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16)]
-
-
-class Event(ctypes.Structure):
-    _fields_ = [("time_map", ctypes.c_uint32), ("type", ctypes.c_uint8), ("priority", ctypes.c_uint8),
-                ("data", ctypes.c_uint8 * 6)]
-
-
-class Timeline(ctypes.Structure):
-    _fields_ = [("events", ctypes.POINTER(Event)), ("queue", ctypes.c_void_p), ("fix_slot", ctypes.c_int16),
-                ("first_free", ctypes.c_int16), ("capacity", ctypes.c_uint16), ("count", ctypes.c_uint16),
-                ("used_end", ctypes.c_int16)]

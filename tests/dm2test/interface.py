@@ -9,9 +9,9 @@ from unicorn import UC_PROT_ALL
 from unicorn.x86_const import UC_X86_REG_ESP
 
 from dm2test import constants as C
-from dm2test.gdat import GdatKey, ImageInfo
 from dm2test.markers import ROOT
-from dm2test.save import GRAPHICS, START, Game
+from dm2test.save import GRAPHICS, START
+from dm2test.structs import ActionArea, Game, GdatKey, ImageInfo
 from dm2test.view import OriginalView, u8_p
 
 
@@ -20,7 +20,7 @@ DATA_START, DATA_END = 0x70000, 0x828F0  # the data object of SKULL.EXE
 VGA = 0xA0000
 VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 CHAMPION_SIZE = C.CHAMPION_SIZE
-GAME_CHAMPIONS = 252  # offsetof(Game, champions) in save.h
+GAME_CHAMPIONS = Game.champions.offset
 
 # Original functions.
 GFX_DRAW_TEXT, TEXT_FORMAT, TEXT_MEASURE, TEXT_WRAP_LINE = 0x10E3F, 0x3A6AB, 0x554AB, 0x554FC
@@ -43,15 +43,6 @@ class UiState(ctypes.Structure):
     _fields_ = [("inventory", ctypes.c_int16), ("candidate", ctypes.c_uint16), ("screen_needs_refresh", ctypes.c_bool),
                 ("buttons", ctypes.c_uint16), ("eye", ctypes.c_bool), ("mouth", ctypes.c_bool),
                 ("push_mode", ctypes.c_bool), ("panel_mode", ctypes.c_int16)]
-
-
-class ActionArea(ctypes.Structure):
-    _fields_ = [("champion", ctypes.c_int16), ("hand", ctypes.c_int16), ("mode", ctypes.c_int16),
-                ("dirty", ctypes.c_int16), ("redraw_delay", ctypes.c_int16), ("flags", ctypes.c_uint16),
-                ("result", ctypes.c_int16), ("result_flag", ctypes.c_int16), ("result_ammo", ctypes.c_uint16),
-                ("flash", ctypes.c_int16), ("flash_hand", ctypes.c_int16), ("map_item", ctypes.c_uint8),
-                ("open_items", ctypes.c_uint16 * 8), ("open_container", ctypes.c_uint16),
-                ("hand_items", ctypes.c_uint16 * 8)]
 
 
 class OriginalUi(OriginalView):
@@ -203,7 +194,7 @@ def draw_game_screen(lib, original):
     lib.ui_draw_game_screen()
 
 
-GAME_LEADER_HAND = GAME_CHAMPIONS + 4 * CHAMPION_SIZE
+GAME_LEADER_HAND = Game.leader_hand.offset
 G_LEADER_HAND_WEIGHT, G_CHAMP_DRAW_STATE = 0x7FBCE, 0x48890
 
 
@@ -226,7 +217,7 @@ def things_of(lib, kind, limit, test=None):
 
 G_ACTION_FLASH, G_ACTION_FLASH_HAND, G_ACTION_MODE, G_ACTION_FLAGS, G_PARTY_SLEEPING = (
     0x7FB50, 0x7FB4E, 0x757B8, 0x7FB5E, 0x7F234)
-GAME_MAGIC = GAME_LEADER_HAND + 2
+GAME_MAGIC = Game.magic_light.offset
 
 
 def champion_bytes(lib, champ, offset, data):
@@ -270,7 +261,3 @@ def open_hand(lib, original, hand):
 
 
 G_IOP_BUFFER, IOP_SCROLL_CALL, IOP_SCROLL_NEXT = 0x8048C, 0x13A28, 0x13A2A
-
-
-class LeaderHand(ctypes.Structure):
-    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8)]

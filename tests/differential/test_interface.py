@@ -12,11 +12,11 @@ from dm2test.interface import (
     CHAMP_DRAW_ALL_STATES, CHAMPION_SIZE, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME,
     G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT,
     SCREEN_W, TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VGA, VIEW_W,
-    ZONE_GET_RECT, ActionArea, UiState, c_screen, c_view, champion_bytes, champion_records, diff, draw_game_screen, open_hand, set_action, set_leader_hand, set_magic,
+    ZONE_GET_RECT, UiState, c_screen, c_view, champion_bytes, champion_records, diff, draw_game_screen, open_hand, set_action, set_leader_hand, set_magic,
     sync_champions, things_of, update_action_area,
 )
-from dm2test.save import Game
-from dm2test.view import Bitmap, ScreenPoint, ScreenSize, u8_p
+from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand
+from dm2test.view import ScreenPoint, ScreenSize, u8_p
 from dm2test.lib import load_lib
 
 
@@ -84,11 +84,6 @@ def test_inventory_panels_match_original(port, original):
 
 INV_RENDER_HAND_ICON = 0x38392
 HAND_ICON_SIZE = C.HAND_ICON_SIZE
-
-
-class LeaderHand(ctypes.Structure):
-    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8),
-                ("cursor", ctypes.c_uint8 * HAND_ICON_SIZE ** 2), ("palette", ctypes.c_uint8 * C.HAND_ICON_COLORS)]
 
 
 def test_hand_icon_matches_original(port, original):
@@ -481,7 +476,6 @@ def test_text_format_matches_original(port, original):
         mine = ctypes.create_string_buffer(512)
         lib.gtext_format(fmt, mine)
         assert mine.value == emu.read(dst, 512).split(b"\0")[0], (case, fmt)
-
 
 
 def test_text_format_stops_at_a_cut_code(port):

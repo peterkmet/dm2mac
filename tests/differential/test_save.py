@@ -9,9 +9,10 @@ from dm2test.lib import load_lib
 from dm2test.markers import ROOT
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import (
-    HEADER_SIZE, RECORD_GLOBALS, SAVE_ERR_DATA, SAVE_ERR_FORMAT, SAVE_OK, GRAPHICS, START, Event, Game, Timeline,
+    HEADER_SIZE, RECORD_GLOBALS, SAVE_ERR_DATA, SAVE_ERR_FORMAT, SAVE_OK, GRAPHICS, START,
     c_round_trip, original_load, original_save,
 )
+from dm2test.structs import Game, Timeline, TimelineEvent
 
 
 @pytest.fixture(scope="module")
@@ -186,13 +187,13 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     projectile = lib.dungeon_unused_thing(C.THING_PROJECTILE)
     lib.thing_set_word(projectile, 2, C.SPELL_FIREBALL | 5)  # payload: a spell
     lib.thing_set_word(projectile, 4, 0x1234)
-    move = Event(game.game_time + 10, C.EVENT_PROJECTILE_MOVE, 0, (ctypes.c_uint8 * 6)(*struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
+    move = TimelineEvent(game.game_time + 10, C.EVENT_PROJECTILE_MOVE, 0, (ctypes.c_uint8 * 6)(*struct.pack("<H4x", projectile | 1 << C.THING_CELL_SHIFT)))
     lib.thing_set_word(projectile, 6, lib.timeline_add_event(ctypes.byref(move)))
     assert lib.dungeon_link_thing_to_square(projectile | 1 << C.THING_CELL_SHIFT, *square) == 1
 
     explosion = lib.dungeon_unused_thing(C.THING_EXPLOSION)
     lib.thing_set_word(explosion, 2, C.SPELL_POISON_CLOUD)
-    step = Event(game.game_time + 3, C.EVENT_EXPLOSION, 0, (ctypes.c_uint8 * 6)(*struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT)))
+    step = TimelineEvent(game.game_time + 3, C.EVENT_EXPLOSION, 0, (ctypes.c_uint8 * 6)(*struct.pack("<2xH2x", explosion | 2 << C.THING_CELL_SHIFT)))
     lib.timeline_add_event(ctypes.byref(step))
     assert lib.dungeon_link_thing_to_square(explosion | 2 << C.THING_CELL_SHIFT, *square) == 1
 
@@ -212,7 +213,7 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     assert [(t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK, t >> C.THING_CELL_SHIFT) for t in loaded] == [
         (C.THING_PROJECTILE, 1), (C.THING_EXPLOSION, 2)]
     assert lib.thing_word(loaded[0], 2) == C.SPELL_FIREBALL | 5 and lib.thing_word(loaded[0], 4) == 0x1234
-    events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_timeline"), ctypes.POINTER(Event))
+    events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_timeline"), ctypes.POINTER(TimelineEvent))
     move_index = lib.thing_word(loaded[0], 6)
     assert events[move_index].type == C.EVENT_PROJECTILE_MOVE and bytes(events[move_index].data[:2]) == struct.pack("<H", loaded[0])
     explosion_index = 4  # after the 3 events of start.DAT and the projectile move
@@ -233,12 +234,12 @@ def test_load_relinks_champion_damage_events_like_original(lib, gdat, start, tmp
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     game = Game.in_dll(lib, "g_game")
     for delay, type_, priority in ((40, C.EVENT_ALTAR_REBIRTH, 0), (20, C.EVENT_HIDE_DAMAGE, 0), (90, C.EVENT_HIDE_DAMAGE, 0)):
-        event = Event(game.game_time + delay | game.party_map << 24, type_, priority, (ctypes.c_uint8 * 6)())
+        event = TimelineEvent(game.game_time + delay | game.party_map << 24, type_, priority, (ctypes.c_uint8 * 6)())
         lib.timeline_add_event(ctypes.byref(event))
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == SAVE_OK
     saved = path.read_bytes()
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
-    records = ctypes.string_at(ctypes.addressof(game) + 252, C.CHAMPION_MAX * CHAMPION_SIZE)  # offsetof(Game, champions)
+    records = ctypes.string_at(ctypes.addressof(game) + Game.champions.offset, C.CHAMPION_MAX * CHAMPION_SIZE)
     mine = [records[c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT:][:2] for c in range(C.CHAMPION_MAX)]
     emu = original_load(lib, gdat, saved)
     theirs = [emu.read(G_CHAMPIONS + c * CHAMPION_SIZE + CHAMPION_DAMAGE_EVENT, 2) for c in range(C.CHAMPION_MAX)]
@@ -274,7 +275,7 @@ def square_lists(lib):
 
 
 def add_event(lib, type_, time, data):
-    return lib.timeline_add_event(ctypes.byref(Event(time, type_, 0, (ctypes.c_uint8 * 6)(*data))))
+    return lib.timeline_add_event(ctypes.byref(TimelineEvent(time, type_, 0, (ctypes.c_uint8 * 6)(*data))))
 
 
 def link_things(lib, game):

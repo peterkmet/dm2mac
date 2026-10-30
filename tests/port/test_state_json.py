@@ -8,10 +8,9 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.markers import ROOT
-from dm2test.control import GameWithChampions
+from dm2test.structs import ActionArea, CurrentMap, Game, Party, ViewSquare
 from dm2test.input import MainLoop
-from dm2test.interface import ActionArea
-from dm2test.scenario import CurrentMap, Party, Position
+from dm2test.scenario import Position
 from dm2test.lib import load_lib
 
 
@@ -60,7 +59,7 @@ def load(lib, gdat, data, tmp_path):
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
-    game = GameWithChampions.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
     CurrentMap.in_dll(lib, "g_current_map").map = -1
     party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF
@@ -152,12 +151,6 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):
 
 class SeenSquare(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int16) for name in ("depth", "side", "x", "y")]
-
-
-class ViewSquare(ctypes.Structure):
-    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
-    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
-                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
 
 
 SEEN_VISIBLE_MAX = C.SEEN_VISIBLE_MAX

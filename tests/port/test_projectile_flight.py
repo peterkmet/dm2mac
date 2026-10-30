@@ -9,7 +9,7 @@ from dm2test import constants as C
 from dm2test.input import MainLoop
 from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.view import Bitmap
+from dm2test.structs import Bitmap, ProjectileLaunch
 
 
 @pytest.fixture(scope="module")
@@ -22,12 +22,6 @@ def lib():
 
 class ViewPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
-
-
-class ProjectileLaunch(ctypes.Structure):
-    _fields_ = [("payload", ctypes.c_uint16), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("cell", ctypes.c_int16),
-                ("dir", ctypes.c_int16), ("energy", ctypes.c_uint8), ("hit_chance", ctypes.c_uint8),
-                ("step", ctypes.c_uint8), ("from_sensor", ctypes.c_bool)]
 
 
 STEP = 8  # timer ticks of a game step

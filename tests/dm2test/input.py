@@ -22,13 +22,13 @@ class MainLoop(ctypes.Structure):
 @pytest.fixture
 def session(lib, gdat, start, tmp_path):
     """start.DAT ready to play, as build/dm2 --save starts it."""
-    from dm2test.scenario import CurrentMap, GameRecord, Party
+    from dm2test.structs import CurrentMap, Game, Party
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
-    game = GameRecord.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
     CurrentMap.in_dll(lib, "g_current_map").map = -1
     party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF

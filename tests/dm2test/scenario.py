@@ -6,11 +6,11 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import ImageInfo, image_info
+from dm2test.gdat import image_info
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
-from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
-from dm2test.structs import CurrentMap, Party
+from dm2test.save import GRAPHICS, START, original_save
+from dm2test.structs import CurrentMap, Game, ImageInfo, Party, Sound, Timeline, TimelineEvent
 from dm2tools.emu import SCRATCH
 from dm2test.view import OriginalView
 
@@ -111,8 +111,6 @@ class SoundRequest(ctypes.Structure):
         ("lateral", ctypes.c_int8), ("forward", ctypes.c_int8)]
 
 
-class Sound(ctypes.Structure):
-    _fields_ = [("data", ctypes.c_void_p), ("length", ctypes.c_uint32)]
 G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
 
 
@@ -125,7 +123,7 @@ class WeatherState(ctypes.Structure):
 
 def c_weather(lib):
     """The weather globals of the C port, by the names of WEATHER."""
-    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
     out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
     out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
     out["light_level"] = ctypes.c_int.in_dll(lib, "g_view_light_level").value
@@ -170,26 +168,8 @@ def port_globals(party, current_map):
             | {name: getattr(party, name) for name in PARTY_GLOBALS})
 
 
-class GameRecord(ctypes.Structure):
-    _fields_ = [("game_time", ctypes.c_uint32), ("champion_count", ctypes.c_uint16), ("party_x", ctypes.c_uint16),
-                ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
-                ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
-                ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
-
-
 G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, C.CHAMPION_SIZE
 CHAMPION_REDRAW = 0x32  # the redraw flags: the original status box drawing does not run in these tests
-
-
-class WorldGame(ctypes.Structure):
-    """The weather fields of the C save.h Game."""
-    _fields_ = GameRecord._fields_ + [
-        ("sound_volume", ctypes.c_uint8), ("music_volume", ctypes.c_uint8), ("weather_visible", ctypes.c_uint8),
-        ("heavy_rain", ctypes.c_uint8), ("wind_dir", ctypes.c_uint8), ("rain_intensity", ctypes.c_uint8),
-        ("sky_darkness", ctypes.c_uint8), ("cloud_cover", ctypes.c_uint8), ("storm_multiplier", ctypes.c_uint8),
-        ("storm_step", ctypes.c_uint8), ("storm_curve", ctypes.c_uint8), ("storm_intensity", ctypes.c_uint16),
-        ("next_hour_time", ctypes.c_uint32)]
-
 
 
 def int16(value):
@@ -232,7 +212,7 @@ class Scenario(CreatureOracle):
         path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0
         lib.draw_init(gdat)
-        self.game = GameRecord.in_dll(lib, "g_game")
+        self.game = Game.in_dll(lib, "g_game")
         self.party = Party.in_dll(lib, "g_party")
         self.current_map = CurrentMap.in_dll(lib, "g_current_map")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
@@ -329,7 +309,7 @@ class Scenario(CreatureOracle):
                 n = len(self.sound_keys)
                 self.sound_keys.append(key)
                 emu.write(emu.read_u32(G_SOUND_TABLE) + 7 * n, struct.pack("<HBBBH", n, *key, 0xFFFF))
-                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", s.data & 0xFFFFFFFF, s.length & 0xFFFF))
+                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", ctypes.cast(s.data, ctypes.c_void_p).value & 0xFFFFFFFF, s.length & 0xFFFF))
             return self.sound_keys.index(key) + 1
 
         def play(uc, *_):
@@ -675,7 +655,7 @@ def scenario(lib, gdat, start, tmp_path):
 
 def square_event(scenario, map_, x, y, cell, effect, delay):
     """Queues the same square event (type 4) in both."""
-    e = Event((scenario.time() + delay) | map_ << 24, 4, {0: 1, 1: 3, 2: 2, 3: 3}[effect],
+    e = TimelineEvent((scenario.time() + delay) | map_ << 24, 4, {0: 1, 1: 3, 2: 2, 3: 3}[effect],
               (ctypes.c_uint8 * 6)(x, y, cell, effect, 0, 0))
     scenario.emu.write(COMMAND_RECORD, bytes(e))
     scenario.lib.timeline_add_event(ctypes.byref(e))

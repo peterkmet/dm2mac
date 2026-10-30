@@ -17,8 +17,9 @@ import pytest
 from dm2tools.control_client import request
 from dm2test import constants as C
 from dm2test.control import (
-    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, GameWithChampions, pumped,
+    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, pumped,
 )
+from dm2test.structs import Game
 from dm2test.markers import ROOT
 from dm2test.interface import UiState, things_of
 from dm2test.view import ScreenPoint
@@ -100,7 +101,7 @@ def test_state_tells_the_party_and_the_champions(control, lib):
     assert state["champion_count"] == game.champion_count == len(state["champions"]) and state["leader"] == 0
     champion = state["champions"][0]
     name = (ctypes.c_char * NAME_SIZE).from_address(
-        ctypes.addressof(game) + GameWithChampions.champions.offset).value.decode()
+        ctypes.addressof(game) + Game.champions.offset).value.decode()
     assert champion["name"] == name
     assert champion["health"][0] > 0 and champion["health"][0] <= champion["health"][1]
     assert state["inventory"] == state["candidate"] == -1 and state["end"] == state["quit"] == 0

@@ -884,7 +884,7 @@ uint16_t dungeon_unused_thing_any_record(int type);
 #define CUR_MAP_NONE (-1)
 
 /* The current map of the square reads and the party position as seen from it (the original globals). The int fields
-   stay int: tests/dm2test/scenario.py mirrors the layout (alt_view_active has 32 bits in the original). */
+   stay int: tests/dm2test/structs.py mirrors the layout (alt_view_active has 32 bits in the original). */
 typedef struct {
     int16_t map;                            /* the map that the square reads of the original use, CUR_MAP_NONE none */
     int16_t square_x, square_y, square_map; /* the party position as the current map sees it */

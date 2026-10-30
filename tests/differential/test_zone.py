@@ -8,7 +8,7 @@ from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
-from dm2test.scenario import Party
+from dm2test.structs import Party
 from dm2test.lib import load_lib
 
 
