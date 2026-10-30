@@ -39,12 +39,6 @@ G_ACTION_DIRTY, G_ACTION_DELAY, G_ACTION_RESULT, G_ACTION_RESULT_FLAG, G_ACTION_
 G_SKILL_RAISED, G_MAP_GFX_SET = 0x7FFF8, 0x75BFE
 
 
-class UiState(ctypes.Structure):
-    _fields_ = [("inventory", ctypes.c_int16), ("candidate", ctypes.c_uint16), ("screen_needs_refresh", ctypes.c_bool),
-                ("buttons", ctypes.c_uint16), ("eye", ctypes.c_bool), ("mouth", ctypes.c_bool),
-                ("push_mode", ctypes.c_bool), ("panel_mode", ctypes.c_int16)]
-
-
 class OriginalUi(OriginalView):
     """The original interface drawing on start.DAT: screen at 0xA0000, the view picture, texts formatted by the
     original gtext_format."""

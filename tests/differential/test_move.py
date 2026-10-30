@@ -10,8 +10,9 @@ from dm2test import constants as C
 from dm2test.lib import load_lib
 from dm2test.scenario import (
     CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, Location, approaches, sensor_squares, square_event, square_things, squares,
+    Command, approaches, sensor_squares, square_event, square_things, squares,
 )
+from dm2test.structs import Location
 
 
 @pytest.fixture(scope="module")

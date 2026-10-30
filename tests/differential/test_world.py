@@ -10,11 +10,11 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.audio import SoundCue
-from dm2test.structs import Game, GdatKey, Timeline
+from dm2test.structs import Game, GdatKey, Location, Timeline
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
 from dm2test.scenario import (
     G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Location, Scenario, WeatherState, sky_list, square_event, squares,
+    Scenario, Weather, sky_list, square_event, squares,
 )
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
 from dm2test.lib import load_lib
@@ -53,7 +53,7 @@ def world(lib, gdat, start, tmp_path):
 def set_weather(sc, **values):
     """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
-    game, weather = Game.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), Weather.in_dll(lib, "g_weather")
     for name, value in values.items():
         if name == "light_level":
             ctypes.c_int.in_dll(lib, "g_view_light_level").value = value

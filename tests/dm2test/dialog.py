@@ -5,22 +5,16 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
+from dm2test.structs import MainLoop, Session, mirror
 
 
 G_DIALOG_SCREEN_MODE, G_SCREEN_BITMAP, G_DISK_PATH_KIND, G_DATA_PATH, G_SAVE_PATH = 0x717BC, 0x71550, 0x7F98C, 0x70536, 0x7053A
 
 
+@mirror("dialog.h")
 class DialogState(ctypes.Structure):
     _fields_ = [("screen_mode", ctypes.c_int), ("button_count", ctypes.c_int), ("progress_enabled", ctypes.c_bool),
-                ("progress_width", ctypes.c_int16), ("id", ctypes.c_int)]
-
-
-class Session(ctypes.Structure):
-    _fields_ = [("new_game", ctypes.c_int)] + [
-        (n, ctypes.c_bool) for n in ("use_dungenb", "loaded", "completed", "restart", "offer_restore")] + [
-        ("quit_code", ctypes.c_int), ("slot", ctypes.c_int), ("load_time", ctypes.c_uint32), ("save_time", ctypes.c_uint32), ("exit_code", ctypes.c_int),
-        ("save_name", ctypes.c_char * 32), ("data_dir", ctypes.c_char * 1024),
-        ("save_dir", ctypes.c_char * 1024)]
+                ("progress_width", ctypes.c_int16), ("id", ctypes.c_int), ("right_choice", ctypes.c_int)]
 
 
 def reset_session(lib):
@@ -41,14 +35,14 @@ def program_start_after(lib):
     reset_session(lib)
 
 
+@mirror("input.h")
 class InputMatch(ctypes.Structure):
     _fields_ = [("zone", ctypes.c_uint16), ("origin", ctypes.c_int16), ("key", ctypes.c_uint16), ("choice", ctypes.c_int16),
-                ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("value", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
+                ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("value", ctypes.c_uint16), ("rect", ctypes.c_int16 * C.RECT_SIZE)]
 
 
 def main_loop_quit(lib):
     """MainLoop.quit."""
-    from dm2test.input import MainLoop
     return ctypes.c_bool.from_address(ctypes.addressof(MainLoop.in_dll(lib, "g_main_loop")) + MainLoop.quit.offset)
 
 

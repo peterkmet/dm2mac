@@ -4,12 +4,15 @@ import ctypes
 import zlib
 from pathlib import Path
 
+from dm2test.structs import mirror
+
 NAMES = [
     "INTRPLAY.PCX", "FTL", "INTRO", "END", "CREDITS", "DRUM.BNK", "MELODIC.BNK",
     "DATA/SONGLIST.DAT", "DATA/GRAPHICS.DAT", "DATA/DUNGEON.DAT",
 ]  # fmt: skip
 
 
+@mirror("gamefile.h")
 class GameFile(ctypes.Structure):
     _fields_ = [("name", ctypes.c_char_p), ("size", ctypes.c_uint32), ("crc", ctypes.c_uint32)]
 

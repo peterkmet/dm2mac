@@ -9,10 +9,10 @@ from unicorn import UC_PROT_ALL
 
 from dm2test import constants as C
 from dm2test.dialog import (
-    G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
+    G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch,
     main_loop_quit,
 )
-from dm2test.structs import GdatKey
+from dm2test.structs import GdatKey, Session
 from dm2test.interface import (
     SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff,
 )
@@ -210,7 +210,8 @@ NAME_KEYS = [0x2D, C.KEY_BACKSPACE, 0x10, 0x02, 0x39, C.KEY_ENTER, C.KEY_BACKSPA
 def run_name_editor(lib, original, keys, fields=None):
     """Runs the name editor of champion 0 in both with the typed keys (fields: the 28 bytes of name and title to start
     with). Returns the views after each key of both, the record bytes before, and the record bytes after of both."""
-    from dm2test.interface import G_CHAMPIONS, UiState, champion_records
+    from dm2test.interface import G_CHAMPIONS, champion_records
+    from dm2test.structs import UiState
     emu = original.emu
     lib.input_init()
     lib.input_key_down.argtypes = [ctypes.c_uint16]

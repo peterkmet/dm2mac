@@ -9,8 +9,8 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.structs import CurrentMap, Party, Timeline, TimelineEvent
-from dm2test.scenario import Location, Position
+from dm2test.structs import CurrentMap, Location, Party, Timeline, TimelineEvent
+from dm2test.scenario import Position
 from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))

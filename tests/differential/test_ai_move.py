@@ -9,7 +9,8 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
-from dm2test.scenario import Location, Position
+from dm2test.scenario import Position
+from dm2test.structs import Location
 from dm2test.lib import load_lib
 
 

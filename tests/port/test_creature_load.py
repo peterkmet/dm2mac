@@ -7,7 +7,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.lib import load_lib
-from dm2test.scenario import Location
+from dm2test.structs import Location
 
 STALE_INDEX = 200  # an active group index of the saved game, past the active groups of this session
 MOVEMENT = 10  # byte offset of CreatureInfo.movement

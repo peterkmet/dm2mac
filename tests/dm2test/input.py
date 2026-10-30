@@ -8,15 +8,10 @@ import pytest
 from dm2test import constants as C
 from dm2test.interface import c_screen, diff
 from dm2test.scenario import Scenario
+from dm2test.structs import MainLoop
 
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
-
-
-class MainLoop(ctypes.Structure):
-    _fields_ = [("tick_threshold", ctypes.c_int), ("tick_count", ctypes.c_int), ("timer_ticks", ctypes.c_uint32),
-                ("running", ctypes.c_bool), ("view_hidden", ctypes.c_bool), ("end", ctypes.c_bool),
-                ("quit", ctypes.c_bool), ("closed", ctypes.c_bool)]
 
 
 @pytest.fixture

@@ -19,9 +19,10 @@ from dm2test.modes import (
     SCAN_D, SCAN_E, SCAN_Q, SCAN_S, SCAN_W, SCREEN_W, STEP_TICKS, TEXT_LINE_HEIGHT, UI_WHITE, VANILLA, ZONE_MESSAGE_AREA,
     key_command, press, set_mode,
 )
-from dm2test.dialog import DialogState, Session
+from dm2test.dialog import DialogState
 from dm2test.input import run_ticks
 from dm2test.scenario import Position
+from dm2test.structs import Session
 from dm2test.lib import load_lib
 
 
@@ -304,7 +305,7 @@ def test_control_click_on_the_open_automap_ends_the_drag(control, lib):
 def test_failed_restore_ends_the_game_without_game_steps(lib, advanced):
     # QUICK.DAT is damaged, and QUICK.TMP is written without read rights (umask), so the running game cannot come
     # back: the program quits with EXIT_GAME_LOST and no command or game step runs on the empty dungeon.
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     game, data = advanced
     loop, state = MainLoop.in_dll(lib, "g_main_loop"), Session.in_dll(lib, "g_session")
     (data / "QUICK.DAT").write_bytes(b"\0" * 300)
@@ -366,7 +367,7 @@ def test_quick_load_results(lib, advanced, case, result):
 
 def test_lost_game_stays_in_the_turnbased_mode(lib, advanced):
     """A damaged quick save whose restore also fails: QUICK_LOST; the turn-based mode does not quit."""
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     _, data = advanced
     loop, state = MainLoop.in_dll(lib, "g_main_loop"), Session.in_dll(lib, "g_session")
     (data / "QUICK.DAT").write_bytes(b"\0" * 300)

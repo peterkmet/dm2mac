@@ -6,7 +6,7 @@ import struct
 from dm2test import constants as C
 from dm2test.gdat import image_info
 from dm2test.markers import ROOT
-from dm2test.structs import Bitmap, Game, GdatKey
+from dm2test.structs import Bitmap, Game, GdatKey, Location, mirror
 
 
 DUN_SET_PARTY_LOCATION, VIEW_LOAD_SQUARE = 0x1C82D, 0x52BF6
@@ -31,10 +31,12 @@ VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 
+@mirror("gfx.h")
 class ScreenPoint(ctypes.Structure):
     _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
 
 
+@mirror("gfx.h")
 class ScreenSize(ctypes.Structure):
     _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
 
@@ -214,7 +216,7 @@ class OriginalView:
 def draw_both(sc):
     """The view of the party in both, each with its own light level and sky objects."""
     from dm2test import view as tv
-    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER, Location
+    from dm2test.scenario import SKY_OBJECTS_SIZE, WEATHER
     lib, emu, game = sc.lib, sc.emu, sc.game
     light = struct.unpack("<h", emu.read(WEATHER["light_level"][0], 2))[0]
     sky = emu.read(G_SKY_OBJECTS, SKY_OBJECTS_SIZE)

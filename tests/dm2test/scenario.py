@@ -10,7 +10,7 @@ from dm2test.gdat import image_info
 from dm2test.markers import ROOT
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, original_save
-from dm2test.structs import CurrentMap, Game, ImageInfo, Party, Sound, Timeline, TimelineEvent
+from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
 from dm2tools.emu import SCRATCH
 from dm2test.view import OriginalView
 
@@ -100,12 +100,14 @@ G_DIGI_ENABLED, G_DIGI_VOLUME, G_SAMPLE_HANDLES = 0x704BE, 0x7EF84, 0x7EDA0
 G_SOS_SAMPLE_DATA, G_SOS_VOLUME, G_SOS_PAN = 0x703F8, 0x7040C, 0x70438
 
 
+@mirror("sound_request.h")
 class SoundStart(ctypes.Structure):
     _fields_ = [("data", ctypes.c_void_p), ("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
 G_DELAYED_SOUNDS, G_SOUND_TABLE, G_SOUND_DEFERRED, G_SAMPLE_DESCS, G_SOUND_REQUESTS = 0x7F188, 0x7F18C, 0x7F190, 0x7F194, 0x7F198
 G_SOUND_REQUEST_COUNT, G_SOUND_DEFERRED_COUNT, SOUND_TABLE_MAX = 0x71690, 0x71692, 512
 
 
+@mirror("sound_request.h")
 class SoundRequest(ctypes.Structure):
     _fields_ = [(n, ctypes.c_uint8) for n in ("category", "index", "entry", "priority", "volume")] + [
         ("lateral", ctypes.c_int8), ("forward", ctypes.c_int8)]
@@ -114,7 +116,8 @@ class SoundRequest(ctypes.Structure):
 G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
 
 
-class WeatherState(ctypes.Structure):
+@mirror("weather.h")
+class Weather(ctypes.Structure):
     """The C weather.h Weather."""
     _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
                 ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_bool), ("thunder_toggle", ctypes.c_bool),
@@ -123,7 +126,7 @@ class WeatherState(ctypes.Structure):
 
 def c_weather(lib):
     """The weather globals of the C port, by the names of WEATHER."""
-    game, weather = Game.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), Weather.in_dll(lib, "g_weather")
     out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
     out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
     out["light_level"] = ctypes.c_int.in_dll(lib, "g_view_light_level").value
@@ -152,11 +155,7 @@ def ignore_stale(state):
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
 
 
-class Location(ctypes.Structure):
-    """A square of the current map (dungeon.h, Location)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("x", "y")]
-
-
+@mirror("dungeon.h")
 class Position(ctypes.Structure):
     """A square with its map (dungeon.h, Position)."""
     _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
@@ -176,8 +175,9 @@ def int16(value):
     return ctypes.c_int16(value).value
 
 
+@mirror("input.h")
 class Command(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("command", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("command", ctypes.c_uint16), ("rect", ctypes.c_int16 * C.RECT_SIZE)]
 
 
 @pytest.fixture(scope="module")
@@ -246,11 +246,8 @@ class Scenario(CreatureOracle):
         ctypes.memset(ctypes.addressof(self.current_map), 0, ctypes.sizeof(self.current_map))
         self.current_map.map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
-        from dm2test.interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "g_ui")), 0, ctypes.sizeof(UiState))
         # ... and from a running game: the end-game sensor of an earlier test (session_complete) stops all damage
-        from dm2test.dialog import Session
-        from dm2test.input import MainLoop
         session = Session.in_dll(lib, "g_session")
         session.completed = session.exit_code = 0
         MainLoop.in_dll(lib, "g_main_loop").quit = 0

@@ -19,9 +19,9 @@ from dm2test import constants as C
 from dm2test.control import (
     NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, pumped,
 )
-from dm2test.structs import Game
+from dm2test.structs import Game, UiState
 from dm2test.markers import ROOT
-from dm2test.interface import UiState, things_of
+from dm2test.interface import things_of
 from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
 

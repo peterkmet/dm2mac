@@ -12,8 +12,7 @@ from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
-from dm2test.scenario import Location
-from dm2test.structs import ProjectileLaunch
+from dm2test.structs import Location, ProjectileLaunch
 from dm2test.lib import load_lib
 
 
