@@ -10,8 +10,7 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, key_command, press, set_mode)
 from dm2test.input import run_ticks
-from dm2test.scenario import Position
-from dm2test.structs import Bitmap, Game, Location
+from dm2test.structs import Bitmap, Game, Location, Position
 
 
 @pytest.fixture(scope="module", autouse=True)

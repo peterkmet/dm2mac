@@ -16,8 +16,8 @@ from dm2test.interface import (
 )
 from dm2test.addresses import VGA
 from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
-from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, UiState
-from dm2test.view import ScreenPoint, ScreenSize, u8_p
+from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, ScreenPoint, ScreenSize, UiState
+from dm2test.view import u8_p
 
 
 def test_game_screen_matches_original(port, original):

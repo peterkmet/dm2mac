@@ -11,8 +11,7 @@ from dm2test.dialog import DialogState, InputMatch, find_point, main_loop_quit
 from dm2test.scenario import Scenario, WALL_END_GAME, square_event
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
-from dm2test.structs import Game, Session
-from dm2test.view import ScreenPoint
+from dm2test.structs import Game, ScreenPoint, Session
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
 

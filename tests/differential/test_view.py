@@ -6,15 +6,14 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.gdat import image_info
-from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, ImageInfo, Location, Party, ViewSquare
+from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, ImageInfo, Location, Party, Position, ScreenSize, ViewSquare
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, original_load
-from dm2test.scenario import Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
-    OriginalView, ScreenSize, u8_p,
+    OriginalView, u8_p,
 )
 
 

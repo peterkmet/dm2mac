@@ -9,15 +9,14 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.audio import SoundCue
-from dm2test.structs import Game, GdatKey, Location, Timeline
+from dm2test.structs import Game, GdatKey, Location, ScreenPoint, SoundCue, Timeline
 from dm2test.interface import GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND
 from dm2test.scenario import (
     CHAMPION_SIZE, LIGHT_UPDATE_PARTY_LIGHT, NONE, WORLD_UPDATE_DAY_NIGHT, Scenario, Weather, champion_bytes, sky_list, square_event,
     squares, sync_champions,
 )
 from dm2test.addresses import G_SKY_OBJECTS, SKY_OBJECTS_SIZE, WEATHER
-from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
+from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -556,8 +556,7 @@ def map_ui(spell_ui, lib):
 
 
 def place_party(lib, emu, map_, x, y, d):
-    from dm2test.scenario import Position
-    from dm2test.structs import CurrentMap, Game
+    from dm2test.structs import CurrentMap, Game, Position
     CurrentMap.in_dll(lib, "g_current_map").map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
     Game.in_dll(lib, "g_game").party_dir = d
@@ -617,7 +616,7 @@ def static_groups(lib):
 
 def leads(lib, m, x, y, delta):
     """True when the dungeon has a map at delta levels from map m at the position of (x, y)."""
-    from dm2test.scenario import Position
+    from dm2test.structs import Position
 
     lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
     lib.dungeon_location_on_map.restype = Position

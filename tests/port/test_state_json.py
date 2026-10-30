@@ -8,8 +8,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.markers import ROOT
-from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, ViewSquare
-from dm2test.scenario import Position
+from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, Position, ViewSquare
 
 
 @pytest.fixture(scope="module", autouse=True)

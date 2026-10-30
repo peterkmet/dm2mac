@@ -9,7 +9,8 @@ import pytest
 from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.markers import ROOT
-from dm2test.scenario import ENDOFLIST, Position, square_event
+from dm2test.scenario import ENDOFLIST, square_event
+from dm2test.structs import Position
 
 
 def test_activation_after_load(creatures):

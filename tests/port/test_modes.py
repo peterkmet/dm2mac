@@ -21,8 +21,7 @@ from dm2test.modes import (
 )
 from dm2test.dialog import DialogState
 from dm2test.input import run_ticks
-from dm2test.scenario import Position
-from dm2test.structs import Session
+from dm2test.structs import Position, Session
 
 
 @pytest.fixture(scope="module", autouse=True)

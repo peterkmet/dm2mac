@@ -9,8 +9,7 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
-from dm2test.scenario import Position
-from dm2test.structs import Location
+from dm2test.structs import Location, Position
 
 
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88

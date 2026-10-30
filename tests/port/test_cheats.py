@@ -9,8 +9,7 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.structs import CurrentMap, Location, Party, Timeline, TimelineEvent
-from dm2test.scenario import Position
+from dm2test.structs import CurrentMap, Location, Party, Position, Timeline, TimelineEvent
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 CHEATS = (C.CHEAT_LIGHT, C.CHEAT_IMMORTAL, C.CHEAT_FOOD, C.CHEAT_KILL, C.CHEAT_WALLS, C.CHEAT_MAP)

@@ -7,7 +7,7 @@ from dm2test import constants as C
 from dm2test.addresses import G_FONT_BITMAP, G_SKY_OBJECTS, G_UI_COLORS, MONEY_INIT_COIN_TABLE, SKY_OBJECTS_SIZE, WEATHER
 from dm2test.gdat import image_info
 from dm2test.markers import ROOT
-from dm2test.structs import Bitmap, Game, GdatKey, Location, mirror
+from dm2test.structs import Bitmap, Game, GdatKey, Location
 from dm2tools.emu import Emu
 from dm2tools.le import load_image
 
@@ -32,16 +32,6 @@ MOVE_THING, VIEW_SEED_ADDR = 0x4B108, 0x70518
 HEAP, HEAP_SIZE = 0x01000000, 0x02000000
 VIEW_W, VIEW_H = C.VIEWPORT_WIDTH, C.VIEWPORT_HEIGHT
 u8_p = ctypes.POINTER(ctypes.c_uint8)
-
-
-@mirror("gfx.h")
-class ScreenPoint(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
-
-
-@mirror("gfx.h")
-class ScreenSize(ctypes.Structure):
-    _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
 
 
 class OriginalView:

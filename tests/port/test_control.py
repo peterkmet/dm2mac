@@ -18,10 +18,9 @@ from dm2test import constants as C
 from dm2test.control import (
     NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, pumped,
 )
-from dm2test.structs import Game, UiState
+from dm2test.structs import Game, ScreenPoint, UiState
 from dm2test.markers import ROOT
 from dm2test.interface import things_of
-from dm2test.view import ScreenPoint
 
 
 KEY_SHIFTED, KEY_ALT = C.KEY_SHIFTED, C.KEY_ALT

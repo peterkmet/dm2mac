@@ -14,7 +14,7 @@ from dm2test.gdat import image_info
 from dm2test.markers import GAME
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, original_save
-from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
+from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Position, Session, Sound, Timeline, TimelineEvent, UiState, mirror
 from dm2tools.emu import SCRATCH
 from dm2test.view import (
     G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS, G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_SKY_STATE, G_VIEW_CLEAR, OriginalView,
@@ -148,12 +148,6 @@ def sky_list(raw):
 def ignore_stale(state):
     """After a removal (no destination) the original leaves a stale register in the destination map."""
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
-
-
-@mirror("dungeon.h")
-class Position(ctypes.Structure):
-    """A square with its map (dungeon.h, Position)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
 
 
 def port_globals(party, current_map):

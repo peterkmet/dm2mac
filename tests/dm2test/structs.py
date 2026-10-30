@@ -1,5 +1,6 @@
-"""The ctypes mirrors that more than one dm2test module or test file uses; @mirror registers each ctypes mirror of
-tests/dm2test/ for tests/port/test_struct_layout.py."""
+"""The ctypes mirrors that more than one dm2test module or test file uses, and the structs that a public prototype takes
+or returns by value (dm2test.lib maps only these); @mirror registers each ctypes mirror of tests/dm2test/ for
+tests/port/test_struct_layout.py."""
 
 import ctypes
 
@@ -134,6 +135,32 @@ class Game(ctypes.Structure):
 class Location(ctypes.Structure):
     """A square of the current map (dungeon.h, Location)."""
     _fields_ = [(name, ctypes.c_int16) for name in ("x", "y")]
+
+
+@mirror("dungeon.h")
+class Position(ctypes.Structure):
+    """A square with its map (dungeon.h, Position)."""
+    _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
+
+
+@mirror("sound_request.h")
+class SoundCue(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_int) for name in ("category", "index", "entry", "priority", "volume")]
+
+
+@mirror("sound_request.h")
+class SoundLevel(ctypes.Structure):
+    _fields_ = [("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
+
+
+@mirror("gfx.h")
+class ScreenPoint(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16)]
+
+
+@mirror("gfx.h")
+class ScreenSize(ctypes.Structure):
+    _fields_ = [("w", ctypes.c_int16), ("h", ctypes.c_int16)]
 
 
 @mirror("game.h")
