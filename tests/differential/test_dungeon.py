@@ -8,7 +8,7 @@ from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test.lib import load_lib
-from dm2test.scenario import Party
+from dm2test.scenario import CurrentMap
 
 
 @pytest.fixture(scope="module")
@@ -240,7 +240,7 @@ def test_teleporter_to_a_map_outside_the_dungeon(lib, gdat):
     word = lib.thing_word(teleporter, C.TELEPORTER_MAP) & ~(C.TELEPORTER_MAP_MASK << C.TELEPORTER_MAP_SHIFT)
     lib.thing_set_word(teleporter, C.TELEPORTER_MAP, word | lib.dungeon_map_count() << C.TELEPORTER_MAP_SHIFT)
     lib.dungeon_link_things_after_load()
-    assert Party.in_dll(lib, "g_party").cur_map < lib.dungeon_map_count()
+    assert CurrentMap.in_dll(lib, "g_current_map").map < lib.dungeon_map_count()
 
 
 def test_bad_files(lib, tmp_path):

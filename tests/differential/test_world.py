@@ -619,7 +619,7 @@ def test_sound_requests_match_original(world, lib, gdat):
         other = rng.choice(maps)
         passage = rng.random() < 0.3
         if passage:  # the party sees the map other through a seamless passage
-            sc.party.alt_view_map = other
+            sc.current_map.alt_view_map = other
             sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", other))
         requests, last = rng.randrange(1, 7), None
         several += requests > 1
@@ -627,7 +627,7 @@ def test_sound_requests_match_original(world, lib, gdat):
             delay = rng.choice((0, 1, 1, 1, -1, -1, 2, 5, 8))
             delayed += delay > 1
             source = other if passage and rng.random() < 0.6 else map_
-            lib.dun_set_current_map(source)
+            lib.dungeon_set_current_map(source)
             sc.emu.call(DUN_SET_CURRENT_MAP, source)
             args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, C.SOUND_VOLUME_NORMAL, C.SOUND_VOLUME_LOUD, C.SOUND_VOLUME_FULL, rng.randrange(256))),
                     x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
@@ -640,13 +640,13 @@ def test_sound_requests_match_original(world, lib, gdat):
             else:
                 lib.sndreq_request(SoundCue(*args[:5]), *args[5:7], WHEN[args[7]])
             sc.emu.call(SOUND_REQUEST, *args)
-        lib.dun_set_current_map(map_)
+        lib.dungeon_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
             lib.sndreq_flush_requests(True)
             sc.emu.call(0x1616D, 1)
         if passage:
-            sc.party.alt_view_map = -1
+            sc.current_map.alt_view_map = -1
             sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", -1))
         assert_world(sc, (n, map_, x, y))
         if rng.random() < 0.3:  # the party leaves before the delayed sounds play
@@ -691,7 +691,7 @@ def ambient_wall_sensors(lib, gdat):
 def turn_wall_thing(sc, thing, x, y, cell):
     """Moves a wall thing of the current map to the wall face cell (to the end of its square list) in both."""
     turned = (thing & C.THING_ID_MASK) | cell << C.THING_CELL_SHIFT
-    map_ = sc.party.cur_map
+    map_ = sc.current_map.map
     sc.lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
     sc.emu.call(DUN_UNLINK_THING_FROM_SQUARE, thing, 0, x, y)
     sc.lib.dungeon_link_thing_to_square(turned, map_, x, y)

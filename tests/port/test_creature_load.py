@@ -32,7 +32,7 @@ def lib():
 def walking_group(lib, gdat):
     """A creature group whose creature does not fly; its map is the current map."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 group = lib.creature_get_group_at(Location(x, y))

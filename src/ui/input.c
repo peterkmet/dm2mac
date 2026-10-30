@@ -1976,7 +1976,7 @@ void input_update_viewport_arrow(void)
         arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
     }
     int step = dir_turn(push_arrows[arrow].step_turn, g_game.party_dir);
-    if (dun_square_blocks_movement(dun_get_square(
+    if (dungeon_square_blocks_movement(dungeon_square_at(
             (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
         return;
     Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
@@ -2092,7 +2092,7 @@ static void click_take_object(int16_t x, int16_t y, int index)
 static bool is_party_in_wall(void)
 {
     return game_has_cheat(CHEAT_WALLS) &&
-           dun_square_blocks_movement(dungeon_square(g_game.party_map, g_game.party_x, g_game.party_y));
+           dungeon_square_blocks_movement(dungeon_square(g_game.party_map, g_game.party_x, g_game.party_y));
 }
 
 /* Drops the leader hand object into cell (relative to the party direction) of the square at: a floor cell, or with
@@ -2249,7 +2249,7 @@ static void click_with_object(const ViewSquares *v, int16_t x, int16_t y, bool f
 /* A click in the dungeon view: walls, doors, objects, creatures. */
 static void click_in_viewport(int16_t x, int16_t y)
 {
-    dun_set_current_map(g_game.party_map);
+    dungeon_set_current_map(g_game.party_map);
     if (g_party.push_mode) {
         move_set_push_mode(false);
         creature_push_creature(g_party.push_arrow);
@@ -2265,7 +2265,7 @@ static void click_in_viewport(int16_t x, int16_t y)
     Location party = {(int16_t)g_game.party_x, (int16_t)g_game.party_y};
     Location ahead = {(int16_t)(party.x + g_dir_dx[dir]), (int16_t)(party.y + g_dir_dy[dir])};
     ViewSquares v = {dir, party, ahead};
-    uint8_t front = dun_get_square(v.front);
+    uint8_t front = dungeon_square_at(v.front);
     uint16_t hand = g_game.leader_hand;
     if (click_zones_hit(&v, x, y, hand))
         return;

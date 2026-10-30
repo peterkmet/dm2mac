@@ -349,7 +349,7 @@ void champ_add_experience(int16_t champion_index, int skill, uint32_t experience
         experience >>= 1;
     if (!experience)
         return;
-    int factor = dungeon_map_difficulty(g_party.cur_map);
+    int factor = dungeon_map_difficulty(g_current_map.map);
     if (factor)
         experience *= (uint32_t)factor;
     Champion *c = champion(champion_index);
@@ -419,12 +419,12 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     Champion *c = a->c;
     if ((uint16_t)champion_index >= g_game.champion_count || !c->health)
         return 0;
-    int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
+    int difficulty = dungeon_map_difficulty(g_current_map.map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     int16_t damage = 0;
     int16_t stamina;
     bool hit = info->dexterity != DEXTERITY_UNHITTABLE;
-    uint16_t at = creature_group_at((Position){g_party.cur_map, a->front.x, a->front.y});
+    uint16_t at = creature_group_at((Position){g_current_map.map, a->front.x, a->front.y});
     if (hit && at != THING_NONE && creature_current_step_acts(at))
         hit = false;
     if (hit && info->flags & CREATURE_NON_MATERIAL && !pierces)
@@ -483,7 +483,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     Champion *c = a->c;
     if (a->target == THING_NONE)
         return false;
-    uint16_t group = creature_group_at((Position){g_party.cur_map, a->front.x, a->front.y});
+    uint16_t group = creature_group_at((Position){g_current_map.map, a->front.x, a->front.y});
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
@@ -645,10 +645,10 @@ static bool run_melee(ActionRun *a)
                                 DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
-            (SoundCue){
-                CAT_DOOR,
-                dungeon_door_type(g_party.cur_map, dungeon_square_first_thing(g_party.cur_map, a->front.x, a->front.y)),
-                SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
+            (SoundCue){CAT_DOOR,
+                       dungeon_door_type(g_current_map.map,
+                                         dungeon_square_first_thing(g_current_map.map, a->front.x, a->front.y)),
+                       SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
         return true;
     }
@@ -675,10 +675,10 @@ static void run_levitate_down(ActionRun *a)
     int px = g_game.party_x + g_dir_dx[g_game.party_dir];
     int py = g_game.party_y + g_dir_dy[g_game.party_dir];
     bool open = true;
-    uint16_t g = creature_group_at((Position){g_party.cur_map, px, py});
+    uint16_t g = creature_group_at((Position){g_current_map.map, px, py});
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
-    if (square_type(dun_get_square((Location){px, py})) == SQUARE_PIT && open) {
+    if (square_type(dungeon_square_at((Location){px, py})) == SQUARE_PIT && open) {
         g_party.fell = 1;
         move_thing(THING_NONE, g_game.party_x, g_game.party_y, px, py);
         g_party.fell = 0;
@@ -944,7 +944,7 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
                    .item = c->slots[hand],
                    .action = action};
     a.front = (Location){g_game.party_x + g_dir_dx[c->dir], g_game.party_y + g_dir_dy[c->dir]};
-    a.target = creature_group_at((Position){g_party.cur_map, a.front.x, a.front.y});
+    a.target = creature_group_at((Position){g_current_map.map, a.front.x, a.front.y});
     a.delay = (uint16_t)field_of(action, FIELD_DELAY);
     a.skill = field_of(action, FIELD_SKILL);
     int16_t stamina = field_of(action, FIELD_STAMINA);
@@ -952,7 +952,7 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
     a.experience = field_of(action, FIELD_EXPERIENCE);
     a.power = field_of(action, FIELD_POWER);
     c->defense[hand] = (int8_t)field_of(action, FIELD_DEFENSE);
-    a.front_square = dun_get_square(a.front);
+    a.front_square = dungeon_square_at(a.front);
     bool done = run_command(&a, command);
     if (!a.silent)
         sndreq_request_with_fallback(

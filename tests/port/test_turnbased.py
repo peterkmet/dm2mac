@@ -237,7 +237,7 @@ def test_act_many_stops_on_a_new_creature(tb, lib):
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
     lib.creature_create_group.restype = ctypes.c_uint16
     lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.dun_set_current_map(game.party_map)
+    lib.dungeon_set_current_map(game.party_map)
     assert lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - GROUP_DISTANCE)) != 0xFFFF
     r = request({"cmd": "act_many", "actions": ["move_forward"] * 5}, path, timeout=30)
     assert r["ok"] and r["ran"] == 2 and r["stopped"] == "creature" and "error" not in r
@@ -356,7 +356,7 @@ def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
     lib.creature_create_group.restype = ctypes.c_uint16
     lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.dun_set_current_map(game.party_map)
+    lib.dungeon_set_current_map(game.party_map)
     group = lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - 1))
     assert group != 0xFFFF
     lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)

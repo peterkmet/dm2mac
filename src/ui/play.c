@@ -193,12 +193,12 @@ static void step_before_input(void)
 /* The part of a game step after the input wait: a map change, repeated actions, music. */
 static void step_after_input(void)
 {
-    int saved = g_party.cur_map;
+    int saved = g_current_map.map;
     if (g_party.new_map != -1)
-        dun_set_current_map(g_party.new_map);
+        dungeon_set_current_map(g_party.new_map);
     champ_process_repeated_actions();
     if (g_party.new_map != -1)
-        dun_set_current_map(saved);
+        dungeon_set_current_map(saved);
     music_update_for_map(g_game.party_map);
 }
 

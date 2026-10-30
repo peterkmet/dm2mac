@@ -53,7 +53,7 @@ def test_imaginary_wall_is_a_closed_fake_wall_with_flag_0(lib):
 def test_dungeon_has_imaginary_walls_that_the_party_walks_through(lib, session):
     found = [s for *_, s in all_squares(lib) if lib.automap_is_imaginary_wall(s)]
     assert found
-    assert all(not lib.dun_square_blocks_movement(s) for s in found)
+    assert all(not lib.dungeon_square_blocks_movement(s) for s in found)
 
 
 def test_pressure_pad_is_a_floor_trigger_that_the_view_draws(lib, session):

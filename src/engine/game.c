@@ -42,7 +42,7 @@ void game_enter_map(Position at, bool leaving)
 {
     if (leaving)
         sensor_process_map_entry(false);
-    dun_set_party_position(at);
+    dungeon_set_party_position(at);
     g_hooks.enter_map_view(at.map);
     world_update_day_night(false);
     sensor_process_map_entry(true);
@@ -120,7 +120,7 @@ static bool process_world_event(TimelineEvent *e)
         break;
     case EVENT_SPAWN_CREATURE: {
         int dir = rand_2bits()
-                      ? dun_get_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
+                      ? dungeon_direction_to(e->data[EVENT_X], e->data[EVENT_Y], g_game.party_x, g_game.party_y)
                       : rand_2bits();
         creature_create_group(e->data[SPAWN_EVENT_CREATURE], GROUP_COUNT_FULL_HEALTH, dir,
                               (Location){e->data[EVENT_X], e->data[EVENT_Y]});
@@ -152,7 +152,7 @@ static void process_party_event(TimelineEvent *e, uint16_t word)
         sndreq_request_delayed(word);
         break;
     case EVENT_MAGIC_LIGHT:
-        dun_set_current_map(g_game.party_map);
+        dungeon_set_current_map(g_game.party_map);
         magic_event_light(e);
         light_update_party_light();
         break;
@@ -181,12 +181,12 @@ void game_process_timeline(void)
         g_hooks.poll_input();
         TimelineEvent e;
         timeline_pop_first_event(&e);
-        dun_set_current_map(timeline_event_map(&e));
+        dungeon_set_current_map(timeline_event_map(&e));
         uint16_t word = le16(e.data);
         if (!process_world_event(&e))
             process_party_event(&e, word);
     }
-    dun_set_current_map(g_game.party_map);
+    dungeon_set_current_map(g_game.party_map);
 }
 
 /* The game step */

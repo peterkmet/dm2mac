@@ -12,7 +12,6 @@
 #include "ids.h"
 #include "interface_state.h"
 #include "item.h"
-#include "move.h"
 #include "num.h"
 #include "projectile.h"
 #include "random.h"
@@ -310,29 +309,29 @@ static bool lightning_strike(void)
 {
     int x = rand_below(LIGHTNING_RANGE);
     int y = rand_below(LIGHTNING_RANGE);
-    if (x >= dungeon_map_width(g_party.cur_map) || y >= dungeon_map_height(g_party.cur_map))
+    if (x >= dungeon_map_width(g_current_map.map) || y >= dungeon_map_height(g_current_map.map))
         return false;
     ViewSquare s;
-    aspect_get(&s, g_party.cur_map, DIR_NORTH, x, y);
+    aspect_get(&s, g_current_map.map, DIR_NORTH, x, y);
     PassageEnd end;
-    if (s.aspect != ASPECT_FLOOR || dun_get_linked_teleporter_dest(&end, (Location){x, y}))
+    if (s.aspect != ASPECT_FLOOR || dungeon_linked_teleporter_dest(&end, (Location){x, y}))
         return false;
     bool weak = (int16_t)g_game.storm_intensity < STORM_WEAK;
-    if (g_game.party_map == g_party.cur_map && x == g_game.party_x && y == g_game.party_y &&
+    if (g_game.party_map == g_current_map.map && x == g_game.party_x && y == g_game.party_y &&
         (weak || g_game.game_time < STRIKE_PARTY_TIME || game_global_var(VAR_STORMS) <= g_weather.strike_threshold))
         return false;
     int distance = (int16_t)(abs_int((int16_t)(g_game.party_x - x)) + abs_int((int16_t)(g_game.party_y - y)));
-    uint16_t group = creature_group_at((Position){g_party.cur_map, x, y});
+    uint16_t group = creature_group_at((Position){g_current_map.map, x, y});
     if (group != THING_NONE) {
         if (creature_lightning[creature_group_info(group) - creature_info_at(0)] == CREATURE_LIGHTNING_PROOF)
             return false;
         if (distance > STRIKE_NEAR &&
-            (distance > STRIKE_SEEN || dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) != g_game.party_dir))
+            (distance > STRIKE_SEEN || dungeon_direction_to(g_game.party_x, g_game.party_y, x, y) != g_game.party_dir))
             return false;
     }
     explosion_create(EXPLOSION_STORM_LIGHTNING, g_game.storm_intensity, x, y, EXPLOSION_AT_CENTER);
     if ((g_ui.inventory || g_party_sleeping) && !weak && distance <= STRIKE_SEEN &&
-        dun_get_direction_to(g_game.party_x, g_game.party_y, x, y) == g_game.party_dir)
+        dungeon_direction_to(g_game.party_x, g_game.party_y, x, y) == g_game.party_dir)
         game_modify_global_var(VAR_STRIKES_SEEN, 1, GLOBAL_VAR_ADD);
     return true;
 }
@@ -554,7 +553,7 @@ static bool add_floor_light(SquareLight *sum, const ViewSquare *s, Location at)
         if (!v && !animated_only)
             return false;
         PassageEnd end;
-        if (dun_get_linked_teleporter_dest(&end, at))
+        if (dungeon_linked_teleporter_dest(&end, at))
             sum->window = (int16_t)(sum->window + v * daylight() / PERCENT);
         else if (!animated_only || animated)
             sum->light = (int16_t)(sum->light + v);
@@ -567,7 +566,7 @@ void light_add_square_light(int distance, int16_t dir, Location at, unsigned fla
 {
     SquareLight sum = {0, 0, 0};
     ViewSquare s;
-    aspect_get(&s, g_party.cur_map, dir, at.x, at.y);
+    aspect_get(&s, g_current_map.map, dir, at.x, at.y);
     switch (s.aspect) {
     case ASPECT_WALL:
         if (flags & LIGHT_WALLS)
@@ -583,7 +582,7 @@ void light_add_square_light(int distance, int16_t dir, Location at, unsigned fla
         if ((flags & LIGHT_FLOOR) && !add_floor_light(&sum, &s, at))
             break;
         if (flags & LIGHT_CREATURES) {
-            uint16_t group = creature_group_at((Position){g_party.cur_map, at.x, at.y});
+            uint16_t group = creature_group_at((Position){g_current_map.map, at.x, at.y});
             if (group != THING_NONE)
                 sum.light = (int16_t)(sum.light + (item_attr(group, ATTR_LIGHT_SOURCE) & LIGHT_AMOUNT_MASK));
         }

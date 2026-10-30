@@ -97,6 +97,9 @@ static inline int16_t dir_side_cell(int16_t cell, int16_t dir)
     return (int16_t)dir_turn(dir, (((cell - dir) + 1) & 2) >> 1);
 }
 
+/* The square step of each direction. */
+extern const int8_t g_dir_dx[DIR_COUNT], g_dir_dy[DIR_COUNT];
+
 /* The whole of a chance or a ratio in percent. */
 #define PERCENT         100
 /* No thing, and the end of a thing list. */
@@ -870,9 +873,59 @@ bool dungeon_link_thing_to_square(uint16_t thing, int16_t map, int16_t x, int16_
 /* Removes thing from the square's thing list. */
 void dungeon_unlink_thing_from_square(uint16_t thing, int16_t map, int16_t x, int16_t y);
 /* Takes a free record of type, cleared, without cell bits. When the table is full, it reuses a thing from
-   dun_get_discarded_thing; THING_NONE when there is none. */
+   discard_find_thing; THING_NONE when there is none. */
 uint16_t dungeon_unused_thing(int type);
 /* As dungeon_unused_thing; a miscellaneous item may also take the records that the dungeon keeps for the game. */
 uint16_t dungeon_unused_thing_any_record(int type);
+
+/* ---- The current map ---- */
+
+/* g_current_map.map before a map is current; dungeon_set_current_map then reads the party position again. */
+#define CUR_MAP_NONE (-1)
+
+/* The current map of the square reads and the party position as seen from it (the original globals). The int fields
+   stay int: tests/dm2test/scenario.py mirrors the layout (alt_view_active has 32 bits in the original). */
+typedef struct {
+    int16_t map;                            /* the map that the square reads of the original use, CUR_MAP_NONE none */
+    int16_t square_x, square_y, square_map; /* the party position as the current map sees it */
+    int16_t ref_dir;                        /* the party direction as the current map sees it */
+    int alt_view_active;                    /* the party stands at a seamless passage to another map */
+    int16_t alt_view_x, alt_view_y, alt_view_dir, alt_view_map; /* the party position on the other map */
+} CurrentMap;
+
+extern CurrentMap g_current_map;
+
+/* The other end of a seamless passage at (x, y) of the current map. */
+typedef struct {
+    int16_t side, target_side, x, y, map;
+} PassageEnd;
+
+/* A level link beside a square: the direction to it (-1 none) and its level link sensor (THING_NONE for a stairs
+   marker or none). */
+typedef struct {
+    int16_t dir;
+    uint16_t sensor;
+} LevelLink;
+
+/* Makes map the map of the square reads; updates the party position as seen from it. */
+void dungeon_set_current_map(int16_t map);
+/* Puts the party at the square at and makes its map current. */
+void dungeon_set_party_position(Position at);
+/* The square forward and to the right of from, seen in dir. */
+Location dungeon_move_relative(Location from, int16_t dir, int forward, int right);
+/* The direction from (x1, y1) toward (x2, y2); a random one of two on a diagonal. */
+int16_t dungeon_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
+/* The square byte of at, with the edge walls around the map. */
+uint8_t dungeon_square_at(Location at);
+/* True when at is the party square. */
+bool dungeon_on_party_square(Location at);
+/* True when a square stops the party: walls, closed doors, closed fake walls, unknown squares. */
+bool dungeon_square_blocks_movement(uint8_t square);
+/* The direction that leads out of the stairs on at. */
+int16_t dungeon_stairs_exit_direction(Location at);
+/* Puts the other end of the seamless passage on at into *end; false when there is none. */
+bool dungeon_linked_teleporter_dest(PassageEnd *end, Location at);
+/* The level link (sensor or stairs marker) beside at toward level_delta. */
+LevelLink dungeon_find_level_link(Location at, int level_delta);
 
 #endif /* DM2_ENGINE_DUNGEON_H */

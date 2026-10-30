@@ -27,7 +27,7 @@ The dungeon view code is in `src/data/gfx.c`, `src/ui/zone.c`, and `src/ui/view.
   - `+6`: first thing that is not a wall thing.
   - `+8` to `+0x0e`, by aspect: the wall ornaments of the faces (`frame << 10 | ornament`, front face at `+0x0c`), or door state and door thing, or the up bit of stairs and pits, or the floor ornament at `+0x0c` (`frame * 10 << 8 | ornament`).
   - `+0x10`: wall text thing or portrait index.
-- Squares off the map (`dun_get_square`) read as a wall with the bit of its face toward the map (`8 >> direction`, the random ornament bits of a wall) if they are next to an open edge square, otherwise as `0xe0`.
+- Squares off the map (`dungeon_square_at`) read as a wall with the bit of its face toward the map (`8 >> direction`, the random ornament bits of a wall) if they are next to an open edge square, otherwise as `0xe0`.
 - Random wall ornaments: hash `(((((x * 0x20 + 2000 + (((dir + side) & 3) + 1) * (y + 1)) * 0x7ab9) >> 1) + (map * 0x40 + 3000 + width + height) * 11 + dungeon header word 0) >> 2) % 30`; a value below the random ornament count picks an ornament from the wall ornament list of the map entered last.
 - Pictures go through `setup_picture`: [GDAT](../formats/graphics.md#gdat-items) image, scale (1/64), offset, layout zone, and a color remap. The remap is the depth shading table `(8, graphics set, 7, depth)` if it exists, otherwise a dimming by the depth light; the view shade (light level * 10) dims both.
 - A door with an ornament or damage is composed in an offscreen bitmap of the door size (`render_offscreen`), then drawn. A door in states 1 to 3 draws two halves that slide apart, unless bit 5 of the door record is set.

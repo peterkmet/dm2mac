@@ -25,12 +25,12 @@ Watcom links object files in order, and libraries after them. The game code call
 | 0x13887-0x13be5 | VGA retrace, palette and present through IOP | `vga_wait_vblank`, `pal_set_palette`, `play_present_viewport` |
 | 0x13ee3-0x14d39 | Mouse cursor images, input ISR, mouse hide/show/state | `input_event_isr`, `input_init`, `mouse_hide`, `mouse_show`, `mouse_get_state` |
 | 0x14cf2-0x163c2 | Creature and item sound selection from GRAPHICS.DAT, sound request queue | `sndreq_request`, `sndreq_flush_requests`, `sndreq_request_with_fallback` (0x15baa, decompile failed) |
-| 0x16457-0x18d9e | Projectiles and explosions (create, move, hit), distance and direction helpers | `projectile_create`, `explosion_create`, `math_square_distance`, `dun_get_direction_to` |
+| 0x16457-0x18d9e | Projectiles and explosions (create, move, hit), distance and direction helpers | `projectile_create`, `explosion_create`, `math_square_distance`, `dungeon_direction_to` |
 | 0x18e7f-0x19f3d | Rectangles and layout zones | `rect_set`, `rect_contains`, `zone_get_rect` |
 | 0x19fd2-0x1aa75 | Dialog boxes and menus (`dialog_draw` 0x1a37d builds a dialog, `dialog_run` 0x1a0a4 runs it) | `dialog_draw`, `dialog_run` |
 | 0x1ac92-0x1c440 | Picture descriptors and composited drawing (0x13a-byte draw context) | `draw_ctx_init`, `draw_ctx_prepare`, `draw_ctx_draw`, `gfx_offscreen_draw_gdat_image` |
 | 0x1c472-0x1c710 | String, math, random, system error, delay | `str_copy`, `rand_next`, `rand_below`, `system_error`, `wait_vblanks` |
-| 0x1c724-0x1f07c | Dungeon data: maps, squares, thing lists | `dun_set_current_map`, `dun_get_square`, `dun_get_thing_data`, `dun_get_next_thing`, `dun_get_unused_thing` |
+| 0x1c724-0x1f07c | Dungeon data: maps, squares, thing lists | `dungeon_set_current_map`, `dungeon_square_at`, `dun_get_thing_data`, `dun_get_next_thing`, `dun_get_unused_thing` |
 | 0x1efa8-0x1feb5 | Item type database, creature info, map location helpers | `dun_get_thing_gdat_index`, `item_get_attr`, `dun_get_thing_gdat_category`, `creature_get_info` |
 | 0x1fef6-0x2005b | End of game, quit | `session_end`, `session_quit` |
 | 0x200b4-0x21301 | Input mode tables (0x72ed1), click and key to command mapping, input poll | `input_set_mode`, `input_mouse_click`, `input_poll`, `input_flush` |
@@ -79,13 +79,13 @@ The notes `range-1.md` to `range-8.md` cover the 8 ranges of [skull-map.md](../s
 | `0x1efa8` | 44 | `dun_get_thing_gdat_index` (thing to item database type and index) |
 | `0x1c687` | 42 | `math_max16` |
 | `0x1d391` | 42 | `dun_get_square_first_thing` |
-| `0x1c724` | 40 | `dun_set_current_map` |
+| `0x1c724` | 40 | `dungeon_set_current_map` |
 | `0x3bbba` | 39 | `mem_alloc` |
 | `0x1c6f6` | 39 | `rand_2bits` |
 | `0x56390` | 37 | `timeline_add_event` |
 | `0x1c67e` | 36 | `math_min16` |
 | `0x19cfc` | 35 | `zone_get_rect` |
-| `0x1ca96` | 35 | `dun_get_square` |
+| `0x1ca96` | 35 | `dungeon_square_at` |
 | `0x1c6a1` | 32 | `rand_next` |
 | `0x1f8d9` | 31 | `creature_get_info` |
 | `0x4b108` | 31 | `move_thing` (central movement function) |
@@ -111,7 +111,7 @@ The notes `range-1.md` to `range-8.md` cover the 8 ranges of [skull-map.md](../s
 | `0x1936f` | 18 | `zone_compute_rect` (layout zone computation) |
 | `0x3ee1d` | 18 | `gdat_get_image_palette` (GRAPHICS.DAT image lookup) |
 | `0x1be6a` | 18 | `gfx_offscreen_draw_gdat_image` (draw item or creature picture) |
-| `0x1863d` | 16 | `dun_get_direction_to` (direction from one square to another) |
-| `0x1d113` | 16 | `dun_get_linked_teleporter_dest` (stairs or teleport destination) |
+| `0x1863d` | 16 | `dungeon_direction_to` (direction from one square to another) |
+| `0x1d113` | 16 | `dungeon_linked_teleporter_dest` (stairs or teleport destination) |
 | `0x2f636` | 16 | `ai_thing_matches_filter` (creature or object flag test) |
 | `0x4e616` | 16 | `flush_picture` (flush view picture, draw context 0x8018a) |

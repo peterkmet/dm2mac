@@ -45,16 +45,19 @@ STUBS = {
     0x14C7B: (0, 0), 0x14C87: (0, 0), 0x1483A: (0, 0), 0x14846: (0, 0),     # IBMIOP input lock, mouse capture, cursor
     0x1482E: (0, 0), 0x14743: (5, 0),                                       # mouse capture, cursor image
 }
-# Globals of the movement state: name -> (address, struct format).
-GLOBALS = {
-    "cur_map": (0x72244, "<h"), "square_x": (0x7F27C, "<h"), "square_y": (0x7F27A, "<h"), "square_map": (0x7F27E, "<h"),
-    "ref_dir": (0x7F260, "<h"), "move_steps": (0x7F258, "<h"), "move_command": (0x7F252, "<H"),
-    "view_x": (0x7F266, "<h"), "view_y": (0x7F264, "<h"), "view_dir": (0x7F274, "<h"),
-    "alt_view_active": (0x7F230, "<i"), "alt_view_x": (0x7F25C, "<h"), "alt_view_y": (0x7F25E, "<h"),
-    "alt_view_dir": (0x7F272, "<h"), "alt_view_map": (0x7F278, "<h"), "new_map": (0x717F4, "<h"),
+# Globals of the movement state: name -> (address, struct format); the CurrentMap fields, then the Party fields.
+CURRENT_MAP_GLOBALS = {
+    "map": (0x72244, "<h"), "square_x": (0x7F27C, "<h"), "square_y": (0x7F27A, "<h"), "square_map": (0x7F27E, "<h"),
+    "ref_dir": (0x7F260, "<h"), "alt_view_active": (0x7F230, "<i"), "alt_view_x": (0x7F25C, "<h"),
+    "alt_view_y": (0x7F25E, "<h"), "alt_view_dir": (0x7F272, "<h"), "alt_view_map": (0x7F278, "<h"),
+}
+PARTY_GLOBALS = {
+    "move_steps": (0x7F258, "<h"), "move_command": (0x7F252, "<H"),
+    "view_x": (0x7F266, "<h"), "view_y": (0x7F264, "<h"), "view_dir": (0x7F274, "<h"), "new_map": (0x717F4, "<h"),
     "dest_x": (0x80026, "<h"), "dest_y": (0x80024, "<h"), "dest_map": (0x80028, "<h"), "dest_cell": (0x80022, "<h"),
     "redraw": (0x7F38C, "<I"),
 }
+GLOBALS = CURRENT_MAP_GLOBALS | PARTY_GLOBALS
 G_MAP_LIGHT, G_MAP_WALL_COST = 0x7F3F4, 0x7F3FC  # the light radius and wall cost of the party map graphics
 G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of ai_refresh_party_maps
 G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
@@ -160,16 +163,28 @@ class Position(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
 
 
+class CurrentMap(ctypes.Structure):
+    """The current map of the square reads (dungeon.h, CurrentMap)."""
+    _fields_ = [(name, ctypes.c_int16) for name in ("map", "square_x", "square_y", "square_map", "ref_dir")] + [
+        ("alt_view_active", ctypes.c_int), ("alt_view_x", ctypes.c_int16), ("alt_view_y", ctypes.c_int16),
+        ("alt_view_dir", ctypes.c_int16), ("alt_view_map", ctypes.c_int16)]
+
+
 class Party(ctypes.Structure):
-    _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
-                                                     "move_steps")] + [
-        ("move_command", ctypes.c_uint16), ("view_x", ctypes.c_int16), ("view_y", ctypes.c_int16),
-        ("view_dir", ctypes.c_int16), ("alt_view_active", ctypes.c_int), ("alt_view_x", ctypes.c_int16),
-        ("alt_view_y", ctypes.c_int16), ("alt_view_dir", ctypes.c_int16), ("alt_view_map", ctypes.c_int16),
+    """The movement state of the party (move.h, Party)."""
+    _fields_ = [
+        ("move_steps", ctypes.c_int16), ("move_command", ctypes.c_uint16), ("view_x", ctypes.c_int16),
+        ("view_y", ctypes.c_int16), ("view_dir", ctypes.c_int16),
         ("new_map", ctypes.c_int16), ("fell", ctypes.c_int16), ("dest_x", ctypes.c_int16), ("dest_y", ctypes.c_int16),
         ("dest_map", ctypes.c_int16), ("dest_cell", ctypes.c_int16), ("dest_dir", ctypes.c_int16),
         ("teleporter_flag", ctypes.c_int), ("redraw", ctypes.c_uint32), ("push_pending_group", ctypes.c_uint16),
         ("push_mode", ctypes.c_bool), ("push_arrow", ctypes.c_int16)]
+
+
+def port_globals(party, current_map):
+    """The movement globals of the C port by the names of GLOBALS."""
+    return ({name: getattr(current_map, name) for name in CURRENT_MAP_GLOBALS}
+            | {name: getattr(party, name) for name in PARTY_GLOBALS})
 
 
 class GameRecord(ctypes.Structure):
@@ -236,6 +251,7 @@ class Scenario(CreatureOracle):
         lib.draw_init(gdat)
         self.game = GameRecord.in_dll(lib, "g_game")
         self.party = Party.in_dll(lib, "g_party")
+        self.current_map = CurrentMap.in_dll(lib, "g_current_map")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
@@ -260,11 +276,12 @@ class Scenario(CreatureOracle):
         self.skip(*ARROWS_DRAWING)  # ui_draw_movement_arrows: only its input mode
         self.clear_uninitialized_event_bytes()
         self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
-        emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
+        emu.write(GLOBALS["map"][0], struct.pack("<h", -1))
         emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
         # the C port starts from the movement state of the program start (move.c), like the original before its load
         ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
-        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        ctypes.memset(ctypes.addressof(self.current_map), 0, ctypes.sizeof(self.current_map))
+        self.current_map.map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
         from dm2test.interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "g_ui")), 0, ctypes.sizeof(UiState))
@@ -505,7 +522,7 @@ class Scenario(CreatureOracle):
                                                                   UC_X86_REG_ECX))
             sp = uc.reg_read(UC_X86_REG_ESP)
             ret, time = emu.read_u32(sp), emu.read_u32(sp + 4)
-            cur_map = struct.unpack("<h", emu.read(GLOBALS["cur_map"][0], 2))[0]
+            cur_map = struct.unpack("<h", emu.read(GLOBALS["map"][0], 2))[0]
             event = struct.pack("<IBB6B", (time | (cur_map & 0xFF) << 24) & 0xFFFFFFFF, 4, (1, 3, 2, 3)[effect & 3],
                                 x, y, cell, effect, 0, 0)
             emu.write(SCHEDULED_EVENT, event)
@@ -520,9 +537,9 @@ class Scenario(CreatureOracle):
         """Puts the party on (x, y) of map_ in both, like a load."""
         self.game.party_dir = direction
         self.emu.write(0x7F254, struct.pack("<h", direction))
-        self.party.cur_map = -1
-        self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
-        self.lib.dun_set_party_position(Position(map_, x, y))
+        self.current_map.map = -1
+        self.emu.write(GLOBALS["map"][0], struct.pack("<h", -1))
+        self.lib.dungeon_set_party_position(Position(map_, x, y))
         self.emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
         self.load_map_graphics()
 
@@ -570,7 +587,7 @@ class Scenario(CreatureOracle):
         name = self.start[2:0x12].split(b"\0")[0]
         assert self.lib.save_write(str(path).encode(), str(bak).encode(), name, self.gdat) == 0
         mine = path.read_bytes()
-        mine_globals = {name: getattr(self.party, name) for name in GLOBALS}
+        mine_globals = port_globals(self.party, self.current_map)
         their_globals = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                          for name, (addr, fmt) in GLOBALS.items()}
         return (mine, mine_globals), (theirs, their_globals)
@@ -647,7 +664,7 @@ class Scenario(CreatureOracle):
         """The quick check: creatures, movement globals, damage calls, and the dungeon records and events."""
         self.check_creatures(where)
         self.assert_same_damage(where)
-        mine = {name: getattr(self.party, name) for name in GLOBALS}
+        mine = port_globals(self.party, self.current_map)
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                   for name, (addr, fmt) in GLOBALS.items()}
         assert ignore_stale(mine) == ignore_stale(theirs), where

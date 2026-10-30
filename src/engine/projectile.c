@@ -226,10 +226,10 @@ void projectile_create(const ProjectileLaunch *launch)
     thing_set_word(t, PROJECTILE_PAYLOAD, payload);
     projectile_set_energy(t, launch->energy);
     projectile_set_hit_chance(t, launch->hit_chance);
-    dungeon_link_thing_to_square(t, g_party.cur_map, launch->x, launch->y);
-    if (payload == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
+    dungeon_link_thing_to_square(t, g_current_map.map, launch->x, launch->y);
+    if (payload == SPELL_FIREBALL && g_current_map.map == g_game.party_map)
         g_party.redraw |= PARTY_REDRAW_VIEW;
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_party.cur_map)};
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_current_map.map)};
     e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
     put_le16(e.data + PROJECTILE_EVENT_POSITION,
@@ -258,7 +258,7 @@ void projectile_move_event(uint16_t projectile, MoveDest dest)
 /* An explosion of type with power on (x, y): the explosion sensors of the square react. */
 static void trigger_explosion_sensors(uint16_t type, int16_t x, int16_t y, int power)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR)
             continue;
@@ -287,7 +287,7 @@ static void blast_square(uint16_t type, int power, int16_t x, int16_t y, int16_t
         if (!damage)
             return;
     }
-    if (dun_on_party_square((Location){x, y}))
+    if (dungeon_on_party_square((Location){x, y}))
         champ_damage_party(damage, WOUND_ALL, ATTACK_TYPE_FIRE);
     int16_t nx = x;
     int16_t ny = y;
@@ -335,16 +335,16 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     explosion_set_type(t, type - SPELL_THING_FIRST);
     explosion_set_centered(t, centered);
     explosion_set_power(t, (unsigned)power);
-    int volume = dun_on_party_square((Location){ex, ey})
+    int volume = dungeon_on_party_square((Location){ex, ey})
                      ? SOUND_VOLUME_FULL
                      : min_int(SOUND_VOLUME_FULL, (int16_t)(((uint16_t)power >> 1) + SOUND_VOLUME_NORMAL));
     SoundCue cue = {CAT_EXPLOSION, explosion_type(t), SOUND_EXPLODE, SOUND_PRIORITY_EXPLODE, volume};
     sndreq_request_with_fallback(cue, SOUND_FALLBACK, ex, ey, SOUND_STEP_END);
-    dungeon_link_thing_to_square(t, g_party.cur_map, ex, ey);
+    dungeon_link_thing_to_square(t, g_current_map.map, ex, ey);
     int16_t delay = type == EXPLOSION_SMOKE      ? SMOKE_DURATION
                     : type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1)
                                                  : 1;
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_party.cur_map),
+    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_current_map.map),
                        .type = EVENT_EXPLOSION};
     e.data[EXPLOSION_EVENT_X] = (uint8_t)ex;
     e.data[EXPLOSION_EVENT_Y] = (uint8_t)ey;
@@ -357,15 +357,15 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     case EXPLOSION_STORM_LIGHTNING:
     case EXPLOSION_STORM_BLAST:
         blast_square(type, power, x, y, cell);
-        if (g_party.cur_map == g_game.party_map)
+        if (g_current_map.map == g_game.party_map)
             g_party.redraw |= PARTY_REDRAW_VIEW;
         break;
     case SPELL_DOOR_TOGGLE:
     case SPELL_DOOR_SET: {
-        uint8_t square = dun_get_square((Location){ex, ey});
+        uint8_t square = dungeon_square_at((Location){ex, ey});
         if (square_type(square) != SQUARE_DOOR || (square & SQUARE_DOOR_STATE) == DOOR_STATE_BROKEN)
             break;
-        uint16_t door = dungeon_square_first_thing(g_party.cur_map, ex, ey);
+        uint16_t door = dungeon_square_first_thing(g_current_map.map, ex, ey);
         power_thing = door;
         if (door_has_button(door))
             sensor_schedule_square_event((Location){ex, ey}, 0, type == SPELL_DOOR_TOGGLE ? EFFECT_TOGGLE : EFFECT_SET,
@@ -485,7 +485,7 @@ static bool hit_wall_sensors(int16_t x, int16_t y, int16_t dir, uint16_t project
     int wall_y = y + g_dir_dy[dir];
     bool done = false;
     int side = dir_opposite(dir);
-    uint16_t first = dungeon_square_first_thing(g_party.cur_map, wall_x, wall_y);
+    uint16_t first = dungeon_square_first_thing(g_current_map.map, wall_x, wall_y);
     uint16_t payload = thing_word(projectile, PROJECTILE_PAYLOAD);
     bool object = thing_type(payload) != THING_EXPLOSION;
     for (uint16_t t = first; t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
@@ -495,7 +495,7 @@ static bool hit_wall_sensors(int16_t x, int16_t y, int16_t dir, uint16_t project
         int to_x = wall_x;
         int to_y = wall_y;
         if (object && !done && sensor_wall_ornament_value(first, t, ORNAMENT_KEY_CATCH) && !rand_2bits()) {
-            dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
+            dungeon_unlink_thing_from_square(projectile, g_current_map.map, x, y);
             projectile = thing_with_cell(projectile, cell);
         } else if (thing_type(t) == THING_SENSOR && object) {
             uint16_t data = sensor_data(t);
@@ -508,15 +508,16 @@ static bool hit_wall_sensors(int16_t x, int16_t y, int16_t dir, uint16_t project
                 sensor_trigger_target(t, sensor_effect(t) == SENSOR_EFFECT_ALWAYS ? 0 : sensor_effect(t), 0);
                 if (done || !sensor_flag(t, SENSOR_STRONG_ONLY))
                     continue;
-                dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
+                dungeon_unlink_thing_from_square(projectile, g_current_map.map, x, y);
                 projectile = thing_with_cell(projectile, side);
             } else if (kind == SENSOR_PROJECTILE_PORTAL && !done &&
                        (data == SENSOR_ANY_THING || data == item_get_index(payload))) {
-                dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
+                dungeon_unlink_thing_from_square(projectile, g_current_map.map, x, y);
                 to_x = sensor_target_x(t);
                 to_y = sensor_target_y(t);
-                int to_cell = square_type(dun_get_square((Location){to_x, to_y})) == SQUARE_WALL ? sensor_target_cell(t)
-                                                                                                 : sensor_effect(t);
+                int to_cell = square_type(dungeon_square_at((Location){to_x, to_y})) == SQUARE_WALL
+                                  ? sensor_target_cell(t)
+                                  : sensor_effect(t);
                 projectile = thing_with_cell(projectile, to_cell);
             } else {
                 continue;
@@ -603,9 +604,9 @@ static bool hit_champion(Hit *h, int16_t cell)
 /* The projectile hits the door at (x, y). True when it stops, false when it flies through. */
 static bool hit_door(Hit *h)
 {
-    uint8_t square = dungeon_square(g_party.cur_map, h->x, h->y);
+    uint8_t square = dungeon_square(g_current_map.map, h->x, h->y);
     int state = square & SQUARE_DOOR_STATE;
-    uint16_t door = dungeon_square_first_thing(g_party.cur_map, h->x, h->y);
+    uint16_t door = dungeon_square_first_thing(g_current_map.map, h->x, h->y);
     if (state != DOOR_STATE_BROKEN && (h->payload == SPELL_DOOR_TOGGLE || h->payload == SPELL_DOOR_SET))
         return true;
     if (state == DOOR_STATE_BROKEN || state <= DOOR_STATE_ONE_FOURTH)
@@ -709,7 +710,7 @@ static bool hit_impact(int impact, Location at, Location stop, int16_t cell, uin
     uint16_t push_strength = 0;
     if (h.explosive || h.potion_bomb || h.payload == SPELL_POISON_BOLT)
         push_strength = hit_explode(&h, fall_x, fall_y, cell);
-    dungeon_unlink_thing_from_square(h.projectile, g_party.cur_map, fall_x, fall_y);
+    dungeon_unlink_thing_from_square(h.projectile, g_current_map.map, fall_x, fall_y);
     projectile_destroy(h.projectile, h.holder, h.stop_x, h.stop_y);
     if (push_strength) {
         int16_t strength = max_int((int16_t)min_int((int16_t)push_strength, SPELL_PUSH_MAX), SPELL_PUSH_MIN);
@@ -754,9 +755,9 @@ static bool reflect_spell(TimelineEvent *e, uint16_t projectile, int16_t x, int1
 /* A creature on the squares ahead of a projectile that flew on to dest notices it. */
 static void alert_creatures_ahead(MoveDest dest)
 {
-    int saved = g_party.cur_map;
-    if (dest.map != g_party.cur_map)
-        dun_set_current_map(dest.map);
+    int saved = g_current_map.map;
+    if (dest.map != g_current_map.map)
+        dungeon_set_current_map(dest.map);
     Location at = {dest.x, dest.y};
     for (int i = 0; i < ALERT_AHEAD_SQUARES; i++) {
         at.x = (int16_t)(at.x + g_dir_dx[dest.dir]);
@@ -766,7 +767,7 @@ static void alert_creatures_ahead(MoveDest dest)
             creature_alert(g, at, ALERT_STARTLED, ALERT_ALWAYS, 0);
         if (i)
             break;
-        uint8_t square = dun_get_square(at);
+        uint8_t square = dungeon_square_at(at);
         int type = square_type(square);
         int state = square & SQUARE_DOOR_STATE;
         if (type == SQUARE_WALL || (type == SQUARE_FAKE_WALL && !(square & SQUARE_FAKE_WALL_OPEN)) ||
@@ -777,7 +778,7 @@ static void alert_creatures_ahead(MoveDest dest)
     g_party.dest_x = at.x;
     g_party.dest_y = at.y;
     if (dest.map != saved)
-        dun_set_current_map(saved);
+        dungeon_set_current_map(saved);
 }
 
 /* The projectile of event e on (*x, *y) flies into the next square in its flight direction: it hits a wall or stairs
@@ -791,13 +792,13 @@ static SquareEntry enter_next_square(TimelineEvent *e, uint16_t projectile, int1
     int16_t from_y = *y;
     *x = (int16_t)(*x + g_dir_dx[dir]);
     *y = (int16_t)(*y + g_dir_dy[dir]);
-    uint8_t square = dun_get_square((Location){*x, *y});
+    uint8_t square = dungeon_square_at((Location){*x, *y});
     int type = square_type(square);
     if ((type == SQUARE_WALL || (type == SQUARE_FAKE_WALL && !(square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FLAG_0))) ||
-         (type == SQUARE_STAIRS && square_type(dungeon_square(g_party.cur_map, from_x, from_y)) == SQUARE_STAIRS)) &&
+         (type == SQUARE_STAIRS && square_type(dungeon_square(g_current_map.map, from_x, from_y)) == SQUARE_STAIRS)) &&
         hit_square(type, from_x, from_y, cell, projectile))
         return ENTRY_STOPPED;
-    for (uint16_t t = dungeon_square_first_object(g_party.cur_map, *x, *y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_object(g_current_map.map, *x, *y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_EXPLOSION || explosion_type(t) != BLAST_MISSILE_WALL)
             continue;
@@ -824,13 +825,13 @@ void projectile_process_event(TimelineEvent *event)
     } else {
         int cell = thing_cell(projectile);
         if (!reflect_spell(&e, projectile, x, y) &&
-            ((dun_on_party_square((Location){x, y}) &&
+            ((dungeon_on_party_square((Location){x, y}) &&
               hit_square(PROJECTILE_HIT_PARTY_SQUARE, x, y, cell, projectile)) ||
              hit_square(PROJECTILE_HIT_CREATURE, x, y, cell, projectile)))
             return;
         int step = position_step(le16(e.data + PROJECTILE_EVENT_POSITION));
         if (projectile_energy(projectile) <= step) {
-            dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
+            dungeon_unlink_thing_from_square(projectile, g_current_map.map, x, y);
             projectile_destroy(projectile, NULL, x, y);
             return;
         }
@@ -854,18 +855,18 @@ void projectile_process_event(TimelineEvent *event)
     int new_cell = cell_across(cell, dir);
     if (leaves) {
         MoveDest dest = move_thing_dest(thing_with_cell(projectile, new_cell), from_x, from_y, x, y).dest;
-        if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_party.cur_map == g_game.party_map)
+        if (thing_word(projectile, PROJECTILE_PAYLOAD) == SPELL_FIREBALL && g_current_map.map == g_game.party_map)
             g_party.redraw |= PARTY_REDRAW_VIEW;
         set_event_dest(&e, dest);
         projectile = thing_with_cell(projectile, dest.cell);
         alert_creatures_ahead(dest);
     } else {
-        if (square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR &&
+        if (square_type(dungeon_square_at((Location){x, y})) == SQUARE_DOOR &&
             hit_square(SQUARE_DOOR, x, y, cell, projectile))
             return;
-        dungeon_unlink_thing_from_square(projectile, g_party.cur_map, x, y);
+        dungeon_unlink_thing_from_square(projectile, g_current_map.map, x, y);
         projectile = thing_with_cell(projectile, new_cell);
-        dungeon_link_thing_to_square(projectile, g_party.cur_map, x, y);
+        dungeon_link_thing_to_square(projectile, g_current_map.map, x, y);
     }
     e.time_map++;
     put_le16(e.data + PROJECTILE_EVENT_THING, projectile);
@@ -928,15 +929,15 @@ void explosion_process_event(TimelineEvent *e)
     int x = e->data[EXPLOSION_EVENT_X];
     int y = e->data[EXPLOSION_EVENT_Y];
     uint16_t t = le16(e->data + EXPLOSION_EVENT_THING);
-    if (square_type(dun_get_square((Location){x, y})) == SQUARE_DOOR) {
-        int16_t attack = (int16_t)explosion_get_attack(t, dungeon_square_first_thing(g_party.cur_map, x, y));
+    if (square_type(dungeon_square_at((Location){x, y})) == SQUARE_DOOR) {
+        int16_t attack = (int16_t)explosion_get_attack(t, dungeon_square_first_thing(g_current_map.map, x, y));
         if (attack)
             sensor_door_try_destroy((Location){x, y}, attack, true, 0);
     }
     int type = explosion_type(t);
     if (type != BLAST_MISSILE_WALL && type != BLAST_FIREBALL && type != BLAST_LIGHTNING) {
         uint16_t attack;
-        if (dun_on_party_square((Location){x, y}) && (attack = (uint16_t)explosion_get_attack(t, THING_NONE)))
+        if (dungeon_on_party_square((Location){x, y}) && (attack = (uint16_t)explosion_get_attack(t, THING_NONE)))
             champ_damage_party(attack, 0, 0);
         uint16_t g = creature_get_group_at((Location){x, y});
         if (g != THING_NONE && !creature_current_step_acts(g) && (attack = (uint16_t)explosion_get_attack(t, g)))
@@ -973,10 +974,10 @@ void explosion_process_event(TimelineEvent *e)
         }
     }
     type = explosion_type(t);
-    if (g_party.cur_map == g_game.party_map &&
+    if (g_current_map.map == g_game.party_map &&
         (type == BLAST_LIGHTNING || type == BLAST_FIREBALL || type == BLAST_STORM_LIGHTNING))
         g_party.redraw |= PARTY_REDRAW_VIEW;
-    dungeon_unlink_thing_from_square(t, g_party.cur_map, x, y);
+    dungeon_unlink_thing_from_square(t, g_current_map.map, x, y);
     thing_set_word(t, THING_NEXT, THING_NONE);
 }
 
@@ -984,7 +985,7 @@ void explosion_process_event(TimelineEvent *e)
 
 void projectile_order_attack_cells(uint8_t order[CELL_COUNT], Location at, Location party_at, int16_t cell)
 {
-    int dir = dun_get_direction_to(at.x, at.y, party_at.x, party_at.y);
+    int dir = dungeon_direction_to(at.x, at.y, party_at.x, party_at.y);
     if ((uint16_t)cell == CELL_ANY) {
         for (int i = 0; i < DIR_COUNT; i++)
             order[i] = attack_cell_orders_random[dir + i];
@@ -1055,7 +1056,7 @@ int projectile_attack_champion(uint16_t group, int16_t champion_index)
     if (!c->health)
         return 0;
     int16_t damage = 0;
-    int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
+    int difficulty = dungeon_map_difficulty(g_current_map.map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     int kind = info->attack_kind;
     uint16_t dexterity = info->dexterity;
@@ -1126,7 +1127,7 @@ void projectile_check_missiles_hit_party(Location from, Location to)
         next[cell] = -1;
     }
     if (to.x >= 0 && steps_between(from.x, from.y, to.x, to.y) == 1) {
-        int dir = dun_get_direction_to(from.x, from.y, to.x, to.y);
+        int dir = dungeon_direction_to(from.x, from.y, to.x, to.y);
         int dir2 = dir_turn(dir, TURN_RIGHT);
         next[dir_turn(dir, TURN_LEFT)] = champs[dir];
         next[dir_turn(dir2, TURN_RIGHT)] = champs[dir2];
@@ -1139,14 +1140,14 @@ void projectile_check_missiles_hit_party(Location from, Location to)
     Location stop = from; /* where a hit projectile falls; the projectiles are on square */
     Location square = from;
     for (;;) {
-        uint16_t t = dungeon_square_first_thing(g_party.cur_map, square.x, square.y);
+        uint16_t t = dungeon_square_first_thing(g_current_map.map, square.x, square.y);
         while (t != THING_ENDOFLIST) {
             if (thing_type(t) == THING_PROJECTILE &&
                 g_timeline.events[thing_word(t, PROJECTILE_EVENT)].type != EVENT_PROJECTILE_MOVE &&
                 champs[thing_cell(t)] >= 0 &&
                 hit_impact(PROJECTILE_HIT_PARTY_SQUARE, from, stop, champs[thing_cell(t)], t)) {
                 projectile_cancel_event(t);
-                t = dungeon_square_first_thing(g_party.cur_map, square.x, square.y);
+                t = dungeon_square_first_thing(g_current_map.map, square.x, square.y);
                 continue;
             }
             t = dungeon_next_thing(t);
@@ -1166,7 +1167,7 @@ void projectile_check_missiles_hit_party(Location from, Location to)
 /* The first object on the square (x, y) in the two cells on side dir, THING_ENDOFLIST for none. */
 static uint16_t launch_object(int16_t x, int16_t y, int16_t dir)
 {
-    uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y);
+    uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y);
     while (t != THING_ENDOFLIST &&
            (thing_type(t) <= THING_SENSOR || (thing_cell(t) != dir && thing_cell(t) != dir_turn(dir, TURN_RIGHT))))
         t = dungeon_next_thing(t);
@@ -1188,13 +1189,13 @@ void projectile_launch_missile(uint16_t sensor, const TimelineEvent *e)
         first = launch_object(x, y, dir);
         if (first == THING_ENDOFLIST)
             return;
-        dungeon_unlink_thing_from_square(first, g_party.cur_map, x, y);
+        dungeon_unlink_thing_from_square(first, g_current_map.map, x, y);
         if (!single) {
             second = launch_object(x, y, dir);
             if (second == THING_ENDOFLIST)
                 single = true;
             else
-                dungeon_unlink_thing_from_square(second, g_party.cur_map, x, y);
+                dungeon_unlink_thing_from_square(second, g_current_map.map, x, y);
         }
     } else if (kind == LAUNCH_SPELL || kind == LAUNCH_SPELLS) {
         first = second;

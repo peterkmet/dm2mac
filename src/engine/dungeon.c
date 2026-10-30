@@ -4,12 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "creature.h"
+#include "discard.h"
 #include "game_text.h"
 #include "gdat.h"
 #include "le.h"
-#include "move.h"
 #include "os.h"
 #include "random.h"
+#include "save.h"
 #include "sensor.h"
 
 /* Sizes of the DUNGEON.DAT sections and limits of the loaded dungeon. */
@@ -27,6 +28,10 @@
 #define MAP_HEIGHT_SHIFT     11
 /* The mask of the map width - 1 after the shift. */
 #define MAP_SIDE_MASK        0x1f
+
+/* The ornament subtypes of the stairs markers. */
+#define TEXT_LINK_FIRST 0x06 /* text kinds 6 and 7: stairs markers */
+#define TEXT_LINK_LAST  0x07
 
 /* Byte offsets of the fields of the DUNGEON.DAT header. */
 #define HEADER_MAP_DATA_SIZE 2
@@ -403,7 +408,7 @@ static bool link_teleporters(uint16_t teleporter, int16_t map, int16_t x, int16_
     int target_map = teleporter_map(teleporter);
     if (target_map >= dun.map_count)
         return true; /* fix: the original uses a map outside the dungeon */
-    dun_set_current_map(target_map);
+    dungeon_set_current_map(target_map);
     uint16_t other = dungeon_square_first_thing(target_map, teleporter_x(teleporter), teleporter_y(teleporter));
     if (other == THING_ENDOFLIST || thing_type(other) != THING_TELEPORTER)
         return true;
@@ -449,10 +454,10 @@ static void prepare_group(uint16_t group, int16_t map, int16_t x, int16_t y)
 /* A SENSOR_DOOR_SWITCH sensor on map copies its state into a flag of the door at its target. */
 static void link_door_flag(uint16_t sensor, int16_t map)
 {
-    dun_set_current_map(map);
+    dungeon_set_current_map(map);
     int tx = sensor_target_x(sensor);
     int ty = sensor_target_y(sensor);
-    if (square_type(dun_get_square((Location){tx, ty})) != SQUARE_DOOR)
+    if (square_type(dungeon_square_at((Location){tx, ty})) != SQUARE_DOOR)
         return;
     uint16_t door = dungeon_square_first_thing(map, tx, ty);
     if (door == THING_ENDOFLIST || thing_type(door) != THING_DOOR) /* fix: the original writes into another thing */
@@ -535,7 +540,7 @@ void dungeon_read_level_table(void)
     for (int map = 0; map < dun.map_count; map++)
         if (dungeon_map_level(map) > last)
             last = dungeon_map_level(map);
-    dun_set_current_map(0);
+    dungeon_set_current_map(0);
     uint16_t t = dungeon_square_first_thing(0, location_x(dun.party_start), location_y(dun.party_start));
     while (t != THING_ENDOFLIST && thing_type(t) != THING_TEXT)
         t = dungeon_next_thing(t);
@@ -831,8 +836,8 @@ Position dungeon_find_level_transfer(Position from, int level_delta, unsigned fl
 {
     Position none = {-1, from.x, from.y};
     bool fall_into = false;
-    dun_set_current_map(from.map);
-    uint8_t square = dun_get_square((Location){from.x, from.y});
+    dungeon_set_current_map(from.map);
+    uint8_t square = dungeon_square_at((Location){from.x, from.y});
     int type = square_type(square);
     if (type == SQUARE_STAIRS) {
         if (!(flags & TRANSFER_STAIRS))
@@ -843,8 +848,7 @@ Position dungeon_find_level_transfer(Position from, int level_delta, unsigned fl
                  !(square & SQUARE_FLAG_0))) {
         if (!(square & SQUARE_LEVEL_LINK) || type == SQUARE_WALL || type == SQUARE_UNKNOWN || type == SQUARE_DOOR)
             return none;
-        if (!(flags & TRANSFER_STAIRS) ||
-            dun_find_adjacent_level_link((Location){from.x, from.y}, level_delta).dir < 0) {
+        if (!(flags & TRANSFER_STAIRS) || dungeon_find_level_link((Location){from.x, from.y}, level_delta).dir < 0) {
             if (!(flags & TRANSFER_FALL_INTO) || level_delta != LEVEL_UP)
                 return none;
             fall_into = true;
@@ -853,11 +857,11 @@ Position dungeon_find_level_transfer(Position from, int level_delta, unsigned fl
     Position found = dungeon_location_on_map(from, level_delta);
     if (found.map >= 0 && fall_into) {
         /* the square above must be an open pit that leads here */
-        dun_set_current_map(found.map);
-        square = dun_get_square((Location){found.x, found.y});
+        dungeon_set_current_map(found.map);
+        square = dungeon_square_at((Location){found.x, found.y});
         if (square_type(square) != SQUARE_PIT || !(square & SQUARE_PIT_OPEN) || square & SQUARE_FLAG_0)
             found.map = -1;
-        dun_set_current_map(from.map);
+        dungeon_set_current_map(from.map);
     }
     return found;
 }
@@ -1023,7 +1027,7 @@ static uint16_t take_unused_thing(int type, bool any_record)
         if (dungeon_next_thing(thing_make(type, i)) == THING_NONE)
             thing = thing_make(type, i);
     if (thing == THING_NONE)
-        thing = dun_get_discarded_thing(type, DISCARD_ANY_KIND);
+        thing = discard_find_thing(type, DISCARD_ANY_KIND);
     if (thing == THING_NONE)
         return THING_NONE;
     memset(dungeon_thing_record(thing), 0, thing_size[type]);
@@ -1041,4 +1045,140 @@ uint16_t dungeon_unused_thing(int type)
 uint16_t dungeon_unused_thing_any_record(int type)
 {
     return take_unused_thing(type, true);
+}
+
+/* ---- The current map ---- */
+
+const int8_t g_dir_dx[DIR_COUNT] = {0, 1, 0, -1};
+const int8_t g_dir_dy[DIR_COUNT] = {-1, 0, 1, 0};
+CurrentMap g_current_map = {.map = CUR_MAP_NONE};
+
+void dungeon_set_current_map(int16_t map)
+{
+    if (map == g_current_map.map || map < 0)
+        return;
+    g_current_map.map = map;
+    if (!g_current_map.alt_view_active || map != g_current_map.alt_view_map) {
+        g_current_map.square_x = (int16_t)g_game.party_x;
+        g_current_map.square_y = (int16_t)g_game.party_y;
+        g_current_map.square_map = (int16_t)g_game.party_map;
+        g_current_map.ref_dir = (int16_t)g_game.party_dir;
+    } else {
+        g_current_map.square_x = g_current_map.alt_view_x;
+        g_current_map.square_y = g_current_map.alt_view_y;
+        g_current_map.square_map = g_current_map.alt_view_map;
+        g_current_map.ref_dir = g_current_map.alt_view_dir;
+    }
+}
+
+void dungeon_set_party_position(Position at)
+{
+    g_game.party_map = (uint16_t)at.map;
+    g_game.party_x = (uint16_t)at.x;
+    g_game.party_y = (uint16_t)at.y;
+    dungeon_set_current_map(at.map);
+}
+
+Location dungeon_move_relative(Location from, int16_t dir, int forward, int right)
+{
+    from.x = (int16_t)(from.x + g_dir_dx[dir] * forward);
+    from.y = (int16_t)(from.y + g_dir_dy[dir] * forward);
+    int side = dir_turn(dir, TURN_RIGHT);
+    from.x = (int16_t)(from.x + g_dir_dx[side] * right);
+    from.y = (int16_t)(from.y + g_dir_dy[side] * right);
+    return from;
+}
+
+int16_t dungeon_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
+{
+    int dx = (int16_t)(x1 - x2);
+    int dy = (int16_t)(y1 - y2);
+    int ax = abs(dx);
+    int ay = abs(dy);
+    if (ax == ay) {
+        if (rand_bit())
+            ax++;
+        else
+            ay++;
+    }
+    if (ax < ay)
+        return dy > 0 ? DIR_NORTH : DIR_SOUTH;
+    return dx > 0 ? DIR_WEST : DIR_EAST;
+}
+
+uint8_t dungeon_square_at(Location at)
+{
+    return dungeon_square_edge(g_current_map.map, at.x, at.y);
+}
+
+bool dungeon_on_party_square(Location at)
+{
+    return g_current_map.map == g_current_map.square_map && at.x == g_current_map.square_x &&
+           at.y == g_current_map.square_y;
+}
+
+bool dungeon_square_blocks_movement(uint8_t square)
+{
+    switch (square_type(square)) {
+    case SQUARE_WALL:
+    case SQUARE_UNKNOWN:
+        return true;
+    case SQUARE_DOOR: {
+        int state = square & SQUARE_DOOR_STATE;
+        return state != DOOR_STATE_OPEN && state != DOOR_STATE_ONE_FOURTH && state != DOOR_STATE_BROKEN;
+    }
+    case SQUARE_FAKE_WALL:
+        return !(square & SQUARE_FAKE_WALL_OPEN) && !(square & SQUARE_FLAG_0);
+    default:
+        return false;
+    }
+}
+
+int16_t dungeon_stairs_exit_direction(Location at)
+{
+    bool along_y = !(dungeon_square_at(at) & SQUARE_STAIRS_ALONG_X);
+    int probe = along_y ? DIR_EAST : DIR_NORTH;
+    int type = square_type(
+        dungeon_square_at((Location){(int16_t)(at.x + g_dir_dx[probe]), (int16_t)(at.y + g_dir_dy[probe])}));
+    return type == SQUARE_WALL || type == SQUARE_STAIRS ? dir_opposite(probe) : probe;
+}
+
+bool dungeon_linked_teleporter_dest(PassageEnd *end, Location at)
+{
+    TeleporterLink link;
+    if (!dungeon_teleporter_link(g_current_map.map, at.x, at.y, &link))
+        return false;
+    *end = (PassageEnd){link.side, link.target_side, link.x, link.y, link.map};
+    return true;
+}
+
+LevelLink dungeon_find_level_link(Location at, int level_delta)
+{
+    for (int d = 0; d < DIR_COUNT; d++) {
+        int16_t sx = (int16_t)(at.x + g_dir_dx[d]);
+        int16_t sy = (int16_t)(at.y + g_dir_dy[d]);
+        for (uint16_t t = dungeon_square_first_thing(g_current_map.map, sx, sy); t != THING_ENDOFLIST;
+             t = dungeon_next_thing(t)) {
+            int type = thing_type(t);
+            if (type > THING_SENSOR)
+                break;
+            if (type == THING_SENSOR) {
+                if (sensor_type(t) == SENSOR_LEVEL_LINK &&
+                    level_delta == (dungeon_map_level(sensor_data(t)) & MAP_LEVEL_MASK) -
+                                       (dungeon_map_level(g_current_map.map) & MAP_LEVEL_MASK)) {
+                    return (LevelLink){(int16_t)d, t};
+                }
+            } else if (type == THING_TEXT && textrec_kind(t) == TEXT_KIND_ORNAMENT) {
+                int kind = textrec_subtype(t);
+                if (kind < TEXT_LINK_FIRST || kind > TEXT_LINK_LAST)
+                    continue;
+                int16_t up = (int16_t)gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, textrec_value(t),
+                                                       GDAT_TYPE_VALUE, ORNAMENT_KEY_UP);
+                if ((level_delta == LEVEL_UP && up) || (level_delta == LEVEL_DOWN && !up)) {
+                    return (LevelLink){(int16_t)d, THING_NONE};
+                }
+            }
+        }
+    }
+    return (LevelLink){-1, THING_NONE};
 }

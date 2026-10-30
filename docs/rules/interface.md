@@ -57,7 +57,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
   - The hand icons of the action area draw without the shadow remap if its GDAT item `(1, 0, 7, 1)` is shorter than 256 bytes (a damaged GRAPHICS.DAT; `make_hand_icon` in `src/ui/action_area.c`). The original reads past it.
 - Kept quirks of the original:
   - The action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`).
-  - The minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again.
+  - The minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dungeon_set_current_map`, which also sets `g_current_map.square_x`, `square_y`, `square_map`, and `ref_dir` again.
   - `offscreen_draw_ctx` adds the clipped part of a picture to its size, not to its position, and `offscreen_draw_text_at` marks the changed rectangle from the base line down (`src/ui/ui.c`).
   - A gauge bar scales the 16-bit difference of the value and the low end (`show_gauge_bar` in `src/ui/ui.c`, `ui_draw_gauge_bar`).
   - A wall square of the minion map also shows the wall ornaments and the things of the first other map of the level that has a wall on the same square; the search leaves the square on that map, and `show_square` (`src/ui/minion_map.c`) switches the current map to it and back.

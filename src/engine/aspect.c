@@ -6,7 +6,6 @@
 #include "dungeon.h"
 #include "gdat.h"
 #include "ids.h"
-#include "move.h"
 #include "save.h"
 #include "sensor.h"
 

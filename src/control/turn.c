@@ -382,7 +382,7 @@ static const char *displacement(void)
 {
     Location to = {turn.x, turn.y};
     if (turn.moving)
-        to = dun_move_relative(to, turn.dir, turn.step_forward, turn.step_right);
+        to = dungeon_move_relative(to, turn.dir, turn.step_forward, turn.step_right);
     bool stayed = g_game.party_x == turn.x && g_game.party_y == turn.y;
     if (g_game.party_map != turn.map || (!stayed && (g_game.party_x != to.x || g_game.party_y != to.y)))
         return "moved";
