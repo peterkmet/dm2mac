@@ -110,43 +110,9 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 
-## Call graph between subsystems
+## Hub functions
 
-Each cell counts distinct caller-callee function pairs across two subsystems, computed from the calls in `reference/decomp/SKULL.c`. Calls inside one subsystem are not counted.
-
-| Caller | Callees (pair count) |
-|---|---|
-| main loop | input 16, graphics 10, runtime library 7, memory 7, interface 7, creatures 7, file I/O 6, text 5, sound 5, dungeon data 5, champions 5, save and load 2, palette 2, inventory 2, end of game 2, dungeon view 2, weather 1, timeline 1, start menu 1, music 1, items 1, Skullkeep machines 1 |
-| start menu | input 9, graphics 9, memory 2, interface 1, file I/O 1 |
-| end of game | input 7, graphics 5, sound 2, save and load 2, main loop 2, interface 2, runtime library 1, file I/O 1 |
-| save and load | interface 23, dungeon data 18, file I/O 16, runtime library 12, input 9, text 7, memory 7, graphics 7, timeline 4, creatures 4, palette 2, money and shops 2, minions 2, end of game 2, items 1, inventory 1, champions 1, Skullkeep machines 1 |
-| input | interface 28, champions 17, runtime library 10, graphics 8, text 7, memory 5, magic 3, inventory 3, dungeon view 2, dungeon data 2, start menu 1, save and load 1, palette 1, music 1, money and shops 1, minions 1, end of game 1, creatures 1 |
-| timeline | Skullkeep machines 29, dungeon data 26, creatures 11, champions 6, runtime library 5, sound 4, items 3, text 2, projectiles 2, main loop 2, graphics 2, weather 1, memory 1, magic 1, input 1, end of game 1, day and night 1 |
-| Skullkeep machines | dungeon data 61, items 13, timeline 10, creatures 10, runtime library 8, sound 6, graphics 5, champions 5, text 3, memory 2, inventory 2, projectiles 1, money and shops 1, input 1 |
-| creatures | dungeon data 197, runtime library 120, graphics 29, champions 25, sound 10, projectiles 10, memory 9, money and shops 8, items 8, timeline 6, Skullkeep machines 4, dungeon view 2, day and night 2, main loop 1, inventory 1 |
-| minions | dungeon data 13, creatures 3, interface 2 |
-| projectiles | dungeon data 56, creatures 23, runtime library 22, champions 6, timeline 5, sound 4, items 4, Skullkeep machines 3 |
-| magic | runtime library 9, dungeon data 9, timeline 5, champions 5, interface 4, inventory 3, projectiles 2, input 2, graphics 2, sound 1, items 1, day and night 1, creatures 1 |
-| champions | dungeon data 57, runtime library 56, input 32, creatures 21, inventory 19, items 17, interface 15, text 12, graphics 12, timeline 6, sound 5, minions 5, magic 5, projectiles 4, memory 4, money and shops 1, main loop 1, dungeon view 1, Skullkeep machines 1 |
-| inventory | items 20, graphics 19, dungeon data 18, interface 17, input 15, text 11, runtime library 8, champions 4, palette 3, money and shops 2, Skullkeep machines 2, timeline 1, sound 1, memory 1, dungeon view 1, day and night 1 |
-| items | dungeon data 29, runtime library 6, text 3, inventory 3, graphics 3, money and shops 2, memory 2, main loop 1, day and night 1, champions 1, Skullkeep machines 1 |
-| money and shops | dungeon data 29, items 19, runtime library 15, graphics 14, creatures 10, interface 6, text 4, memory 4, dungeon view 3, inventory 2, palette 1, main loop 1, champions 1 |
-| dungeon data | creatures 20, runtime library 18, graphics 18, champions 8, items 6, sound 4, projectiles 4, text 3, main loop 3, timeline 2, memory 2, file I/O 2, Skullkeep machines 2, weather 1, save and load 1, interface 1, dungeon view 1 |
-| dungeon view | graphics 80, dungeon data 51, creatures 25, runtime library 22, interface 11, palette 8, input 7, text 4, memory 4, inventory 4, weather 3, sound 3, money and shops 3, items 3, Skullkeep machines 3, timeline 1, outdoor view 1, champions 1 |
-| outdoor view | text 3, dungeon view 3, runtime library 2, graphics 2 |
-| weather | graphics 18, runtime library 10, dungeon data 7, interface 3, dungeon view 3, text 2, sound 2, creatures 2, timeline 1, projectiles 1, day and night 1, Skullkeep machines 1 |
-| day and night | runtime library 5, dungeon data 4, items 3, graphics 2, creatures 1 |
-| interface | graphics 104, text 26, dungeon data 21, runtime library 19, input 18, inventory 10, memory 9, champions 9, palette 7, items 7, creatures 5, minions 3, money and shops 2, sound 1, dungeon view 1 |
-| text | graphics 15, runtime library 14, interface 10, input 6, memory 4, main loop 1, dungeon data 1 |
-| graphics | runtime library 20, memory 20, interface 13, file I/O 8, sound 6, main loop 4, input 4, palette 3, dungeon data 2, creatures 2, weather 1, save and load 1, music 1, money and shops 1 |
-| palette | graphics 11, runtime library 4, memory 1 |
-| sound | memory 42, file I/O 31, runtime library 15, music 13, graphics 5, timeline 1, creatures 1 |
-| music | sound 28, runtime library 10, memory 7, graphics 5, file I/O 5 |
-| file I/O | runtime library 26, memory 3, main loop 2, text 1 |
-| memory | runtime library 4, main loop 3, interface 3, graphics 1, end of game 1 |
-| runtime library | file I/O 3, memory 2, main loop 1 |
-
-Hub functions (most callers): `dun_get_thing_data` 161, `dun_get_next_thing` 86, `gdat_entry_index` 66, `mem_copy` 59, `creature_get_group_at` 47, `rand_below` 46, `dun_get_thing_gdat_index` 44, `math_max16` 42, `dun_get_square_first_thing` 42, `dun_set_current_map` 40, `mem_alloc` 39, `timeline_add_event` 37, `zone_get_rect` 35, `dun_get_square` 35, `move_thing` 31.
+Functions with the most callers: `dun_get_thing_data` 161, `dun_get_next_thing` 86, `gdat_entry_index` 66, `mem_copy` 59, `creature_get_group_at` 47, `rand_below` 46, `dun_get_thing_gdat_index` 44, `math_max16` 42, `dun_get_square_first_thing` 42, `dun_set_current_map` 40, `mem_alloc` 39, `timeline_add_event` 37, `zone_get_rect` 35, `dun_get_square` 35, `move_thing` 31.
 
 ## Key data structures
 
@@ -321,59 +287,9 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 | Skullkeep machines | `0x4bbe4`-`0x4cdcc`, `0x56b39`-`0x59785` | No separate machine code. Machines are sensor networks: relays, timers, counters, global flags, object transfer, missile launchers, creature generators, end-game sensor. |
 | Creature pushing | `creature_push_creature`, `creature_push_group`, input mode 6 | Party strength against creature info `+0x1d`. |
 
-## Symbol merge decisions
-
-Two ranges gave different names for the same global. The merge keeps the name from the range that holds the writer, or the more specific name:
-
-| Address | Kept | Dropped |
-|---|---|---|
-| `0x71706`, `0x71708` | `g_viewport_width`, `g_viewport_height` | `g_screen_width`, `g_screen_height` |
-| `0x717bc` | `g_dialog_screen_mode` | `g_game_over_input_state` |
-| `0x7507a` | `g_creature_class_flags` | `g_ai_behavior_flags` |
-| `0x7f1a4` | `g_missile_from_sensor` | `g_projectile_slow_event` |
-| `0x7f23c` | `g_game_completed` | `g_game_won` |
-| `0x7f258` | `g_party_move_steps` | `g_walk_anim_step` |
-| `0x7f25c`, `0x7f25e`, `0x7f272` | `g_alt_view_x`, `g_alt_view_y`, `g_alt_view_dir` | `g_arrival_x`, `g_arrival_y`, `g_arrival_dir` |
-| `0x7f27a`-`0x7f27e` | `g_party_square_y`, `_x`, `_map` | `g_ref_y`, `g_ref_x`, `g_ref_map` |
-| `0x7f38c` | `g_view_redraw_flags` | `g_map_update_flags` |
-| `0x7f390` | `g_coin_item_types` | `g_coin_item_indices` |
-| `0x7f564`-`0x7f580` | `g_ai_group_x`, `_y`, `_map`, `g_ai_command_result`, `g_ai_class` | `g_ai_x`, `g_ai_y`, `g_ai_map`, `g_ai_cmd_result`, `g_ai_behavior` |
-| `0x7f894` | `g_ai_scratch` | `g_item_filter_pool` |
-| `0x7f8d0`-`0x7f8d4` | `g_ai_target_y`, `_map`, `_x` | `g_ai_party_y`, `_map`, `_x` |
-| `0x7ffec` | `g_magic_light` | `g_spell_light` |
-| `0x80410` | `g_message_scroll_bitmap` | `g_message_line_bitmap` |
-| `0x80414` | `g_font_bitmap` | `g_message_font` |
-| `0x80484` | `g_iop_input_info` | `g_iop_cursor_buffer` |
-| `0x761a0` | `g_heap_segment_list` | `g_heap_free_list` |
-| `0x7720c`, `0x77210` | `g_hmi_pit_enabled`, `g_hmi_use_dpmi_vectors` | `g_hmi_timer_irq_protect`, `g_hmi_timer_flag_2` |
-| `0x77d43` | `g_hmi_timer_current_song` | `g_hmi_current_song` |
-| `0x77e43`, `0x7c24e` | `g_hmi_driver_file_path`, `g_hmi_midi_driver_path` | `g_hmi_detect_path`, `g_hmi_midi_path` |
-| `0x782a0`, `0x79188`, `0x79330`, `0x79370` | `g_hmi_midi_driver_active`, `g_hmi_midi_driver_call_table`, `g_hmi_midi_song_playing`, `g_hmi_midi_song_data` | `g_hmi_midi_driver_loaded`, `g_hmi_midi_function_tables`, `g_hmi_song_active`, `g_hmi_song_structs` |
-
-Renamed because one name was used at two addresses, or because the anchor was wrong:
-
-| Address | Name | Reason |
-|---|---|---|
-| `0x7f8a0`, `0x7f8a2` | `g_ai_dest_y`, `g_ai_dest_x` | `g_ai_target_*` is kept for `0x7f8d0`-`0x7f8d4` |
-| `0x77aa3` | `g_hmi_digi_driver_info` | `g_hmi_digi_driver_table` is kept for `0x777a8` |
-| `0x80428`, `0x8042a` | `g_timeline_event_max`, `g_timeline_event_count` | The anchor names were swapped |
-| `0x139e4` | `shift_message_area` | Takes no rectangle; `screen_present_rect` is `0x13a87` |
-| `0x3ec2b` | `gdat_get_image` | Returns the decoded image, not an index |
-
-Function names had no clashes.
-
 ## Low-confidence names
 
-The role is known from the code. The game meaning or the exact arguments are not confirmed.
-
-- `0x10000`-`0x18e7f`: `disk_query_drive_info`, `disk_get_drive_path`, `disk_prompt_stub`, `input_stub_return_zero`, `mouse_capture_begin`, `mouse_capture_end`, `iop_input_lock`, `iop_input_unlock`, `game_global_var`, `game_modify_global_var`, `item_get_image_kind`, `creature_get_cell_mask`, `money_get_coin_type_for_slot`, `melee_attack_group`, `fill_rect_dithered`, `system_init_stub`.
-- `0x18e7f`-`0x1fef6`: `aspect_cell_to_xy`, `zone_id_for_view_cell`, `element_zone`, `gfx_offscreen_fill_rect_alt`, `gfx_offscreen_draw_text_in_zone_alt`, `dun_find_adjacent_level_link`, `dun_get_teleporter_link_side`, `dun_get_linked_teleporter_dest`, `dun_find_open_teleporter_link`, `system_debug_hook`, `item_get_attr_3`, `creature_get_info_for_group`, `creature_get_info_word_1e`, `creature_get_info_word_20`, `creature_get_info_byte_1d`, `creature_get_gdat_attr4`, `item_is_minion_map`, `minion_map_set_location`, `item_find_link_projectile`, `dun_get_wall_ornament_attr_0a`, `sensor_is_alcove_shown`, `dun_get_wall_thing_ornament_attr_13`, `dun_get_thing_ornament_attr_0b`, `dun_get_thing_ornament_attr_0c`, `dun_get_door_attr_0d`, `dun_get_door_attr_10`, `dun_get_door_attr_0e`, `dun_get_door_attr_0f`, `dun_get_door_attr_11`.
-- `0x1fef6`-`0x2b96a`: `input_cond_flag_7f0b4`, `input_cond_value_757b8`, `input_cond_dialog_kind`, `input_cond_action_panel_kind`, `input_cond_action_champion_mask`, `input_cond_action_panel_variant`, `input_cond_no_action_champion_in_cell`, `click_front_wall`, `view_click_drop_done`, `is_side_blocked`, `creature_alert`, `schedule_loop_start`, `schedule_loop_end`, `creature_ai_scan_idle`, `creature_ai_scan_kind0`, `creature_ai_scan_items_seen_2`, `creature_ai_scan_items_seen_4`, `creature_ai_scan_item_counts_1`, `creature_ai_scan_item_counts_3`, `creature_ai_scan_carried_items_2`, `creature_ai_scan_carried_items_4`, `creature_ai_scan_path_kind13`, `creature_ai_scan_path_kind5`, `creature_ai_scan_carried_kind_f`, `creature_ai_scan_carried_kind_10`, `creature_ai_scan_by_condition_15`, `creature_ai_cmd_follow_candidate_path`, `creature_ai_cmd_shoot_random`, `creature_ai_cmd_seek_item`, `ai_cmd_seek_with_carried`, `ai_cmd_front_group_carries`, `creature_ai_cmd_place_item_on_sensor`, `creature_ai_cmd_drop_then_seek`, `creature_ai_cmd_set_mood_flag`, `creature_ai_cmd_seek_kind11_targets`, `creature_ai_cmd_consume_carried_item`, `creature_ai_cmd_check_transform_marker`, `creature_ai_cmd_set_special_action`, `creature_ai_cmd_path_to_target_alt`, `creature_ai_act_trigger_square`, `creature_ai_act_explode_or_spawn`, `creature_ai_act_cloud_explosion`, `shop_cmd_wait_for_offer`, `shop_cmd_count_payment`, `dun_set_pit_teleporter_state`.
-- `0x2b96a`-`0x3ba23`: `creature_thing_matches_filter9`, `creature_group_in_state5`, `creature_group_check_pass_flag`, `creature_group_current_frame_flag`, `creature_group_check_field8`, `creature_roll_armor_factor`, `ai_find_marker`, `ai_find_marker_by_id`, `ai_find_target_in_lines`, `ai_projectile_incoming`, `ai_wall_actuator_accepts`, `ai_find_wall_actuator`, `is_near_party_front`, `dun_mark_square_bit1`, `dun_merge_object_lists`, `dungeon_read_level_table`, `inv_draw_mouth_picture`, `inv_leader_hand_removed_stub`, `input_hold_right_button`, `zone_compute_icon_rect`, `zone_get_icon_rect`.
-- `0x3ba23`-`0x49ef8`: `champ_find_hand_source_slot`, `throw_fatigue`, `gdat_index_last_type`, `gdat_get_image_offset`, `image_decode_8bpp`.
-- `0x49ef8`-`0x5a87c`: `update_carried_missiles`, `projectile_check_missiles_hit_party`, `aspect_creature_cell`, `dun_map_gfx_flag20_clear`, `copy_mirrored`, `view_draw_wet_image`, `show_sparkle_field`, `view_offset_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `show_stairs_side`, `show_stairs_front`, `show_ceiling_pit`, `show_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `schedule_timer`, `run_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker`.
-- `0x5a87c`-`0x62272`: `hmi_timer_isr_entry`, `hmi_midi_register_branch_callback`, `hmi_midi_register_loop_callback`.
-- `0x62272`-`0x695ac`: 80 HMI driver stub, voice queue, and static MIDI driver names (`hmi_drv_call_fn*`, `hmi_mdrv_a003_*`, `hmi_mdrv_a005_*`, `hmi_mdrv_a007_*`, `hmi_voice_queue_*`, and others). The port does not use this code.
+221 function names have low confidence: the role is known from the code, but the game meaning or the exact arguments are not confirmed. 80 of them are HMI driver stub, voice queue, and static MIDI driver names in `0x62272`-`0x695ac`, code that the port does not use. The per-range notes in `docs/reference/symbols/` discuss them; `docs/reference/skull-symbols.csv` gives their signatures.
 
 Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_physical_address`, `hmi_load_digi_driver_file`, and `hmi_load_midi_driver_file` have incomplete signatures.
 

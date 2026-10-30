@@ -89,11 +89,11 @@ The port keeps its name in each case. The reason is in the last column.
 | `0x7ef34` | `g_prepared_samples` | `g_hilite_list` | Follows `0x104ea`. |
 | `0x7f07c` | `g_palette_set_result` | `g_mouse_absent` | Follows `0x13898`. |
 | `0x7f0ae` | `g_mouse_buttons` | `g_cursor_q_h` | reDM2 read the `IBMIOP` handler: the third word is "cursor height". The game tests bit 1 of it for the right button. Needs a DOSBox check. |
-| `0x7f258` | `g_party_move_steps` | `g_ui_effect_count` | The symbol merge chose between two names of the port ([skull-map.md](skull-map.md#symbol-merge-decisions)). The reDM2 name is a third reading. Not checked in depth. |
+| `0x7f258` | `g_party_move_steps` | `g_ui_effect_count` | An earlier port draft named it `g_walk_anim_step`. The reDM2 name is a third reading. Not checked in depth. |
 | `0x7f280` | `g_new_game` | `g_rec12_relink_7f280` | Commands `0xd7`/`0xd8` set it, `0xd9` clears it. |
 | `0x7f3c0` | `g_cur_map_extra_data` | `g_creature_list` | Not checked in depth. |
 | `0x7f54e`-`0x7f570`, `0x7f670`, `0x7f7e6`, `0x7f892`, `0x7f894` (11 globals) | `g_ai_*`, `g_item_filter_free` | `g_sound_*`, `g_snd_*`, `g_overlay_*`, `g_occ_*` | Same cause as the creature AI functions. |
-| `0x7f8d0`-`0x7f8d6` | `g_ai_target_y`, `_map`, `_x`, `_dir` | `g_view_y_save`, ... | reDM2: saved view position in `map_switch_save_view` (`ai_set_map` in the port). The symbol merge dropped `g_ai_party_*` for these ([skull-map.md](skull-map.md#symbol-merge-decisions)). The reDM2 reading supports "party position saved". Not checked. |
+| `0x7f8d0`-`0x7f8d6` | `g_ai_target_y`, `_map`, `_x`, `_dir` | `g_view_y_save`, ... | reDM2: saved view position in `map_switch_save_view` (`ai_set_map` in the port). An earlier port draft named them `g_ai_party_*`. The reDM2 reading supports "party position saved". Not checked. |
 | `0x7fad0` | `g_song_buffer_size` | `g_gfx_max_size_7fad0` | `gdat_find_max_song_size` scans type 3 items. `sound_alloc_buffers` uses the value for `g_song_buffer`. |
 | `0x7fbce` | `g_leader_hand_weight` | `g_champ_bonus_7fbce` | Not checked in depth. |
 | `0x7fff0` | `g_party_haste` | `g_stat_boost_shift` | The main loop decrements it. Spells add to it. When it is not 0, the action delay is shifted right by 2. |
