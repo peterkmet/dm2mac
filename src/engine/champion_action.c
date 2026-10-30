@@ -22,16 +22,44 @@
 #include "sound_request.h"
 #include "weather.h"
 
+/* Action commands (FIELD_COMMAND of an action text). */
+#define COMMAND_INVISIBILITY     0x02
+#define COMMAND_SPELL_PROJECTILE 0x03
+#define COMMAND_MELEE            0x04
+#define COMMAND_FRIGHTEN         0x05
+#define COMMAND_LIGHT            0x06
+#define COMMAND_EXPLOSION        0x07
+#define COMMAND_MELEE_2          0x08
+#define COMMAND_HASTE            0x09
+#define COMMAND_LEVITATE_DOWN    0x0a
+#define COMMAND_ACTION_EFFECT    0x0b
+#define COMMAND_AURA_FIRST       0x0c
+#define COMMAND_AURA_2           0x0d
+#define COMMAND_AURA_3           0x0e
+#define COMMAND_AURA_LAST        0x0f
+#define COMMAND_CONSUME          0x10
+#define COMMAND_SHOOT            0x20
+#define COMMAND_SHIELD_FIRST     0x21
+#define COMMAND_SHIELD_2         0x22
+#define COMMAND_SHIELD_LAST      0x23
+#define COMMAND_HEAL             0x24
+#define COMMAND_LIGHT_2          0x26
+#define COMMAND_LIGHT_3          0x27
+#define COMMAND_THROW            0x2a
+#define COMMAND_SUMMON_FIRST     0x31
+#define COMMAND_SUMMON_2         0x32
+#define COMMAND_SUMMON_LAST      0x33
+#define COMMAND_WARP             0x36
 /* The charges that CHARGES_USE_ALL takes. */
-#define ALL_CHARGES            0x000f
+#define ALL_CHARGES              0x000f
 /* The alerts of a fear and of a melee hit. */
-#define FRIGHTEN_ALERT_FLAGS   (ALERT_LOUD | ALERT_MOOD_BORED)
-#define MELEE_ALERT_FLAGS      (ALERT_ANGER | ALERT_LOUD | ALERT_MOOD_ANGRY)
+#define FRIGHTEN_ALERT_FLAGS     (ALERT_LOUD | ALERT_MOOD_BORED)
+#define MELEE_ALERT_FLAGS        (ALERT_ANGER | ALERT_LOUD | ALERT_MOOD_ANGRY)
 /* The redraw of a level gain: the titles, the load, and the bars. */
-#define REDRAW_LEVEL           (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
-#define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
+#define REDRAW_LEVEL             (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
+#define MELEE_ATTACK_PIERCES     0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
 /* The random masks of the hit rolls and the throw. */
-#define MELEE_WEAK_RANDOM      0x0f /* the random part of the rest of a weak hit */
+#define MELEE_WEAK_RANDOM        0x0f /* the random part of the rest of a weak hit */
 #define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
 #define THROW_ATTACK_RANDOM    0x1f /* the random part of the attack of a throw */
 #define MELEE_CRITICAL_ROLL    0x3f /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
