@@ -33,20 +33,19 @@ languages) do not work.
 On first startup the game checks your files and copies the 10 files it needs into `game/`. If a file is missing
 or wrong, a message names it. Your saved games go to `game/DATA`.
 
-## Keys
+## Modes
 
-The game starts with a choice of two modes: **vanilla** (the original game) and **advanced** (the original game with
-an automap, an options menu, cheats, and these keys):
+On startup you choose how to play:
 
-| Key | Action |
-|---|---|
-| `W` `A` `S` `D`, `Q` `E` | Move, turn |
-| `Tab` or `M` | Automap |
-| `Esc` | Options menu (window upscale filter) |
-| `C` | Cheat screen |
-| `F5`, `F9` | Quick save, quick load |
+- **Vanilla**: the original game, unchanged.
+- **Advanced** (the default): the original game with a few additions:
+  - movement with `W` `A` `S` `D` and turns with `Q` `E`;
+  - an automap of the squares you have seen (`Tab` or `M`);
+  - quick save and quick load (`F5`, `F9`);
+  - a cheat screen with six cheats and a list of all spells (`C`);
+  - a pixel-art filter for the window, in the options menu (`Esc`).
 
-The mouse and arrow keys work as in the original. All controls, options, and cheats are in the
+In both modes the mouse and the arrow keys work as in the original game. All controls and cheats are in the
 [Player manual](docs/manual.md).
 
 ## For developers
