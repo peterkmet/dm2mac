@@ -165,3 +165,4 @@ Game rules:
 - [Champions, inventory, items, money, and shops](rules/champions.md)
 - [Creatures, projectiles, magic, and minions](rules/creatures.md)
 - [Weather, day and night, light, and Skullkeep machines](rules/world.md)
+- [Advanced mode](rules/advanced-mode.md)
