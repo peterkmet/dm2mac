@@ -178,10 +178,10 @@ static int16_t far_party_distance(int16_t x, int16_t y, int16_t map, bool double
 {
     int16_t tm = g_ai_party.map;
     /* the casts wrap the dungeon positions to 16 bits, as in the original */
-    return (int16_t)(ai_axis_distance((int16_t)(dungeon_map_offset_x(map) + x),
-                                      (int16_t)(dungeon_map_offset_y(map) + y),
-                                      (int16_t)(dungeon_map_offset_x(tm) + g_ai_party.x),
-                                      (int16_t)(dungeon_map_offset_y(tm) + g_ai_party.y))
+    return (int16_t)(ai_manhattan(
+                         (Location){(int16_t)(dungeon_map_offset_x(map) + x), (int16_t)(dungeon_map_offset_y(map) + y)},
+                         (Location){(int16_t)(dungeon_map_offset_x(tm) + g_ai_party.x),
+                                    (int16_t)(dungeon_map_offset_y(tm) + g_ai_party.y)})
                      << doubled);
 }
 
@@ -195,8 +195,9 @@ static void hide_party_target(AiCandidate *c)
         if (!dark)
             return;
     }
-    int16_t dist = g_ai.map == g_ai_party.map ? ai_axis_distance(ai_own_x(), ai_own_y(), g_ai_party.x, g_ai_party.y)
-                                              : far_party_distance(ai_own_x(), ai_own_y(), g_ai.map, false);
+    int16_t dist = g_ai.map == g_ai_party.map
+                       ? ai_manhattan((Location){ai_own_x(), ai_own_y()}, (Location){g_ai_party.x, g_ai_party.y})
+                       : far_party_distance(ai_own_x(), ai_own_y(), g_ai.map, false);
     uint32_t r = rand_next();
     if (!(r & ROLL_CHECK_ADJACENT)) {
         if (dist == 0)
@@ -240,7 +241,7 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
         break;
     case TARGET_FLEE: {
         int16_t d = g_current_map.map == g_ai_party.map
-                        ? ai_axis_distance(ai_own_x(), ai_own_y(), g_ai_party.x, g_ai_party.y)
+                        ? ai_manhattan((Location){ai_own_x(), ai_own_y()}, (Location){g_ai_party.x, g_ai_party.y})
                         : SEARCH_FAR;
         m[MARK_BEST] = (int8_t)max_int(d, (int16_t)c->item);
         break;
@@ -253,9 +254,10 @@ static void setup_target_kind(Search *s, AiCandidate *c, int8_t *m, uint8_t flag
         s->saved_attack = g_ai.attack_flags;
         break;
     case TARGET_NEAR_MARKER:
-        m[MARK_BEST] = (int8_t)(m[MARK_MAP] == g_current_map.map
-                                    ? max_int(1, ai_axis_distance(ai_own_x(), ai_own_y(), m[MARK_X], m[MARK_Y]))
-                                    : SEARCH_FAR);
+        m[MARK_BEST] =
+            (int8_t)(m[MARK_MAP] == g_current_map.map ? max_int(1, ai_manhattan((Location){ai_own_x(), ai_own_y()},
+                                                                                (Location){m[MARK_X], m[MARK_Y]}))
+                                                      : SEARCH_FAR);
         break;
     case TARGET_LIGHT:
         g_ai.move_flags = MOVE_FLAGS_LIGHT;
@@ -362,7 +364,7 @@ static bool entered_party_view(const AiCandidate *c, int16_t x, int16_t y)
         return d > 0 && d <= (int16_t)c->mask;
     }
     if (c->item == VIEW_AT_DISTANCE) {
-        if (ai_axis_distance(x, y, g_ai_party.x, g_ai_party.y) != (int16_t)c->mask)
+        if (ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) != (int16_t)c->mask)
             return false;
         if (x != g_ai_party.x && y != g_ai_party.y)
             return true;
@@ -382,7 +384,7 @@ static bool entered_flee(Search *s, const AiCandidate *c, int8_t *m, bool on_par
         return false;
     int16_t d;
     if (on_party_map) {
-        d = ai_axis_distance(x, y, g_ai_party.x, g_ai_party.y);
+        d = ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y});
     } else {
         bool other_level = dungeon_map_level(s->check_map) != dungeon_map_level(g_ai_party.map);
         d = far_party_distance(x, y, s->check_map, other_level);
@@ -408,11 +410,12 @@ static bool candidate_attack(const Search *s, const AiCandidate *c, int mode, Lo
 /* The near marker target on an entered square: nearer to the marked square than the best square yet. */
 static bool entered_near_marker(Search *s, AiCandidate *c, int8_t *m, int16_t x, int16_t y)
 {
-    int16_t d = m[MARK_MAP] == s->check_map ? ai_axis_distance(x, y, m[MARK_X], m[MARK_Y]) : m[MARK_BEST];
+    int16_t d =
+        m[MARK_MAP] == s->check_map ? ai_manhattan((Location){x, y}, (Location){m[MARK_X], m[MARK_Y]}) : m[MARK_BEST];
     if (m[MARK_BEST] <= d) {
         if (m[MARK_MAP] != s->passage_map)
             return false;
-        d = ai_axis_distance(s->passage_x, s->passage_y, m[MARK_X], m[MARK_Y]);
+        d = ai_manhattan((Location){s->passage_x, s->passage_y}, (Location){m[MARK_X], m[MARK_Y]});
         if (d >= m[MARK_BEST])
             return false;
     }
@@ -466,7 +469,8 @@ static bool test_entered(Search *s, int i)
     case TARGET_ACTIVATION:
         return at_place(s, s->act_x, s->act_y, s->act_map);
     case TARGET_PARTY_RANGE_2:
-        return on_party_map && ai_axis_distance(x, y, g_ai_party.x, g_ai_party.y) == PARTY_RANGE_DISTANCE;
+        return on_party_map &&
+               ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) == PARTY_RANGE_DISTANCE;
     case TARGET_FLEE:
         return entered_flee(s, c, m, on_party_map);
     case TARGET_SHOOT_PARTY:
@@ -594,7 +598,8 @@ static bool blocked_door(Search *s, const AiCandidate *c, int16_t x, int16_t y)
     if (!ai_try_door_action(packed_test((uint8_t)c->mask), ai_location(s->from_x, s->from_y), ai_location(x, y), s->dir)
              .passed)
         return false;
-    if (c->item == DOOR_TARGET_NEXT_TO_PARTY && ai_axis_distance(x, y, g_ai_party.x, g_ai_party.y) != 1)
+    if (c->item == DOOR_TARGET_NEXT_TO_PARTY &&
+        ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) != 1)
         return false;
     ai_cache_square((Location){x, y});
     if (c->mask == DOOR_MODE_OPEN && !(g_ai_square.square & SQUARE_DOOR_STATE))

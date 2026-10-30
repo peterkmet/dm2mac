@@ -14,17 +14,9 @@
 #include "dungeon.h"
 #include "sensor.h"
 
-/* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
-#define AI_SCRIPTS_BASE          0x73020u
-#define AI_TARGET_IDLE           0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_WANDER        0x73392u /* ... of a creature that wanders at random */
-#define AI_CHOICES_NONE          0x73399u /* the plan choices of a creature that does nothing */
 /* The sizes of the AI tables and of their records. */
 #define AI_PLAN_COUNT            63
 #define AI_TARGET_SIZE           14
-#define AI_PLAN_STEP_SIZE        7
-#define AI_CHOICE_SIZE           7
-#define AI_MOOD_ENTRY_SIZE       6 /* a mood mask word and the address of its plan choices */
 #define AI_SCRIPTS_SIZE          8030
 #define AI_ACTION_COUNT          86
 #define AI_MOVE_TEST_KINDS       20 /* the move test kinds of g_ai_command_enabled */
@@ -165,8 +157,6 @@ uint8_t *ai_search_cell(uint8_t *cells, int16_t x, int16_t y);
 bool ai_on_map(int16_t x, int16_t y);
 /* A location word of (x, y) of map. */
 uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map);
-/* The distance between two squares along the axes. */
-int16_t ai_axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
 /* The x of the square of the group in the AI context. */
 int16_t ai_own_x(void);
 /* The y of the square of the group in the AI context. */
@@ -243,19 +233,18 @@ int ai_next_path_step(void);
 bool ai_plan_path(void);
 
 /* Shared state of the creature movement (ai_move.c, ai_path.c): the move directions past the map, the search maps, the
-   AI marker levels, the last read square. */
+   AI marker levels, the last read square, the light sums and the party map of the last refresh, the search direction
+   bits. */
 /* The directions of a move test past the four map directions. */
-#define DIR_LEVEL_UP    4
-#define DIR_LEVEL_DOWN  5
-#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+#define DIR_LEVEL_UP   4
+#define DIR_LEVEL_DOWN 5
 
 /* The search queue and the search maps. */
-#define SEARCH_CELL_SIZE         4 /* a square of a search map: distance, direction, previous square */
-#define SEARCH_COLUMN_SIZE       (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
+#define SEARCH_CELL_SIZE   4 /* a square of a search map: distance, direction, previous square */
+#define SEARCH_COLUMN_SIZE (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
 /* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
    markers of level 2 that count with them while their text shows. */
-#define MARKER_LEVEL_SIDES       1
-#define MARKER_LEVEL_SIDES_SHOWN 2
+#define MARKER_LEVEL_SIDES 1
 
 /* More of the square that the AI read last; ai_cache_square resets it. */
 typedef struct {
@@ -269,5 +258,10 @@ typedef struct {
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
 extern AiSquareScan g_ai_square_scan; /* exported for the tests */
+
+/* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
+extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
+/* The shift register that picks the first search direction; exported for the tests. */
+extern uint16_t g_search_direction_bits;
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */

@@ -427,9 +427,4 @@ void ai_refresh_party_maps(void);
 #define ACTION_SPECIAL_LAST      0x40
 #define ACTION_DODGE             0x55
 
-/* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
-extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
-/* The shift register that picks the first search direction; exported for the tests. */
-extern uint16_t g_search_direction_bits;
-
 #endif /* DM2_ENGINE_AI_H */

@@ -19,6 +19,13 @@
 #include "save.h"
 #include "sensor.h"
 
+/* The directions of a move test past the four map directions. */
+#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+
+/* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
+   markers of level 2 that count with them while their text shows. */
+#define MARKER_LEVEL_SIDES_SHOWN 2
+
 /* The GDAT values of a door type. */
 #define DOOR_KEY_SEE_THROUGH      0x0d /* creatures see through the closed door */
 #define DOOR_KEY_SOMETIMES_SEEN   0x10 /* creatures see through the moving door half of the time */
@@ -209,11 +216,6 @@ uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map)
     return (uint16_t)location_pack(x, y, map);
 }
 
-int16_t ai_axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)
-{
-    return (int16_t)(abs_int((int16_t)(x1 - x2)) + abs_int((int16_t)(y1 - y2)));
-}
-
 /* A GDAT value of the door type on (x, y). */
 static int read_door_value(int16_t x, int16_t y, int key)
 {
@@ -393,7 +395,7 @@ int16_t ai_trace_line(Location viewer, Location target, bool (*blocked)(Location
             }
         }
     } while (abs_int((int16_t)(x - x1)) + abs_int((int16_t)(y - y1)) > 1);
-    return ai_axis_distance(x1, y1, x2, y2);
+    return ai_manhattan((Location){x1, y1}, (Location){x2, y2});
 }
 
 void ai_cache_square(Location at)
@@ -623,7 +625,7 @@ static bool party_door_stops_attack(int16_t x, int16_t y)
         (x == ai_own_x() && y == ai_own_y() && g_current_map.map == g_ai.map))
         return false;
     return square_type(dungeon_square_at((Location){x, y})) == SQUARE_DOOR &&
-           ai_axis_distance(x, y, g_ai_party.x, g_ai_party.y) <= 1 && rand_2bits();
+           ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) <= 1 && rand_2bits();
 }
 
 /* The cell of the target that the attack aims at; r: the random bit of the attack variant, a ranged attack may flip it. */
@@ -735,7 +737,7 @@ AiCommand ai_try_attack(AiTest test, Location from, Location to, int16_t dir)
     }
     if (!ai_on_map(tx, ty) || (x != tx && y != ty))
         return fail_command(execute);
-    int16_t distance = ai_axis_distance(x, y, tx, ty);
+    int16_t distance = ai_manhattan((Location){x, y}, (Location){tx, ty});
     flags = attacks_in_range(flags, from, distance);
     if (!flags || !has_attack_target(mode, tx, ty))
         return fail_command(execute);
@@ -883,7 +885,7 @@ static DoorTest test_door(DoorAction *a)
         if (!a->flags)
             return DOOR_TEST_FAIL;
     }
-    a->distance = ai_axis_distance(a->from.x, a->from.y, a->to.x, a->to.y);
+    a->distance = ai_manhattan(a->from, a->to);
     if (!skills_reach_door(a))
         return DOOR_TEST_FAIL;
     if (a->flags & DOOR_SKILL_SHOOT_BUTTON && spell_on_door_line(a->from.x, a->from.y, a->distance, a->d))
@@ -1017,7 +1019,7 @@ static bool search_square_test(int command, int16_t x, int16_t y)
             if (thing_type(link) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
                 return true;
             if (end.map != teleporter_map(link) ||
-                ai_axis_distance(end.x, end.y, teleporter_x(link), teleporter_y(link)) != 1)
+                ai_manhattan((Location){end.x, end.y}, (Location){teleporter_x(link), teleporter_y(link)}) != 1)
                 return true;
             int16_t map = teleporter_map(link);
             if (map != g_game.party_map && map != g_current_map.alt_view_map)
@@ -1232,7 +1234,7 @@ static bool party_door_stops_move(Move *m)
 {
     return !m->same && g_ai_party.map == g_current_map.map && ai_class_flags() & AI_CLASS_AVOIDS_PARTY_DOORS &&
            !(g_ai.info->flags & CREATURE_NON_MATERIAL) && square_type(g_ai_square.square) == SQUARE_DOOR &&
-           ai_axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1 &&
+           ai_manhattan((Location){m->tx, m->ty}, (Location){g_ai_party.x, g_ai_party.y}) <= 1 &&
            (m->sx != ai_own_x() || m->sy != ai_own_y() || rand_2bits());
 }
 
@@ -1332,7 +1334,8 @@ static bool test_move(Move *m, AiMoveTest test)
     uint16_t need = needed_move_flags(m->kind, no_movers, m->map_changed, m->tx, m->ty) & g_ai.move_flags;
     if (!need)
         return true;
-    if (m->kind == MOVE_KIND_KEEP_DISTANCE && ai_axis_distance(m->tx, m->ty, g_ai_party.x, g_ai_party.y) <= 1)
+    if (m->kind == MOVE_KIND_KEEP_DISTANCE &&
+        ai_manhattan((Location){m->tx, m->ty}, (Location){g_ai_party.x, g_ai_party.y}) <= 1)
         return true;
     uint16_t also = occupant_move_flags(m, test);
     if ((g_ai.move_flags & also) != also)
