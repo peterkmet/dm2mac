@@ -27,7 +27,7 @@ The block layout, the call targets and the hub functions are in [skull-map.md](.
 | 0x21394-0x224a9 | Leader selection, command execution, command queue | `champ_set_leader`, `command_execute`, `command_process_queue` |
 | 0x22544-0x24629 | Party actions and movement, stairs, turning (uses sensors and sounds) | `click_in_viewport`, `move_party`, `creature_push_group` |
 | 0x24691-0x249db | Main loop and `main` | `game_loop`, `main` |
-| 0x24a88-0x2f636 | Creature AI: group update (0x25420), AI command dispatcher 0x2b75e with handlers 0x2a088-0x2b724, movement and attack 0x2b96a-0x2f636; command tables at 0x74f7e | `ai_begin`, `ai_update_group`, `execute_action` |
+| 0x24a88-0x2f636 | Creature AI: group update (0x25420), AI command dispatcher 0x2b75e with handlers 0x2a088-0x2b724, movement and attack 0x2b96a-0x2f636; command tables at 0x74f7e | `ai_begin`, `ai_update_group`, `ai_execute_action` |
 | 0x2f8d6-0x3188a | Creature groups: get group at square, damage, death; 0x3188a is the largest function (9583 bytes) | `creature_get_group_at`, `creature_drop_possessions`, `creature_damage_current_group` |
 | 0x33df9-0x3502b | Creature counts on map entry, save stream (bit packed), save game | `gamefile_read`, `save_read_packed`, `session_save` |
 | 0x3573a-0x37cfb | Dungeon loader, load game, save slot list | `dungeon_load`, `dungeon_open_file`, `session_load`, `list_slots` |

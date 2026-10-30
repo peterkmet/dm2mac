@@ -86,7 +86,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/ui/input_tree.c`, `src/ui
 - The video driver of the original (`IBMIOP.EXE`, service `0x109`, mode `0x8008`) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbor while `move_steps` is not 0. The exact rounding of the driver is unverified.
 - The advanced mode takes the autorepeat of a held key only if no key, event, or command waits (`input_key_repeat`). In the original, the repeats of a held key fill the event ring, and the party continues to walk after the key is released. The vanilla mode keeps that behavior.
 - In the original, a move without a destination (a removal) leaves a stale register value in the destination map (`g_party.dest_map`). The port writes the current map.
-- The search for a discarded record (`discard_find_thing` in `src/engine/move.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
+- The search for a discarded record (`discard_find_thing` in `src/engine/discard.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
 - Kept quirks of the original:
   - `move_follow_square_transitions` follows at most 49 square transitions (teleporters, pits, stairs) in one move: its loop limit `TRANSITION_MAX` is 50, but the loop pre-decrements the counter.
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map.
