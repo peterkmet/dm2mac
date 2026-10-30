@@ -1,6 +1,6 @@
 # Music
 
-The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIST.DAT` selects the song of each map. The HMI driver library `HMIMDRV.386` converts MIDI to OPL register writes with the instrument banks `MELODIC.BNK` and `DRUM.BNK`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIST.DAT` selects each map's song. The HMI driver library `HMIMDRV.386` converts MIDI to OPL register writes with the instrument banks `MELODIC.BNK` and `DRUM.BNK`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## HMP songs and SONGLIST.DAT
 
@@ -9,7 +9,7 @@ The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIS
 - `SONGLIST.DAT` is a byte array indexed by the current map number. Each byte is a song number; byte `0` plays no song ([Song change](#song-change)). The file has 46 used bytes (indexes 0 to 45) and `0xff` padding to 63 bytes.
 - `SONGLIST.DAT` bytes 0 to 45: `2 17 14 27 4 12 12 18 15 13 12 12 16 6 21 14 17 17 17 17 3 8 17 14 2 23 22 20 17 0 2 2 2 9 2 3 14 16 28 22 19 9 22 3 17 2`.
 - `music_play_song` (`0x1095d`) looks up the key `(4, song, 3, 0)` with `gdat_entry_exists`, `gdat_entry_size`, and `gdat_get_entry_data`, copies the item to `DAT_000704da`, and calls `hmi_midi_init_song`, `hmi_midi_start_song`, and `hmi_midi_set_song_volume(handle, 0x7f)`.
-- In file order, the song items go from `file+0x7bd597` (song 0) to `file+0x83b356` (song 17).
+- In file order, the first song item is song 0 at `file+0x7bd597`, and the last is song 17 at `file+0x83b356`.
 - `sound_init` loads `DATA\SONGLIST.DAT` (`0x70019`) into `DAT_0007ef78`, at most `0x3f` bytes.
 - The main loop calls `music_update_for_map(DAT_0007f260 >> 16)` once per game step (`FUN_00024691`, `game_loop`). `DAT_0007f260 >> 16` is the current map index. It also indexes the 16-byte map records at `DAT_0007f3c4`.
 
@@ -20,9 +20,9 @@ The songs are HMP items in `GRAPHICS.DAT` ([graphics.md](graphics.md)); `SONGLIS
 1. `new = SONGLIST[map]`. If `new` equals the current song (`DAT_0007050e`), nothing changes.
 2. If no song plays, or a fade is active, the new song starts now.
 3. Otherwise a fade starts. The fade counter is `0x7f`. Each call sets the song volume to the counter and decrements it. At counter `1`, the new song starts.
-4. A `SONGLIST.DAT` byte 0 starts no song (`FUN_0001095d` (`music_play_song`)(0)), so GDAT song 0 never plays through this path.
+4. A `SONGLIST.DAT` byte 0 calls `FUN_0001095d` (`music_play_song`) with 0, which starts no song, so GDAT song 0 never plays through this path.
 
-Music master volume, `sound_set_volume(level 0 to 7, 10)`: `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
+Music master volume: `sound_set_volume` with the level `l` (0 to 7) and 10 calls `FUN_00060399(l*2 | l<<4)` (0 to 126). Level 0 stops the song.
 
 The port (`music_update_for_map` in `src/ui/music.c`) reads the songs from GDAT `(4, n, 3, 0)` and runs the fade once per game step.
 
@@ -32,12 +32,12 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 
 - Header: `+0x20` u32 offset of the loop table, `+0x30` u32 track count, `+0x34` u32 `0xc0`, `+0x38` u32 song timer rate, `+0x3c` u32 `0x7e` (126 s) ([runtime.md](runtime.md#pit-divisor-and-tick-rates)). Track chunks start at `+0x388`: u32 track number, u32 chunk size, u32 MIDI channel, then the data.
 - Delta times: 7-bit groups, low group first. The last byte has bit 7 set (the opposite of standard MIDI).
-- Timing: each tick adds 1 to the elapsed ticks of each track. A track plays its next event when its delta is not more than the elapsed ticks. After each event, the elapsed ticks start again at 0. Thus the first event plays at tick `max(d, 1)` (`d` = first delta), and each later event plays its delta after the event before it. An event with time `T` (sum of the deltas) plays at tick `T + 1` if the first delta is 0, otherwise at tick `T`. Tracks play in track order within a tick.
-- Track 0 events are not sent. Controllers `0x67` to `0x79` are HMI commands and do not go to the driver. The songs use `0x6c` (no effect), `0x6d` (the value of the next event, an `0x6e` controller, sets the loop count of the loop point with id = value), and `0x6f` (loop). `0xff 0x2f` ends a track.
+- Timing: each tick adds 1 to the elapsed ticks of each track. A track plays its next event if its delta is at most the elapsed ticks. After each event, the elapsed ticks restart at 0. Thus the first event plays at tick `max(d, 1)` (`d` = first delta), and each later event plays its delta after the previous event. An event with time `T` (sum of the deltas) plays at tick `T + 1` if the first delta is 0, otherwise at tick `T`. Tracks play in track order within a tick.
+- Track 0 events are not sent. Controllers `0x67` to `0x79` are HMI commands and do not go to the driver. The songs use `0x6c` (no effect), `0x6d` (its value is a loop point id; the value of the next event, an `0x6e` controller, sets the loop count of that loop point), and `0x6f` (loop). `0xff 0x2f` ends a track.
 - Loop table: one record count per track, then 24-byte records of all tracks: `+0` u32 loop point in the track data, `+4` id, `+5` program, `+6` loop count (`0xff` = forever), `+7` byte count of controller pairs, `+0xc` u32 offset of the pairs.
 - Loop `0x6f id`: if the count is not 0 or `0xff`, it decrements. If the count is not 0, all tracks 1 and up that still play jump to their loop point with the same id, read the delta there, and get a program change and the controller pairs. Later tracks count the loop tick as their first tick. All 29 songs loop forever.
-- `hmi_midi_init_song` writes 1 to the 128 bytes at song `+0x300` (enable flags of the controllers `0x67`/`0x68`). This also sets `+0x36c`, the flag of the program change at a loop point. Thus the loop point always sends its program.
-- Channel volume (`0x07`): the player stores the value per channel and sends `master * (value * song >> 7) >> 7`, or 0 when the song is muted. Song volume, mute, unmute, pause, and master volume send the stored volumes of the playing tracks again.
+- `hmi_midi_init_song` writes 1 to the 128 bytes at song `+0x300` (the enable flags of controllers `0x67`/`0x68`). This also sets `+0x36c`, the program change flag of a loop point. Thus the loop point always sends its program.
+- Channel volume (`0x07`): the player stores the value per channel and sends `master * (value * song >> 7) >> 7`, or 0 if the song is muted. Song volume, mute, unmute, pause, and master volume send the stored volumes of the playing tracks again.
 - All tracks of all songs play on the FM driver because their device lists are empty or contain `0xa002`, and the track map `0x70378` gives device 0 to tracks 16 to 31.
 
 ## MIDI to OPL conversion in HMIMDRV.386
@@ -55,7 +55,7 @@ Source: `hmi_midi_init_song` (`0x5f6ad`), `hmi_midi_song_tick` (`0x65a3b`), `hmi
 | `0x1450c` | `gusmidi.com` | `0x83e8` | `0xa00a` |
 | `0x1c924` | `intspkr.com` | `0x304` | `0xa006` |
 
-`SETUP.INI` maps Sound Blaster and Sound Blaster Pro to `0xa002` (OPL2), and Sound Blaster 16 to `0xa009` (OPL3). The `README.TXT` of the game says that DM2 supports FM music only.
+`SETUP.INI` maps Sound Blaster and Sound Blaster Pro to `0xa002` (OPL2), and Sound Blaster 16 to `0xa009` (OPL3). The game's `README.TXT` says that DM2 supports FM music only.
 
 The OPL2 driver code starts at `file+0x5c` (`jmp 0x560`). All absolute data addresses are relative to `file+0x5c`. The entry at `file+0x560` dispatches through a function table at driver offset `0xbb`. The code is 12.7 KB of compiled 32-bit C with `cdecl` `ebp` frames and no relocations. The OPL3 driver contains the same BNK packing code (`file+0x3efe`).
 
@@ -94,7 +94,7 @@ The operator offsets per channel come from the byte pairs at driver `[0x2ee5 + 2
 
 ### OPL2 driver logic
 
-The offsets in the table are driver offsets. Port: `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default). It does not use the standard AdLib mapping (9 voices, F-number from the note, TL by velocity).
+The offsets in the table are driver offsets. The port is in `src/ui/fm.c`. The port reproduces the OPL2 driver `0xa002` (Sound Blaster, Sound Blaster Pro), not the OPL3 driver `0xa009` (Sound Blaster 16, the DOSBox default). It does not use the standard AdLib mapping (9 voices, F-number from the note, TL by velocity).
 
 | Offset | Function |
 |---|---|
@@ -109,15 +109,15 @@ The offsets in the table are driver offsets. Port: `src/ui/fm.c`. The port repro
 
 - Note on: take a voice (first free voice, otherwise the first voice of the first channel without pitch bend, otherwise `channel mod 9`), key it off, write the release byte with release rate 15 five times (fast release time), load the instrument (drums: `DRUM.BNK[note]`; otherwise `MELODIC.BNK[program]`), set the levels, write the frequency, key off and key on. Drums sound at the note in the flag byte of their name.
 - Frequency: a table of block and F-number per note from note 12 at driver `0x2f4c`. Notes 0 to 11 read the attenuation table in front of it.
-- Level: `level = ((volume << 7) / 127) * velocity >> 7`, `a = table_0x2f00[level >> 1]`, `TL = 64 - (64 - a) * (64 - instrument TL) / 64` with the instrument KSL. The modulator gets it too when the melodic instrument of the channel program is additive (even on the drum channel).
+- Level: `level = ((volume << 7) / 127) * velocity >> 7`, `a = table_0x2f00[level >> 1]`, `TL = 64 - (64 - a) * (64 - instrument TL) / 64` with the instrument KSL. The modulator gets it too if the channel program's melodic instrument is additive (even on the drum channel).
 - Start state: channel volume 127, pitch bend 64, bend range 2, program 0, voice velocity 127.
-- The sustain bytes of operators 16 to 21 share memory with the low F-number bytes of voices 0 to 5. Controller `0x79` sets the velocity of the voice with the number of the channel.
+- The sustain bytes of operators 16 to 21 share memory with the low F-number bytes of voices 0 to 5. Controller `0x79` sets the velocity of the voice whose number equals the channel number.
 
 ## Deviations from the original
 
 - OPL chip: Nuked-OPL3 in OPL2 mode, register writes through its write buffer (2 samples per write, like the delay of the real chip). Output: 44100 Hz stereo, the same signal on both sides.
 - `fmmidi.com` computes `(note - 12) mod 12` with repeated subtraction. For a note below 12 with pitch bend, this takes about 1.4 billion instructions in the timer interrupt (song 7 has one such note). The port computes the same value directly. Kept quirk: for a note below 12 the semitone is the unsigned wrap of the original (`bend_freq` in `src/ui/fm.c`).
-- The frequency table index is clamped to the table; the driver reads outside it for notes below the bend range. MIDI data bytes are cut to 7 bits before the driver tables use them.
+- The frequency table index is clamped to the table; the driver reads outside it for notes below the bend range. MIDI data bytes are masked to 7 bits before the driver tables use them.
 - A loop to an id that a track does not have does not move that track (the original searches past the loop records). A track that has no end event ends at its chunk end. A map outside `SONGLIST.DAT` keeps the song (the original reads past the buffer).
 - Kept quirk: the program change and the controller pairs of a loop point go to the channel in the low nibble of the byte at the loop point (the status byte of the first event after it), not to the channel of the track chunk (`jump` in `src/data/hmp.c`, `hmi_midi_send_track_setup`).
 - Not ported, because no song uses them: the HMI controllers `0x67`/`0x68` (controller enable flags), `0x72`, `0x75`, `0x76`, `0x79` (different loop commands), `0x77` (trigger callbacks), the HMI fade (`hmi_midi_fade_song`), tempo change, and the channel remap mode (the game turns it off). As in the original, the port does not send these controllers to the driver. Unlike the original, it does not run them.
