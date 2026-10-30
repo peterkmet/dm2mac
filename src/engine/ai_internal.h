@@ -165,8 +165,6 @@ uint8_t *ai_search_cell(uint8_t *cells, int16_t x, int16_t y);
 bool ai_on_map(int16_t x, int16_t y);
 /* A location word of (x, y) of map. */
 uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map);
-/* The distance between two squares along the axes. */
-int16_t ai_axis_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
 /* The x of the square of the group in the AI context. */
 int16_t ai_own_x(void);
 /* The y of the square of the group in the AI context. */
