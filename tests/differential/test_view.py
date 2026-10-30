@@ -956,7 +956,7 @@ def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
     plates = [(m, x, y, t) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
               for y in range(lib.dungeon_map_height(m)) if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL
               for t in things(m, x, y) if is_plate(t)]
-    lines, line_height = 6, 10  # the glyph size 8 and the line gap 2 of view.c
+    lines, line_height = 6, 10  # the glyph size 8 and the line gap 2 of view_walls.c
     texts = {"over": "X\nB\nC\nD\nE\nF", "blank": "\nB\nC\nD\nE\nF", "other": "\nB\nC\nD\nE\nG"}
     for map_, x, y, plate in plates:
         sets = lib.dungeon_map_wallset(map_)
