@@ -54,8 +54,8 @@ The code for champions, items, money, shops, and the cursor is in `src/engine/ch
 
 ## The first room of `start.DAT`
 
-- The table of the first room can be pushed. The shelf face (1, 5) behind it shows a sun crest holder (text `0x885c`); while the holder is full, it hides the cabinet with the solid key (text `0x8854`, ornament `0x86`). When the party takes the sun crest, the face shows the cabinet, and its clicks give its items, the solid key last.
-- The gold coin on the table of the first room does not open the door. No wall slot takes it, as in the original. The door opens with the solid key in the keyhole (4, 5) cell 3 and the door button (4, 4) (sensor kind `0x46`), which toggles the door (3, 4).
+- A wall face with an item holder (text `0x885c`) hides a cabinet (text `0x8854`, ornament `0x86`) while the holder is full. When the party takes the item from the holder, the face shows the cabinet, and each click on it gives one of its items.
+- A coin does not open the door of the first room: no wall slot of the room takes a coin, as in the original. The door opens with a key in its keyhole and its door button (sensor kind `0x46`), which toggles the door.
 
 ## Deviations from the original
 
