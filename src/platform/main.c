@@ -31,7 +31,6 @@
 #include "platform.h"
 #include "play.h"
 #include "save.h"
-#include "scale.h"
 #include "seen.h"
 #include "session.h"
 #include "settings.h"
@@ -55,11 +54,6 @@
 /* The start of each command line option. */
 #define OPTION_PREFIX "--"
 
-/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
-_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
-                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
-               "filter numbers");
-
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */
 
@@ -67,6 +61,7 @@ _Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCAL
 #define FILTER_ENV  "DM2_FILTER"    /* the filter when --filter is not given */
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
+#define FILTER_LIST_SIZE 64         /* the filter names of the usage message */
 
 /* The command line options; each takes a value. */
 enum Option { OPTION_DATA, OPTION_FILTER, OPTION_SAVE, OPTION_CONTROL, OPTION_MODE, OPTION_SAVES, OPTION_COUNT };
@@ -678,6 +673,23 @@ static int select_runnable_mode(Options *options)
     return 0;
 }
 
+/* The filter names in the order of the enum: "none, scale2x, or scale3x". */
+static const char *list_filter_names(char *list, size_t size)
+{
+    size_t used = 0;
+    list[0] = '\0';
+    for (int filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++) {
+        const char *separator = filter == SETTINGS_FILTER_NONE      ? ""
+                                : filter == SETTINGS_FILTER_SCALE3X ? ", or "
+                                                                    : ", ";
+        int written = snprintf(list + used, size - used, "%s%s", separator, settings_filter_name(filter));
+        if (written < 0 || (size_t)written >= size - used)
+            break;
+        used += (size_t)written;
+    }
+    return list;
+}
+
 int main(int argc, char **argv)
 {
     Options options = {.filter = getenv(FILTER_ENV)};
@@ -700,9 +712,10 @@ int main(int argc, char **argv)
     int mode_status = select_runnable_mode(&options);
     if (mode_status)
         return mode_status;
-    int factor = options.filter ? scale_filter_factor(options.filter) : SCALE_NONE_FACTOR;
+    int factor = options.filter ? settings_filter_parse(options.filter) : SETTINGS_FILTER_NONE;
     if (!factor) {
-        os_log("unknown filter %s: use none, scale2x, or scale3x", options.filter);
+        char names[FILTER_LIST_SIZE];
+        os_log("unknown filter %s: use %s", options.filter, list_filter_names(names, sizeof names));
         return EXIT_USAGE;
     }
     if (!data_given && !first_start_install())

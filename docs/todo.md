@@ -33,7 +33,7 @@
 - Style items for new checks. Each item is a candidate check of `tests/standard/test_standard.py`. The line numbers can be out of date; grep for the sites before the work.
   - A hand-written clamp beside `clamp_int`/`min_int` (`data/include/num.h`): `engine/game.c:278`, `engine/item.c:356,398`, `ui/music.c:152`, `ui/sound.c:37,82-85`. The same form is also in `ui/zone.c:432`, `ui/text.c:240`, `engine/ai_action.c:633`.
   - `abs(` where `abs_int` exists, and an unused C header: `abs(` is in `ui/input_feedback.c:608-615`, `ui/view.c:371,376,423`, `ui/view_things.c:371,372` and `ui/view_walls.c:719,774`; the unused `#include <stdlib.h>` is at `engine/champion_damage.c:4` and `data/gfx.c:3`.
-  - `0`/`1` assigned to a `bool` field or passed to a `bool` setter: `engine/champion.c:376`, `platform/main.c:262,263,686,692`.
+  - `0`/`1` assigned to a `bool` field or passed to a `bool` setter: `engine/champion.c:376`, `platform/main.c:265,266,662,744`.
   - `&` beside `||`, `&&` or `?` without parentheses: `ui/input_feedback.c:179-181`, `ui/minion_map.c:239,265,359,477`, `ui/ui.c:1349`.
   - `++`/`--` inside a call argument: `ui/input_tree.c:985`, `ui/input_feedback.c:332-346`.
   - A `#define` that only renames another constant (rule 3.5): `engine/include/aspect.h:63`, `ui/view_internal.h:67,68`, `control/include/state_json.h:19`.

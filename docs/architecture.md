@@ -61,7 +61,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `data/num.h` | `abs_` `clamp_` `max_` `min_` | Integer helpers: absolute value, clamping, maximum, and minimum. |
 | `data/os.h` | `os_` | The operating system services that `data/`, `engine/`, `ui/`, and `control/` need: the log, fatal errors, and full paths. |
 | `data/pcx.h` | `pcx_` | PCX pictures: 8-bit, RLE (run-length encoded), palette at the end (the INTRPLAY.PCX splash); decodes from memory only. |
-| `data/settings.h` | `settings_` | The advanced-mode settings file (SETTINGS.TXT in the saves folder): reads and writes the upscale filter, but does not apply it. |
+| `data/settings.h` | `settings_` | The advanced-mode settings file (SETTINGS.TXT in the saves folder) and the upscale filters: their names, and their values, which are the upscale factors. It reads and writes the filter; it does not apply it. |
 | `data/zip.h` | `zip_` | ZIP archives: the central directory, and stored and deflated entries. |
 
 ### engine/

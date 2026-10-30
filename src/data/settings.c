@@ -10,15 +10,6 @@
 
 static const char *const filter_names[] = {"none", "scale2x", "scale3x"}; /* from SETTINGS_FILTER_NONE */
 
-/* The filter of a value text, or 0 for an unknown name. */
-static int parse_filter(const char *value)
-{
-    for (int filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++)
-        if (!strcmp(value, filter_names[filter - SETTINGS_FILTER_NONE]))
-            return filter;
-    return 0;
-}
-
 /* Sets the value of one line key=value; an unknown key or a bad value changes nothing. */
 static void parse_line(char *line, Settings *settings)
 {
@@ -28,12 +19,27 @@ static void parse_line(char *line, Settings *settings)
     *value++ = '\0';
     if (strcmp(line, "filter"))
         return;
-    int filter = parse_filter(value);
+    int filter = settings_filter_parse(value);
     if (filter)
         settings->filter = filter;
 }
 
 /* Queries */
+
+const char *settings_filter_name(enum SettingsFilter filter)
+{
+    if (filter < SETTINGS_FILTER_NONE || filter > SETTINGS_FILTER_SCALE3X)
+        return NULL;
+    return filter_names[filter - SETTINGS_FILTER_NONE];
+}
+
+int settings_filter_parse(const char *name)
+{
+    for (int filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++)
+        if (!strcmp(name, filter_names[filter - SETTINGS_FILTER_NONE]))
+            return filter;
+    return 0;
+}
 
 Settings settings_parse(const char *file_text, size_t length)
 {
@@ -81,9 +87,9 @@ bool settings_save(const char *folder, const Settings *settings)
     char path[OS_PATH_SIZE], temporary[OS_PATH_SIZE], text[LINE_SIZE];
     if (snprintf(path, sizeof path, "%s/%s", folder, SETTINGS_FILE) >= (int)sizeof path ||
         snprintf(temporary, sizeof temporary, "%s/%s", folder, TEMPORARY_FILE) >= (int)sizeof temporary ||
-        settings->filter < SETTINGS_FILTER_NONE || settings->filter > SETTINGS_FILTER_SCALE3X)
+        !settings_filter_name(settings->filter))
         return false;
-    int length = snprintf(text, sizeof text, "filter=%s\n", filter_names[settings->filter - SETTINGS_FILTER_NONE]);
+    int length = snprintf(text, sizeof text, "filter=%s\n", settings_filter_name(settings->filter));
     FILE *file = fopen(temporary, "wb");
     if (!file)
         return false;
