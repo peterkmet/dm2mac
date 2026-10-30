@@ -1,24 +1,24 @@
 # SKULL.EXE map
 
-The reference map of `SKULL.EXE` for the C port: the program structure, the subsystems, the key data structures, and the open questions.
+Reference map of `SKULL.EXE` for the C port: program structure, subsystems, key data structures, and open questions.
 
 Related files:
 
 - `docs/reference/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
 - `docs/formats/`: file formats, sound, music, the SVGA option, and the PIT rate.
-- `docs/rules/`: the game rules of the port.
+- `docs/rules/`: the port's game rules.
 - `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
 - `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
 - `reference/decomp/SKULL.c`: the local Ghidra output of `tools/decompile-skull.sh`, with the names from `docs/reference/skull-symbols.csv`. Git ignores it.
 
 Conventions:
 
-- Addresses are linear addresses in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`): code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address below `0x70000` is a function. Other addresses are globals. `FUN_xxxxxxxx` is the function at that address; `docs/reference/skull-symbols.csv` gives its name.
+- Addresses are linear addresses in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`): code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address in the code object is a function; an address in the data object is a global. `FUN_xxxxxxxx` is the function at that address; `docs/reference/skull-symbols.csv` gives its name.
 - A file offset is written as `file+0x...`.
 - Signatures use the Watcom register order: EAX, EDX, EBX, ECX, then the stack.
 - Thing: 16-bit reference. Bits 0-9 index, bits 10-13 type, bits 14-15 cell. `0xffff` = none, `0xfffe` = end of list.
-- GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`, the tuple that the lookup function `FUN_0003c4f2` uses.
-- HMI SOS function names (for example `sosDIGIStartSample`) are probable names. They come from the call shape and from public HMI SOS knowledge. The binary has no symbols.
+- GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`, the tuple that the lookup function `gdat_find_entry` (`FUN_0003c4f2`) uses.
+- HMI SOS function names (for example `sosDIGIStartSample`) are probable names, taken from the call shape and from public HMI SOS knowledge. The binary has no symbols.
 
 ## Symbol counts
 
@@ -61,10 +61,10 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 `game_loop` (`0x24691`). `g_tick_threshold` (`0x7f268`) is set to 8 timer ticks per step. One iteration is one game step:
 
 1. `game_process_timeline` (`0x59a5c`): runs all due events.
-2. `world_update_day_night(0)` (`0x5a073`): hour light and weather.
+2. `world_update_day_night(0)` (`0x5a073`): light for the hour of day, and weather.
 3. `view_draw_dungeon(dir, x, y)` (`0x54b3f`) and `play_present_viewport`, unless the party sleeps or the inventory is open.
 4. `champ_apply_pending_damage` (`0x47113`); every 64 steps `champ_apply_time_effects`.
-5. `sndreq_flush_requests`; `g_game_time` goes up by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
+5. `sndreq_flush_requests`; `g_game_time` increases by 1; every 512 steps `champ_burn_held_lights`; `text_clear_expired_rows`.
 6. `command_process_queue` (`0x224a9`) until the tick flag `g_tick_elapsed` (`0x717f2`) is set.
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
@@ -73,9 +73,9 @@ Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_s
 
 ## IBMIOP INT 0xFC service table
 
-`SKULL.EXE` calls `INT 0xFC` with the function number in EAX and an argument in EBX. The real-mode program `IBMIOP.EXE` serves the call. The shared buffer is `g_iop_buffer` (`0x8048c`), set by `iop_init_shared_buffer` from `g_iop_info` (`0x7618c`) + `0x3ec`. The port platform layer replaces every function in this table.
+`SKULL.EXE` calls `INT 0xFC` with the function number in EAX and an argument in EBX. The real-mode program `IBMIOP.EXE` serves the call. The shared buffer is `g_iop_buffer` (`0x8048c`), set by `iop_init_shared_buffer` from `g_iop_info` (`0x7618c`) + `0x3ec`. The port's platform layer replaces every function in this table.
 
-The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer (`DGROUP:0x2342` in `IBMIOP.EXE`). Source for the driver side: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`; reDM2 read the unpacked `IBMIOP.EXE` code ([reference-crosscheck.md](reference-crosscheck.md)).
+The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, and 21 go to one exit that does nothing. Bit `0x100` selects a second table (functions `0x103`-`0x10a`). The call keeps all registers; every result comes back through the shared buffer (`DGROUP:0x2342` in `IBMIOP.EXE`). Sources for the driver side: reDM2 `docs/memory.md` (driver dispatcher, functions `0x0e`, `0x12`, `0x14`, `0x2e`, `0x2f`, `0x30`) and its comments on `0x10010`, `0x13898`, `0x14cb1`; reDM2 read the unpacked `IBMIOP.EXE` code ([reference-crosscheck.md](reference-crosscheck.md)).
 
 | EAX | Function | Caller |
 |---|---|---|
@@ -90,9 +90,9 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x0b` | Select a cursor | `input_init`, `champ_drag_click` |
 | `0x0c` | Set the hover rectangle | `mouse_set_hover_area`, `mouse_set_default_cursor` |
 | `0x0d` | Set the mouse position | hidden function at `0x14c93` (inside `iop_input_unlock`) |
-| `0x0e` | Get mouse x, y, and a third word. Buffer word 0 on entry: `0` = live position, other = position at the last event. Third word: buttons (the port reading: the game tests bit 1 for the right button) or cursor height (reDM2, from the driver code); open | `mouse_get_state` |
+| `0x0e` | Get mouse x, y, and a third word. Buffer word 0 on entry: `0` = live position, other = position at the last event. The third word is the button state in the port (the game tests bit 1 for the right button) or the cursor height in reDM2 (from the driver code); unresolved | `mouse_get_state` |
 | `0x0f` | Install the game timer callback on `INT 0x2d`; returns the tick step | `iop_install_timer_isr` |
-| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes). `0x12` does nothing in the driver: the caller at `0x113ad` (`iop_call_return_word`) then reads buffer word 0, which the driver keeps up to date; the game uses that word as the drive status, so the name `disk_get_drive_status` stays. `0x14` first writes a zero byte, so the result is an empty string if the drive has no label | `disk_get_drive_status`, `disk_get_volume_label` |
+| `0x12`, `0x13`, `0x14` | Drive status, volume label (`0x10` bytes). `0x12` does nothing in the driver: the caller at `0x113ad` (`iop_call_return_word`) then reads buffer word 0, which the driver keeps up to date; the game uses that word as the drive status. `0x14` first writes a zero byte, so the result is an empty string if the drive has no label | `disk_get_drive_status`, `disk_get_volume_label` |
 | `0x15` | Drive information | `disk_query_drive_info` |
 | `0x1b` | Key code to ASCII | `kbd_key_to_ascii` |
 | `0x28` | 3 bytes of drive path data | `disk_get_drive_path` |
@@ -106,7 +106,7 @@ The `IBMIOP.EXE` dispatcher accepts EAX `0x00`-`0x30`: 28 numbers do work, 21 go
 | `0x105` | Scroll the message area by one line height | `shift_message_area` (`0x139e4`) |
 | `0x106` | Video state on or off | `iop_set_video_state` |
 | `0x109` | Present the viewport (flags 8 or `0x8008`) | `play_present_viewport` |
-| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,0xfe)`; the first result word goes to `0x7f07c`. The port reading: set the palette (256 × 4 bytes). reDM2: cursor image upload, marked as an inference. Open | `pal_set_palette` |
+| `0x10a` | Upload 1024 bytes from GDAT `(1,0,9,0xfe)`; the first result word goes to `0x7f07c`. The port reads this as a palette upload (256 × 4 bytes); reDM2 infers a cursor image upload; unresolved | `pal_set_palette` |
 
 Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga_wait_vblank` polls port `0x3da`.
 
@@ -221,7 +221,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 ### Projectiles and explosions
 
 - Projectile event data: `+6` projectile thing, `+8` `x | y << 5 | dir << 10 | step << 12`.
-- `hit_impact(impact, x, y, cell, projectile)`: impact -1 creature, -2 champion, -3 party square, 0 wall, 4 door. Returns 1 when the projectile stops.
+- `hit_impact(impact, x, y, cell, projectile)`: impact -1 creature, -2 champion, -3 party square, 0 wall, 4 door. Returns 1 if the projectile stops.
 - `explosion_create(type, attack, x, y, cell)`: `cell == 0xff` = centered. Types: `0xff80` fireball, `0xff82`/`0xffb0`/`0xffb1` area damage (`0xffb0` lightning), `0xff83` non-material, `0xff86` poison, `0xff87` poison cloud, `0xff8e` lasting cloud, `0xffe4` smoke.
 
 ### Sound
@@ -250,7 +250,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 ### Drawing and layout
 
 - Rectangle: int16[4] x, y, w, h.
-- Layout zones: GDAT `(1,0,4,0)` ([graphics.md](../formats/graphics.md#image-compression)). Zone record: `+0` anchor type (0-8 on a 3 × 3 grid, 9 size, `0x0a`-`0x12` relative to parent), `+2` parent, `+4` x, `+6` y. `zone_get_rect_clipped(zone, rect, w_scale, h_scale)` scales in 1/10000.
+- Layout zones: the layout item GDAT `(1,0,4,0)` ([graphics.md](../formats/graphics.md#image-compression) gives its byte layout). Zone record: `+0` anchor type (0-8 on a 3 × 3 grid, 9 size, `0x0a`-`0x12` relative to parent), `+2` parent, `+4` x, `+6` y. `zone_get_rect_clipped(zone, rect, w_scale, h_scale)` scales in 1/10000.
 - Image reference (`0x18` bytes): `+0` pixels, `+4` source flags (4 GDAT, 8 cache), `+8` category, `+9` index, `+0x0b` entry, `+0x0c` cache id, `+0x0e` x, `+0x10` y, `+0x12` w, `+0x14` h, `+0x16` bpp.
 - Draw context (`0x13a` bytes, `draw_ctx_init`; view instance `g_view_draw_context` `0x8018a`): image reference, `+0x18` zone, `+0x1c`/`+0x1e` offset, `+0x24` rect, `+0x2c` destination bitmap, `+0x30` transparent color, `+0x32` flip flags, `+0x34`/`+0x36` scale (64 = 100 %), `+0x38` remap count, `+0x3a` remap table (16 bytes).
 - `gfx_blit(src, dst, rect, src_x, src_y, src_width, dst_width, transparent, mirror, src_bpp, dst_bpp, colormap)`: `transparent < 0` = opaque; mirror 0 none, 1 horizontal, 2 vertical, 3 both.
@@ -291,11 +291,11 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 
 221 function names have low confidence: the role is known from the code, but the game meaning or the exact arguments are not confirmed. 80 of them are HMI driver stub, voice queue, and static MIDI driver names in `0x62272`-`0x695ac`, code that the port does not use. The per-range notes in `docs/reference/symbols/` discuss them; `docs/reference/skull-symbols.csv` gives their signatures.
 
-Library signatures (clib, DPMI, HMI) are firm only for the names. `dpmi_map_physical_address`, `hmi_load_digi_driver_file`, and `hmi_load_midi_driver_file` have incomplete signatures.
+For library functions (clib, DPMI, HMI), only the names are firm, not the signatures. `dpmi_map_physical_address`, `hmi_load_digi_driver_file`, and `hmi_load_midi_driver_file` have incomplete signatures.
 
 ## Open questions
 
-1. Game tick rate: the real rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](../formats/runtime.md#unknown-values)).
+1. Game tick rate: the actual rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](../formats/runtime.md#unknown-values)).
 2. Thing types 11-13 and square type 7 in DM2.
 3. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 4. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.
