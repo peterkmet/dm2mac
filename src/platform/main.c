@@ -31,7 +31,6 @@
 #include "platform.h"
 #include "play.h"
 #include "save.h"
-#include "scale.h"
 #include "seen.h"
 #include "session.h"
 #include "settings.h"
@@ -54,11 +53,6 @@
 
 /* The start of each command line option. */
 #define OPTION_PREFIX "--"
-
-/* The filters of SETTINGS.TXT and the options menu are the upscale factors of the window. */
-_Static_assert(SETTINGS_FILTER_NONE == SCALE_NONE_FACTOR && SETTINGS_FILTER_SCALE2X == SCALE2X_FACTOR &&
-                   SETTINGS_FILTER_SCALE3X == SCALE3X_FACTOR,
-               "filter numbers");
 
 /* The timer ticks of the main loops. */
 #define PIT_TICKS_PER_GAME_TICK 4 /* the timer interrupt runs at 240 Hz, the game timer at 60 Hz */

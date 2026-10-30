@@ -14,7 +14,7 @@
 #define SETTINGS_FILE     "SETTINGS.TXT"
 #define SETTINGS_MAX_SIZE 1024 /* a larger file gives the defaults */
 
-/* The upscale filters, the same numbers as the upscale factors of the window. */
+/* The upscale filters; the value of each filter is its upscale factor of the window. */
 enum SettingsFilter { SETTINGS_FILTER_NONE = 1, SETTINGS_FILTER_SCALE2X = 2, SETTINGS_FILTER_SCALE3X = 3 };
 
 /* The values of the settings file. */

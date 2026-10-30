@@ -5,6 +5,7 @@
 #include "music.h"
 #include "os.h"
 #include "scale.h"
+#include "settings.h"
 #include "sound.h"
 #include "video.h"
 
@@ -17,7 +18,6 @@ _Static_assert(MUSIC_SAMPLE_RATE == SOUND_OUTPUT_RATE, "the audio stream plays t
 
 /* The sizes of the window textures. */
 #define ARGB_BYTES      4
-#define FILTER_MAX      SCALE3X_FACTOR
 #define SCREEN_ASPECT_W 4 /* a VGA monitor shows every mode on a 4:3 tube */
 #define SCREEN_ASPECT_H 3
 
@@ -37,8 +37,8 @@ static struct {
     SDL_Texture *tex;
     Uint64 next_tick;
     int mouse_x, mouse_y;
-    int filter; /* upscale factor: 1 none, 2 Scale2x, 3 Scale3x */
-    uint8_t big[SCREEN_H * FILTER_MAX][SCREEN_W * FILTER_MAX];
+    int filter; /* the filter (SETTINGS_FILTER_*), which is the upscale factor */
+    uint8_t big[SCREEN_H * SETTINGS_FILTER_SCALE3X][SCREEN_W * SETTINGS_FILTER_SCALE3X];
     SDL_AudioStream *audio;
     int16_t audio_frames[AUDIO_QUEUE_FRAMES * AUDIO_CHANNELS]; /* the mixed frames that top up the audio queue */
     PlatMixer *music_mixer;
@@ -46,7 +46,7 @@ static struct {
     int movie_tex_w, movie_tex_h;
     int movie_shown_w, movie_screen_w, movie_screen_h;
     bool movie_last; /* the last present was a movie picture */
-} platform = {.filter = SCALE_NONE_FACTOR};
+} platform = {.filter = SETTINGS_FILTER_NONE};
 
 /* Setup */
 
@@ -162,10 +162,10 @@ void plat_present(void)
 {
     uint32_t pal[PALETTE_COLORS], *px;
     int pitch, tw = SCREEN_W * platform.filter;
-    const uint8_t *src = platform.filter == SCALE_NONE_FACTOR ? &g_video_fb[0][0] : &platform.big[0][0];
-    if (platform.filter == SCALE2X_FACTOR)
+    const uint8_t *src = platform.filter == SETTINGS_FILTER_NONE ? &g_video_fb[0][0] : &platform.big[0][0];
+    if (platform.filter == SETTINGS_FILTER_SCALE2X)
         scale2x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &platform.big[0][0]);
-    if (platform.filter == SCALE3X_FACTOR)
+    if (platform.filter == SETTINGS_FILTER_SCALE3X)
         scale3x(&g_video_fb[0][0], SCREEN_W, SCREEN_H, &platform.big[0][0]);
     for (int i = 0; i < PALETTE_COLORS; i++)
         pal[i] = video_argb((uint8_t)i);
