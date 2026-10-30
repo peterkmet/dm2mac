@@ -110,34 +110,22 @@ The `look` text:
 
 ## State, view, and map
 
-`get_state` gives these fields (the JSON shows only what a player sees):
+The fields of `get_state`, `get_view`, and `get_map` are in the [LLM playbook](llm-playbook.md): [State fields](llm-playbook.md#state-fields), [View fields](llm-playbook.md#view-fields), [Map fields](llm-playbook.md#map-fields), [Slots](llm-playbook.md#slots), and [Cells](llm-playbook.md#cells). The JSON shows only what a player sees. This section gives the edge cases that the player does not need.
 
-| Field | Content |
-|---|---|
-| `time`, `game_mode`, `mode` | The game step, `turnbased`, and the input mode (`menu`, `picture`, `sleep`, `pause`, `dialog`, `move`, `push`, `recruit`, `inventory`, `name`). |
-| `dialog` | `{id, buttons}` while `mode` is `dialog`, otherwise `null`. |
-| `party` | `map`, `level`, `x`, `y`, `facing`, `darkness`, `can_move`, `sleeping`, `dead`. |
-| `leader`, `leader_hand` | The leader's index and the object in its hand; `null` for none. |
-| `candidate` | The champion that a mirror shows, with the same fields as a champion, otherwise `null`. A candidate is not in `champions`. |
-| `champions` | The members: `index`, `name`, `title`, `alive`, `health`, `stamina` (the stored value divided by 10), `mana` (each `[value, maximum]`), `food`, `water`, `load_kg`, `position`, `poisoned`, `statistics`, `skills`, `wounds`, `slots`, `hands`, `runes`, `busy`. |
-| `action_menu`, `spell`, `inventory`, `chest`, `money_box`, `minion_map` | The open panel, otherwise `null`. |
-| `messages` | The text of the message rows. |
-| `outdoor`, `weather`, `day_time` | The sky, only outdoors. |
+`get_state`:
 
-[Protocol vocabulary](control-socket.md#protocol-vocabulary) lists the slot names (`slots[].where`) in slot number order. The chest slots are 30 to 37. The slot numbers are in `slots[].slot`; `put_in_slot`, `take_from_slot`, and `look` use them.
-
-- The game state JSON gives object, coin, and action names without the trailing spaces of their [GDAT](../formats/graphics.md#gdat-items) texts (`FINE ROBE ` gives `FINE ROBE`). Other characters stay as GDAT gives them: the rune glyph letters in a potion name (for example `` ` `` to `e` for the power runes) are not mapped.
+- The game state JSON gives object, coin, and action names without the trailing spaces of their [GDAT](../formats/graphics.md#gdat-items) texts (`FINE ROBE ` gives `FINE ROBE`). Other characters stay as GDAT gives them.
 - The JSON skill ranks are the texts of the skills panel. The panel shows the master ranks with a power rune glyph of the font (`` ` `` and `a` to `e`, characters `0x60` to `0x65`); the JSON gives the upper-case rune name for it: `LO`, `UM`, `ON`, `EE`, `PAL`, `MON` (`LO MASTER FIGHTER`).
 - The slot dialogs (`0x80` load, `0x81` save) do not set the dialog id; the JSON gives the id and the button texts of the last dialog that the game drew.
-- The JSON names the champion slots by their place in the inventory picture: `ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`, `neck` (10); the slots that the ready hand loads from, `ready_quiver_1` (11) and `ready_quiver_2` (6); the slots that the action hand loads from, `action_quiver_1` (12) to `action_quiver_4` (7, 8, 9); the backpack, `backpack_1` (13, left of the second row), `backpack_2` to `backpack_9` (14 to 21, the first row), `backpack_10` to `backpack_17` (22 to 29, the rest of the second row).
+- [Protocol vocabulary](control-socket.md#protocol-vocabulary) lists the slot names (`slots[].where`) in slot number order.
 - The JSON weather uses the same thresholds as the sky pictures:
   - `clouds` from the cloud cover: `light` from 64, `medium` from 128, `heavy` from 192;
   - `rain` from the sky darkness: `light` from 16, `medium` from 64, `heavy` from 128;
   - `wind`: the wind direction of the game.
-- The JSON gives only the weather that the player sees: rain or clouds are `none` if the map's sky set has no rain or cloud picture, and `wind` is present only while falling rain shows over the view (its slant shows the wind).
+- Rain or clouds are `none` if the map's sky set has no rain or cloud picture.
 - `day_time` comes from the darkness of the hour (1 to 5): 1 is `day`, 5 is `night`, otherwise `dawn_dusk`.
 
-`get_view` gives the squares that the party sees now ([seen squares](../rules/view.md#seen-squares)). It has `facing`, `darkness`, `squares`, `piles` (the objects in cells 0 to 3, top first), `alcove` (cell 4), and `wall_ahead_clickable`. Each square has `depth`, `side`, `x`, `y`, `element`, and, where the view draws them, `creatures`, `objects`, `flying`, `door`, `button`, `floor_ornament`, `front_face`, `side_face`. It shows no creature health and nothing behind a wall.
+`get_view` gives the squares that the party sees now ([seen squares](../rules/view.md#seen-squares)).
 
 - The view JSON gives the squares of the seen rule, from the walk position while the party walks. It gives only what the view draws there:
   - wall faces (`side_face`, `front_face`) as in the wall face table of the view;
@@ -145,18 +133,14 @@ The `look` text:
   - a floor ornament from depth 0 to 3 (the party row too, which the view draws), not ornament 0, and not at depth 3 side 2 when the ornament has the "not far side" key;
   - a door button only to depth 3;
   - no limit: the element, door state, and map glyph show at every depth, as the automap shows them.
-- A wall face gives what the ornament on that face holds: `mirror` (portrait kind), `alcove`, `shop`, or `fountain` (the touch key). Otherwise it gives `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate. `shop` is the name of the item on the display, or `true` before the display has chosen an item.
-- Each creature group on a square is one entry with `count` 1. The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
-- `piles` and `alcove` are the cells of [Cells](#cells) in the last drawn view. While the inventory hides the view, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is false.
+- A wall face gives what the ornament on that face holds: `mirror` (portrait kind), `alcove`, `shop`, or `fountain` (the touch key). Otherwise it gives `switch` (a click sensor with an ornament, or a hand switch text) and `lock` (the ornament index of a sensor or an item holder text that takes an object); otherwise `ornament` (the index). A text plate gives `text` on the front face and `null` on a side face or for a hidden text, as the view draws text only on a front plate.
+- The JSON has no creature names, wall ornament names, or floor ornament names (the game data has none); it gives the index.
+- `piles` and `alcove` are the cells of the last drawn view.
 - The view JSON lists things that the view does not draw in these cases: the objects and missiles in the back cells of the party square (the view draws only its two front cells); the things in the far cells of a closed door, which the door hides. `button` shows even for a door seen from the side (as in the minion map).
 
-`get_map` gives the explored squares of the party's map: `map`, `level`, `width`, `height`, `party`, `facing`, `legend`, `rows`, and `grid` (the rows with an `x mod 10` header and the `y` in front). The explored squares are the seen squares of the automap ([view.md](../rules/view.md#seen-squares)).
+`get_map` gives the explored squares of the party's map. The explored squares are the seen squares of the automap ([view.md](../rules/view.md#seen-squares)).
 
-- The map JSON marks a floor square with `_` when the minion map draws its floor ornament without the details option. It shows no floor sensor without an ornament and no wall feature.
-
-## Cells
-
-A cell is a number from 0 to 3 in `take_object` and from 0 to 4 in `drop_object`: cells 0 and 1 are on the party square, cells 2 and 3 on the square ahead, cell 4 is the alcove ahead. The `piles` of `get_view` use the same numbers.
+- The map JSON marks a floor square with `_` when the minion map draws its floor ornament without the details option.
 
 ## Game over and the modal loops
 
@@ -166,38 +150,36 @@ A cell is a number from 0 to 3 in `take_object` and from 0 to 4 in `drop_object`
 
 ## Actions
 
-`args` has the listed keys. A champion index is the `index` of `champions[]`; the champion must be alive. While a candidate is shown, only `recruit`, `click`, and `key` run (`a candidate is shown: answer with recruit first`). While the party sleeps, only `wake`, `click`, and `key` run (`the party sleeps: use wake or wait`). An unknown name gives `unknown action`; a missing name gives `missing action`.
+The actions, their `args`, and what they do are in [Actions](llm-playbook.md#actions) of the LLM playbook. While a candidate is shown, an action other than `recruit`, `click`, and `key` gives `a candidate is shown: answer with recruit first`. While the party sleeps, an action other than `wake`, `click`, and `key` gives `the party sleeps: use wake or wait`. An unknown name gives `unknown action`; a missing name gives `missing action`. `key` takes a name of [key](control-socket.md#key) or a key code.
 
-| Action | Args | What it does | Errors |
-|---|---|---|---|
-| `move_forward`, `move_back`, `move_left`, `move_right` | none | One step. | `close the inventory first (close_inventory)` |
-| `turn_left`, `turn_right` | none | A turn on the spot. | same |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead; otherwise touches the plain wall. | `the view takes no click now`, `nothing to click on the wall ahead`, `the leader hand is not empty: nothing to use it on ahead` |
-| `take_object` | `cell` 0-3 | The leader takes the top object of the cell. | `cell must be 0-3 (see get_view piles)`, `the leader hand is not empty: drop or store the object first`, `no leader`, `no object at this cell` |
-| `drop_object` | `cell` 0-4 | The leader drops the hand object. | `cell must be 0-4`, `the leader hand is empty`, `no floor ahead`, `no floor to drop on ahead`, `no alcove ahead` |
-| `open_inventory` | `champion` | Opens the champion's inventory. | `no living champion with this index`, `the inventory cannot open now` |
-| `close_inventory` | none | Closes the inventory. | `the inventory cannot close now` |
-| `put_in_slot` | `champion`, `slot` 0-37 | Clicks the slot with an object in the leader hand. | `the leader hand is empty`, `slot must be 0-37`, `open the inventory of this champion first (open_inventory)`, `no open chest`, `this slot cannot be clicked now` |
-| `take_from_slot` | `champion`, `slot` 0-37 | Clicks the slot with an empty leader hand. | `the leader hand is not empty`, and as `put_in_slot` |
-| `eat`, `drink` | none | The champion whose inventory is open takes the hand object into its mouth. | `open the inventory of the champion who eats or drinks first`, `take the food or drink in the leader hand first` |
-| `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Opens the hand's action menu and runs action `index`. A money box, a chest, or a minion map opens its panel instead. | `hand must be ready or action`, `this champion cannot act now`, `index out of range of the action menu (see state champions hands)`, `another champion's action menu is open: use pass first`, `close the open panel first (pass)` |
-| `pass` | none | Closes the open action menu or panel. | `the open panel has no close button` |
-| `set_caster` | `champion` | Chooses the caster of the spell panel. | `no living champion with this index`, `close the open panel first (pass)`, `this champion cannot cast now`, `the spell icons take no click now` |
-| `set_leader` | `champion` | Chooses the leader. | `no living champion with this index`, `close the open panel first (pass)`, `the spell icons take no click now` |
-| `add_rune` | `symbol` 0-5 | Adds a rune to the spell. | `symbol must be 0-5`, `no spell panel (set_caster)`, `the spell has four runes`, `not enough mana for this rune` |
-| `delete_rune` | none | Deletes the last rune. | `no spell panel (set_caster)`, `no rune` |
-| `cast` | none | Casts the spell. | same |
-| `recruit` | `choice` (`join` or `cancel`) | The candidate joins or goes back to its mirror. | `no candidate: click a champion mirror first (click_wall_ahead)`, `choice must be join or cancel` |
-| `sleep` | none | Opens the leader's inventory through its status box, then sleeps. | `no leader`, `the inventory cannot open now` |
-| `wake` | none | Wakes the party. | `the party cannot wake now` |
-| `swap_champions` | `a`, `b` | The two champions swap cells. | `a and b must be living champions`, `a and b must be different champions`, `close the open panel first (pass)` |
-| `look` | optional `slot`, `champion` (default the open inventory) | Holds the eye on the object in the leader's hand. With `slot`, the hand takes the object from the slot first and puts it back afterwards. The reply has `look`. | `open an inventory first (open_inventory): the eye is in the inventory`, `the leader hand is empty: take an object, or give champion and slot`, `the leader hand must be empty to look at a slot`, `no object in this slot` |
-| `take_coin` | `slot` 0-5 | Moves one coin from the open money box to the leader's hand. | `open a money box first (choose_action on the hand that holds it)`, `slot must be 0-5`, `no coin in this slot` |
-| `minion_map_option` | `option` 0-3 | Toggles an option of the open minion map. | `open a minion map first`, `this minion map has no options`, `option must be 0-3` |
-| `click` | `x` 0-319, `y` 0-199, optional `button` (`left` or `right`) | A raw click at a screen point. | `x must be 0-319 and y 0-199`, `button must be left or right` |
-| `key` | `key` (a name of [key](control-socket.md#key) or a code) | A raw key. | `unknown key` |
-
-`click` and `key` also run while a dialog is shown.
+| Action | Errors |
+|---|---|
+| `move_forward`, `move_back`, `move_left`, `move_right` | `close the inventory first (close_inventory)` |
+| `turn_left`, `turn_right` | same |
+| `click_wall_ahead` | `the view takes no click now`, `nothing to click on the wall ahead`, `the leader hand is not empty: nothing to use it on ahead` |
+| `take_object` | `cell must be 0-3 (see get_view piles)`, `the leader hand is not empty: drop or store the object first`, `no leader`, `no object at this cell` |
+| `drop_object` | `cell must be 0-4`, `the leader hand is empty`, `no floor ahead`, `no floor to drop on ahead`, `no alcove ahead` |
+| `open_inventory` | `no living champion with this index`, `the inventory cannot open now` |
+| `close_inventory` | `the inventory cannot close now` |
+| `put_in_slot` | `the leader hand is empty`, `slot must be 0-37`, `open the inventory of this champion first (open_inventory)`, `no open chest`, `this slot cannot be clicked now` |
+| `take_from_slot` | `the leader hand is not empty`, and as `put_in_slot` |
+| `eat`, `drink` | `open the inventory of the champion who eats or drinks first`, `take the food or drink in the leader hand first` |
+| `choose_action` | `hand must be ready or action`, `this champion cannot act now`, `index out of range of the action menu (see state champions hands)`, `another champion's action menu is open: use pass first`, `close the open panel first (pass)` |
+| `pass` | `the open panel has no close button` |
+| `set_caster` | `no living champion with this index`, `close the open panel first (pass)`, `this champion cannot cast now`, `the spell icons take no click now` |
+| `set_leader` | `no living champion with this index`, `close the open panel first (pass)`, `the spell icons take no click now` |
+| `add_rune` | `symbol must be 0-5`, `no spell panel (set_caster)`, `the spell has four runes`, `not enough mana for this rune` |
+| `delete_rune` | `no spell panel (set_caster)`, `no rune` |
+| `cast` | same |
+| `recruit` | `no candidate: click a champion mirror first (click_wall_ahead)`, `choice must be join or cancel` |
+| `sleep` | `no leader`, `the inventory cannot open now` |
+| `wake` | `the party cannot wake now` |
+| `swap_champions` | `a and b must be living champions`, `a and b must be different champions`, `close the open panel first (pass)` |
+| `look` | `open an inventory first (open_inventory): the eye is in the inventory`, `the leader hand is empty: take an object, or give champion and slot`, `the leader hand must be empty to look at a slot`, `no object in this slot` |
+| `take_coin` | `open a money box first (choose_action on the hand that holds it)`, `slot must be 0-5`, `no coin in this slot` |
+| `minion_map_option` | `open a minion map first`, `this minion map has no options`, `option must be 0-3` |
+| `click` | `x must be 0-319 and y 0-199`, `button must be left or right` |
+| `key` | `unknown key` |
 
 ## Movies
 
