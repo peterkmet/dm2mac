@@ -2,19 +2,13 @@
 
 Reference map of `SKULL.EXE` for the C port: program structure, subsystems, key data structures, and open questions.
 
-Related files:
-
-- `docs/reference/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
-- `docs/formats/`: file formats, sound, music, the SVGA option, and the PIT rate.
-- `docs/rules/`: the port's game rules.
-- `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
-- `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `reference/decomp/SKULL.c`: the local Ghidra output of `tools/decompile-skull.sh`, with the names from `docs/reference/skull-symbols.csv`. Git ignores it.
+The other research pages are in [docs/README.md](../README.md#research-of-the-original). `reference/decomp/SKULL.c` is the local Ghidra output of `tools/decompile-skull.sh`, with the names of `skull-symbols.csv`. Git ignores it.
 
 Conventions:
 
 - Addresses are linear addresses in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`): code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address in the code object is a function; an address in the data object is a global. `FUN_xxxxxxxx` is the function at that address; `docs/reference/skull-symbols.csv` gives its name.
 - A file offset is written as `file+0x...`.
+- A name is the name of [skull-symbols.csv](skull-symbols.csv): the port's name where the port has the function, otherwise a role name of the analysis.
 - Signatures use the Watcom register order: EAX, EDX, EBX, ECX, then the stack.
 - Thing: 16-bit reference. Bits 0-9 index, bits 10-13 type, bits 14-15 cell. `0xffff` = none, `0xfffe` = end of list.
 - GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`, the tuple that the lookup function `gdat_find_entry` (`FUN_0003c4f2`) uses.
