@@ -57,8 +57,8 @@ this document names. The rule numbers follow the coding standard of the Dungeon 
    `/* Prefixes: sensor_ */`. A header without them writes `/* Prefixes: none */`. A standalone name (`le16`)
    may be listed as a name. Type names, constant names and globals are not prefixes. The first word of a
    prefix is its text up to and including the first `_`, or the whole prefix without `_`. Two modules never
-   state prefixes with the same first word. The prefixes of one module may share a first word (`champ_` and
-   `champion` in `champion.h`), and a module may state several prefixes (`input_ command_ kbd_ rect_` in
+   state prefixes with the same first word. The prefixes of one module may share a first word (`put_le16` and
+   `put_le32` in `le.h`), and a module may state several prefixes (`input_ command_ kbd_ rect_` in
    `input.h`). The header that owns a prefix declares every function with that prefix. [prefix]
 9. `src/third_party/` is vendored code (`opl3/`, `tinf/`), the one folder of `src/` outside the layers. The folder is
    outside every check, including the format check. [layer]
