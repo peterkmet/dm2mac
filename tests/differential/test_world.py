@@ -21,7 +21,8 @@ from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, draw_both
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.light_add_square_light.argtypes = [ctypes.c_int, ctypes.c_int16, Location, ctypes.c_uint]
+    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC
@@ -35,13 +36,6 @@ WHEN = {0: C.SOUND_NOW, 1: C.SOUND_STEP_END, -1: C.SOUND_DEFERRED}  # the delay 
 
 @pytest.fixture
 def world(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    lib.weather_sky_objects.restype = ctypes.c_void_p
-    lib.item_attr.restype = ctypes.c_uint16
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     sc = Scenario(lib, gdat, start, tmp_path)
     sc.emu.uc.hook_del(sc.view.weather_init_stub)
     return sc
@@ -285,8 +279,6 @@ def test_zone_interpolate_offset_matches_original(world, lib):
     from dm2tools.emu import SCRATCH
     rng = random.Random(175)
     offset = ScreenPoint()
-    lib.zone_interpolate_offset.argtypes = [ctypes.c_uint16, ctypes.c_uint16, ctypes.c_int16, ctypes.POINTER(ScreenPoint)]
-    lib.zone_interpolate_offset.restype = ctypes.c_bool
     for n in range(400):
         a, b, p = rng.randrange(1, 7000), rng.randrange(1, 7000), rng.randrange(-20, 130)
         if rng.random() < 0.5:
@@ -388,8 +380,6 @@ def lightning_seed(lib, rng, storm, chance, target):
     """A random seed with which the next weather step of a storm (rain already falling) rolls a lightning that hits
     squares and tries target first; the C random functions follow the calls of world_update_day_night."""
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
-    lib.rand_next.restype = ctypes.c_uint32
-    lib.rand_below.restype = ctypes.c_uint16
     while True:
         value = rng.getrandbits(32)
         seed.value = value
@@ -460,8 +450,6 @@ def test_lightning_sounds_match_original(world, lib):
     rng = random.Random(179)
     sc = world
     sc.sounds_seen = []
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     target = lib.gdat_entry_index(sc.gdat, C.CAT_WALLSET, lib.dungeon_map_graphics(MAP_LIGHTNING_TARGET) >> 4 & 0xF,
                                     C.GDAT_TYPE_VALUE, 0x6C)
     tx, ty = target >> 8, target & 0xFF
@@ -494,8 +482,6 @@ def test_square_light_of_added_things_matches_original(world, lib, gdat):
             for t in (C.THING_GROUP, C.THING_PROJECTILE, C.THING_EXPLOSION)}
     glowing = [c for c in range(256) if lib.gdat_entry_index(gdat, C.CAT_CREATURE, c, C.GDAT_TYPE_VALUE, 0xF8)]
     assert free[C.THING_GROUP] and free[C.THING_PROJECTILE] and free[C.THING_EXPLOSION] and glowing
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     lit = 0
     for map_ in range(lib.dungeon_map_count()):
         cells = [(x, y) for m, x, y, _ in squares(lib, (C.SQUARE_FLOOR, C.SQUARE_PIT, C.SQUARE_TELEPORTER)) if m == map_]
@@ -552,7 +538,6 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     from dm2test import view as tv
     from dm2test.input import KEY_FORWARD, Loop
     from dm2test.scenario import approaches
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     sc = Loop(lib, gdat, start, tmp_path)
     sc.emu.uc.hook_del(sc.view.weather_init_stub)
     rng = random.Random(180)
@@ -659,7 +644,6 @@ def test_sound_requests_match_original(world, lib, gdat):
 
 def ambient_wall_sensors(lib, gdat):
     """(map, x, y, cell, sensor, cycle, offset) of the audible wall ornaments that animate (sensor kind 0x2c)."""
-    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
     text = ctypes.create_string_buffer(128)
     out = []
     for map_ in range(lib.dungeon_map_count()):
@@ -701,9 +685,6 @@ def test_repeated_ambient_wall_sounds_match_original(world, lib, gdat):
     # data after its direction tables (by the cell and record bits of the sensor thing), so most of the sounds come
     # from far away and do not play; the requests that play and the timeline of both.
     sc = world
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     sensors = ambient_wall_sensors(lib, gdat)
     rng = random.Random(183)
     all_floors = squares(lib, (C.SQUARE_FLOOR,))
@@ -743,9 +724,6 @@ def test_ambient_wall_sounds_match_original(world, lib, gdat):
     # elsewhere (the sound comes from the square in front of the wall). The requests with their lateral and forward
     # place, the start order, loudness, and pan, and the timeline of both.
     sc = world
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     sensors = ambient_wall_sensors(lib, gdat)
     assert len(sensors) > 5
     rng = random.Random(182)

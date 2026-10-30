@@ -11,7 +11,7 @@ from dm2test.dialog import DialogState, InputMatch, find_point, main_loop_quit
 from dm2test.scenario import Scenario, WALL_END_GAME, square_event
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
-from dm2test.structs import Game, ScreenPoint, Session
+from dm2test.structs import Game, Session
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
 
@@ -62,7 +62,6 @@ def click_slot(slot):
         x, y = find_point(lib, INPUT_MODE_DIALOG, lambda m: m.choice == 3)
         rect = (ctypes.c_int16 * 4)()
         assert lib.zone_get_rect(0x1C3, rect)
-        lib.zone_get_position.restype = ScreenPoint
         origin = lib.zone_get_position(InputMatch.in_dll(lib, "g_input_match").origin)
         lib.input_mouse_click(x, rect[1] + origin.y + slot * 7 + 3, 2)
     return act
@@ -77,8 +76,6 @@ def key(code):
 @pytest.fixture
 def play(lib, gdat, start, tmp_path):
     """start.DAT after a walk in the C port and the original, with the fonts and the dialogs of the C port ready."""
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     sc = Scenario(lib, gdat, start, tmp_path)
     assert lib.text_init(gdat)
     lib.ui_reset()
@@ -289,7 +286,6 @@ KEEP_BITS = {C.THING_GROUP: (0x0F, 0x04), C.THING_WEAPON: (2, 0x80), C.THING_ARM
 def fill_table(sc, lib, kind):
     """Marks every free record of kind as used (a link to the end of a list) and clears the "do not discard" bit of
     every other third record, in both."""
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     base = sc.emu.read_u32(0x7F288 + 4 * kind)
     offset, bit = KEEP_BITS[kind]
     for i in range(lib.dungeon_thing_count(kind)):
@@ -310,7 +306,6 @@ def test_discarded_things_match_original(play, lib, place):
     sc = play
     if place:
         sc.place(*place)
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
     last = (ctypes.c_uint8 * C.THING_TYPE_COUNT).in_dll(lib, "g_last_discarded_map")
     ctypes.memmove(last, sc.emu.read(G_LAST_DISCARDED_MAP, C.THING_TYPE_COUNT), C.THING_TYPE_COUNT)  # both from the program start
     found = {}
@@ -333,8 +328,6 @@ def test_discard_keeps_things_within_5_squares(play, lib, distance):
     # At 5 squares the weapon stays and no record comes free; at 6 squares it goes, in both.
     from dm2test.scenario import square_things
     sc = play
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
 
     def loose_weapons():
         for map_ in range(lib.dungeon_map_count()):
@@ -434,7 +427,6 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     from dm2test.input import Loop
     from dm2test.addresses import G_CHAMPIONS
     from dm2test.scenario import CHAMPION_SIZE, champion_records
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     loop = Loop(lib, gdat, start, tmp_path)
     emu, game = loop.emu, loop.game
     assert (game.party_map, game.champion_count) == (0, 1)
@@ -530,13 +522,11 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
     from dm2test.structs import LeaderHand
     from dm2test.input import Loop
     from dm2test.structs import TimelineEvent
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     lib.draw_init(gdat)
     game = Game.in_dll(lib, "g_game")
-    lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
     hand = next(t for t in (lib.champ_remove_object_from_slot(0, s) for s in range(C.SLOT_COUNT)) if t != C.THING_NONE)
     ctypes.c_uint16.from_address(ctypes.addressof(game) + HAND_OFFSET).value = hand
     events = [(C.EVENT_MAGIC_LIGHT, 0, struct.pack("<h", 3)), (C.EVENT_MAGIC_LIGHT, 0, struct.pack("<h", -5)),
@@ -574,7 +564,6 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     game, _ = session.__wrapped__(lib, gdat, start, tmp_path)
     (tmp_path / "DATA").mkdir()
     Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     screen = Bitmap.in_dll(lib, "g_draw_screen")
     view = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, view)
@@ -608,7 +597,6 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     from dm2test.structs import UiState
     from dm2test.scenario import Command
     session.__wrapped__(lib, gdat, start, tmp_path)
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     run_ticks(lib, 16)
     setattr(UiState.in_dll(lib, "g_ui"), held, 1)
     with Player(lib, []) as player:
