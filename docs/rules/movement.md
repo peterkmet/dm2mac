@@ -95,6 +95,6 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
   - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or otherwise at the coordinates of the pit square
   - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
-  - the dialog button opcodes `0xf` and `0x10` of a click feedback script release the feedback bitmap that the script opened (`feedback_draw_op`)
+  - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)
   - a frame step sensor (`0x41`, `SENSOR_FRAME_STEP`) that steps back from frame 0 wraps to frame `0xffff` before the modulo by the frame count of its ornament, so it goes to the last frame only when the frame count divides `0x10000` (`wall_sensor_event`)
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
