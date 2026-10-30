@@ -25,6 +25,14 @@
 #include "view.h"
 #include "zone.h"
 
+/* Sizes of the event ring, the command queue, and the key buffer. */
+#define EVENT_LIMIT         7
+#define EVENT_LIMIT_SPECIAL 9
+
+/* Relative cells of the squares of a view click. */
+#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS      /* the possessions of a static creature show in the back half */
+#define ALCOVE_CELL                CELL_BACK_RIGHT /* the alcove in front keeps its objects in this relative cell */
+
 /* Sizes and hot spots of the cursor images. */
 #define ARROW_W          12
 #define HAND_W           16

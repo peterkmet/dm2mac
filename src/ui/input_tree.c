@@ -10,6 +10,9 @@
 #include "minion.h"
 #include "zone.h"
 
+/* Sizes of the input tables of SKULL.EXE. */
+#define INPUT_NODE_COUNT 76
+
 /* Bits of an input tree node and of a child list entry. */
 #define NODE_HAS_CHILDREN 0x80
 #define NODE_INDEX_MASK   0x7f /* a child list entry: the node index */
