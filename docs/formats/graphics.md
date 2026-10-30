@@ -62,7 +62,7 @@ Counts for the shipped file:
 
 - 3167 images are 8-bit and use codec 2 or 3. 1003 images are 4-bit. 6 images are not compressed.
 - No shipped image uses codec 1 (LZW).
-- The delta table key `(0, 0, 8, 0)` is absent. `g_gdat_base_image_count` (`0x7fabe`) stays 0. Thus `image_decode_4bpp_delta` does not run with the shipped file.
+- The delta table key `(0, 0, 8, 0)` is absent, so `g_gdat_base_image_count` (`0x7fabe`) stays 0 and `image_decode_4bpp_delta` does not run with the shipped file.
 - 1442 items have a gate outside `{0, 31, -32}`; 24 of them are 4-bit images with an offset in the gate (below), the others are not images. The decode entry does not reject them.
 
 Image items:
@@ -95,8 +95,8 @@ The port keeps the `DUNGENB.DAT` fallback logic. It opens `DUNGENB.DAT` when it 
 ## Deviations from the original
 
 - The port supports only the complete `GRAPHICS.DAT`; it does not read `GRAPHIC2.DAT`.
-- The port decodes the 8-bit codecs 2 and 3 only; codec 1 (LZW) gives a data error. No shipped image uses codec 1.
+- The port decodes the 8-bit codecs 2 and 3 only; codec 1 (LZW) gives a data error.
 - Fix: the port rejects a color ramp item (`(1, 0, 7, 2)`) whose ramp lengths reach past the item; the original reads on past it.
 - Fix: `zone_get_icon_rect` gives the zero rect for a zone that places no rect (an unknown zone, which only a damaged `GRAPHICS.DAT` asks for, or a zone that the walk view hides); the original widens the rect that it did not set.
 - Kept quirk: `zone_get_icon_rect` widens the cut rect even when the clip hides the icon, as in the original.
-- Kept quirk: `gdat_text_int_field` goes on with the digits of the first match when the key comes a second time in the text, as in the original.
+- Kept quirk: `gdat_text_int_field` continues with the digits of the first match when the key appears a second time in the text, as in the original.
