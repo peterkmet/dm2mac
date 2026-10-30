@@ -7,7 +7,7 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
 - For the Windows build (section W): the tools and Wine settings in [Windows build](development.md#windows-build).
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/` ([Run the game](manual.md#run-the-game)).
-- DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
+- [DOSBox](development.md#tools) with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass.
 - The default mode is `advanced`. Use `--mode vanilla` for items A to K that compare the port with the original ([Modes](manual.md#modes)).
 - Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [turn-based.md](llm/turn-based.md#deviations-from-the-original).

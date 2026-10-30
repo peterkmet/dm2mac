@@ -325,9 +325,7 @@ this document names. The rule numbers follow the coding standard of the Dungeon 
 
 ## 11. Tests
 
-[Development](development.md#tests) describes the test layout: `tests/differential/` (the port against the
-original in the emulator), `tests/port/` (the port alone), `tests/tools/` (the Python tools),
-`tests/standard/` (this standard), and the helpers in `tests/dm2test/`. The rules that the standard check
+[Development](development.md#tests) describes the test layout. The rules that the standard check
 enforces: [tests]
 
 1. A test module imports helpers from `tests/dm2test/` and the tools from `tools/dm2tools/` only, never from another test module or from
