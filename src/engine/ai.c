@@ -8,6 +8,7 @@
 #include "creature.h"
 #include "dungeon.h"
 #include "game.h"
+#include "interface_state.h"
 #include "item.h"
 #include "le.h"
 #include "merchant.h"

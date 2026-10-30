@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "game.h"
+#include "interface_state.h"
 #include "seen.h"
 
 /* The parts of the game state that state_json_string gives. */

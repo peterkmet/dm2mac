@@ -15,6 +15,7 @@
 #include "game_text.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "le.h"
 #include "money.h"
 #include "move.h"

@@ -12,6 +12,7 @@
 #include "game_text.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "money.h"
 #include "os.h"

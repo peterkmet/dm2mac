@@ -9,6 +9,7 @@
 #include "game.h"
 #include "gdat.h"
 #include "hooks.h"
+#include "interface_state.h"
 #include "item.h"
 #include "le.h"
 #include "projectile.h"

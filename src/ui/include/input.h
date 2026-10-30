@@ -7,8 +7,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "game.h"
 #include "gfx.h"
+#include "interface_state.h"
 
 /* Key code bits of the original keyboard layer: a scan code, extended keys, shift, control, alt. */
 #define KEY_EXTENDED  0x1000
