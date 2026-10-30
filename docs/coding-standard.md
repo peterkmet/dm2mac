@@ -334,6 +334,9 @@ enforces: [tests]
 3. A test calls the accessors of the port; it does not decode a record by bit shifts. [review only]
 4. No machine path in a test (`/Users/`, `/private/tmp/`).
 5. Each test module loads its own copy of the library (`dm2test.lib`); no test compiles the library.
+6. `tests/dm2test/` imports only in the levels of the docstring of `tests/dm2test/__init__.py`: a module imports only from
+   lower levels or from earlier modules of its own level. The `lib` fixture is defined once, in `dm2test.lib`. Every
+   `dm2test` module with a `@pytest.fixture` is in `pytest_plugins` of `tests/conftest.py`.
 
 ## Format
 
