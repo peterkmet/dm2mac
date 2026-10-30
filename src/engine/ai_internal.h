@@ -14,17 +14,9 @@
 #include "dungeon.h"
 #include "sensor.h"
 
-/* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
-#define AI_SCRIPTS_BASE          0x73020u
-#define AI_TARGET_IDLE           0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_WANDER        0x73392u /* ... of a creature that wanders at random */
-#define AI_CHOICES_NONE          0x73399u /* the plan choices of a creature that does nothing */
 /* The sizes of the AI tables and of their records. */
 #define AI_PLAN_COUNT            63
 #define AI_TARGET_SIZE           14
-#define AI_PLAN_STEP_SIZE        7
-#define AI_CHOICE_SIZE           7
-#define AI_MOOD_ENTRY_SIZE       6 /* a mood mask word and the address of its plan choices */
 #define AI_SCRIPTS_SIZE          8030
 #define AI_ACTION_COUNT          86
 #define AI_MOVE_TEST_KINDS       20 /* the move test kinds of g_ai_command_enabled */
@@ -244,17 +236,15 @@ bool ai_plan_path(void);
    AI marker levels, the last read square, the light sums and the party map of the last refresh, the search direction
    bits. */
 /* The directions of a move test past the four map directions. */
-#define DIR_LEVEL_UP    4
-#define DIR_LEVEL_DOWN  5
-#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+#define DIR_LEVEL_UP   4
+#define DIR_LEVEL_DOWN 5
 
 /* The search queue and the search maps. */
-#define SEARCH_CELL_SIZE         4 /* a square of a search map: distance, direction, previous square */
-#define SEARCH_COLUMN_SIZE       (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
+#define SEARCH_CELL_SIZE   4 /* a square of a search map: distance, direction, previous square */
+#define SEARCH_COLUMN_SIZE (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
 /* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
    markers of level 2 that count with them while their text shows. */
-#define MARKER_LEVEL_SIDES       1
-#define MARKER_LEVEL_SIDES_SHOWN 2
+#define MARKER_LEVEL_SIDES 1
 
 /* More of the square that the AI read last; ai_cache_square resets it. */
 typedef struct {

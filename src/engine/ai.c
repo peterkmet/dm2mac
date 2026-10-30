@@ -18,6 +18,16 @@
 #include "save.h"
 #include "sensor.h"
 
+/* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
+#define AI_SCRIPTS_BASE    0x73020u
+#define AI_TARGET_IDLE     0x731d2u /* the target of a creature that waits or wanders */
+#define AI_CHOICES_WANDER  0x73392u /* ... of a creature that wanders at random */
+#define AI_CHOICES_NONE    0x73399u /* the plan choices of a creature that does nothing */
+/* The sizes of the AI tables and of their records. */
+#define AI_PLAN_STEP_SIZE  7
+#define AI_CHOICE_SIZE     7
+#define AI_MOOD_ENTRY_SIZE 6 /* a mood mask word and the address of its plan choices */
+
 /* The free item filter count at the start of an update (the bitmaps of one 0x100-byte scratch block of SKULL.EXE). */
 #define FILTER_FREE_START 4
 

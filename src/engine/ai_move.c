@@ -19,6 +19,13 @@
 #include "save.h"
 #include "sensor.h"
 
+/* The directions of a move test past the four map directions. */
+#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+
+/* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
+   markers of level 2 that count with them while their text shows. */
+#define MARKER_LEVEL_SIDES_SHOWN 2
+
 /* The GDAT values of a door type. */
 #define DOOR_KEY_SEE_THROUGH      0x0d /* creatures see through the closed door */
 #define DOOR_KEY_SOMETIMES_SEEN   0x10 /* creatures see through the moving door half of the time */
