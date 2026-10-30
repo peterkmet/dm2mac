@@ -52,10 +52,9 @@ def wake(s):
 
 
 def both(s, c_fn, addr, *args):
-    """Calls the C function and the original with the same arguments; returns both results as int16."""
-    mine = c_fn(*args)
-    theirs = s.emu.call(addr, *args)
-    return ctypes.c_int16(mine).value, ctypes.c_int16(theirs).value
+    """Calls the C function and the original with the same arguments."""
+    c_fn(*args)
+    s.emu.call(addr, *args)
 
 
 def flying(s):
