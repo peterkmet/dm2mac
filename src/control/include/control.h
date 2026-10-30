@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "state_json.h"
+#include "json.h"
 
 /* The limits of a request. */
 #define KEY_CODE_MAX 65535 /* the largest key code of a request */

@@ -21,6 +21,7 @@
 #include "projectile.h"
 #include "recruit.h"
 #include "save.h"
+#include "state_json.h"
 #include "text.h"
 #include "ui.h"
 #include "video.h"
