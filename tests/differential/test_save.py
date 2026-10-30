@@ -5,7 +5,6 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 from dm2test.markers import ROOT
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import (
@@ -14,10 +13,6 @@ from dm2test.save import (
 )
 from dm2test.structs import Game, Timeline, TimelineEvent
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 DUNGEON_HEADER_SIZE = 0x2C
 STREAM = HEADER_SIZE + 43443  # start of the bit stream in start.DAT, after the dungeon image

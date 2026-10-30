@@ -13,14 +13,9 @@ from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
 from dm2test.structs import Game, Session
 from dm2test.view import ScreenPoint
-from dm2test.lib import load_lib
 
 pytestmark = pytest.mark.usefixtures("program_start_after")
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 GAME_QUIT, IOP_SET_VIDEO_STATE, GAME_END, COMMAND_EXECUTE = 0x2005B, 0x138C7, 0x1FEF6, 0x21D6C
 UI_DIALOG_DRAW, UI_DIALOG_RUN, SAVE_CHECK_DISK, WAIT_VBLANKS, GFX_FILL_ZONE_SCREEN = 0x1A37D, 0x1A0A4, 0x346D1, 0x1C660, 0x13B4D

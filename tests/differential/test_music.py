@@ -12,12 +12,7 @@ from unicorn.x86_const import (
 from dm2test import constants as C
 from dm2test.audio import Music
 from dm2test.markers import ROOT
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 GAME = ROOT / "game"
 SONG_COUNT = 29

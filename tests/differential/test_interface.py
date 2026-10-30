@@ -3,7 +3,6 @@ import ctypes
 import random
 import struct
 
-import pytest
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EIP
 
@@ -19,12 +18,6 @@ from dm2test.addresses import VGA
 from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
 from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, UiState
 from dm2test.view import ScreenPoint, ScreenSize, u8_p
-from dm2test.lib import load_lib
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 
 def test_game_screen_matches_original(port, original):

@@ -8,14 +8,8 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
-from dm2test.lib import load_lib
 from dm2test.markers import ROOT
 from dm2test.scenario import ENDOFLIST, Position, square_event
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 
 def test_activation_after_load(creatures):

@@ -18,10 +18,6 @@ from dm2test.structs import ActionArea
 from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
-
 MOUSE_AREA_ALLOC_NODE = 0x14B1F
 G_INPUT_MODE_ROOTS, G_MATCH_RECT, G_MATCH_X, G_MATCH_Y = 0x72ED1, 0x7F46C, 0x7F520, 0x7F51E
 MODES = range(10)

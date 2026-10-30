@@ -5,7 +5,6 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
 NONE, SCALE2X, SCALE3X = C.SETTINGS_FILTER_NONE, C.SETTINGS_FILTER_SCALE2X, C.SETTINGS_FILTER_SCALE3X
 
@@ -14,15 +13,13 @@ class Settings(ctypes.Structure):
     _fields_ = [("filter", ctypes.c_int)]
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.settings_parse.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
     lib.settings_parse.restype = Settings
     lib.settings_load.argtypes = [ctypes.c_char_p]
     lib.settings_load.restype = Settings
     lib.settings_save.argtypes = [ctypes.c_char_p, ctypes.POINTER(Settings)]
-    return lib
 
 
 def parse(lib, text):

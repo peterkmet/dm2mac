@@ -15,10 +15,6 @@ from dm2test.structs import Game
 from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
-
 G_RANDOM_SEED, G_PARTY_SLEEPING, G_REGEN_COUNTER, G_CHAMPION_COUNT = 0x70518, 0x7F234, 0x7FFF4, 0x7F276
 G_THING_DATA = 0x7F288
 THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)

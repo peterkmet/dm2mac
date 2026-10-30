@@ -10,12 +10,7 @@ from dm2test.gdat import item_sizes
 from dm2test.input import Loop
 from dm2test.structs import Game, LeaderHand
 from dm2test.scenario import square_event
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
 HAND_OFFSET = Game.leader_hand.offset

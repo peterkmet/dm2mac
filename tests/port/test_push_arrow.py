@@ -7,18 +7,15 @@ import pytest
 from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.structs import Bitmap, Party
-from dm2test.lib import load_lib
 
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
 LEFT_ARROW_ZONE = C.ZONE_ARROW_FIRST  # the zone of PUSH_ARROW_LEFT
 MOUSE_LEFT, MOUSE_MIDDLE = (20, 101), (112, 101)  # left of the viewport middle, and the middle without an arrow
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    return lib
 
 
 def keys(lib, *keys):

@@ -7,7 +7,6 @@ import pytest
 from dm2test import constants as C
 from dm2test.scenario import Position, square_things
 from dm2test.structs import Location
-from dm2test.lib import load_lib
 
 FAKE_WALL, FAKE_WALL_OPEN, FLAG_0, FLOOR = C.SQUARE_FAKE_WALL, C.SQUARE_FAKE_WALL_OPEN, 0x01, 1
 THING_SENSOR = 3
@@ -17,9 +16,8 @@ STEP_TYPES = (FLOOR_ANY, 2, 3, 4, 7, 8)  # floor sensors that a step or an item 
 ORNAMENT_SHIFT = 12  # the ornament ordinal is bits 12-15 of the sensor flags (0: none)
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.automap_is_imaginary_wall.argtypes = [ctypes.c_uint8]
     lib.automap_is_imaginary_wall.restype = ctypes.c_bool
     lib.automap_is_pressure_pad.argtypes = [Position]
@@ -33,7 +31,6 @@ def lib():
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
     lib.seen_is_seen.restype = ctypes.c_bool
-    return lib
 
 
 def all_squares(lib):

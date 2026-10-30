@@ -11,7 +11,6 @@ from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.structs import CurrentMap, Location, Party, Timeline, TimelineEvent
 from dm2test.scenario import Position
-from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 CHEATS = (C.CHEAT_LIGHT, C.CHEAT_IMMORTAL, C.CHEAT_FOOD, C.CHEAT_KILL, C.CHEAT_WALLS, C.CHEAT_MAP)
@@ -20,9 +19,8 @@ FLAGS, DEFENSE, PUSH_RESISTANCE = 0, 2, 0x1D  # byte offsets in a creature info 
 UNPUSHABLE = 0xFE  # push resistance 0xfe and 0xff: the party cannot push the creature
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.game_get_cheats.restype = ctypes.c_uint8
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     lib.game_toggle_cheat.argtypes = [ctypes.c_uint8]
@@ -38,7 +36,6 @@ def lib():
     lib.creature_alert.argtypes = [ctypes.c_uint16, Location, ctypes.c_uint, ctypes.c_int, ctypes.c_int]
     lib.creature_process_event.argtypes = [Location, ctypes.c_int]
     lib.move_party.restype = ctypes.c_bool
-    return lib
 
 
 @pytest.fixture

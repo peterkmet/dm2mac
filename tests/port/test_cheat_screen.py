@@ -9,7 +9,6 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.scenario import champion_records
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, key_command, press, set_mode)
-from dm2test.lib import load_lib
 
 SPELL_COUNT, SPELLS_PER_PAGE = 34, 8
 PAGE_COUNT = (SPELL_COUNT + SPELLS_PER_PAGE - 1) // SPELLS_PER_PAGE
@@ -31,9 +30,8 @@ class Cursor(ctypes.Structure):
     _fields_ = [("page", ctypes.c_int16), ("row", ctypes.c_int16)]
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.magic_get_spell.restype = ctypes.POINTER(Spell)
     lib.cheats_get_spell_line.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
     lib.cheats_get_cursor.restype = Cursor
@@ -48,7 +46,6 @@ def lib():
     lib.item_set_gdat_index.argtypes = [ctypes.c_uint16, ctypes.c_int]
     lib.item_gdat_index.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
-    return lib
 
 
 @pytest.fixture

@@ -16,11 +16,6 @@ from dm2test.addresses import SKY_OBJECTS_SIZE
 from dm2test.structs import Location
 
 
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
-
-
 def test_states_equal_after_load(scenario):
     scenario.assert_equal("load")
 

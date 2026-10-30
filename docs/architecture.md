@@ -288,8 +288,8 @@ no console.
 `build/libdm2.dylib` holds all sources except `platform/main.c` and `platform/platform.c` (the SDL sources) and
 `platform/transport_none.c`. It includes the control socket from `platform/transport.c`, but no window.
 
-- Each test module loads its own copy of the library (`load_lib` in `tests/dm2test/lib.py`), so each module has
-  its own C globals.
+- Each test module loads its own copy of the library (the module-scoped fixture `lib` of
+  `tests/dm2test/lib.py` calls `load_lib` once per module), so each module has its own C globals.
 - `g_game_mode` is the vanilla mode in the library.
 - A test of a modal loop sets `g_play_frame_hook` to its own frame and resets it to NULL afterwards.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of

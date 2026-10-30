@@ -7,13 +7,8 @@ import pytest
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test import constants as C
-from dm2test.lib import load_lib
 from dm2test.structs import Timeline
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 RAND_NEXT, RAND_BELOW, RAND_BIT, RAND_2BITS = 0x1C6A1, 0x1C6B7, 0x1C6DC, 0x1C6F6
 G_RANDOM_SEED = 0x70518

@@ -12,7 +12,6 @@ import tempfile
 import time
 import zlib
 
-import pytest
 
 from dm2tools.control_client import request
 from dm2test import constants as C
@@ -23,12 +22,7 @@ from dm2test.structs import Game, UiState
 from dm2test.markers import ROOT
 from dm2test.interface import things_of
 from dm2test.view import ScreenPoint
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 KEY_SHIFTED, KEY_ALT = C.KEY_SHIFTED, C.KEY_ALT
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C

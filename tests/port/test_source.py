@@ -7,21 +7,18 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.iso import build_iso
-from dm2test.lib import load_lib
 
 FILES = {"FTL": b"ftl " * 300, "DATA/GRAPHICS.DAT": bytes(range(256)) * 20}
 FORMS = ["folder", "zip-folder", "zip-root", "iso", "iso-raw"]
 MODE2 = 2
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.source_open.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
     lib.source_open.restype = ctypes.c_void_p
     lib.source_close.argtypes = [ctypes.c_void_p]
     lib.source_read.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32]
-    return lib
 
 
 def write_zip(path, files, root=""):
