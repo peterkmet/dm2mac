@@ -34,11 +34,11 @@ decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by b
 decimal ui/fm.c:level_attenuation rule 3.12: a driver table of HMIMDRV.386
 decimal ui/fm.c:op_carrier rule 3.12: a driver table of HMIMDRV.386
 decimal ui/fm.c:op_modulator rule 3.12: a driver table of HMIMDRV.386
-decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
+decimal ui/input_feedback.c:push_arrows rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:g_input_cursor_zones rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:g_input_mode_roots rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:input_nodes rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:input_zones rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
@@ -125,16 +125,16 @@ hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
 hex ui/fm.c:note_freq_table rule 3.12: a driver table of HMIMDRV.386
-hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
-hex ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_children rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_commands rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+hex ui/input_feedback.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:g_input_cursor_zones rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:g_input_mode_roots rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_children rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_commands rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_keys rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_nodes rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_zones rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
 hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE

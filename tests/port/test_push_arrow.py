@@ -1,4 +1,4 @@
-"""The push arrow under the mouse (src/ui/input.c): it stays pressed in the arrow panel while the mouse selects it."""
+"""The push arrow under the mouse (src/ui/input_feedback.c): it stays pressed in the arrow panel while the mouse selects it."""
 
 import ctypes
 
