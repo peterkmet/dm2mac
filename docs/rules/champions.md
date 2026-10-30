@@ -45,7 +45,7 @@ The code of the champions, the items, money, shops, and the cursor is in `src/en
 ## The cursor
 
 - `input_set_mode`, `input_pop_mode`, and `input_refresh_mode` mark the input zones of the input tree of the mode whose conditions hold (`input_mark_active_zones`). Byte 6 of an input zone (bits 0 to 5) is its cursor zone, from 1. `mouse_area_add` shows the cursor zone of an input zone that becomes active; `mouse_area_remove` hides the cursor zone of an input zone that becomes inactive. When one mode change both hides and shows the same cursor zone, the zone stays as it is.
-- The 18 cursor zones (mouse areas in the original; `g_cursor_zones`, `0x722d4`, 10 bytes): layout zone (bit 15: in the viewport, `g_viewport_origin` (0, 40)), cursor kind, flags (bits 0 to 3: priority), enter event, leave event, list node. Kind 1: zones `0x5c`, `0xa1` to `0xa4`, and `0x07` (the viewport, 2 zones). Kind 2: zone `0x2f` (the party icons, active only while a champion is dragged). The other zones have kind 0. The shown zones are a list: a new zone goes in front of the first zone of the same or a lower priority.
+- The 18 cursor zones (`g_cursor_zones`, `0x722d4`, 10 bytes each; mouse areas in the original) hold a layout zone (bit 15 puts it in the viewport at `g_viewport_origin` (0, 40)), cursor kind, flags (bits 0 to 3 are the priority), enter event, leave event, and list node. Kind 1: zones `0x5c`, `0xa1` to `0xa4`, and `0x07` (the viewport, 2 zones). Kind 2: zone `0x2f` (the party icons, active only while a champion is dragged). The other zones have kind 0. The shown zones are a list: a new zone goes in front of the first zone of the same or a lower priority.
 - `mouse_move_event` (`0x14483`) takes the first shown zone that holds the pointer. Kind 2 gives cursor image 3 (the dragged champion). Kind 1 with a leader gives image 2 (the leader hand object, `g_cursor_has_item`) or image 1 (the hand). All other positions give image 0 (the arrow). A menu or a dialog (input mode 4) shows no cursor zone of kind 1.
 - The cursor images (`mouse_set_cursor_image`, `0x14743`: image, bitmap, hot spot, size, bpp, palette, clear color):
   - `input_init` (`0x147d1`) sets image 0, the arrow (`g_cursor_arrow_bitmap`, `0x7155a`, 12 × 16), and image 1, the hand (`g_cursor_hand_bitmap`, `0x715ba`, 16 × 16). Both are 4 bpp (high nibble first) with the UI colors (`g_ui_colors`) and clear color 12, hot spot (0, 0).
@@ -64,8 +64,8 @@ The code of the champions, the items, money, shops, and the cursor is in `src/en
   - The item ranges of a money box text (`money_coin_type_for_slot`) and of a merchant class set (`money_parse_item_class_set`) use base -1 for a range without a letter before it, so such a number gives the item index number - 1.
   - `item_name` formats the item name twice: `gtext_gdat` formats it, then `gtext_format` formats the result again.
   - The fourth rune writes the end mark of the runes into the byte after the rune field (`unknown_26[0]` of the champion record).
-  - `add_to_party` (`0x49242`) ends the name at a space or after 7 characters and drops the next character; the title starts after it. The 8th character of a longer name is lost.
-  - `recruit_finish` (`0x49a17`) with command `0x93` (cancel) takes the object out of the leader hand and does not put it anywhere: the object is lost.
+  - `add_to_party` (`0x49242`) ends the name at a space or after 7 characters and drops the next character (the 8th character of a longer name is lost); the title starts after it.
+  - `recruit_finish` (`0x49a17`) with command `0x93` (cancel) takes the object out of the leader hand and loses it.
   - `champ_cure_poison` (`0x475d3`) reads only as many timeline slots from the start as the timeline holds events. A poison event in a later slot (the events before it were deleted, for example the events of creatures that died or stayed behind) gets no cure: an antidote does nothing. The advanced mode reads all slots.
   - Bit 15 of the attack value of a melee action (`FIELD_ATTACK`) also makes the hit pierce, and the hit chance ignores the bit (`melee_attack_front`).
   - When the quiver holds no throwing item, a thrower reloads its hand with what lies in the quiver slot (slot 12), even an item that cannot be thrown (`take_next_missile`).
@@ -82,7 +82,7 @@ The code of the champions, the items, money, shops, and the cursor is in `src/en
   - `money_parse_item_class_set` writes outside the set for bad numbers; the port writes only inside it.
   - `show_shop_display` loops for ever when the merchant sells no item of the list, and reads a NULL record without a display sensor; the port stops after 512 tries, and draws nothing without a display sensor.
   - `shop_cmd_evaluate_offer` divides by the price in coins, 0 when the merchant cells hold no goods; the port takes 100 %.
-  - The save writes the container order of a minion link that is no container (the attack and guard minion items) from past its table; the port writes 0.
+  - The save writes the container order of a non-container minion link (the attack and guard minion items) from past its table; the port writes 0.
   - `frighten_front_group` passes a leftover register (EDX) as the damage of `creature_alert`; the port passes 0.
   - `item_create_by_index` and the item creation sensor ask for a record of type `0xffff` for an item index without a thing type; the port gives no item.
   - The item creation sensor with charge mode 3 adds an uninitialized stack word to the charges; the port adds 0, as for the transfer sensors ([world.md](world.md#deviations-from-the-original)), and the oracle (the original in the emulator `dm2tools.emu`) sets the word to 0.
