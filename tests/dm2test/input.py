@@ -55,10 +55,10 @@ LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246A
 GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
 KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
-# The loop functions of later steps: music (Step 19); the mouse areas of an input mode (not ported).
+# The loop functions that are not ported: music; the mouse areas of an input mode (not ported).
 LOOP_STUBS = (0x10AF6, 0x14B1F,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
-              # check (Step 20)
+              # check
               0x13B4D, 0x1C5FD, 0x1A37D, 0x1A0A4, 0x3D187, 0x346D1, 0x3D111,
               0x557B5,  # the expired rows of the message area: the screen only
               0x3F62D)  # the key sequence that prints the free memory (a debug message, not ported)

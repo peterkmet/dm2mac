@@ -1,4 +1,4 @@
-"""Scenario tests of Step 16 with the emulator oracle: creature groups, the creature AI, projectiles, explosions,
+"""Scenario tests with the emulator oracle: creature groups, the creature AI, projectiles, explosions,
 magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal."""
 
 import ctypes

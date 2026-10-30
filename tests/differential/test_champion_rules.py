@@ -1,4 +1,4 @@
-"""Differential tests of the champion rules of Step 15 on start.DAT: the same calls in the C port and in the original
+"""Differential tests of the champion rules on start.DAT: the same calls in the C port and in the original
 code in dm2tools.emu, then the same results, random seed, champions, and dungeon."""
 
 import ctypes

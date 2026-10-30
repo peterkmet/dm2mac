@@ -1,4 +1,4 @@
-"""Step 13: text drawing, the interface panels, and the message area against the original code in dm2tools.emu."""
+"""Differential tests of text drawing, the interface panels, and the message area against the original code in dm2tools.emu."""
 import ctypes
 import random
 import struct

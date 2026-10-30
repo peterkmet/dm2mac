@@ -1,5 +1,4 @@
-"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (Step 16,
-ai_move.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
+"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (ai_move.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
 AI context, the dungeon, and the random seed must be equal."""
 
 import ctypes
@@ -150,7 +149,7 @@ class Ai:
         for addr in (0x3BCA5, 0x3F406, 0x3F3C2):
             if addr in sc.view.no_ops:
                 emu.uc.hook_del(sc.view.no_ops.pop(addr))
-        if F["ai_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of Step 14
+        if F["ai_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of the party map refresh
             emu.uc.hook_del(sc.stubs.pop(F["ai_refresh_party_maps"]))
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
         self.fix_cell_mask()

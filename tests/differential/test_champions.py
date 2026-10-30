@@ -1,4 +1,4 @@
-"""Scenario tests of Step 15 with the emulator oracle: champions, the leader hand, inventory, items, money."""
+"""Scenario tests with the emulator oracle: champions, the leader hand, inventory, items, money."""
 
 import ctypes
 import struct

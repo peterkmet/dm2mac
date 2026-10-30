@@ -1,4 +1,4 @@
-"""Step 16 magic and minions against the original code in dm2tools.emu: runes, spells, magic light, auras, and the
+"""Differential tests of magic and minions against the original code in dm2tools.emu: runes, spells, magic light, auras, and the
 minion map panel."""
 
 import ctypes
@@ -103,7 +103,7 @@ class MagicScenario(CreatureScenario):
         emu = self.emu
         clear_magic_event_bytes(emu)
         self.game_record = Game.in_dll(lib, "g_game")
-        sync_champions(lib, self)  # the loads differ in the redraw flags, the skill bonuses, and the load (Step 14)
+        sync_champions(lib, self)  # the loads differ in the redraw flags, the skill bonuses, and the load
 
     def magic(self):
         mine = bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(self.game_record) + GAME_MAGIC))
@@ -537,7 +537,7 @@ MAP_SQUARE_READS = ((0x44805, 0x44873), (0x448CB, 0x4493A))
 
 @pytest.fixture(scope="module")
 def map_ui(spell_ui, lib):
-    """The spell interface with a level digit table of zeros (the C port before Step 20), and without the reads of
+    """The spell interface with a level digit table of zeros (the C port before the spell interface was ported), and without the reads of
     square bytes outside a map."""
     from unicorn import UC_HOOK_CODE
     from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBP, UC_X86_REG_EDI, UC_X86_REG_EIP

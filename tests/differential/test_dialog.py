@@ -1,4 +1,4 @@
-"""Step 20: the dialogs, the slot dialogs, the start menu picture, and the name editor against the original drawing in
+"""Differential tests of the dialogs, the slot dialogs, the start menu picture, and the name editor against the original drawing in
 dm2tools.emu (the harness of dm2test.interface)."""
 
 import ctypes

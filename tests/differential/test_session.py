@@ -1,4 +1,4 @@
-"""Step 20: the start of a new game, the load and save dialogs, the dialogs, the start menu, and the end of the game
+"""Differential tests of the start of a new game, the load and save dialogs, the dialogs, the start menu, and the end of the game
 against the original code in dm2tools.emu."""
 
 import ctypes

@@ -1,4 +1,4 @@
-"""The creature part of the emulator oracle (Step 16): see CreatureOracle."""
+"""The creature part of the emulator oracle: see CreatureOracle."""
 
 import ctypes
 import struct

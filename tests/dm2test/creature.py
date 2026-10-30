@@ -8,7 +8,7 @@ import pytest
 from dm2test.scenario import Scenario
 
 
-CreatureScenario = Scenario  # the scenario harness runs the creatures since Step 16
+CreatureScenario = Scenario  # the scenario harness runs the creatures
 
 
 @pytest.fixture

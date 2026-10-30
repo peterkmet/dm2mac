@@ -1,4 +1,4 @@
-"""Scenario tests of Step 14 with the emulator oracle: start.DAT goes into the C port and into the memory of the
+"""Scenario tests with the emulator oracle: start.DAT goes into the C port and into the memory of the
 original code; both run the same commands and timeline events; then the game state must be equal."""
 
 import ctypes

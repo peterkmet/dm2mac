@@ -1,4 +1,4 @@
-"""Step 20 scenarios with the emulator oracle (dm2test.scenario.Scenario on start.DAT): a save through the save dialogs and its
+"""Session scenarios with the emulator oracle (dm2test.scenario.Scenario on start.DAT): a save through the save dialogs and its
 load through the load dialog, the end of the game by the end sensor, and the end after the death of the party."""
 
 import ctypes

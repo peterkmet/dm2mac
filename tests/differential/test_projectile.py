@@ -1,4 +1,4 @@
-"""Scenario tests of Step 16 with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
+"""Scenario tests with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
 creature attacks on champions run in the C port and in the original code from start.DAT; the game state must stay
 equal."""
 
