@@ -5,7 +5,6 @@
 ## Anchor corrections
 
 - `world_update_day_night` (0x5a073): the name is kept. The function is mainly the weather system: storm intensity, rain, clouds, lightning strikes (`explosion_create(0xffb0, ...)` on random squares), thunder sound, and sky objects. The hourly light update is a small part. The subsystem is changed to `weather`. Its parameter is "storm step" (1 = called from timeline event 0x54), not "force".
-- `ranges.md` says "0x4c134 square sensors, 0x4cdcc wall sensors". This is reversed. 0x4c134 (`sensor_process_wall_click`) handles the sensors on one wall side when the party clicks a wall. 0x4cdcc (`sensor_process_floor`) is called from `move_thing` when a thing enters or leaves a square.
 - `globals.csv`: `g_timeline_event_count` (0x80428) and `g_timeline_event_max` (0x8042a) are swapped. 0x80428 is the capacity (`system_error(0x2d)` when the count reaches it; `timeline_init` allocates `0x80428 * 12` bytes). 0x8042a is the number of queued events.
 - `notes.md` says "the first word of `g_timeline_events` +4 = type, +5 = priority". Confirmed. Event layout used here: +0 uint32 time (bits 0-23) and map (bits 24-31), +4 type, +5 priority, +6 x or data word, +7 y, +8 cell or data word, +9 effect (0 set, 1 clear, 2 toggle, 3 hold).
 
