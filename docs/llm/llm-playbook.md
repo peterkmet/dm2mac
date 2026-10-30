@@ -1,12 +1,12 @@
 # LLM playbook
 
-You play Dungeon Master II (PC DOS `SKULL.EXE`) in this C port, through the turn-based mode. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
+You play Dungeon Master II (PC DOS `SKULL.EXE`) in the turn-based mode of this C port. Your goal: the party completes the game ([Game over](#game-over)).
 
-You need no other page to play. A rule on this page that starts with "Hint:" is not checked in play: test it, and write the result in `lessons.md`.
+This page is all you need to play. A rule that starts with "Hint:" has not been checked in play: test it and write the result in `lessons.md`.
 
 ## Your notes
 
-Your files in `playthroughs/current/player/` are your memory. Keep each file short and up to date. Each file starts with a header that says what to write and in which format: keep the header and follow it. For a new level, copy the header of `map_L1.md`. Limit: `lessons.md` and each map have at most 80 lines. When a file is longer, merge and shorten it before the end of the session.
+Your files in `playthroughs/current/player/` are your memory. Keep each file short and up to date. Each file starts with a header that says what to write and in which format: keep the header and follow it. For a new level, copy the header from `map_L1.md`. Limit: `lessons.md` and each map have at most 80 lines. If a file is longer, merge and shorten it before the end of the session.
 
 | File | Content |
 |---|---|
@@ -22,42 +22,42 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 ## The party
 
 - A new game starts with one champion, Torham. The party has up to 4 champions.
-- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion shows as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. Write each mirror and its champion in `party.md`.
+- Recruit the other champions from mirrors. Stand in front of a mirror (the wall face has `mirror`) and send `click_wall_ahead`. The champion appears as `state.candidate`. Read its statistics and skills, then send `recruit` with `{"choice":"join"}` or `{"choice":"cancel"}`. Write each mirror and its champion in `party.md`.
 - Each champion has health, stamina, and mana, and the statistics strength, dexterity, wisdom, vitality, antimagic, and antifire.
 - The party has 2 rows: `front_left`, `front_right`, `back_right`, `back_left` (`champions[].position`). The front row fights hand to hand and takes most of the hits from the front. The back row casts spells, throws objects, or shoots. `swap_champions` swaps the places of two champions.
 - The party turns as one. A creature attacks the champions on the side that faces it: a creature behind the party hits the back row.
-- The leader carries the object in the hand (`leader_hand`) and uses it on walls, doors, and floors. `set_leader` chooses the leader.
-- A dead champion leaves bones. Hint: some places bring a champion back from the bones. Keep the bones in a pack.
+- The leader holds an object in the hand (`leader_hand`) and uses it on walls, doors, and floors. `set_leader` chooses the leader.
+- A dead champion leaves bones. Hint: some places bring a champion back to life from the bones. Keep the bones in a pack.
 
 ## Health, stamina, mana
 
-- **Health:** a champion with 0 health dies. Potions, healing spells, and sleep give health back.
-- **Stamina:** fighting, walking, and carrying a load use stamina. A champion at 0 stamina loses health. Sleep gives stamina back.
-- **Mana:** spells cost mana. Mana comes back over time, faster during sleep.
+- **Health:** a champion with 0 health dies. Potions, healing spells, and sleep restore health.
+- **Stamina:** fighting, walking, and carrying a load use stamina. A champion at 0 stamina loses health. Sleep restores stamina.
+- **Mana:** spells cost mana. Mana regenerates over time, faster during sleep.
 - **Poison:** a poisoned champion (`poisoned`) loses health until the poison ends or a cure removes it.
 - **Wounds:** `wounds` lists the hurt body parts (`ready_hand`, `action_hand`, `head`, `torso`, `legs`, `feet`). A wound makes the champion weaker.
 
 ## Food, water, sleep
 
-- The champions eat and drink all the time. The maximum of `food` and `water` is 2048. While a value is 0 or above, the champion gets stamina back. Between -512 and -1, the stamina stays. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
+- `food` and `water` go down all the time; their maximum is 2048. While a value is 0 or above, the champion regains stamina. Between -512 and -1, stamina stays the same. Below -512, the champion loses stamina.
 - Sleep makes the champions use food and water four times as fast: the champion clock runs every 16 game steps instead of 64.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
-- Food is finite, and the champions eat with game time. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
-- To eat or drink: put the food or the drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then `eat` or `drink`.
-- A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand fills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep gives back health, stamina, and mana, but time goes on: food and water go down and creatures move. `sleep` opens the inventory of the leader first. Damage or `wake` wakes the party. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- Food is limited, and the champions eat as game time passes. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
+- To eat or drink: put the food or drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then send `eat` or `drink`.
+- A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand refills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
+- While the party sleeps, time continues: food and water go down and creatures move. `sleep` opens the leader's inventory first. Damage or `wake` wakes the party. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
 - `party.darkness` is 0 (bright) to 5 (dark). In the dark the view shows less: creatures, pits, and wall features in the far rows stay hidden.
-- Torches and light spells give light. Both fade with time. A torch gives light from a hand of a champion or from the leader hand.
-- Outdoors, the daylight gives light by day; the night and heavy rain make it darker (see [Outside and weather](#outside-and-weather)).
+- Torches and light spells give light. Both fade with time. A torch gives light from a champion's hand or from the leader hand.
+- Outdoors, daylight gives light by day; night and heavy rain make it darker (see [Outside and weather](#outside-and-weather)).
 - Each champion can carry a limited weight (`load_kg`, `[current, maximum]`). Strength sets the maximum; stamina below half of its maximum lowers it. A heavy load uses more stamina.
 
 ## Skills and training
 
-- Each champion has 4 base skills: `fighter`, `ninja`, `priest`, and `wizard`. `skills` gives the `level` and the `rank` text of each. A skill gets a new level when the champion uses it. A new level prints a message.
+- Each champion has 4 base skills: `fighter`, `ninja`, `priest`, and `wizard`. `skills` gives the `level` and the `rank` text of each. A skill gains levels as the champion uses it. Each new level prints a message.
 - Each base skill has 4 sub-skills. The state does not show them; a sub-skill grows with its base skill. Fighter has swing and parry; ninja has steal, fight, throw, and shoot. Hint: the other sub-skills are as in Dungeon Master: fighter thrust and club; priest identify, heal, influence, and defend; wizard fire, air, earth, and water.
 - Fighter: hand-to-hand attacks. Ninja: fast attacks, throwing, shooting, stealing. Priest: healing, potions, protection. Wizard: attack spells.
 - A new level gives more health, stamina, or mana and better statistics.
@@ -65,7 +65,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Magic
 
-- A spell is a row of up to 4 runes: a power rune, then a rune of each of the next three sets. The rune names:
+- A spell is a row of up to 4 runes: a power rune, then one rune from each of the next three sets. The rune names:
 
   | Set | Runes (symbol 0 to 5) |
   |---|---|
@@ -74,7 +74,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
   | 3 | `ven`, `ew`, `kath`, `ir`, `bro`, `gor` |
   | 4 | `ku`, `ros`, `dain`, `neta`, `ra`, `sar` |
 
-- To cast: `set_caster` with the `champion`, then `add_rune` with `symbol` 0-5 for each rune, then `cast`. The symbol is the place of the rune in the set of the next rune. `state.spell` gives `caster`, `chosen` (the rune names), and `available[]` (`rune`, `name`, `mana`): the runes of the next set and the mana that each costs this caster.
+- To cast: `set_caster` with the `champion`, then `add_rune` with `symbol` 0-5 for each rune, then `cast`. The symbol is the rune's position in the next set. `state.spell` gives `caster`, `chosen` (the rune names), and `available[]` (`rune`, the symbol for `add_rune`; `name`; `mana`): the runes of the next set and the mana that each costs this caster.
 - A stronger power rune makes a stronger spell and costs more mana.
 - Chosen runes stay after a stopped or failed cast. Before you add runes, check `state.spell.chosen` and send `delete_rune` until it is empty.
 - The spell kinds are potions, projectiles, party auras, summons, and others. Hint: a potion spell needs an empty flask in a hand.
@@ -83,13 +83,13 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Fights
 
-- Each champion attacks with the object in a hand. `hands` gives the action menu of the `ready` hand and of the `action` hand. `choose_action` with `champion`, `hand`, and `index` (the place in the list) runs the action.
+- Each champion attacks with the object in a hand. `hands` gives the action menus of the `ready` hand and the `action` hand. `choose_action` with `champion`, `hand`, and `index` (the position in the list) runs the action.
 - `action_damage` gives the result: above 0 the damage, 0 no damage, -1 nothing (for example a champion is in front), -2 no ammunition, -6 the action cannot work. -3 to -5 is a failed spell.
 - `busy` gives `[ready hand, action hand, spell]`: `true` while the champion must wait before it acts with it again.
 - Hint: some creatures take damage only from magic or special weapons.
 - A closed door blocks creatures. Hint: a door that closes on a creature hurts it.
 - Before a fight with a creature type that is in `bestiary.md`, read its section again. Use what works against it.
-- Before a timed action (a timed switch, a door that closes, a run past a trap), check `wounds`, health, and stamina of each champion. Heal first.
+- Before a timed action (a timed switch, a door that closes, a run past a trap), check each champion's `wounds`, health, and stamina. Heal first.
 
 ## The dungeon
 
@@ -101,25 +101,25 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - A teleporter moves the party or objects to another square. It shows only while it is on and visible; otherwise it looks like floor.
 - Stairs lead to the level above or below.
 - An alcove holds objects (`view.alcove` lists them). Some alcoves react to the object that you put in.
-- Some wall and floor places (machines) move objects to another place.
-- A cell can hold a pile of many objects. `view.piles[].objects` lists every object of the pile, top first. Take every object of a pile: send `take_object` for the cell until the pile is gone, then decide what to keep.
+- Some machines in walls and floors move objects to another place.
+- A cell can hold a pile of many objects. `view.piles[].objects` lists every object in the pile, top first. Take every object from a pile: send `take_object` for the cell until the pile is gone, then decide what to keep.
 
 ## Money
 
 - Coins are objects. A money box holds coins.
-- To open a money box: hold it in a hand of a champion and send `choose_action` with that `champion` and `hand` (give `index` 0). `state.money_box` lists each coin slot: `slot` (0-5), `coin` (the coin name), and `count`.
-- `take_coin` with `slot` moves one coin of that slot to the leader hand. The leader hand must be free for the coin. `pass` closes the money box.
+- To open a money box: hold it in a champion's hand and send `choose_action` with that `champion` and `hand` (give `index` 0). `state.money_box` lists each coin slot: `slot` (0-5), `coin` (the coin name), and `count`.
+- `take_coin` with `slot` moves one coin from that slot to the leader hand. The leader hand must be empty. `pass` closes the money box.
 - `look` on a money box gives the coin counts and the `total`.
-- Hint: put a coin back into the money box with the coin in the leader hand and the money box open. Test it and write the result in `lessons.md`.
-- Write the coin names and their values (when you learn them) in `items.md`.
+- Hint: put a coin back into the money box with the coin in the leader hand and the money box open.
+- Write the coin names and their values (once you learn them) in `items.md`.
 
 ## Merchants
 
 - A merchant is a creature in the view (`creatures[].type`, a number). It stands behind a counter. The counter is the square between the party and the merchant.
-- Trade: the merchant shows its goods on its side of the counter. Put your offer (coins, or goods to sell) on your side of the counter: `drop_object` with cell 2 or 3 (the near cells of the square ahead). The merchant compares the value of the offer with the price of the goods. It accepts, refuses, or haggles, and gives change in coins. When `drop_object` gives `no floor to drop on ahead`, the square ahead takes no object: write it in `lessons.md`.
-- Hint: take the bought goods and the change with `take_object` on cells 2 and 3. When `take_object` gives `no object at this cell` for an object that you see, note it in `bugs.md`.
+- Trade: the merchant shows its goods on its side of the counter. Put your offer (coins, or goods to sell) on your side of the counter: `drop_object` with cell 2 or 3 (the near cells of the square ahead). The merchant compares the value of the offer with the price of the goods. It accepts, refuses, or haggles, and gives change in coins. If `drop_object` gives `no floor to drop on ahead`, the square ahead does not take objects: write it in `lessons.md`.
+- Hint: take the bought goods and the change with `take_object` on cells 2 and 3. If `take_object` gives `no object at this cell` for an object that you see, note it in `bugs.md`.
 - A merchant needs time to answer: send `wait` with some ticks after the offer, then look at the counter again.
-- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display chose an item). A click above the center of the display shows the next item, a click below the center shows the previous item. Hint: `click_wall_ahead` clicks the center; use `act click` with `x` and `y` to page. Check with a screenshot where the display is.
+- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display has chosen an item). A click above the center of the display shows the next item, a click below the center shows the previous item. Hint: `click_wall_ahead` clicks the center; to page, use `act click` with `x` and `y`. Check in a screenshot where the display is.
 - Write each merchant and shop, its goods, and its prices in the map of the level and in `items.md`.
 
 ## Minions
@@ -128,8 +128,8 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - A minion map is an item. Hold it in a hand and send `choose_action` for that hand: the minion map opens as a panel. `state.minion_map` gives `powered` (whether its mana is paid) and `options[]`, where each entry has `option` (0-3), `name` (`creatures`, `details`, `items`, or `hold`), and `on`.
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
 - The minion map takes 1 mana of the champion when it opens; a champion without mana opens it unpowered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by (1 plus the mana of the options that are on). When the champion has no mana left, the map loses its power. Close it when you do not use it.
-- A click on the grid of the map sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
-- Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
+- A click on the map grid sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
+- Hint: the action menu of a minion item (`hands`) gives the minion commands.
 
 ## Outside and weather
 
@@ -143,15 +143,15 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - A save keeps the game. After a death or a mistake, `load` goes back to the last save.
 - There is one save slot (`QUICK.DAT`). `save` overwrites it. Save after each milestone (key, door, puzzle, new level, new champion) and before each risk: a pit, a fight with a new creature type, a timed switch, a teleporter.
 - Do not save while a champion is poisoned, starving, or below 25 health, or when the party is in a fight: you cannot undo a bad save.
-- Use only `save` and `load` of `dm2-play`. Do not click the save button of the game: it opens the save menu of the game.
+- Use only `save` and `load` of `dm2-play`. Do not click the game's save button: it opens the game's save menu.
 - `save` gives `answer the candidate first (act recruit)` while a candidate shows.
-- The save does not keep the sleep or the pause: a game saved while the party sleeps or while the game is paused loads with an awake party in move mode.
-- The coordinator keeps a checkpoint after each session. When the save is bad or the party cannot survive from it, ask in your report for the checkpoint of an earlier game time.
+- A save does not keep sleep or pause: a game saved while the party sleeps or while the game is paused loads with an awake party in move mode.
+- The coordinator keeps a checkpoint after each session. If the save is bad or the party cannot survive from it, ask in your report for a checkpoint from an earlier game time.
 
 ## When you are stuck
 
 1. Stop moving. Save.
-2. Read your own notes again: every lock, key, door, merchant, and shop in the map of the level and in `items.md`. Try each key that you carry in each lock that you know, even in locks that you did not list as exits.
+2. Read your own notes again: every lock, key, door, merchant, and shop in the level map and in `items.md`. Try each key that you carry in each lock that you know, even in locks that you did not list as exits.
 3. Walk over each square of the area once and look at the objects on the floor in the view. Turn to each wall of a dead end.
 4. Write a list into `progress.md` under "Not tried yet": wall features you have not clicked, keys and items you have not tried on each lock or alcove, piles you did not empty, wall texts you did not read, goods you did not buy, unexplored edges of the map, walls you did not test for an illusion, doors you could not open.
 5. Rank the list. Visible things come first: keys, piles, alcoves, switches, locks, doors, shops. Hidden switches and illusory walls come last.
@@ -159,7 +159,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Bugs
 
-This port is under test. When something looks wrong, write it in `bugs.md` with the steps and the state. If the game stops answering or a bug blocks progress, stop and report.
+This port is under test. If something looks wrong, write it in `bugs.md` with the steps and the state. If the game stops answering or a bug blocks progress, stop and report.
 
 ## How to play
 
@@ -168,8 +168,8 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 1. Read this file.
 2. Read your files in `playthroughs/current/player/`: `progress.md`, `lessons.md`, the map of the current level, `party.md`, `spells.md`.
 3. Run `uv run dm2-play --brief get_state`. If the position or the time does not match `progress.md`, run `uv run dm2-play load` and check again.
-4. When the coordinator gives you a goal, it replaces the goal in `progress.md`. Write it into `progress.md` first.
-5. Count the calls of the run: `wc -l < playthroughs/current/coordinator/calls.log`. Note the number. The call limit of the coordinator counts from it.
+4. If the coordinator gives you a goal, it replaces the goal in `progress.md`. Write it into `progress.md` first.
+5. Count the run's calls: `wc -l < playthroughs/current/coordinator/calls.log`. Note the number. The coordinator's call limit counts from it.
 
 ### Rules
 
@@ -195,7 +195,7 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
 | Pass time | `uv run dm2-play --brief wait '{"ticks": 50}'` |
 | Save, load | `uv run dm2-play save`, `uv run dm2-play load` |
 | Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake`, then `uv run dm2-play --brief act close_inventory` |
-| See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
+| See the screen | See [View a screenshot](#view-a-screenshot) |
 
 ### View a screenshot
 
@@ -205,13 +205,13 @@ This port is under test. When something looks wrong, write it in `bugs.md` with 
    uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'
    ```
 
-2. Open the path of the reply with the Read tool. The Read tool shows a PNG file as an image.
+2. Open the path from the reply with the Read tool. The Read tool shows a PNG file as an image.
 
 The image pixels are the game pixels, so a position in the image is the `x` and `y` of `act click`.
 
 ### dm2-play
 
-`dm2-play` sends one request to the game and prints the answer as compact JSON on one line. The exit code is 1 when the answer has `"ok": false`.
+`dm2-play` sends one request to the game and prints the answer as compact JSON on one line. The exit code is 1 if the answer has `"ok": false`.
 
 ```sh
 uv run dm2-play <cmd> [json-fields]
@@ -230,7 +230,7 @@ uv run dm2-play act look '{"champion": 0, "slot": 1}'
 `--brief` (before the command) prints a short summary instead of the JSON:
 
 - The turn line: `ticks`, `ran`, `stopped`, `error`, `game_over`, `action_damage`, `health_lost`, and `BUMPED` after a bump.
-- `look: <name> | <line> | ...` after `look`, and a `seen:` line with the explosions and the killed creatures of the turn.
+- `look: <name> | <line> | ...` after `look`, and a `seen:` line with the turn's explosions and killed creatures.
 - The time, the level, `x`, `y`, the facing, the darkness, and the sky when outdoors; the leader and the leader hand.
 - `CANDIDATE (not recruited)` while a mirror shows a champion.
 - One line per champion: health (`HP`), stamina (`ST`), mana (`MA`), food, water, `poisoned`, `DEAD`.
@@ -242,7 +242,7 @@ Each call appends a line to `playthroughs/current/coordinator/calls.log`.
 
 ### Batches
 
-A batch (`act_many`) runs many `act` turns with one request, one turn per item, in order. After each turn the batch stops early when something happens, so that you can look again. An item is an action name (`"move_forward"`) or an object `{"action": "take_object", "args": {"cell": 2}}`. Separate the items with commas and spaces. A string must not contain a `"` character.
+A batch (`act_many`) runs many `act` turns in one request, one turn per item, in order. After each turn, the batch stops early if something happens, so that you can look again. An item is an action name (`"move_forward"`) or an object `{"action": "take_object", "args": {"cell": 2}}`. Separate the items with commas and spaces. A string must not contain a `"` character.
 
 ```sh
 uv run dm2-play --brief act_many '["turn_left", "move_forward", {"action": "take_object", "args": {"cell": 2}}]'
@@ -263,34 +263,34 @@ The response has `ran` (the number of turns that ran) and `stopped`. The checks 
 | `failed` | An item cannot run. `error` gives the reason. The failed item is not in `ran`, and it changed nothing. |
 | `done` | All items ran. |
 
-After a batch, `action_damage` is a list with one value for each `choose_action`; `look` is in the response only when the last item was `look`.
+After a batch, `action_damage` is a list with one value for each `choose_action`; `look` is in the response only if the last item was `look`.
 
-`health_lost`: a list with one value for each champion (the health that the champion lost since the start of the request). It is only in the response when a champion lost health.
+`health_lost` is a list with one value per champion: the health that the champion lost since the start of the request. It is in the response only if a champion lost health.
 
 ### Bump
 
-When a move action (`move_forward`, `move_back`, `move_left`, `move_right`) does not change the party square, the response has `"bumped": true`. A wall, a closed door, or a creature is in the way. Without a bump, the response has no `bumped` field. A teleporter that sends the party back to its own square also counts as a bump.
+If a move action (`move_forward`, `move_back`, `move_left`, `move_right`) does not change the party square, the response has `"bumped": true`. A wall, a closed door, or a creature is in the way. Without a bump, the response has no `bumped` field. A teleporter that sends the party back to its own square also counts as a bump.
 
 ### Displacement
 
-After each `act` turn and each batch step, the game compares the party facing, square, and map with what the action does:
+After each `act` turn and each batch step, the game compares the party's facing, square, and map with the expected result of the action:
 
 - A move action changes the square by one step in its direction, or nothing (a bump).
 - `turn_left` and `turn_right` change the facing by 90 degrees.
 - All other actions change neither.
 
-When the dungeon changes the party in a different way, the turn has a displacement:
+If the dungeon changes the party in any other way, the turn has a displacement:
 
 | `stopped` | Reason |
 |---|---|
-| `moved` | The square or the map changed in a different way: a teleporter, a pit, stairs. |
-| `turned` | The facing changed in a different way: a spinner. |
+| `moved` | The square or the map changed in another way: a teleporter, a pit, stairs. |
+| `turned` | The facing changed in another way: a spinner. |
 
-`moved` comes before `turned` when both happen. An `act` response has `stopped` only after a displacement.
+`moved` comes before `turned` if both happen. An `act` response has `stopped` only after a displacement.
 
 ### Wait
 
-A `wait` turn runs `ticks` game steps (1-5000, default 1). It checks for news after each tick and ends immediately when it finds news: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` when all ticks ran, otherwise the news. `ticks` gives the ticks that ran.
+A `wait` turn runs `ticks` game steps (1-5000, default 1). After each tick it checks for news and ends immediately if it finds any: `game_over`, `damage`, `creature`, `message`. The response has `stopped`: `done` if all ticks ran, otherwise the news. `ticks` gives the number of ticks that ran.
 
 Example: rest until something happens, at most 5000 ticks.
 
@@ -300,7 +300,7 @@ uv run dm2-play --brief wait '{"ticks": 5000}'
 
 ### Seen
 
-An explosion lasts only a few ticks. It can be gone before the turn ends, so the `view` of the response does not show it. A creature can die in the same way. An `act`, `act_many`, or `wait` request records what the party sees after each tick.
+An explosion lasts only a few ticks. It can be gone before the turn ends, so the response's `view` does not show it. The same goes for a creature that dies. An `act`, `act_many`, or `wait` request records what the party sees after each tick.
 
 The response has `seen: {explosions, creature_changes}` when the record is not empty. Without a record, the response has no `seen` field.
 
@@ -309,7 +309,7 @@ The response has `seen: {explosions, creature_changes}` when the record is not e
 
 ### Game over
 
-When the party dies or the game is complete during a turn, the turn ends. The response has `"game_over": true`. `state.party.dead` is `true` after a death and `false` when the game is complete. After that, `act`, `act_many`, `wait`, and `save` give `game over`. The other commands still work. After a death, send `load`.
+If the party dies or completes the game during a turn, the turn ends. The response has `"game_over": true`. `state.party.dead` is `true` after a death and `false` when the game is complete. After that, `act`, `act_many`, `wait`, and `save` give `game over`. The other commands still work. After a death, send `load`.
 
 ### Actions
 
@@ -321,22 +321,22 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | `turn_left`, `turn_right` | none | The inventory must be closed. |
 | `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. The leader hand must be empty. See `view.piles`. |
-| `drop_object` | `cell` 0-4 | The leader drops the hand object: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
+| `drop_object` | `cell` 0-4 | The leader drops the object in the hand: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
 | `close_inventory` | none | |
-| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | A click on the slot swaps the leader hand with the slot object: `put_in_slot` needs an object in the hand, `take_from_slot` an empty hand. Slots 0 and 1 work without the inventory; the other slots need the open inventory of the champion. See [Slots](#slots). |
-| `eat`, `drink` | none | The champion of the open inventory eats or drinks the leader hand object. |
-| `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Runs action `index` of the action menu of the hand (`champions[].hands`). A money box, a chest, or a minion map opens its panel instead. |
+| `put_in_slot`, `take_from_slot` | `champion`, `slot` 0-37 | A click on the slot swaps the leader hand with the slot object: `put_in_slot` needs an object in the hand, `take_from_slot` an empty hand. Slots 0 and 1 work without the inventory; the other slots need the champion's open inventory. See [Slots](#slots). |
+| `eat`, `drink` | none | The champion whose inventory is open eats or drinks the object in the leader hand. |
+| `choose_action` | `champion`, `hand` (`ready` or `action`), `index` | Runs action `index` of the hand's action menu (`champions[].hands`). A money box, a chest, or a minion map opens its panel instead. |
 | `pass` | none | Closes the open action menu or panel. |
-| `set_caster` | `champion` | Opens the spell panel of the champion. |
+| `set_caster` | `champion` | Opens the champion's spell panel. |
 | `add_rune` | `symbol` 0-5 | See [Magic](#magic). |
 | `delete_rune`, `cast` | none | |
 | `recruit` | `choice`: `join` or `cancel` | Only while a candidate shows. |
 | `set_leader` | `champion` | |
-| `sleep`, `wake` | none | `sleep` opens the inventory of the leader first. |
+| `sleep`, `wake` | none | `sleep` opens the leader's inventory first. |
 | `swap_champions` | `a`, `b` | The two champions swap their places. |
-| `look` | `champion`, `slot` (both optional) | Needs an open inventory. Without `slot`: the object in the leader hand. With `slot`: the empty leader hand takes the object of the slot (`champion`, default the open inventory), the eye looks, and the hand puts it back. See [Look](#look). |
-| `take_coin` | `slot` 0-5 | One coin of the open money box to the leader hand. |
+| `look` | `champion`, `slot` (both optional) | Needs an open inventory. Without `slot`: looks at the object in the leader hand. With `slot`: the empty leader hand takes the object from the slot (of `champion`, by default the champion of the open inventory), the eye looks at it, and the hand puts it back. See [Look](#look). |
+| `take_coin` | `slot` 0-5 | Moves one coin from the open money box to the leader hand. |
 | `minion_map_option` | `option` 0-3 | Turns an option of the open minion map on or off. |
 | `click` | `x` 0-319, `y` 0-199, `button` (`left` or `right`, optional) | A raw click on the screen. Use it only when no action does the job (a dialog, the minion map grid, a shop display). |
 | `key` | `key` | A raw key: one character, `esc`, `enter`, `space`, `backspace`, `tab`, `f1` to `f10`, `up`, `down`, `left`, `right`. |
@@ -376,7 +376,7 @@ The response of `look` has `look: {name, lines}`: the texts of the eye panel. `n
 
 ### Cells
 
-`take_object` and `drop_object` use cells relative to the party direction:
+`take_object` and `drop_object` use cells relative to the party's facing:
 
 | Cell | Where | Name in `view.squares[].objects[].cell` |
 |---|---|---|
@@ -411,10 +411,10 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 
 - `facing`, `darkness`.
 - `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
-- A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` when it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
+- A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` if it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
 - `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
-- A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. A different type gives its number as `name`.
-- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of a different picture). `facing` is the direction that the face points to.
+- A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. Any other type has its number as `name`.
+- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of any other picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists the pile from top (`objects[0]`, also in `top`) to bottom; `take_object` takes `objects[0]`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
@@ -449,8 +449,8 @@ The view shows what a player sees. It shows no creature health.
  2 ####D#####
 ```
 
-The map shows the squares that the party saw. It shows no wall features: a wall is `#`. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map. The map shows the squares as they are now, even when they changed after you saw them.
+The map shows the squares that the party has seen, as they are now, even if they changed after you saw them. It does not show wall features: a wall is `#`. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map.
 
 ### End of a session
 
-Stop when the coordinator's limit is reached, when the game stops answering, or when a bug blocks progress. Count the calls with `wc -l < playthroughs/current/coordinator/calls.log` from time to time. 20 calls before the limit, save the game and update your files, then stop. The report: where the party is, party status, what you achieved, the current goal, bugs found, and a request for an earlier checkpoint when the save is bad.
+Stop when the coordinator's limit is reached, when the game stops answering, or when a bug blocks progress. Count the calls with `wc -l < playthroughs/current/coordinator/calls.log` from time to time. 20 calls before the limit, save the game and update your files, then stop. The report: where the party is, party status, what you achieved, the current goal, bugs found, and a request for an earlier checkpoint if the save is bad.

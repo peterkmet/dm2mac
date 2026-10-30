@@ -1,23 +1,23 @@
 # Movies
 
-The launcher `IBMIOP.EXE` runs the movies of the game from a script: Interplay movie (MVE) files and the splash picture `INTRPLAY.PCX`. The Super VGA (SVGA) option of the installer selects the movie files ([runtime.md](runtime.md#svga-option)). The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The launcher `IBMIOP.EXE` runs the game's movies from a script: Interplay movie (MVE) files and the splash picture `INTRPLAY.PCX`. The installer's Super VGA (SVGA) option selects the movie files ([runtime.md](runtime.md#svga-option)). Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Launcher script (`IBMIOP.EXE`)
 
-- The SVGA script table at the decompressed offset `0x3f62` has one record of 53 bytes per step: the program name (14 bytes; `@1` is the game), the arguments (32 bytes), two flag bytes, the highest exit code that the record handles (offset `0x30`), and the next step for each exit code (offset `0x31`, 1-based; 0 ends the launcher). An exit code above the highest gives the next step of exit code 0 (code at `0x3cea` to `0x3d17`).
+- The SVGA script table at decompressed offset `0x3f62` has one 53-byte record per step: the program name (14 bytes; `@1` is the game), the arguments (32 bytes), two flag bytes, the highest exit code that the record handles (offset `0x30`), and the next step for each exit code (offset `0x31`, 1-based; 0 ends the launcher). An exit code above the highest uses the next step of exit code 0 (code at `0x3cea` to `0x3d17`).
 - Steps: 1 `splash intrplay.pcx 3`, 2 `ftl noabort`, 3 `intro 640x350 wide`, 4 the game, 5 `end 640x350 wide`, 6 `credits 640x350 wide`.
-- The VGA script table at the decompressed offset `0x40a0` has the same steps with `noabort` and `splash credits.pcx 10` at the end.
-- The game: exit code 0 (quit) ends; 1 (completed) goes to `END`, then `CREDITS`; 2 (QUIT GAME of a dead party) goes to `CREDITS`; 3 (RESTART) starts the game step again; every other code ends.
+- The VGA script table at decompressed offset `0x40a0` has the same steps with `noabort` and `splash credits.pcx 10` at the end.
+- The game step: exit code 0 (quit) ends the launcher; 1 (completed) continues with `END`, then `CREDITS`; 2 (QUIT GAME after the party's death) continues with `CREDITS`; 3 (RESTART) starts the game step again; every other code ends the launcher.
 
 ## Movie player
 
-- Each SVGA movie file is the same DOS player program with the MVE data after it. The last `Interplay MVE File` signature of the file starts the data.
+- Each SVGA movie file is the same DOS player program followed by the MVE data. The data starts at the file's last `Interplay MVE File` signature.
 - The 32-bit code of the player reads the arguments:
-  - A first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen).
-  - `wide` shows the video 4/3 wider (432 to 576 pixels).
-  - `noabort` turns off the abort by the user.
+  - A first argument that names a screen size replaces the movie's video mode (`640x350`: a 640 × 350 screen).
+  - `wide` stretches the video width by 4/3 (432 to 576 pixels).
+  - `noabort` prevents the user from aborting the movie.
 - The player centers the video on its screen.
-- `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`). The 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play on 640 × 350, 576 × 320 wide: about 90 %.
+- `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`). The 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play 576 × 320 wide on 640 × 350: about 90 %.
 
 ## MVE stream
 
@@ -25,7 +25,7 @@ The launcher `IBMIOP.EXE` runs the movies of the game from a script: Interplay m
 - Chunks: a word length and a word type, then opcodes up to the length. Opcode: a word length, a type byte, a version byte, then the body.
 - Opcodes of the DM2 movies:
 
-| Opcode | Body | Port |
+| Opcode | Body | Meaning |
 |---|---|---|
 | `0x00` | - | End of stream. |
 | `0x01` | - | End of chunk. |
@@ -41,7 +41,7 @@ The launcher `IBMIOP.EXE` runs the movies of the game from a script: Interplay m
 | `0x11` v3 | 14-byte header (word flags at 12), block data | Video data; flag bit 0 swaps the frames before the decode. |
 | `0x13` | 132 bytes | Block statistics: counts of the encodings. Skipped. |
 
-- The 8-bit video codec: the table of encodings `0x0` to `0xf` is in `src/data/mve_video.c`.
+- `src/data/mve_video.c` holds the table of encodings `0x0` to `0xf` of the 8-bit video codec.
 - The first audio frames come before the first picture (about 1 second); the sound starts with the first picture.
 
 ## Splash picture
@@ -52,10 +52,10 @@ The launcher `IBMIOP.EXE` runs the movies of the game from a script: Interplay m
 
 - The VGA movies and `CREDITS.PCX` of the VGA script are not played.
 - The movie screen is the largest 4:3 rectangle of the window with black borders and linear filtering. The scale is not an integer, and no scale filter applies.
-- A click skips; a key does not skip. In the advanced mode a click skips each step. In the vanilla mode a click does not stop the splash picture or `FTL` because the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
-- The movie sound plays at full volume through the sound output of the port at 44100 Hz. Each sample repeats twice. A different audio format plays the movie without sound.
-- A missing file, damaged data, a splash picture of a size different from 320 × 200, or a movie whose opcode `0x0a` mode is not 640 × 480 is a failed step. The script goes on with the next step. Damage in the middle of a movie stops it there.
+- A click skips; a key does not skip. In advanced mode, a click skips each step. In vanilla mode, a click does not stop the splash picture or `FTL` because the script gives the splash a fixed 3 seconds and `FTL` the argument `noabort`.
+- The movie sound plays at full volume through the port's sound output at 44100 Hz. Each sample repeats twice. A movie with a different audio format plays without sound.
+- A missing file, damaged data, a splash picture of a size different from 320 × 200, or a movie whose opcode `0x0a` mode is not 640 × 480 is a failed step. The script continues with the next step. Damage in the middle of a movie stops it there.
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
-- `--save PATH` plays no start movies; the end movies play after a game that started with `--save`. After a RESTART the start movies do not play ([game-flow.md](../rules/game-flow.md#deviations-from-the-original)).
-- A closed window or a control `quit` ends the program without the end movies. QUIT GAME after the death of the party plays `CREDITS`; QUIT of the save menu plays nothing.
-- The control socket gives `"mode": "movie"` during a movie; `wait` counts the game timer ticks, which stand still ([llm-mode.md](../llm/llm-mode.md#movies)).
+- `--save PATH` skips the start movies; the end movies play after a game that started with `--save`. After a RESTART, the start movies do not play ([game-flow.md](../rules/game-flow.md#deviations-from-the-original)).
+- A closed window or a control `quit` ends the program without the end movies. QUIT GAME after the party's death plays `CREDITS`; QUIT in the save menu plays nothing.
+- During a movie, the control socket reports `"mode": "movie"`; `wait` counts game timer ticks, which stand still ([llm-mode.md](../llm/llm-mode.md#movies)).

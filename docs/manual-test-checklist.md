@@ -5,11 +5,11 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 ## Prerequisites
 
 - macOS with SDL3 from Homebrew: `brew install sdl3`.
-- For the Windows build (section W): the tools and the Wine settings of [Windows build](development.md#windows-build).
+- For the Windows build (section W): the tools and Wine settings in [Windows build](development.md#windows-build).
 - The game files of Dungeon Master II (PC DOS, English, 1995) in `game/` ([Run the game](manual.md#run-the-game)).
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass.
-- The default mode is `advanced`. Use `--mode vanilla` for the items A to K that compare the port with the original ([Modes](manual.md#modes)).
+- The default mode is `advanced`. Use `--mode vanilla` for items A to K that compare the port with the original ([Modes](manual.md#modes)).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
@@ -30,7 +30,7 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 
    Expected result: `build/dm2.exe`, no warnings; `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`.
 
-2. Start the port: the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu:
+2. Start the port. It shows the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu:
 
    ```sh
    build/dm2
@@ -53,7 +53,7 @@ The port and DOSBox use the same save files when both use `game/`. Example: star
 build/dm2 --save tests/saves/start.DAT
 ```
 
-An item with "Covered by" has no box: automated tests check it against the original and it needs no manual run.
+An item with "Covered by" has no box: automated tests check it against the original, so it needs no manual run.
 
 ## A. Program start and window
 
@@ -91,7 +91,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - B14. Compare the screen after a load. Expected: champion status boxes, bars, portraits, hands, movement arrows, and the action area are equal. Covered by `tests/differential/test_interface.py::test_game_screen_matches_original`, `tests/differential/test_interface.py::test_party_states_match_original`.
 - B15. Open the inventory of each champion. Expected: slots, statistics, skills, food and water bars, and the mouth picture are equal. Covered by `tests/differential/test_interface.py::test_inventory_matches_original`, `tests/differential/test_interface.py::test_inventory_panels_match_original`.
 - B16. Put the eye on a weapon, a piece of clothing, a scroll, a potion, a chest, and a money box. Expected: the object information panel is equal. Covered by `tests/differential/test_interface.py::test_inventory_panels_match_original`.
-- [ ] B16a. In the inventory, hold the left mouse button down on the eye, with an empty hand and with an object in the hand. Expected: the skills and statistics panel or the object information panel shows, and the pointer hides, while the button is down. The release shows the normal panel again. A short click shows nothing. The real click path is covered by `tests/port/test_control.py::test_eye_and_mouth_hold_while_the_left_button_is_down`.
+- [ ] B16a. In the inventory, hold the left mouse button down on the eye, with an empty hand and with an object in the hand. Expected: the skills and statistics panel or the object information panel shows, and the pointer hides, while the button is down. When the button is released, the normal panel shows again. A short click shows nothing. The real click path is covered by `tests/port/test_control.py::test_eye_and_mouth_hold_while_the_left_button_is_down`.
 - B17. Open the spell panel and enter runes. Expected: the rune sets and the entered runes are equal. Covered by `tests/differential/test_interface.py::test_action_area_panels_match_original`, `tests/differential/test_magic.py::test_runes_and_casts_match_original`.
 - [ ] B18. Fill the message area with more than three lines. Expected: the rows move up by one row; no part of an old row stays. The 7-pixel move is a port reconstruction; `tests/differential/test_interface.py::test_message_area_scrolls` checks it in the port only.
 - B19. Wait without new messages. Expected: old message rows clear after the same time as in DOS. Covered by `tests/differential/test_interface.py::test_message_area_matches_original`.
@@ -101,9 +101,9 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - [ ] C1. Press the arrow keys and the numeric keypad keys on the Mac keyboard. Expected: the party walks forward, back, left, right and turns left and right. The commands of the keys are covered by `tests/differential/test_input.py::test_clicks_and_keys_match_original`, `tests/differential/test_input.py::test_keys_walk_and_turn_in_the_main_loop`.
 - [ ] C2. Press Shift with the Left or Right arrow on the Mac keyboard. Expected: the party steps sideways. The commands of the keys are covered by `tests/differential/test_input.py::test_clicks_and_keys_match_original`.
 - [ ] C3. Click each of the six movement arrows. Expected: the arrow shows the pressed picture. The moves and the click delays are covered by `tests/differential/test_input.py::test_clicks_on_the_movement_arrows`, `tests/differential/test_input.py::test_arrow_clicks_and_feedback_delays_match_original`.
-- [ ] C4. Hold a movement key. Expected: the party walks on at an even speed; no step is lost or doubled. The move cooldowns are covered by `tests/differential/test_input.py::test_keys_and_move_cooldowns_match_original`.
+- [ ] C4. Hold a movement key. Expected: the party keeps walking at an even speed; no step is lost or doubled. The move cooldowns are covered by `tests/differential/test_input.py::test_keys_and_move_cooldowns_match_original`.
 - [ ] C5. Walk into a wall. Expected: the bump sound plays. The party position and the damage to the champions of the wall side are covered by `tests/differential/test_move.py::test_bump_damage_hits_the_champions_of_the_bump_side`.
-- [ ] C6. Press Esc, then a key. Expected: the music stops during the pause and continues after it. The pause of the game is covered by `tests/differential/test_input.py::test_keys_and_move_cooldowns_match_original`, `tests/differential/test_music.py::test_pause_until_next_game_step`.
+- [ ] C6. Press Esc, then a key. Expected: the music stops while the game is paused and continues after it. The pause of the game is covered by `tests/differential/test_input.py::test_keys_and_move_cooldowns_match_original`, `tests/differential/test_music.py::test_pause_until_next_game_step`.
 - C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/differential/test_input.py::test_sleep_and_wake_match_original`, `tests/differential/test_interface.py::test_party_states_match_original`.
 - C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/differential/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/differential/test_move.py::test_square_events_on_all_sensors`.
 - C9. Click the champion hands and the action icons. Expected: the action menu opens; the choice runs. Covered by `tests/differential/test_input.py::test_champion_clicks_match_original`, `tests/differential/test_interface.py::test_action_area_panels_match_original`, `tests/differential/test_interface.py::test_action_results_match_original`, `tests/differential/test_magic.py::test_icon_click_feedback_matches_original`.
@@ -118,8 +118,8 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - D5. Drink potions. Expected: the effect is as in DOS (health, stamina, mana, statistics). Covered by `tests/differential/test_champion_rules.py::test_eating_drinking_and_actions_match_original`.
 - D6. Run hand actions with a weapon. Expected: the action name, the busy hand, and the reload countdown are as in DOS. Covered by `tests/differential/test_champions.py::test_drink_and_hand_actions`, `tests/differential/test_champion_rules.py::test_eating_drinking_and_actions_match_original`, `tests/differential/test_interface.py::test_action_results_match_original`.
 - [ ] D7. Recruit a champion at a mirror; cancel at the next mirror. Expected: the candidate panel shows the portrait and the statistics of the candidate. The join and the cancel are covered by `tests/differential/test_champions.py::test_recruit_and_cancel`.
-- D8. Push the table of the first room south. Expected: the table moves. Covered by `tests/differential/test_champions.py::test_door_out_of_the_first_room`.
-- D9. Put the solid key into the keyhole and press the door button. Expected: the door of the first room opens (the gold coin opens no door, as in DOS). Covered by `tests/differential/test_champions.py::test_door_out_of_the_first_room`, `tests/differential/test_champions.py::test_coin_from_the_table`.
+- D8. In the first room, push the movable object south. Expected: it moves. Covered by `tests/differential/test_champions.py::test_door_out_of_the_first_room`.
+- D9. Open the door of the first room with its key. Expected: the door opens; a coin does not open it, as in DOS. Covered by `tests/differential/test_champions.py::test_door_out_of_the_first_room`, `tests/differential/test_champions.py::test_coin_from_the_table`.
 - D10. Open a money box; put coins in and take coins out. Expected: the coin counts change as in DOS. Covered by `tests/differential/test_champion_rules.py::test_money_and_prices_match_original`, `tests/differential/test_champions.py::test_money_box_flags_in_the_view`, `tests/differential/test_interface.py::test_containers_in_hand_match_original`.
 - D11. Look at each shop display. Expected: the item, its name, and the prices in coins are as in DOS. Covered by `tests/differential/test_view.py::test_shop_displays_match_original`.
 - D12. Buy an item from a merchant and pay with coins. Expected: the merchant takes the payment and gives change as in DOS. Covered by `tests/differential/test_ai_move.py::test_merchant_commands`, `tests/differential/test_champion_rules.py::test_money_and_prices_match_original`.
@@ -142,7 +142,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - F2. Cast a light spell. Expected: the view becomes brighter; the light fades with time. Covered by `tests/differential/test_magic.py::test_magic_light_events_match_original`, `tests/differential/test_world.py::test_party_light_matches_original`.
 - F3. Cast a party aura spell (shield, invisibility). Expected: the aura shows in the status boxes and ends after the same time. Covered by `tests/differential/test_magic.py::test_every_spell_cast_matches_original`, `tests/differential/test_interface.py::test_party_states_match_original`.
 - F4. Summon a minion. Expected: the minion appears and acts as in DOS. Covered by `tests/differential/test_magic.py::test_every_spell_cast_matches_original`, `tests/differential/test_creature.py::test_creature_updates`.
-- F5. Enter a rune set that is no spell. Expected: the failure message is as in DOS. Covered by `tests/differential/test_magic.py::test_find_spell_matches_original_for_all_rune_sets`, `tests/differential/test_magic.py::test_runes_and_casts_match_original`.
+- F5. Enter a rune set that is not a spell. Expected: the failure message is as in DOS. Covered by `tests/differential/test_magic.py::test_find_spell_matches_original_for_all_rune_sets`, `tests/differential/test_magic.py::test_runes_and_casts_match_original`.
 - F6. Cast with too little mana. Expected: the cast fails as in DOS. Covered by `tests/differential/test_magic.py::test_every_spell_cast_matches_original`, `tests/differential/test_magic.py::test_many_casts_match_original`.
 
 ## G. World
@@ -159,7 +159,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## H. Sound effects
 
-- [ ] H1. Start a game from the start menu. Expected: the test sound plays at the game start.
+- [ ] H1. Start a game from the start menu. Expected: the test sound plays when the game starts.
 - [ ] H2. Open a door at the left and at the right of the party. Expected: the sound comes from the correct side.
 - [ ] H3. Walk into a wall. Expected: the bump sound plays.
 - [ ] H4. Wait for a storm with thunder. Expected: the thunder plays from the correct side and after a delay.
@@ -179,16 +179,16 @@ An item with "Covered by" has no box: automated tests check it against the origi
 ## J. Start menu, new game, save and load, end of game
 
 - [ ] J1. Run `build/dm2 --mode vanilla`. Expected: the start menu shows the title and its options.
-- [ ] J2. Choose the picture option. Expected: the picture shows until a click or until the time ends.
+- [ ] J2. Choose the picture option. Expected: the picture shows until a click or until it times out.
 - [ ] J3. Choose a new game. Expected: the party starts on the start square with the champion of the start mirror as leader.
 - [ ] J4. Recruit more champions and enter the game. Expected: the party has up to four champions.
-- [ ] J5. Press Option+S (Alt+S) to open the save menu. Expected: the dialog with SAVE, QUIT, RESTART, RESUME.
+- [ ] J5. Press Option+S (Alt+S) to open the save menu. Expected: the dialog shows SAVE, QUIT, RESTART, RESUME.
 - [ ] J6. Save into an empty slot and type a name. Expected: the slot shows the name; `game/DATA/SKSAVEn.DAT` exists.
 - [ ] J7. Quit, start `build/dm2`, and load the save. Expected: "LOADING GAME...", then "GAME LOADED, READY TO PLAY"; the game continues in the same state.
 - [ ] J8. Save with an object in the leader hand, a magic light, and an aura; load. Expected: the object is back in the hand; the light and the aura continue.
-- [ ] J9. Choose QUIT more than 100 game steps after the last save. Expected: the program asks before the quit; then the end picture shows until a click.
-- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, even when it started with `--save`.
-- [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no key. Expected: the sound and music volumes go from 0 to 7.
+- [ ] J9. Choose QUIT more than 100 game steps after the last save. Expected: the program asks before it quits; then the end picture shows until a click.
+- [ ] J10. Choose RESTART. Expected: the program starts again with the start menu, even if it started with `--save`.
+- [ ] J11. Open a champion's inventory and click the speaker button (zone 0x238, command 0x8d); the dialog has no keyboard shortcut. Expected: the sound and music volumes go from 0 to 7.
 - [ ] J12. Rename a champion with the name editor. Expected: the keys edit the name and the title.
 - [ ] J13. Let the whole party die. Expected: the scream, then "THE END"; RESTART GAME loads the last save; QUIT GAME ends with exit code 2.
 - [ ] J14. Load or save slot 0. While the game runs, rename `SKSAVE0.DAT` and keep `SKSAVE0.BAK`. Let the party die and choose RESTART GAME. Expected: the `.BAK` file loads and is renamed back to `SKSAVE0.DAT`. (The slot list reads only `.DAT` files, as in the original; a slot with only a `.BAK` shows UNUSED.)
@@ -209,49 +209,49 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 Details: [Advanced features](manual.md#advanced-features).
 
-- [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, as the arrow keys.
+- [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, like the arrow keys.
 - [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.
-- [ ] L3. In the advanced mode, open the save dialog (Option+S, SAVE) and type a slot name with W, A, S, D, Q, and E. Expected: the letters go into the name; the party does not move.
-- [ ] L4. In the advanced mode, open an inventory and rename a champion with the name editor. Expected: W, A, S, D, Q, and E type letters.
+- [ ] L3. In advanced mode, open the save dialog (Option+S, SAVE) and type a slot name with W, A, S, D, Q, and E. Expected: the letters go into the name; the party does not move.
+- [ ] L4. In advanced mode, open an inventory and rename a champion with the name editor. Expected: W, A, S, D, Q, and E type letters.
 - [ ] L5. In the dungeon view, press F5. Expected: the white line "GAME SAVED" in the message area; `game/DATA/QUICK.DAT` exists; no `QUICK.BAK`.
 - [ ] L6. Walk some squares, then press F9. Expected: "GAME LOADED"; the party is back on the square of L5; no dialog shows.
-- [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game goes on.
-- [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game goes on unchanged.
-- [ ] L9. Press F5 and F9 with an open inventory, in the options menu, during the pause (vanilla mode, Esc), during the sleep, and in the save menu. Expected: nothing happens.
-- [ ] L10. Load a slot, play more than 100 game steps, press F5, then choose QUIT in the save menu. Expected: the program asks before the quit (a quick save is not a saved game).
-- [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in the vanilla mode.
+- [ ] L7. Delete `game/DATA/QUICK.DAT` and press F9. Expected: "NO QUICK SAVE"; the game continues.
+- [ ] L8. Write some bytes of garbage into `game/DATA/QUICK.DAT` and press F9. Expected: "QUICK SAVE DAMAGED"; the game continues unchanged.
+- [ ] L9. Press F5 and F9 with an open inventory, in the options menu, while the game is paused (vanilla mode, Esc), while the party sleeps, and in the save menu. Expected: nothing happens.
+- [ ] L10. Load a slot, play more than 100 game steps, press F5, then choose QUIT in the save menu. Expected: the program asks before it quits (a quick save is not a saved game).
+- [ ] L11. Start with `--mode vanilla` and choose RESTART in the save menu. Expected: the program starts again in vanilla mode.
 - [ ] L12. Run `build/dm2 --mode turbo`. Expected: the message "unknown mode turbo: use vanilla, advanced, or turnbased" and exit code 2.
-- [x] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, and the direction. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
+- [ ] L13. In the dungeon view, press Tab. Expected: the automap covers the viewport; the party square with a red frame is in the middle; the readout shows the level, X, Y, and the direction. Press Tab, M, and Esc in turn after opening with Tab or M. Expected: each closes the automap and the dungeon view comes back.
 - [ ] L14. Walk through some rooms and open the automap. Expected: the squares that the view showed are drawn with the minion map icons; squares behind walls and closed doors stay black.
-- [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the close).
-- [x] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the level edges; after a close and a new open, the party is in the middle again.
+- [ ] L15. With the automap open, wait 10 seconds and press W and the arrow keys. Expected: the party does not move; the game time stops (no creature moves after the automap closes).
+- [ ] L16. Drag the automap with the left mouse button. Expected: the map moves in whole squares and stops at the level edges; after closing and reopening it, the party is in the middle again.
 - [ ] L17. Press I, F, and L with the automap open. Expected: nothing changes; the readout shows no cheats.
-- [x] L17a. Open the automap with the reveal map cheat on, then off. Expected: a white 1 pixel frame surrounds the whole level; a floor with a pressure pad (a floor plate that a step triggers) has a small gray square in the middle; a wall that the party can walk through (an imaginary wall) shows as the wall icon with a light gray checkerboard.
-- [x] L17b. On level 6 open the automap and drag to a neighbor map. Expected: the seen squares of the neighbor maps show at their place; one white frame surrounds the whole level; the drag stops at the level edge.
-- [x] L17c. Outdoors, walk to the edge of a map that has no map beyond it, where the view shows trees ahead, and open the automap. Expected: the trees show as walls beyond the last floor squares; the white frame is outside them.
-- [x] L17d. Outdoors, stand in front of a tree on a floor square and open the automap, then a magic map without options. Expected: both show the tree. Near a merchant and a walking creature, open the automap. Expected: neither shows, as on the magic map without options.
-- [x] L17e. Outdoors, stand at the edge of a map where another map of the level covers the squares beyond it only with unknown squares (level 6, map 24, the south edge), with the view showing trees ahead, and open the automap. Expected: the trees show as walls, as on the magic map.
-- [x] L17f. Press M, then C, then Esc (the options menu) while the party walks a step. Expected: each screen fills the whole viewport.
+- [ ] L17a. Open the automap with the reveal map cheat on, then off. Expected: a white 1-pixel frame surrounds the whole level; a floor with a pressure pad (a floor plate that a step triggers) has a small gray square in the middle; a wall that the party can walk through (an imaginary wall) shows as the wall icon with a light gray checkerboard.
+- [ ] L17b. On level 6 open the automap and drag to a neighbor map. Expected: the seen squares of the neighbor maps show at their place; one white frame surrounds the whole level; the drag stops at the level edge.
+- [ ] L17c. Outdoors, walk to the edge of a map that has no map beyond it, where the view shows trees ahead, and open the automap. Expected: the trees show as walls beyond the last floor squares; the white frame is outside them.
+- [ ] L17d. Outdoors, stand in front of a tree on a floor square and open the automap, then a magic map without options. Expected: both show the tree. Near a merchant and a walking creature, open the automap. Expected: neither shows, as on the magic map without options.
+- [ ] L17e. Outdoors, stand at the edge of a map where another map of the level covers the squares beyond it only with unknown squares (level 6, map 24, the south edge), with the view showing trees ahead, and open the automap. Expected: the trees show as walls, as on the magic map.
+- [ ] L17f. Press M, then C, then Esc (the options menu) while the party walks a step. Expected: each screen fills the whole viewport.
 - [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
 - [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
 - [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.
 - [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
-- [x] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
-- [ ] L23. In the vanilla mode, press Tab and M. Expected: no automap.
-- [ ] L24. In the advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes immediately through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game goes on.
-- [ ] L25. Start `build/dm2` again. Expected: the filter of `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
-- [ ] L26. In the advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In the vanilla mode, press Tab in an inventory. Expected: nothing.
-- [ ] L27. In the advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in the vanilla mode. Click in the action area while the star shows. Expected: the hand icons show immediately and the click works as usual (it opens the hand menu). In the vanilla mode, the star disappears after one step.
-- [ ] L28. In the advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns immediately; no projectile jumps. In the vanilla mode the projectile moves in steps.
-- [x] L29. In the advanced mode, open the automap, the cheat screen, and the options menu in turn, and right-click in each. Expected: each closes and the dungeon view comes back. Open an inventory, press Alt+S, and right-click. Expected: the save menu closes and the inventory shows again. Click SAVE and right-click in the slot list. Expected: the save menu shows again. Wait more than 100 game steps after the last save, click QUIT, and right-click. Expected: the save menu shows again. In the vanilla mode, right-click in the save menu. Expected: nothing.
+- [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.
+- [ ] L23. In vanilla mode, press Tab and M. Expected: no automap.
+- [ ] L24. In advanced mode, press Esc in the dungeon view. Expected: the viewport shows OPTIONS with FILTER NONE and CONTINUE; the game time stops. Press A, D, Return, and click FILTER. Expected: the filter changes immediately through NONE, SCALE2X, SCALE3X and wraps; `game/DATA/SETTINGS.TXT` holds the filter. Press Esc, or click CONTINUE. Expected: the menu closes and the game continues.
+- [ ] L25. Start `build/dm2` again. Expected: the filter from `SETTINGS.TXT` is on. Start with `--filter none`. Expected: no filter; Esc, then D, writes the file again. With `--mode vanilla` Esc pauses and the file is not read. Make `SETTINGS.TMP` a folder and change the filter. Expected: "UNABLE TO SAVE OPTIONS" once; the filter still changes.
+- [ ] L26. In advanced mode, open an inventory and press Tab. Expected: the inventory closes. Open the name editor and press Tab. Expected: the editor moves to the next field; the inventory stays. In vanilla mode, press Tab in an inventory. Expected: nothing happens.
+- [ ] L27. In advanced mode, hit a creature with a weapon. Expected: the damage star stays visible about twice as long as in vanilla mode. Click in the action area while the star shows. Expected: the hand icons show immediately and the click works as usual (it opens the hand menu). In vanilla mode, the star disappears after one step.
+- [ ] L28. In advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns immediately; no projectile jumps. In vanilla mode, the projectile moves in steps.
+- [ ] L29. In advanced mode, open the automap, the cheat screen, and the options menu in turn, and right-click in each. Expected: each closes and the dungeon view comes back. Open an inventory, press Alt+S, and right-click. Expected: the save menu closes and the inventory shows again. Click SAVE and right-click in the slot list. Expected: the save menu shows again. Wait more than 100 game steps after the last save, click QUIT, and right-click. Expected: the save menu shows again. In vanilla mode, right-click in the save menu. Expected: nothing.
 
 ## Movies
 
 Start `build/dm2` without `--save` unless an item says otherwise. Use a window with sound.
 
 - [ ] M1. Start and choose a mode. Expected: the Interplay picture for 3 seconds, then `FTL` with sound, then `INTRO` with sound, then the start menu with its colors.
-- [ ] M2. Look at the size of the pictures. Expected: `FTL` small in the middle of a 4:3 area; `INTRO` fills about 90 % of the 4:3 area; black borders on the sides of a wide window.
-- [ ] M3. `--mode vanilla`: click during the splash and during `FTL`. Expected: they go on. Click during `INTRO`. Expected: the start menu shows.
+- [ ] M2. Look at the size of the pictures. Expected: `FTL` is small in the middle of a 4:3 area; `INTRO` fills about 90 % of the 4:3 area; black borders on the sides of a wide window.
+- [ ] M3. `--mode vanilla`: click during the splash and during `FTL`. Expected: they continue. Click during `INTRO`. Expected: the start menu shows.
 - [ ] M4. `--mode advanced`: click during the splash, `FTL`, and `INTRO`. Expected: each stops immediately. Press keys during a movie. Expected: nothing; the start menu does not get the keys.
 - [ ] M5. Start with `--save game/DATA/SKSAVE0.DAT`. Expected: no movie; the game starts immediately.
 - [ ] M6. Complete the game (the end sensor). Expected: the screen goes black, `END` plays, then `CREDITS`, then the program ends with exit code 1. A click in `END` starts `CREDITS`.
@@ -284,7 +284,7 @@ Details: [The turn-based mode](llm/llm-mode.md#the-turn-based-mode). Run the gam
 
 ## W. Windows
 
-Copy `SDL3.dll` next to `build/dm2.exe` and set the Wine settings ([Windows build](development.md#windows-build)). Start the program from the repo root.
+Copy `SDL3.dll` next to `build/dm2.exe` and set up Wine ([Windows build](development.md#windows-build)). Start the program from the repo root.
 
 - [ ] W1. Remove `SDL3.dll` from `build/` and run `"$WINE" build/dm2.exe`. Expected: Windows reports the missing `SDL3.dll`. Copy it back.
 - [ ] W2. Run `"$WINE" build/dm2.exe`. Expected: the program starts a new game with `game/`: the splash picture, the movies, and the start menu, with image and sound.

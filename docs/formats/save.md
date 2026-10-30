@@ -1,6 +1,6 @@
 # Save file format
 
-The save files `SKSAVE<n>.DAT` of the game, and the quick save files and the settings file of the port. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port is `src/engine/save.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The game's save files are `SKSAVE<n>.DAT`; the port adds quick save files and a settings file. The original routines are `session_save` (`0x3502b`) and `session_load` (`0x370d2`). The port's code is in `src/engine/save.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Container
 
@@ -11,7 +11,7 @@ The save files `SKSAVE<n>.DAT` of the game, and the quick save files and the set
 | 3 | rest of file | Bit-packed game state |
 
 - Header: `+0x00` u16 = 1 (format marker), `+0x02` 32 bytes save name (up to 31 characters and a NUL, `"GAME 0"`). The u32 at `+0x26` is `0xdeadbeef` in an empty slot. The meaning of `+0x22` to `+0x25` is unknown.
-- `session_save` (`0x3502b`) reads the old header from the `.BAK` file (the old `.DAT`, renamed just before), changes `+0x00` and the name, and writes it back. It copies the name with `str_copy`, so the bytes after the end mark keep the old header bytes. Without a `.BAK` file only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. The port keeps the old bytes byte for byte.
+- `session_save` (`0x3502b`) reads the old header from the `.BAK` file (the old `.DAT`, renamed just before), changes `+0x00` and the name, and writes it back. It copies the name with `str_copy`, so the bytes after the terminating NUL keep their old values. Without a `.BAK` file, only `+0x26` to `+0x29` are set to 0; the other bytes are uninitialized stack. With a `.BAK` file, the port keeps the old bytes byte for byte.
 - `session_load` reads the 42 bytes, sets the dungeon file base `0x7f8e8` to `0x2a`, and calls `dungeon_load(0)`.
 - The dungeon image stores counts that already include the load slack: tile roots + 300, and the per-thing-type slack table at `0x71818` (`0 0 0 0 75 100 60 0 12 5 200 0 0 0 60 50`). Thus the save path calls `dungeon_load` with `new_game` false, and the `DUNGEON.DAT` load calls it with `new_game` true.
 - The dungeon image has no trailing 16-bit checksum. `DUNGEON.DAT` has one.
@@ -39,8 +39,8 @@ The save files `SKSAVE<n>.DAT` of the game, and the quick save files and the set
 
 ## Details of the records
 
-- Order of the things: the things of the timeline events, then all squares of all maps, then the deferred containers and creatures.
-- Values between the records (the 1 bit before a thing, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
+- Things are stored in this order: the things of the timeline events, then all squares of all maps, then the deferred containers and creatures.
+- Values between the thing records (the 1 bit before a thing, 4 bits type, 2 bits cell, 7 bits creature type, 2 bits container kind, 9 bits sensor data, 10 bits record position) go through `save_write_packed` as a little-endian word with a little-endian mask. A 9-bit value thus stores bits 7 to 0 first, then bit 8.
 
 Game record (60 bytes, mask `0x75316`):
 
@@ -63,16 +63,16 @@ Game record (60 bytes, mask `0x75316`):
 
 - Thing list (`save_write_thing_list`, `save_read_thing_list`): things of types 4 to 15 start with a 1 bit and the type; a 0 bit ends the list. A list with a single thing (champion slot, leader hand, projectile payload, event group) has no end bit, even when it is `THING_ENDOFLIST`.
 - Creature groups whose creature info has flag bit 0 (static creatures, no active group) use the mask at `0x7548b` and store the cell of each possession. Minion maps (container kind 1) use the mask at `0x754b3`. A misc item inside a moneybox uses the mask at `0x754bf`. A projectile inside a creature group uses the mask at `0x754cf`. Minion maps and projectiles in groups are deferred: their link is stored after the squares as the position of the target group or container in the bit stream.
-- A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no square bits. When the target map is lower, the things of the square are stored with the target square, not here.
+- A teleporter square whose target is a teleporter with a link sensor (type `0x27`) stores no bits for its square. If the target map is lower, the things of the square are stored with the target square, not here.
 - Event types with a thing: `0x19` explosion (event `+8`), `0x1d`/`0x1e` projectile move (event `+6`), `0x3c`/`0x3d` move group (event `+8`, a single-thing list that only loads when the header format word is not 0).
 - The original treats a short read at the end of the file as success, so it does not find a truncated bit stream.
-- A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The written file then does not load again because the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
+- A damaged dungeon image in which two squares share a thing list (other than a linked teleporter) can load without an error. The file that the game then writes does not load again because the things of the shared list are stored under both squares. The original has the same weakness. The port does not check this.
 
 ## Reader and writer of the port
 
 - The port reads and writes the records from the mask tables, with no separate format description in C.
-- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. The tests are described in [Compatibility with the original](#compatibility-with-the-original).
-- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation takes random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
+- After a load, things of types 4 to 15 can sit in different slots from the file. A load followed by a save can thus give a different dungeon image. [Compatibility with the original](#compatibility-with-the-original) describes the tests.
+- A save deactivates the creature groups before it writes and activates them again after the write, as in the original (`session_save`, `0x3502b`). The activation uses random numbers, so each save moves the random seed, and two saves in a row are not byte-equal.
 
 ## Compatibility with the original
 
@@ -80,12 +80,12 @@ Method (`tests/differential/test_save.py`, `original_round_trip`): `dm2tools.emu
 
 - The original round trip of `tests/saves/start.DAT` is not byte-equal: the dungeon image differs (first-thing table, link words, thing records), because the load creates the groups and items again in the first free records. The file size and the bit stream stay equal.
 - A second round trip of the original output is byte-equal (a fixed point).
-- The C port gives the same bytes as the original writer for `start.DAT`, and for the original output.
-- A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer gives the same bytes as the original writer. The group in the event gets a different bit stream position from its record index, so the deferred links use the written positions.
+- The C port writes the same bytes as the original writer for `start.DAT`, and for the original output.
+- A second test (`link_things` in `tests/differential/test_save.py`) changes the loaded state the same way in C and in the emulator memory: a group in a move-group event, a minion map linked to another group, a projectile, an explosion, and a gap in the timeline. The C writer writes the same bytes as the original writer. The group in the event gets a different bit stream position from its record index, so the deferred links use the written positions.
 
 ## AMAP and CHTS blocks
 
-In the advanced mode, a slot save and the quick save `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. The turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in the vanilla mode. The AMAP block holds the seen squares of the automap, the CHTS block the cheats ([manual.md](../manual.md#advanced-features)).
+In advanced mode, a slot save and the quick save `QUICK.DAT` end with two blocks after the original save data: the AMAP block, then the CHTS block. Turn-based mode writes only the AMAP block. The bytes before the blocks are the same as in vanilla mode. The AMAP block holds the automap's seen squares; the CHTS block holds the cheats ([manual.md](../manual.md#advanced-features)).
 
 The AMAP block:
 
@@ -105,25 +105,25 @@ The CHTS block:
 | 1 | Version: 1 |
 | 1 | Cheat bits: `0x01` full light, `0x02` immortal, `0x04` food and water, `0x08` one-hit kill, `0x10` walk through walls, `0x20` reveal map |
 
-A load reads the blocks when they are there.
+A load reads the blocks if they are present.
 
-- AMAP: a missing block, a block with different map sizes, or a value other than 0 or 1 gives an empty automap. After the block, only the end of the file or a valid CHTS block can come; other bytes give an empty automap.
-- CHTS: in the advanced mode, the cheats come from the block. A missing block, a wrong version, an unknown bit, bytes after the block, or a damaged AMAP block give no cheats. The vanilla and turn-based modes ignore the block and use no cheats.
+- AMAP: a missing block, a block with different map sizes, or a value other than 0 or 1 gives an empty automap. Only the end of the file or a valid CHTS block may follow the block; other bytes give an empty automap.
+- CHTS: in advanced mode, the cheats come from the block. A missing block, a wrong version, an unknown bit, bytes after the block, or a damaged AMAP block give no cheats. Vanilla and turn-based modes ignore the block and use no cheats.
 - The game loads in all these cases. A save with only the original data (vanilla) loads with an empty automap and no cheats.
 
 The original game loads a save with the blocks because its loader stops at the last bit of the game state. A save in the original game writes the file again without the blocks.
 
 ## Quick save files
 
-The quick save `QUICK.DAT` of the advanced and the turn-based modes is in the `--saves` folder, otherwise in `<data>/DATA` ([manual.md](../manual.md#quick-save-and-quick-load)). A quick load uses a copy of the running game, `QUICK.TMP` next to `QUICK.DAT` (`advanced_quick_load` in `src/ui/advanced.c`):
+In advanced and turn-based modes, the quick save `QUICK.DAT` is in the `--saves` folder, otherwise in `<data>/DATA` ([manual.md](../manual.md#quick-save-and-quick-load)). A quick load uses a copy of the running game, `QUICK.TMP` next to `QUICK.DAT` (`advanced_quick_load` in `src/ui/advanced.c`):
 
-- Before the load, the game writes the running game to `QUICK.TMP`. When this write fails, the game does not load.
-- When `QUICK.DAT` does not load, the game loads `QUICK.TMP` back. After a load or a restore, the game deletes `QUICK.TMP`.
-- When `QUICK.TMP` does not load either, the game is lost. `QUICK.TMP` stays, and the log gets an error line. The advanced mode ends the program (`EXIT_GAME_LOST`, [game-flow.md](../rules/game-flow.md#deviations-from-the-original)); the turn-based mode goes on without a game ([llm-mode.md](../llm/llm-mode.md#turn-based-commands)).
+- Before the load, the game writes the running game to `QUICK.TMP`. If this write fails, the quick load stops.
+- If `QUICK.DAT` does not load, the game loads `QUICK.TMP` back. After a load or a restore, the game deletes `QUICK.TMP`.
+- If `QUICK.TMP` does not load either, the game is lost: `QUICK.TMP` stays, and the game writes an error line to the log. Advanced mode ends the program (`EXIT_GAME_LOST`, [game-flow.md](../rules/game-flow.md#deviations-from-the-original)); turn-based mode continues without a game ([llm-mode.md](../llm/llm-mode.md#turn-based-commands)).
 
 ## SETTINGS.TXT
 
-The settings file of the advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#settingstxt)). It is in the folder of `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
+The settings file of advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#settingstxt)). It is in the same folder as `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
 
 ```
 filter=scale2x
@@ -147,9 +147,9 @@ filter=scale2x
   - no free record for a new thing
   - a full first-thing table
   - more than 100 deferred things
-- A poison event of a champion that does not exist is skipped on load (the original writes to the record past the last champion).
-- A damage display event of a champion past the four champion records is not linked to a champion (the original writes past the last record).
-- A creature group whose creature info index lies past the table stores the bits of a group that is not static (the original reads past the table).
+- A poison event for a nonexistent champion is skipped on load (the original writes to the record past the last champion).
+- A damage display event for a champion past the four champion records is not linked to a champion (the original writes past the last record).
+- A creature group whose creature info index lies past the table stores the bits of a non-static group (the original reads past the table).
 - A deferred minion map or carried projectile whose link lies past the records of its target type writes the record position 0 (the original reads past its table).
 - Kept quirk: the game record stores two bits of the leader (`+0x12`, mask `0x03`), as in the original (`session_load`, `0x370d2`). A party without a leader (`0xffff`) loads with leader 3; `champ_init_party_state` then gives the lead to champion 3 if it lives, otherwise the party stays without a leader.
-- On save, the compaction of the timeline stops at the last event when the event count is higher than the number of events in use, for example after the load of an event without a type (the original reads past the events).
+- On save, timeline compaction stops at the last event if the event count is higher than the number of events in use, for example after loading an event without a type (the original reads past the events).
