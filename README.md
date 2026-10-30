@@ -60,7 +60,7 @@ against the original in an emulator. The build, the tests, and the index of the 
 
 - [SDL3](https://github.com/libsdl-org/SDL): windowing, input, and audio output.
 - [Nuked-OPL3](https://github.com/nukeykt/Nuked-OPL3) by Nuke.YKT: the OPL3 emulation for the music.
-- [tinf](https://github.com/jibsen/tinf) by Jørgen Ibsen: the inflate of ZIP archives.
+- [tinf](https://github.com/jibsen/tinf) by Jørgen Ibsen: ZIP decompression.
 - [Unicorn](https://www.unicorn-engine.org): the CPU emulation for the differential tests.
 - [reDM2](https://codeberg.org/CyCl0ne/reDM2): an analysis of the same `SKULL.EXE`, read for names, formats, and
   logic.

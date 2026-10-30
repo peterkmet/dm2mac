@@ -34,7 +34,7 @@ It follows each directory once. A path has at most two parts (`DATA/GRAPHICS.DAT
 
 ## Names
 
-A name matches without case. The reader cuts the version suffix `;1`, then a final `.`, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
+A name is case-insensitive. The reader cuts the version suffix `;1`, then a final `.`, so `FTL.;1` matches `FTL` and `GRAPHICS.DAT;1` matches `GRAPHICS.DAT`.
 
 ## What fails
 

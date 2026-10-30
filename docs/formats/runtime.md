@@ -37,7 +37,7 @@ The code behind these rates:
 
 ## Unknown values
 
-Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 0x2d` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot fix it.
+Both programs hook `INT 8`: the HMI handler in protected mode, the `IBMIOP.EXE` handler in real mode. The HMI handler calls the old handler only at about 18.2 Hz. Thus the real rate of the `INT 0x2d` callback depends on how DOS/4GW routes `IRQ 0`. Static analysis cannot determine it.
 
 ## IBMIOP.EXE runtime layer
 

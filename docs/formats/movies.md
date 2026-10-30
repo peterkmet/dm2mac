@@ -15,7 +15,7 @@ The launcher `IBMIOP.EXE` runs the movies of the game from a script: Interplay m
 - The 32-bit code of the player reads the arguments:
   - A first argument that names a screen size replaces the video mode of the movie (`640x350`: a 640 × 350 screen).
   - `wide` shows the video 4/3 wider (432 to 576 pixels).
-  - `noabort` turns off the stop by the player.
+  - `noabort` turns off the abort by the user.
 - The player centers the video on its screen.
 - `FTL` plays on 640 × 480 (VESA `0x101`, from its opcode `0x0a`). The 432 × 320 video fills about 67 % of the width and the height of a 4:3 monitor. `INTRO`, `END`, and `CREDITS` play on 640 × 350, 576 × 320 wide: about 90 %.
 

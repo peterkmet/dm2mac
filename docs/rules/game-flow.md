@@ -21,7 +21,7 @@ The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, an
 
 ## Save and load
 
-- Saves are `<data>/DATA/SKSAVE<n>.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the header of each slot ([save.md](../formats/save.md#container)); an empty slot shows "n UNUSED". A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts the typing of up to 31 characters (letters become capitals, Backspace, Enter ends).
+- Saves are `<data>/DATA/SKSAVE<n>.DAT` (slots 0 to 9) and `.BAK`, as in the original. The slot dialogs (`0x80` load, `0x81` save) list the header of each slot ([save.md](../formats/save.md#container)); an empty slot shows "n UNUSED". A click in the list chooses slot (y - list top) / 7. The save dialog names an empty slot "GAME n"; a click on the name field starts text entry of up to 31 characters (letters become capitals, Backspace, Enter ends).
 - The save menu (dialog `0x1b`): SAVE, QUIT (the end picture GDAT `(6, 0, 1, 1)` until a click), RESTART (exit code 3), RESUME. A quit more than 100 game steps after the last load and the last save first asks dialog `0x0c`.
 - A load restores the timed effects of the save (`restore_timed_effects`, [champions.md](champions.md#the-leader-hand)). The start of the loaded game (`play_start_session`) puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - The load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion.
@@ -73,8 +73,8 @@ The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, an
   - A dungeon with a map of level 63 does not load (the original writes past its level tables).
   - The level digit scan stops at the end of the start text (the original reads past it).
   - The level table of a dungeon without maps (a test or damaged file) keeps the level digits (the original reads the start square of map 0 from the empty map tables).
-  - A door switch sensor whose target door square has no things or starts with a thing other than a door (a damaged file) sets no flag (the link pass, `link_door_flag` in `src/engine/dungeon.c`; the original writes the flag into the record of that thing, or of `THING_ENDOFLIST`).
-  - The link pass skips the teleporter link of a teleporter whose target map is past the last map (a damaged file; `link_teleporters`; the original reads the squares of that map).
+  - A door switch sensor whose target door square has no things or starts with a thing other than a door (a damaged file) sets no flag (the link pass, `link_door_flag` in `src/engine/dungeon.c`). The original writes the flag into the record of that thing, or of `THING_ENDOFLIST`.
+  - The link pass skips the teleporter link of a teleporter whose target map is past the last map (a damaged file; `link_teleporters`). The original reads the squares of that map.
   - The load of `DUNGEON.DAT` stops for a thing type with more records than its cap or with records of a type without a record size, and the free records of a new game stay inside the cap (the original reads and writes past its record buffers).
   - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks: `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square; a RESTART that the question of dialog `0x0c` cancels stays set for the next quit; a cancelled load leaves slot 0; the link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).

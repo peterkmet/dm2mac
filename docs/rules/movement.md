@@ -37,7 +37,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
 - Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 timer ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
 - The movement arrows show pressed (`show_move_arrow`) until the move is done (`input_release_move_arrow`).
-- Before the script lookup, `input_refine_champion_click` makes the command of a champion click:
+- Before the script lookup, `input_refine_champion_click` derives the command of a champion click:
   - A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions. Otherwise it gives no command.
   - A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center. Otherwise it keeps the command when the spell action of that champion has no delay, or gives no command when it has one.
 
@@ -74,7 +74,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
   - The view records at most 32 click zones.
   - A teleporter square without things has no teleporter link and is not a closed teleporter (`link_side`, `is_closed_teleporter`; the original reads the record of the end mark).
   - A teleporter link to a map outside the dungeon is no link.
-  - An active teleporter square whose first thing is not a teleporter (a damaged dungeon) does not move the party, an object, or a creature, and the AI sees it as floor without a passage behind it (`transit_teleporter`, `needed_move_flags`, `search_square_test`; the original reads the record of that thing as a teleporter).
+  - An active teleporter square whose first thing is not a teleporter (a damaged dungeon) does not move the party, an object, or a creature, and the AI sees it as floor without a passage behind it (`transit_teleporter`, `needed_move_flags`, `search_square_test`). The original reads the record of that thing as a teleporter.
   - `dungeon_unlink_thing_from_square` on a square without things does nothing (the original reads before the first-thing table).
   - `dungeon_link_thing_to_square` returns false for a full first-thing table (the original stops with a system error).
   - When the party falls from a trap teleport text (`fall_risk`) and the random champion is dead, the hurt sound takes the portrait of the leader; without a leader the port plays no hurt sound (the original reads the portrait of champion index `0xffff`, before the champion table).
@@ -95,6 +95,6 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
   - `dungeon_door_type` returns `0xff` for a door type without a door, and the callers pass it to GDAT as the entry index
   - a pit to a marker without a pit target marker of its id sends the thing to map 0, at the square of the last position marker of the id, or otherwise at the coordinates of the pit square
   - `click_in_viewport` tests the passable fake wall flags of the front square only when it is a wall, which never has them: a wall in front always takes the click of the leader hand object off the front cells, and a click on it always sounds
-  - the dialog button opcodes `0xf` and `0x10` of a click feedback script forget the feedback bitmap that the script opened (`feedback_draw_op`)
+  - the dialog button opcodes `0xf` and `0x10` of a click feedback script release the feedback bitmap that the script opened (`feedback_draw_op`)
   - a frame step sensor (`0x41`, `SENSOR_FRAME_STEP`) that steps back from frame 0 wraps to frame `0xffff` before the modulo by the frame count of its ornament, so it goes to the last frame only when the frame count divides `0x10000` (`wall_sensor_event`)
 - Not ported: the enter and leave events of the cursor zones ([champions.md](champions.md#the-cursor)); the mouse drag through a fake wall; `input_check_memory_cheat`, a key sequence that prints the free memory in the message area.
