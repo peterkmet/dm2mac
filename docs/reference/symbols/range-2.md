@@ -1,5 +1,7 @@
 # Range 2 notes (0x18e7f-0x1fef6)
 
+Analysis notes of the address range 0x18e7f-0x1fef6; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 166 functions, all named. 29 names are low confidence (role known, game meaning not): the `*_attr_*` getters (10), `creature_get_info_*` and `creature_get_gdat_attr4` (4), `gfx_offscreen_*_alt` (2), the teleporter link functions (3), `dungeon_find_level_link`, `view_grid5_*` and `zone_id_for_view_*` (4), `system_debug_hook`, the minion functions (3), `dun_is_wall_thing_ornament_shown`.
 
 ## Data structures

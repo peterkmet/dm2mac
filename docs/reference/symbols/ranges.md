@@ -1,18 +1,8 @@
-# SKULL.EXE address layout
+# Range notes of SKULL.EXE
 
 Input: `reference/decomp/SKULL.c` (1362 functions), image `build/skull.bin` (code object 0x10000-0x695ac, data object 0x70000-0x828f0).
 
-All 1195 direct call targets in the code are function starts in `reference/decomp/SKULL.c` (one exception: 0x68c0f, inside clib). Functions that are reached only through function pointers may be missing.
-
-## Big blocks
-
-| Block | Range | Functions | Content |
-|---|---|---|---|
-| Game | 0x10000-0x5a87c | 1037 | Game code, including its own platform glue (IOP, sound, file I/O). |
-| IOP glue and HMI | 0x5a87c-0x62272 | 114 | INT 0xFC glue, bit decoder, HMI SOS (timer, digital, detection, MIDI), clib `malloc`/`free`. |
-| Watcom clib and HMI low level | 0x62272-0x695ac | 211 | Startup, file I/O, string, heap, errno; HMI PIT/IRQ code, DPMI helpers, HMI driver loaders, HMI MIDI internals. |
-
-Watcom links object files in order, and libraries after them. The game code calls only about 50 library functions (see `anchors.csv`). Module boundaries inside the game block are not visible in the binary (no padding, no alignment). The ranges below use boundaries by meaning (call clusters, shared globals, strings).
+The block layout, the call targets and the hub functions are in [skull-map.md](../skull-map.md#address-layout). The boundaries of the module map below are by meaning (call clusters, shared globals, strings).
 
 ## Module map of the game block (approximate)
 
@@ -60,58 +50,19 @@ Watcom links object files in order, and libraries after them. The game code call
 
 ## Analysis ranges
 
-The notes `range-1.md` to `range-8.md` cover the 8 ranges of [skull-map.md](../skull-map.md#address-layout):
+The notes cover the 8 ranges of [skull-map.md](../skull-map.md#address-layout):
+
+| Note | Range | Topic |
+|---|---|---|
+| [range-1.md](range-1.md) | 0x10000-0x18e7f | Sound glue, system init, file I/O, blitters, mouse, sound requests, projectiles |
+| [range-2.md](range-2.md) | 0x18e7f-0x1fef6 | Rectangles, zones, dialogs, draw context, math, dungeon data access |
+| [range-3.md](range-3.md) | 0x1fef6-0x2b96a | Input and commands, party movement, main loop, creature AI part 1 |
+| [range-4.md](range-4.md) | 0x2b96a-0x3ba23 | Creature AI part 2, creature groups, save and load, start menu, text format |
+| [range-5.md](range-5.md) | 0x3ba23-0x49ef8 | Memory manager, GDAT database, champion actions, interface panels, champions |
+| [range-6.md](range-6.md) | 0x49ef8-0x5a87c | Thing movement, sensors, views, game init, timeline, day and night |
+| [range-7.md](range-7.md) | 0x5a87c-0x62272 | IOP glue, GDAT decompressors, HMI SOS, clib `malloc` and `free` |
+| [range-8.md](range-8.md) | 0x62272-0x695ac | Watcom clib, HMI PIT and IRQ code, DPMI helpers, HMI drivers |
 
 - Ranges 3 and 4 both hold creature AI. The cut at 0x2b96a is after the AI command dispatcher 0x2b75e and its handlers. 0x2b96a is called from 0x26d16 (range 3) and 0x2d792 (range 4).
-- Range 5 is the largest. The memory manager and the GRAPHICS.DAT loader share globals (0x7fa30-0x7fa7c), so they stay together.
+- Range 5 is the largest. The memory manager and the GDAT loader share globals (0x7fa30-0x7fa7c), so they stay together.
 - Ranges 7 and 8 are library code, which the C port replaces (no HMI, no DOS/4GW). Their names are role names with the prefixes `clib_`, `hmi_`, `dpmi_`, `iop_`; the driver internals are not analyzed in depth.
-
-## Call graph hubs
-
-| Address | Callers | Name |
-|---|---|---|
-| `0x1d2da` | 161 | `dun_get_thing_data` |
-| `0x1d30b` | 86 | `dun_get_next_thing` |
-| `0x3c5d3` | 66 | `gdat_entry_index` |
-| `0x10f43` | 59 | `mem_copy` |
-| `0x2fba9` | 47 | `creature_get_group_at` |
-| `0x1c6b7` | 46 | `rand_below` |
-| `0x1efa8` | 44 | `dun_get_thing_gdat_index` (thing to item database type and index) |
-| `0x1c687` | 42 | `math_max16` |
-| `0x1d391` | 42 | `dun_get_square_first_thing` |
-| `0x1c724` | 40 | `dungeon_set_current_map` |
-| `0x3bbba` | 39 | `mem_alloc` |
-| `0x1c6f6` | 39 | `rand_2bits` |
-| `0x56390` | 37 | `timeline_add_event` |
-| `0x1c67e` | 36 | `math_min16` |
-| `0x19cfc` | 35 | `zone_get_rect` |
-| `0x1ca96` | 35 | `dungeon_square_at` |
-| `0x1c6a1` | 32 | `rand_next` |
-| `0x1f8d9` | 31 | `creature_get_info` |
-| `0x4b108` | 31 | `move_thing` (central movement function) |
-| `0x14c68` | 29 | `mouse_show` |
-| `0x14c55` | 29 | `mouse_hide` |
-| `0x1f12f` | 28 | `item_get_attr` (item attribute word from GRAPHICS.DAT, type 0x0b) |
-| `0x15baa` | 27 | `sndreq_request_with_fallback` (play sound at position; decompile failed) |
-| `0x1f9a3` | 27 | `creature_get_flags` (creature attribute word for group) |
-| `0x1c6dc` | 27 | `rand_bit` |
-| `0x3f337` | 27 | `image_cache_get` |
-| `0x10f51` | 26 | `mem_zero` |
-| `0x1c690` | 25 | `math_clamp16` |
-| `0x1f274` | 24 | `dun_get_thing_gdat_category` (GRAPHICS.DAT category of a thing) |
-| `0x3ec2b` | 24 | `gdat_get_image` |
-| `0x3a921` | 23 | `gdat_get_text` |
-| `0x1d542` | 23 | `dun_unlink_thing_from_square` |
-| `0x3c92e` | 21 | `gdat_entry_exists` |
-| `0x3bca5` | 20 | `mem_free_size` |
-| `0x1d3db` | 20 | `dun_link_thing_to_square` |
-| `0x1d2cc` | 19 | `dun_get_square_first_thing_data` |
-| `0x12ad2` | 18 | `gfx_blit` |
-| `0x458f4` | 18 | `champ_get_index_in_cell` |
-| `0x1936f` | 18 | `zone_compute_rect` (layout zone computation) |
-| `0x3ee1d` | 18 | `gdat_get_image_palette` (GRAPHICS.DAT image lookup) |
-| `0x1be6a` | 18 | `gfx_offscreen_draw_gdat_image` (draw item or creature picture) |
-| `0x1863d` | 16 | `dungeon_direction_to` (direction from one square to another) |
-| `0x1d113` | 16 | `dungeon_linked_teleporter_dest` (stairs or teleport destination) |
-| `0x2f636` | 16 | `ai_thing_matches_filter` (creature or object flag test) |
-| `0x4e616` | 16 | `flush_picture` (flush view picture, draw context 0x8018a) |

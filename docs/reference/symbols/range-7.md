@@ -1,5 +1,7 @@
 # Range 7 notes (0x0005a87c - 0x00062272)
 
+Analysis notes of the address range 0x5a87c-0x62272; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 114 functions. All of them are library code. The port replaces it, except the decompressors (rows 1-5).
 
 ## Anchor corrections
@@ -26,7 +28,7 @@ Table `g_gdat_decompressors` at 0x757a0, 8 bytes per entry: `decode`, `init`. It
 - `gdat_open` (0x3d3xx) calls the init function `[0x757a4]` when the GDAT flag 0x40 of item `(0,0,0x0b,0)` is set. Callers of the decode entries use the table with an index; no direct call exists. The caller that picks the entry is `image_decode_8bpp` (0x3f71c): codec byte at item + 6, table `g_image_decoders` (0x75798), see [graphics.md](../../formats/graphics.md).
 - `gdat_lzw_alloc_tables` allocates two buffers with `mem_alloc`: sizes 0x3aa1 (prefix table, 16-bit entries) and 0x138b (suffix table).
 - LZW decoder state: `g_lzw_*` (0x80490-0x804ac). `gdat_lzw_read_code` reads variable width codes from the source. Width grows when `g_lzw_next_code` passes `g_lzw_max_code`.
-- 0x5a95b has no direct caller besides 0x5aada. This answers the open point in notes.md.
+- 0x5a95b has no direct caller besides 0x5aada. This closes an earlier open point.
 
 ## IOP glue (0x5a87c-0x5a8f3)
 
