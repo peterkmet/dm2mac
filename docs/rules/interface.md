@@ -30,7 +30,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 ## Offscreen bitmaps
 
 - An offscreen bitmap (`offscreen_create`) holds a screen rectangle: the image cache index, the rectangle, and up to 5 changed rectangles. A new rectangle inside a changed one is dropped; a new rectangle that contains a changed one replaces it; with a sixth rectangle, the 5 changed ones first go to the screen. `offscreen_flush` copies the changed rectangles to the screen.
-- The status box of a champion (zones `0xa1` + champion) and the action area (zone 11) draw into offscreen bitmaps. `status_box_begin` with `clear` false draws the box background but forgets it as changed: only the parts that change later go to the screen.
+- The status box of a champion (zones `0xa1` + champion) and the action area (zone 11) draw into offscreen bitmaps. `status_box_begin` with `clear` false draws the box background but does not mark it as changed: only the parts that change later go to the screen.
 - `fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color. The port uses it for the dimmed hands and party faces of a busy or sleeping party, the dimmed pictures of the action area and of the minion map grid, and the portrait of an invisible party.
 
 ## Slots and panels
@@ -45,7 +45,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 - No hardware layer: the screen bitmap is `g_video_fb`; `screen_present_*`, `mouse_hide`, `mouse_show`, and `vga_wait_retrace` have no port. Offscreen bitmaps are frame bitmaps (`draw_temp_bitmap`), not image cache entries.
 - Function `0x105` is in `IBMIOP.EXE`, which is not decompiled. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`).
 - The action area reads the wall set of the party map from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
-- `champ_get_load` adds the weight of the leader hand object when it is called; the original adds the weight that it keeps since the object went into the hand.
+- `champ_get_load` adds the current weight of the leader hand object; the original adds the weight that it stores when the object goes into the hand.
 - `item_gdat_index` gives `0xff` for wall texts and sensors (the view has its own ornament code).
 - `gtext_decode_dungeon` (`dun_decode_text`) and the view share one raw decoder, `gtext_decode_raw` in `src/engine/game_text.c`. `gtext_decode_dungeon` adds the format pass. The view reads the wall plate texts without the format codes.
 - Fixes:
@@ -54,7 +54,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
   - The dungeon text decoder stops at the end of the text data (the original reads past it in a damaged dungeon).
   - A `.Z` format code that a text cuts after fewer than 3 digits ends at the end of the text, and a text that ends in the format code byte 1 ends there (`gtext_format`; the original reads the digits or the code past the end).
   - A description line without a space breaks at 18 characters and goes on with the rest (`show_description` in `src/ui/ui.c`; the original `inv_draw_description_text` scans back before the start of the text).
-  - The hand icons of the action area draw without the shadow remap when its GDAT item `(1, 0, 7, 1)` is shorter than 256 bytes (a damaged GRAPHICS.DAT; `make_hand_icon` in `src/ui/action_area.c`; the original reads past it).
+  - The hand icons of the action area draw without the shadow remap when its GDAT item `(1, 0, 7, 1)` is shorter than 256 bytes (a damaged GRAPHICS.DAT; `make_hand_icon` in `src/ui/action_area.c`). The original reads past it.
 - Kept quirks of the original:
   - the action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`)
   - the minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dun_set_current_map`, which also sets `g_party.square_x`, `square_y`, `square_map`, and `ref_dir` again
