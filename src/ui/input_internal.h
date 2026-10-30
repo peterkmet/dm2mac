@@ -12,7 +12,6 @@
 #include "input.h"
 #include "ui.h"
 /* Sizes of the input tables of SKULL.EXE. */
-#define INPUT_NODE_COUNT    76
 #define INPUT_CHILD_COUNT   83
 #define INPUT_ZONE_COUNT    62
 #define INPUT_COMMAND_COUNT 264
@@ -20,27 +19,20 @@
 #define CURSOR_ZONE_COUNT   18
 
 /* Sizes of the event ring, the command queue, and the key buffer. */
-#define EVENT_RING          11
-#define EVENT_LIMIT         7
-#define EVENT_LIMIT_SPECIAL 9
-#define COMMAND_QUEUE       3
-#define KEY_BUFFER          16
+#define EVENT_RING    11
+#define COMMAND_QUEUE 3
+#define KEY_BUFFER    16
 
 /* Mouse event types of the event ring besides the buttons. */
-#define EVENT_ENTER_AREA  0x40
-#define EVENT_LEAVE_AREA  0x60
-#define EVENT_CLICK_OTHER 0x10 /* a click type of the original that the port never queues */
-/* the mouse event types that find a click command: bits 0, 1, and 4 */
-#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
+#define EVENT_ENTER_AREA 0x40
+#define EVENT_LEAVE_AREA 0x60
 
 /* Sizes of the cursor images that the state holds. */
 #define OBJECT_SHADOW      2 /* the offset of the black shadow of the held object cursor */
 #define OBJECT_CURSOR_SIZE (HAND_ICON_SIZE + OBJECT_SHADOW)
 
 /* Relative cells of the squares of a view click. */
-#define HALF_CELLS                 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
-#define POSSESSION_VIEW_CELL_FIRST HALF_CELLS      /* the possessions of a static creature show in the back half */
-#define ALCOVE_CELL                CELL_BACK_RIGHT /* the alcove in front keeps its objects in this relative cell */
+#define HALF_CELLS 2 /* relative cells 0 and 1: the front half of a square, 2 and 3: its back half */
 
 typedef struct {
     uint8_t cond, arg;

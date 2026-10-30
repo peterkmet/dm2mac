@@ -17,6 +17,11 @@
 #include "view.h"
 #include "zone.h"
 
+/* Mouse event types of the event ring besides the buttons. */
+#define EVENT_CLICK_OTHER 0x10 /* a click type of the original that the port never queues */
+/* the mouse event types that find a click command: bits 0, 1, and 4 */
+#define EVENT_CLICK_TYPES (INPUT_BUTTON_RIGHT | INPUT_BUTTON_LEFT | EVENT_CLICK_OTHER)
+
 /* The size of the click feedback scripts. */
 #define CLICK_FEEDBACK_SIZE 236
 
