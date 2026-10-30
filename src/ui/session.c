@@ -565,8 +565,7 @@ static void start_loaded_game(bool quick)
         arrive_on_party_map();
     }
     play_start_session();
-    if (!quick)
-        input_flush();
+    input_flush();
 }
 
 bool session_init(void)
