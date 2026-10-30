@@ -11,7 +11,6 @@
 #include "ids.h"
 #include "interface_state.h"
 #include "le.h"
-#include "move.h"
 #include "random.h"
 #include "sensor.h"
 #include "sound_request.h"
@@ -108,7 +107,7 @@ static void add_to_party(int portrait, int index, int16_t dir)
 /* The mirror sensor on the square (x, y) of the current map; its data is the portrait. */
 static uint16_t mirror_sensor(int16_t x, int16_t y)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, x, y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == WALL_CLICK_PORTRAIT)
             return t;
@@ -120,13 +119,13 @@ bool recruit_start(Position at, int16_t dir)
     int index = g_game.champion_count;
     if (g_game.leader_hand != THING_NONE || index >= CHAMPION_MAX)
         return false;
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(at.map);
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(at.map);
     int16_t fx = (int16_t)(at.x + g_dir_dx[dir]);
     int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
-        dun_set_current_map(saved);
+        dungeon_set_current_map(saved);
         return false;
     }
     int portrait = (uint8_t)sensor_data(mirror);
@@ -140,7 +139,7 @@ bool recruit_start(Position at, int16_t dir)
     if (!index)
         champ_set_leader(0);
     int back = dir_opposite(dir);
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, fx, fy); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, fx, fy); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back)
             inv_put_in_free_slot(index, t);
@@ -149,7 +148,7 @@ bool recruit_start(Position at, int16_t dir)
         g_hooks.set_input_mode(INPUT_MODE_RECRUIT);
         g_hooks.hide_view();
     }
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
     champ_compute_load(index);
     return true;
 }
@@ -160,8 +159,8 @@ void recruit_finish(Position at, int16_t dir, int command)
         return; /* fix: without a candidate the original uses champion record 0xffff */
     int16_t champion_index = g_ui.candidate - 1;
     Champion *c = champion(champion_index);
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(at.map);
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(at.map);
     uint16_t hand = champ_take_from_leader_hand();
     if (command == CMD_RECRUIT_CANCEL) {
         /* the object in the hand is lost, as in the original */
@@ -175,7 +174,7 @@ void recruit_finish(Position at, int16_t dir, int command)
         action_reset_champion(champion_index);
         g_hooks.fill_screen_zone(ZONE_STATUS_BOX + champion_index, g_ui_colors[UI_BLACK]);
         g_hooks.show_view();
-        dun_set_current_map(saved);
+        dungeon_set_current_map(saved);
         return;
     }
     if (!recruit_silent) {
@@ -193,7 +192,7 @@ void recruit_finish(Position at, int16_t dir, int command)
     int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
-            dungeon_unlink_thing_from_square(c->slots[s], g_party.cur_map, fx, fy);
+            dungeon_unlink_thing_from_square(c->slots[s], g_current_map.map, fx, fy);
     uint16_t mirror = mirror_sensor(fx, fy);
     if (mirror != THING_NONE)
         sensor_set_flag(mirror, MIRROR_ACTIVE, false);
@@ -209,7 +208,7 @@ void recruit_finish(Position at, int16_t dir, int command)
             g_hooks.show_view();
         }
     }
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }
 
 bool recruit_start_champion(int16_t x, int16_t y, int16_t dir, int16_t map)

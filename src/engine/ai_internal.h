@@ -10,7 +10,6 @@
 #include <stdint.h>
 #include "ai.h"
 #include "dungeon.h"
-#include "move.h"
 #include "sensor.h"
 
 /* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */

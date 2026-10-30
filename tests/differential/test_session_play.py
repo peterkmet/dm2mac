@@ -398,14 +398,16 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     main_loop_quit(lib).value = 0
     game = GameRecord.in_dll(lib, "g_game")
     # the state of the program start (the tests before leave theirs): no game, the start values
-    from dm2test.scenario import Party, WorldGame
+    from dm2test.scenario import CurrentMap, Party, WorldGame
     ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
     world = WorldGame.in_dll(lib, "g_game")
     world.leader, world.sound_volume, world.music_volume = C.LEADER_NONE, C.VOLUME_SETTING_START, C.VOLUME_SETTING_START
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = 0
     party = Party.in_dll(lib, "g_party")
     ctypes.memset(ctypes.addressof(party), 0, ctypes.sizeof(party))
-    party.cur_map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
+    current_map = CurrentMap.in_dll(lib, "g_current_map")
+    ctypes.memset(ctypes.addressof(current_map), 0, ctypes.sizeof(current_map))
+    current_map.map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
     with Player(lib, [click_command(C.INPUT_MODE_MENU, C.CMD_NEW_GAME)]):
         assert lib.session_init() == 1
     assert (session.new_game, session.loaded) == (1, 0)

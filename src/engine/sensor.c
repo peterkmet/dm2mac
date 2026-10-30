@@ -139,7 +139,7 @@ typedef struct {
     bool has_leader;
 } WallClick;
 
-/* A square event passes its effect to dun_set_pit_teleporter_state as the mode. */
+/* A square event passes its effect to move_set_pit_teleporter_state as the mode. */
 _Static_assert(EFFECT_SET == PIT_STATE_OPEN && EFFECT_CLEAR == PIT_STATE_CLOSED && EFFECT_TOGGLE == PIT_STATE_TOGGLE,
                "the square effects are the pit and teleporter modes");
 
@@ -161,17 +161,17 @@ static const int16_t ambient_wall_dy[CELL_COUNT][RECORD_INDEX_HIGH_COUNT] = {
 
 static uint8_t *current_square(int16_t x, int16_t y)
 {
-    return dungeon_square_byte(g_party.cur_map, x, y);
+    return dungeon_square_byte(g_current_map.map, x, y);
 }
 
 static uint16_t first_thing(int16_t x, int16_t y)
 {
-    return dungeon_square_first_thing(g_party.cur_map, x, y);
+    return dungeon_square_first_thing(g_current_map.map, x, y);
 }
 
 static uint32_t current_map_time(uint32_t time)
 {
-    return timeline_time_map(time & EVENT_TIME_MASK, g_party.cur_map);
+    return timeline_time_map(time & EVENT_TIME_MASK, g_current_map.map);
 }
 
 static int holder_item(int ornament)
@@ -183,13 +183,13 @@ static int holder_item(int ornament)
 static int wall_ornament(uint16_t sensor)
 {
     int index = sensor_ornament_index(sensor);
-    return index >= 0 ? dungeon_map_wall_ornaments(g_party.cur_map)[index] : GDAT_NO_INDEX;
+    return index >= 0 ? dungeon_map_wall_ornaments(g_current_map.map)[index] : GDAT_NO_INDEX;
 }
 
 static int floor_ornament(uint16_t sensor)
 {
     int index = sensor_ornament_index(sensor);
-    return index >= 0 ? dungeon_map_floor_ornaments(g_party.cur_map)[index] : GDAT_NO_INDEX;
+    return index >= 0 ? dungeon_map_floor_ornaments(g_current_map.map)[index] : GDAT_NO_INDEX;
 }
 
 static int ornament_category(bool wall)
@@ -217,7 +217,7 @@ static void wall_sound_square(int16_t *x, int16_t *y, int side)
 {
     int16_t dx = *x + g_dir_dx[side];
     int16_t dy = *y + g_dir_dy[side];
-    if (g_party.cur_map != g_party.square_map || dx != g_party.square_x || dy != g_party.square_y) {
+    if (g_current_map.map != g_current_map.square_map || dx != g_current_map.square_x || dy != g_current_map.square_y) {
         *x = dx;
         *y = dy;
     }
@@ -227,7 +227,7 @@ static void wall_sound_square(int16_t *x, int16_t *y, int side)
 
 uint16_t sensor_door_value(uint16_t door, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_party.cur_map, door), GDAT_TYPE_VALUE, key);
+    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_current_map.map, door), GDAT_TYPE_VALUE, key);
 }
 
 /* True when the party carries an item of the item index type. */
@@ -371,7 +371,7 @@ static void fall_risk(uint16_t text, int16_t x, int16_t y, bool on_square)
 /* The static creature on (x, y) whose possessions take or give thing, THING_NONE for the square. */
 static uint16_t floor_holder(int16_t x, int16_t y, bool enter, bool possessions)
 {
-    uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
+    uint16_t g = creature_group_at((Position){g_current_map.map, x, y});
     if (g == THING_NONE || !possessions)
         return THING_NONE;
     const CreatureInfo *info = creature_group_info(g);
@@ -511,7 +511,7 @@ static void floor_text(const FloorMove *m, uint16_t t, int16_t x, int16_t y)
 static void process_floor(int16_t x, int16_t y, uint16_t thing, FloorMove m, bool possessions)
 {
     if (thing == THING_NONE && game_has_cheat(CHEAT_WALLS) &&
-        square_type(dungeon_square(g_party.cur_map, x, y)) == SQUARE_WALL)
+        square_type(dungeon_square(g_current_map.map, x, y)) == SQUARE_WALL)
         return; /* the party in a wall (walk-through-walls cheat) does not touch the wall sensors */
     m.type = -1;
     m.item = -1;
@@ -525,15 +525,15 @@ static void process_floor(int16_t x, int16_t y, uint16_t thing, FloorMove m, boo
         if (holder != THING_NONE)
             dungeon_unlink_thing_from_list(thing, group_possessions(holder));
         else
-            dungeon_unlink_thing_from_square(thing, g_party.cur_map, x, y);
+            dungeon_unlink_thing_from_square(thing, g_current_map.map, x, y);
     }
-    m.cell = square_type(dungeon_square(g_party.cur_map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
+    m.cell = square_type(dungeon_square(g_current_map.map, x, y)) == SQUARE_WALL ? thing_cell(thing) : -1;
     floor_scan(&m, x, y);
     if (m.enter && m.type != -1) {
         if (holder != THING_NONE)
             dungeon_append_thing(thing, group_possessions(holder));
         else
-            dungeon_link_thing_to_square(thing, g_party.cur_map, x, y);
+            dungeon_link_thing_to_square(thing, g_current_map.map, x, y);
     }
     for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (m.cell != -1 && altar_takes_bones(t, thing)) {
@@ -702,7 +702,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
         if (now) {
             if (!sensor_flag(sensor, SENSOR_BUSY)) {
                 sensor_set_flag(sensor, SENSOR_BUSY, true);
-                if (g_party.cur_map == g_game.party_map)
+                if (g_current_map.map == g_game.party_map)
                     g_party.redraw |= PARTY_REDRAW_VIEW;
                 unsigned frame = (cycle - g_game.game_time % cycle) % cycle & SENSOR_DATA_FRAME_MASK;
                 sensor_set_data(sensor, (sensor_data(sensor) & SENSOR_DATA_SOUND) | frame);
@@ -711,7 +711,7 @@ static void toggle_animation(const TimelineEvent *e, uint16_t sensor, bool wall)
         } else {
             unsigned r = (sensor_frame(sensor) + g_game.game_time) % cycle;
             if (!(uint16_t)r) {
-                if (g_party.cur_map == g_game.party_map)
+                if (g_current_map.map == g_game.party_map)
                     g_party.redraw |= PARTY_REDRAW_VIEW;
                 sensor_set_flag(sensor, SENSOR_BUSY, false);
             } else {
@@ -793,7 +793,7 @@ void sensor_start_timers(void)
                     if (!is_timer(sensor_type(t)))
                         continue;
                     if (sensor_flag(t, SENSOR_STATE)) {
-                        dun_set_current_map(map);
+                        dungeon_set_current_map(map);
                         schedule_timer(t, t);
                     } else {
                         sensor_set_flag(t, SENSOR_BUSY, false);
@@ -818,24 +818,24 @@ static void update_linked_ladder(const TimelineEvent *e, uint16_t text)
     Position at = dungeon_location_on_map((Position){g_game.party_map, e->data[EVENT_X], e->data[EVENT_Y]}, delta);
     if (at.map < 0)
         return;
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(at.map);
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(at.map);
     for (uint16_t t = first_thing(at.x, at.y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL])
             continue;
         if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == SUBTYPE_LADDER_HIDDEN)
             textrec_set_visible(t, visible);
     }
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }
 
 /* A text with a sound plays it on a set event. */
 static void start_text_sound(uint16_t text, int16_t x, int16_t y)
 {
     /* sound (CAT_DUNGEON, map + 1, entry): a sound of a map */
-    sndreq_request(
-        (SoundCue){CAT_DUNGEON, g_party.cur_map + 1, textrec_value(text), SOUND_PRIORITY_MAP_SOUND, SOUND_VOLUME_LOUD},
-        x, y, SOUND_STEP_END);
+    sndreq_request((SoundCue){CAT_DUNGEON, g_current_map.map + 1, textrec_value(text), SOUND_PRIORITY_MAP_SOUND,
+                              SOUND_VOLUME_LOUD},
+                   x, y, SOUND_STEP_END);
 }
 
 /* A counter sensor reaches zero (or leaves it): true when its count is zero or below. */
@@ -920,7 +920,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
                     if (possessions)
                         dungeon_unlink_thing_from_list(t, possessions);
                     else
-                        dungeon_unlink_thing_from_square(t, g_party.cur_map, from.x, from.y);
+                        dungeon_unlink_thing_from_square(t, g_current_map.map, from.x, from.y);
                     thing_set_word(t, THING_NEXT, THING_NONE);
                     champ_revive(item_add_charges(t, 0));
                     continue;
@@ -1220,7 +1220,7 @@ static void floor_text_event(uint16_t t, int effect, int16_t x, int16_t y)
     if (sub == SUBTYPE_TOGGLE) {
         set_text_shown(t, effect);
         if (textrec_kind(t) == TEXT_KIND_TEXT && !was_visible && textrec_is_visible(t) &&
-            dun_on_party_square((Location){x, y})) {
+            dungeon_on_party_square((Location){x, y})) {
             char text[TEXT_SIZE];
             g_hooks.print_message(UI_WHITE, gtext_decode_dungeon(text, sizeof text, t, true, false));
         }
@@ -1250,8 +1250,8 @@ static void affect_creatures_in_area(uint16_t sensor, int16_t x, int16_t y, int 
         for (int col = rx * 2; col >= 0; col--) {
             int16_t sx = (int16_t)(left + col);
             int16_t sy = (int16_t)(top + row);
-            if (sx < 0 || sx >= dungeon_map_width(g_party.cur_map) || sy < 0 ||
-                sy >= dungeon_map_height(g_party.cur_map))
+            if (sx < 0 || sx >= dungeon_map_width(g_current_map.map) || sy < 0 ||
+                sy >= dungeon_map_height(g_current_map.map))
                 continue;
             uint16_t g = creature_get_group_at((Location){sx, sy});
             if (g == THING_NONE || thing_word(g, GROUP_ITEM_CLASS) != group_class)
@@ -1295,7 +1295,7 @@ static void floor_square_event(TimelineEvent *e)
             }
             int16_t dir =
                 sensor_flag(t, SENSOR_INVERTED) ? sensor_effect(t) : dir_turn(sensor_effect(t), g_game.party_dir);
-            move_party_to((Position){g_party.cur_map, tx, ty}, dir);
+            move_party_to((Position){g_current_map.map, tx, ty}, dir);
             break;
         }
         case SENSOR_CREATURE_ANIMATION:
@@ -1354,8 +1354,8 @@ static void fake_wall_event(TimelineEvent *e)
     if (effect == EFFECT_TOGGLE)
         effect = (*square & SQUARE_FAKE_WALL_OPEN) ? EFFECT_CLEAR : EFFECT_SET;
     if (effect == EFFECT_CLEAR) {
-        bool blocked = dun_on_party_square((Location){x, y});
-        uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
+        bool blocked = dungeon_on_party_square((Location){x, y});
+        uint16_t g = creature_group_at((Position){g_current_map.map, x, y});
         if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NON_MATERIAL))
             blocked = true;
         if (blocked) {
@@ -1367,13 +1367,13 @@ static void fake_wall_event(TimelineEvent *e)
     } else {
         *square |= SQUARE_FAKE_WALL_OPEN;
     }
-    if (g_party.cur_map == g_game.party_map)
+    if (g_current_map.map == g_game.party_map)
         g_party.redraw = PARTY_REDRAW_ALL;
 }
 
 void sensor_event_square(TimelineEvent *e)
 {
-    switch (square_type(dungeon_square(g_party.cur_map, e->data[EVENT_X], e->data[EVENT_Y]))) {
+    switch (square_type(dungeon_square(g_current_map.map, e->data[EVENT_X], e->data[EVENT_Y]))) {
     case SQUARE_WALL:
         wall_square_event(e);
         break;
@@ -1383,7 +1383,7 @@ void sensor_event_square(TimelineEvent *e)
     case SQUARE_PIT:
     case SQUARE_TELEPORTER:
         /* the effect opens, closes, or toggles the pit or the teleporter that is not fixed */
-        dun_set_pit_teleporter_state((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->data[EVENT_EFFECT]);
+        move_set_pit_teleporter_state((Location){e->data[EVENT_X], e->data[EVENT_Y]}, e->data[EVENT_EFFECT]);
         floor_square_event(e);
         break;
     case SQUARE_DOOR:
@@ -1399,7 +1399,7 @@ void sensor_event_door_destruction(TimelineEvent *e)
 {
     uint8_t *square = current_square(e->data[EVENT_X], e->data[EVENT_Y]);
     *square = (uint8_t)((*square & ~SQUARE_DOOR_STATE) | DOOR_STATE_BROKEN);
-    if (g_party.cur_map == g_game.party_map)
+    if (g_current_map.map == g_game.party_map)
         g_party.redraw = PARTY_REDRAW_ALL;
 }
 
@@ -1410,7 +1410,7 @@ static bool closing_door_hits(uint16_t door, int16_t x, int16_t y, uint8_t *squa
     bool vertical = door_flag(door, DOOR_VERTICAL);
     bool hit = false;
     int16_t damage = (int16_t)sensor_door_value(door, DOOR_KEY_DAMAGE);
-    if (dun_on_party_square((Location){x, y}) && *state) {
+    if (dungeon_on_party_square((Location){x, y}) && *state) {
         hit = true;
         if (g_game.champion_count) {
             *square &= (uint8_t)~SQUARE_DOOR_STATE;
@@ -1424,7 +1424,7 @@ static bool closing_door_hits(uint16_t door, int16_t x, int16_t y, uint8_t *squa
                                                  SOUND_FALLBACK, x, y, SOUND_STEP_END);
         }
     }
-    uint16_t g = creature_group_at((Position){g_party.cur_map, x, y});
+    uint16_t g = creature_group_at((Position){g_current_map.map, x, y});
     if (g == THING_NONE)
         return hit;
     const CreatureInfo *info = creature_group_info(g);
@@ -1456,7 +1456,7 @@ void sensor_event_door_animation(TimelineEvent *e)
     int state = *square & SQUARE_DOOR_STATE;
     if (state == DOOR_STATE_BROKEN)
         return;
-    if (g_party.cur_map == g_game.party_map)
+    if (g_current_map.map == g_game.party_map)
         g_party.redraw = PARTY_REDRAW_ALL;
     uint16_t door = first_thing(x, y);
     if (!door_flag(door, DOOR_MOVING))
@@ -1483,7 +1483,7 @@ void sensor_event_door_animation(TimelineEvent *e)
         if (opening ? state != DOOR_STATE_OPEN : state != DOOR_STATE_CLOSED)
             again = true;
         sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR, dungeon_door_type(g_party.cur_map, door),
+            (SoundCue){CAT_DOOR, dungeon_door_type(g_current_map.map, door),
                        !again && state == DOOR_STATE_CLOSED ? SOUND_ENTRY_DOOR_SHUT : SOUND_ENTRY_DOOR_MOVE,
                        SOUND_PRIORITY_DOOR, SOUND_VOLUME_NORMAL},
             SOUND_FALLBACK, x, y, SOUND_STEP_END);
@@ -1511,7 +1511,7 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
         sensor_set_data(thing, sensor_frame(thing));
         return;
     }
-    bool wall = square_type(dun_get_square((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
+    bool wall = square_type(dungeon_square_at((Location){e->data[EVENT_X], e->data[EVENT_Y]})) == SQUARE_WALL;
     timeline_delay_event(e, ornament_cycle(thing, wall));
     timeline_add_event(e);
     int16_t x = e->data[EVENT_X];
@@ -1519,7 +1519,8 @@ static void ambient_sound_event(TimelineEvent *e, uint16_t thing)
     if (wall) { /* the sound comes from the square in front of the wall, unless the party stands there */
         int16_t fx = (int16_t)(x + ambient_wall_step(ambient_wall_dx, thing));
         int16_t fy = (int16_t)(y + ambient_wall_step(ambient_wall_dy, thing));
-        if (g_party.cur_map != g_party.square_map || fx != g_party.square_x || fy != g_party.square_y) {
+        if (g_current_map.map != g_current_map.square_map || fx != g_current_map.square_x ||
+            fy != g_current_map.square_y) {
             x = fx;
             y = fy;
         }
@@ -1570,7 +1571,7 @@ void sensor_process_event(TimelineEvent *e)
     case EVENT_SENSOR_ANIMATION_END:
         thing = le16(e->data + SENSOR_EVENT_SQUARE_THING);
         if (!sensor_flag(thing, SENSOR_STATE)) {
-            if (g_party.cur_map == g_game.party_map)
+            if (g_current_map.map == g_game.party_map)
                 g_party.redraw |= PARTY_REDRAW_VIEW;
             sensor_set_flag(thing, SENSOR_BUSY, false);
         }
@@ -1593,9 +1594,9 @@ void sensor_process_event(TimelineEvent *e)
 
 void sensor_process_map_entry(bool entering)
 {
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(g_game.party_map);
-    int16_t map = g_party.cur_map;
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(g_game.party_map);
+    int16_t map = g_current_map.map;
     for (int16_t x = 0; x < dungeon_map_width(map); x++)
         for (int16_t y = 0; y < dungeon_map_height(map); y++) {
             bool wall = square_type(dungeon_square(map, x, y)) == SQUARE_WALL;
@@ -1623,7 +1624,7 @@ void sensor_process_map_entry(bool entering)
                 }
             }
         }
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }
 
 /* ---- Wall clicks ---- */
@@ -1643,7 +1644,7 @@ bool sensor_is_alcove_shown(uint16_t first, uint16_t thing)
     if (ornament == GDAT_NO_INDEX ||
         gdat_entry_index(gdat_current(), CAT_WALL_ORNAMENT, ornament, GDAT_TYPE_VALUE, ORNAMENT_KEY_ALCOVE) != 1)
         return false;
-    return aspect_wall_face_ornament(g_party.cur_map, first, dir_opposite(thing_cell(thing))) == ornament;
+    return aspect_wall_face_ornament(g_current_map.map, first, dir_opposite(thing_cell(thing))) == ornament;
 }
 
 int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
@@ -1654,7 +1655,7 @@ int sensor_wall_ornament_value(uint16_t first, uint16_t thing, int key)
 /* The object of the item index type on the cell of the square (x, y), or a new one; THING_NONE when none can be made. */
 static uint16_t wall_item(int16_t x, int16_t y, int16_t cell, int item)
 {
-    for (uint16_t t = dungeon_square_first_object(g_party.cur_map, x, y); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_object(g_current_map.map, x, y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
         if (item_get_index(t) == item && (cell == -1 || thing_cell(t) == cell))
             return t;
@@ -1662,7 +1663,7 @@ static uint16_t wall_item(int16_t x, int16_t y, int16_t cell, int item)
     if (t == THING_NONE)
         return t;
     t = thing_with_cell(t, cell);
-    dungeon_link_thing_to_square(t, g_party.cur_map, x, y);
+    dungeon_link_thing_to_square(t, g_current_map.map, x, y);
     return t;
 }
 
@@ -1693,7 +1694,7 @@ static void wall_click_alcove(WallClick *c)
         return;
     }
     uint16_t object = THING_NONE;
-    for (uint16_t o = dungeon_square_first_object(g_party.cur_map, c->x, c->y); o != THING_ENDOFLIST;
+    for (uint16_t o = dungeon_square_first_object(g_current_map.map, c->x, c->y); o != THING_ENDOFLIST;
          o = dungeon_next_thing(o))
         if (thing_cell(o) == c->cell)
             object = o;

@@ -11,7 +11,7 @@ from dm2test.markers import ROOT
 from dm2test.control import GameWithChampions
 from dm2test.input import MainLoop
 from dm2test.interface import ActionArea
-from dm2test.scenario import Party, Position
+from dm2test.scenario import CurrentMap, Party, Position
 from dm2test.lib import load_lib
 
 
@@ -62,7 +62,8 @@ def load(lib, gdat, data, tmp_path):
     lib.draw_init(gdat)
     game = GameWithChampions.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
-    party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
+    CurrentMap.in_dll(lib, "g_current_map").map = -1
+    party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)
     lib.ui_reset()
     lib.money_init_coin_table()

@@ -313,7 +313,7 @@ def test_runes_and_casts_match_original(port, cast_ui):
     emu = original.emu
     draw_game_screen(lib, original)
     party_map = Game.in_dll(lib, "g_game").party_map  # the missile spells fly on the current map
-    lib.dun_set_current_map(party_map)
+    lib.dungeon_set_current_map(party_map)
     emu.call(DUN_SET_CURRENT_MAP, party_map)
     action = ActionArea.in_dll(lib, "g_action")
     rng = random.Random(17)
@@ -558,12 +558,12 @@ def map_ui(spell_ui, lib):
 
 
 def place_party(lib, emu, map_, x, y, d):
-    from dm2test.scenario import GameRecord, Party, Position
-    Party.in_dll(lib, "g_party").cur_map = -1
+    from dm2test.scenario import CurrentMap, GameRecord, Position
+    CurrentMap.in_dll(lib, "g_current_map").map = -1
     emu.write(G_CUR_MAP, struct.pack("<h", -1))
     GameRecord.in_dll(lib, "g_game").party_dir = d
     emu.write(G_PARTY_DIR, struct.pack("<H", d))
-    lib.dun_set_party_position(Position(map_, x, y))
+    lib.dungeon_set_party_position(Position(map_, x, y))
     emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
     emu.write(0x75BFE, bytes([lib.dungeon_map_graphics(map_) >> C.MAP_WALLSET_SHIFT & C.MAP_NIBBLE_MASK]))  # g_map_gfx_set of game_enter_map
 

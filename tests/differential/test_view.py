@@ -9,7 +9,7 @@ from dm2test.gdat import GdatKey, ImageInfo, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, Game, original_load
-from dm2test.scenario import Location, Position
+from dm2test.scenario import CurrentMap, Location, Party, Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
@@ -151,18 +151,12 @@ def original_view(lib, gdat, start):
     return OriginalView(lib, gdat, start)
 
 
-class PartyHead(ctypes.Structure):
-    """The first fields of the C movement state (move.h, Party)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
-                                                     "move_steps")]
-
-
 def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     game = WeatherGame.in_dll(lib, "g_game")
     game.party_x, game.party_y, game.party_dir, game.party_map = x, y, direction, map_
-    party = PartyHead.in_dll(lib, "g_party")
-    party.cur_map, party.move_steps = -1, walking  # 0: no walk; the current map of the dungeon reads becomes map_
-    lib.dun_set_party_position(Position(map_, x, y))
+    # 0: no walk; the current map of the dungeon reads becomes map_
+    CurrentMap.in_dll(lib, "g_current_map").map, Party.in_dll(lib, "g_party").move_steps = -1, walking
+    lib.dungeon_set_party_position(Position(map_, x, y))
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
         lib.weather_sky_objects.restype = ctypes.c_void_p
@@ -843,7 +837,7 @@ def present_viewport(lib, gdat, walking):
     walk = (ctypes.c_int16 * 4).in_dll(lib, "g_zone_walk_view_rect")
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
-    PartyHead.in_dll(lib, "g_party").move_steps = 0
+    Party.in_dll(lib, "g_party").move_steps = 0
     lib.zone_get_rect.restype = ctypes.c_void_p
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
     wx, wy, ww, wh = walk
@@ -853,9 +847,9 @@ def present_viewport(lib, gdat, walking):
             view[(wy + y) * VIEW_W + wx + x] = 2 + (x * 7 + y * 13) % 250
     viewport = Bitmap.in_dll(lib, "g_view_viewport")
     ctypes.memmove(viewport.pixels, bytes(view), len(view))
-    PartyHead.in_dll(lib, "g_party").move_steps = walking
+    Party.in_dll(lib, "g_party").move_steps = walking
     lib.play_present_viewport()
-    PartyHead.in_dll(lib, "g_party").move_steps = 0
+    Party.in_dll(lib, "g_party").move_steps = 0
     screen = Bitmap.in_dll(lib, "g_draw_screen")
     shown = [ctypes.string_at(ctypes.addressof(screen.pixels.contents) + (rect[1] + y) * screen.width + rect[0], VIEW_W) for y in range(VIEW_H)]
     return view, shown, (wx, wy, ww, wh)
@@ -1029,8 +1023,8 @@ def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
     lib.view_hit_test_object.restype = ObjectClickResult
     lib.creature_group_at.argtypes = [Position]
     lib.creature_group_at.restype = ctypes.c_uint16
-    party = PartyHead.in_dll(lib, "g_party")
-    saved, party.cur_map = party.cur_map, loaded.party_map
+    current_map = CurrentMap.in_dll(lib, "g_current_map")
+    saved, current_map.map = current_map.map, loaded.party_map
     at = Location(loaded.party_x, loaded.party_y)
     assert lib.creature_group_at(Position(loaded.party_map, at.x, at.y)) == C.THING_NONE  # the party square
     click = ViewObjectClick(0, 0, C.POS_PARTY, at, C.CLICK_POSSESSIONS)
@@ -1039,7 +1033,7 @@ def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
             result = lib.view_hit_test_object(ctypes.byref(click), 0, placing)
             assert (result.kind, result.thing) == (OBJECT_CLICK_DONE, C.THING_NONE), placing
     finally:
-        party.cur_map = saved
+        current_map.map = saved
 
 
 def test_an_explosion_tint_of_a_narrow_picture_draws_nothing(lib, gdat, loaded):

@@ -133,7 +133,7 @@ def groups(lib):
 
 def take(s, x, y, thing):
     """Removes an object from its square of the current map in both."""
-    s.lib.dungeon_unlink_thing_from_square(thing, s.party.cur_map, x, y)
+    s.lib.dungeon_unlink_thing_from_square(thing, s.current_map.map, x, y)
     s.emu.call(DUN_UNLINK_THING, thing, 0, x, y)
 
 
@@ -601,7 +601,7 @@ def test_projectiles_at_wall_sensors(pj, lib):
         if wanted and n % 3 == 0:
             om, ox, oy, payload = wanted.pop()
             place_near(pj, rng, om, ox, oy)
-            if pj.party.cur_map != om:
+            if pj.current_map.map != om:
                 continue
             take(pj, ox, oy, payload)
             place_near(pj, rng, map_, sx, sy)

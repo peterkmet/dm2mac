@@ -580,7 +580,7 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
 
     for (x, y), kind in zip(squares, (MOVING, TREE)):
         before = cell(x, y)
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
         assert g != 0xFFFF
         lib.dungeon_thing_record(g)[GROUP_CREATURE] = kind
@@ -628,7 +628,7 @@ def test_automap_draws_a_creature_without_map_icons_with_the_map_item_icon(lib, 
     m, d = game.party_map, game.party_dir
     x, y = ahead(game.party_x, game.party_y, d, 1)
     assert lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m)
-    lib.dun_set_current_map(m)
+    lib.dungeon_set_current_map(m)
     g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
     assert g != 0xFFFF
     lib.dungeon_thing_record(g)[GROUP_CREATURE] = MINION

@@ -5,7 +5,6 @@
 #include <string.h>
 #include "dungeon.h"
 #include "game.h"
-#include "move.h"
 #include "os.h"
 #include "weather.h"
 
@@ -115,7 +114,7 @@ int seen_visible(Position at, int16_t dir, SeenSquare squares[SEEN_VISIBLE_MAX])
                     (!depth && !side) || (side && open[depth][column - sign]) || (depth && open[depth - 1][column]);
                 if (!visible)
                     continue;
-                Location square = dun_move_relative((Location){at.x, at.y}, dir, depth, side * sign);
+                Location square = dungeon_move_relative((Location){at.x, at.y}, dir, depth, side * sign);
                 squares[count++] = (SeenSquare){(int16_t)depth, (int16_t)(side * sign), square.x, square.y};
                 open[depth][column] = !blocks_sight(at.map, square.x, square.y);
             }

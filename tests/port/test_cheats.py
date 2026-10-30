@@ -10,7 +10,7 @@ from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import Event, Timeline
-from dm2test.scenario import Location, Party, Position
+from dm2test.scenario import CurrentMap, Location, Party, Position
 from dm2test.lib import load_lib
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
@@ -67,7 +67,7 @@ def first_group(lib, gdat, game, wanted=lambda info: True):
     """(group, x, y) of the first creature group of the dungeon whose creature info fits wanted(info); the party enters
     its map, the group is active."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 group = lib.creature_get_group_at(Location(x, y))
@@ -82,7 +82,7 @@ def enter(lib, game, m, x, y, d):
     """The party arrives on (x, y) of map m, looking to d; the groups of the map become active."""
     party = Party.in_dll(lib, "g_party")
     game.party_dir = d
-    party.move_steps, party.cur_map = 0, -1  # the party square follows on the map change
+    party.move_steps, CurrentMap.in_dll(lib, "g_current_map").map = 0, -1  # the party square follows on the map change
     lib.game_enter_map.argtypes = [Position, ctypes.c_bool]
     lib.game_enter_map(Position(m, x, y), False)
 
@@ -141,7 +141,7 @@ def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(li
 def find_place(lib, game, wanted):
     """(map, x, y, dir): an empty floor square whose next square in dir fits wanted(map, x, y)."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR or \

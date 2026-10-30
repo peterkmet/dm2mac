@@ -71,6 +71,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: the square's aspect and its cell grid. |
 | `engine/champion.h` | `champ_` `champion` `inv_` | The champions: the leader hand, their slots, statistics, wounds, and the effects of their items and actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the group update. |
+| `engine/discard.h` | `discard_` | The discard search: a full dungeon frees a record of a thing far from the party. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: step timing, map changes, and timeline events. |
 | `engine/game_text.h` | `gtext_` | Game texts and UI colors: decoding, formatting, and [GDAT](formats/graphics.md#gdat-items) text items. |
@@ -81,7 +82,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/merchant.h` | `shop_` | Merchant trading: the creature AI plan commands that a shopkeeper runs while the party stands in front of it. |
 | `engine/minion.h` | `minion_` | Minion maps: the grid, the map panel's mana, and the clicks that send a minion. |
 | `engine/money.h` | `money_` | Coins in money boxes, the money box panel, and the merchants' item class sets and prices. |
-| `engine/move.h` | `move_` `dun_` | Party movement and thing movement: the movement commands, the redraw flags, and the doors. |
+| `engine/move.h` | `move_` | Party movement and thing movement: the movement commands, the redraw flags, and the doors. |
 | `engine/projectile.h` | `projectile_` `explosion_` | Projectiles and explosions: their record fields and their timeline events. |
 | `engine/random.h` | `rand_` | The random number generator for the game rules. |
 | `engine/recruit.h` | `recruit_` | Recruiting a champion from its mirror: the candidate joins the party or goes back. |
@@ -248,7 +249,8 @@ The game's globals:
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
   `static` in `engine/dungeon.c`; modules outside `engine/dungeon.c` read and write them through the `dungeon_` and `thing_`
   functions.
-- `g_party` (`engine/move.h`): the party's movement state, and the current map for square reads (`cur_map`).
+- `g_party` (`engine/move.h`): the party's movement state.
+- `g_current_map` (`engine/dungeon.h`): the current map for square reads (`map`) and the party position as seen from it.
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
 - `g_session` (`engine/game.h`): the state of one run: the folders, the slot of the last load or save, and the
   exit code. The save file does not hold it.

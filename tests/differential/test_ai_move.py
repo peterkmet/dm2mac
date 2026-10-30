@@ -162,7 +162,7 @@ class Ai:
         lib.ai_begin.argtypes = [ctypes.c_uint16, Location, ctypes.c_int, ctypes.c_void_p]
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
-        lib.dun_set_current_map.argtypes = [ctypes.c_int16]
+        lib.dungeon_set_current_map.argtypes = [ctypes.c_int16]
         lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
         lib.ai_trace_line.restype = ctypes.c_int16
         for name in LOCATION_ARGS:
@@ -243,7 +243,7 @@ class Ai:
         return out
 
     def set_map(self, map_):
-        self.lib.dun_set_current_map(map_)
+        self.lib.dungeon_set_current_map(map_)
         self.emu.call(DUN_SET_CURRENT_MAP, map_)
 
     def begin(self, group, x, y, map_):
@@ -293,7 +293,7 @@ class Ai:
         assert mine_party == (x, y, m, d), (where, "party")
         assert ctypes.c_uint16.in_dll(self.lib, "g_search_direction_bits").value == \
             struct.unpack("<H", self.emu.read(G_DIRECTION_BITS, 2))[0], (where, "direction bits")
-        assert ctypes.c_int16.in_dll(self.lib, "g_party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
+        assert ctypes.c_int16.in_dll(self.lib, "g_current_map").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
             (where, "current map")
         mine, theirs = self.sc.active_groups()
         for i in range(0, len(mine), C.ACTIVE_GROUP_SIZE):
@@ -544,7 +544,7 @@ def test_try_attack(ai):
                 tx, ty, d = x + dx * k, y + dy * k, rng.choice((-1, -1, rng.randrange(4)))
             if rng.random() < 0.3:
                 # the party square as the target
-                tx, ty = ai.sc.party.square_x, ai.sc.party.square_y
+                tx, ty = ai.sc.current_map.square_x, ai.sc.current_map.square_y
             mine, theirs = ai.call("ai_try_attack", mode, x, y, tx, ty, d)
             assert mine == theirs, (g, n, mode, tx, ty, d)
             attacked += mine
@@ -958,7 +958,7 @@ def add_thing(ai, type_, words, map_, x, y, cell):
         lib.thing_set_word(mine, 2 + 2 * i, w)
         emu.write(record + 2 + 2 * i, struct.pack("<H", w))
     thing = mine | cell << C.THING_CELL_SHIFT
-    saved = ai.sc.party.cur_map
+    saved = ai.sc.current_map.map
     ai.set_map(map_)
     assert lib.dungeon_link_thing_to_square(thing, map_, x, y) == 1
     emu.call(DUN_LINK_THING_TO_SQUARE, thing, 0, x, y)
@@ -1111,7 +1111,7 @@ def test_merchant_commands(ai):
             set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt & C.THING_ID_MASK | cell << C.THING_CELL_SHIFT)
         set_word(ai, counter, 2, first & C.THING_ID_MASK | 1 << C.THING_CELL_SHIFT)
         # the change coins of the last round are freed: the records do not run out (no discarded item is reused,
-        # dun_get_discarded_thing)
+        # discard_find_thing)
         t = lib.thing_word(g, 2)
         while t != ENDOFLIST:
             nxt = lib.dungeon_next_thing(t)

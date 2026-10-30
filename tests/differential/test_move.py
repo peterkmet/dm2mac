@@ -266,5 +266,5 @@ def test_discard_search_on_a_dungeon_of_one_map(tmp_path):
     path.write_bytes(header + map_desc + struct.pack("<H", 0) + b"\0")  # column 0 starts at thing 0; a wall
     assert own.dungeon_load(str(path).encode()) == 1
     assert own.dungeon_map_count() == 1
-    own.dun_get_discarded_thing.restype = ctypes.c_uint16
-    assert own.dun_get_discarded_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE
+    own.discard_find_thing.restype = ctypes.c_uint16
+    assert own.discard_find_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE

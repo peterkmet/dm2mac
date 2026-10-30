@@ -22,7 +22,7 @@ class MainLoop(ctypes.Structure):
 @pytest.fixture
 def session(lib, gdat, start, tmp_path):
     """start.DAT ready to play, as build/dm2 --save starts it."""
-    from dm2test.scenario import GameRecord, Party
+    from dm2test.scenario import CurrentMap, GameRecord, Party
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
@@ -30,7 +30,8 @@ def session(lib, gdat, start, tmp_path):
     lib.draw_init(gdat)
     game = GameRecord.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
-    party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
+    CurrentMap.in_dll(lib, "g_current_map").map = -1
+    party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)
     lib.ui_reset()
     lib.money_init_coin_table()
@@ -116,12 +117,12 @@ class Loop(Scenario):
 
     def assert_tick(self, where):
         """The main loop state, the game time, the cooldowns, the movement state, the pending damage, and the champions."""
-        from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
+        from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale, port_globals
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
         mine |= {"sleeping": ctypes.c_bool.in_dll(self.lib, "g_party_sleeping").value, "time": game.game_time,
                  "cooldown": game.party_move_cooldown, "throw": game.throw_cooldown}
-        mine |= {name: getattr(self.party, name) for name in GLOBALS}
+        mine |= port_globals(self.party, self.current_map)
         values = LOOP_GLOBALS | GLOBALS | {"sleeping": (G_PARTY_SLEEPING, "<I"), "time": (G_GAME_TIME, "<I"),
                                            "cooldown": (G_MOVE_COOLDOWN, "<H"), "throw": (G_THROW_COOLDOWN, "<H")}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
