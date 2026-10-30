@@ -213,9 +213,9 @@ The rules request panel redraws with redraw flags, which `ui/` reads to draw the
 
 ## The control socket and the turn
 
-A client controls the running game over a Unix domain socket (`--control PATH`). The commands and the
-turn-based mode are in [llm-mode.md](llm/llm-mode.md). In the turn-based mode, `main` opens the socket before the
-main loop (the default path is in [llm-mode.md](llm/llm-mode.md#turn-based-mode)) and stops with an error if this fails.
+A client controls the running game over a Unix domain socket (`--control PATH`). The commands are in
+[control-socket.md](llm/control-socket.md), the turn-based mode in [turn-based.md](llm/turn-based.md). In the turn-based mode, `main` opens the socket before the
+main loop (the default path is in [control-socket.md](llm/control-socket.md#turn-based-mode)) and stops with an error if this fails.
 
 - `platform/transport.c` holds the socket. It accepts one client and answers a second client with a `busy` error.
   It splits the client's bytes into request lines and sends one reply line per request.

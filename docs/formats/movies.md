@@ -58,4 +58,4 @@ The launcher `IBMIOP.EXE` runs the game's movies from a script: Interplay movie 
 - A block whose source is outside the frame, or with encoding 6, stays unchanged.
 - `--save PATH` skips the start movies; the end movies play after a game that started with `--save`. After a RESTART, the start movies do not play ([game-flow.md](../rules/game-flow.md#deviations-from-the-original)).
 - A closed window or a control `quit` ends the program without the end movies. QUIT GAME after the party's death plays `CREDITS`; QUIT in the save menu plays nothing.
-- During a movie, the control socket reports `"mode": "movie"`; `wait` counts game timer ticks, which stand still ([llm-mode.md](../llm/llm-mode.md#movies)).
+- During a movie, the control socket reports `"mode": "movie"`; `wait` counts game timer ticks, which stand still ([turn-based.md](../llm/turn-based.md#movies)).

@@ -531,7 +531,7 @@ static void put_champion(Json *j, int16_t champion_index)
 }
 
 /* The open dialog and its button texts. The slot dialogs do not set g_dialog.id: they give the id of the last
-   dialog (docs/llm/llm-mode.md). */
+   dialog (docs/llm/turn-based.md). */
 static void put_dialog(Json *j, enum InputMode mode)
 {
     if (mode != INPUT_MODE_DIALOG) {

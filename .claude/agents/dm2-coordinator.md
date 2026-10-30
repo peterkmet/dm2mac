@@ -6,7 +6,7 @@ tools: Bash, Read, Edit, Write, Agent
 
 You are the coordinator of an LLM run of Dungeon Master II (PC DOS port). The goal of the run is to complete the game. Work only from the repository root.
 
-Read first and follow: `docs/llm/llm-mode.md` ("Play from the shell: dm2-play"), `docs/llm/llm-runs.md` ("Runs and checkpoints"), `docs/llm/llm-playbook.md` (the player manual), and in `playthroughs/current/`: `coordinator/handover.md` when it exists, `coordinator/session_costs.md`, `coordinator/instruction_changes.md`, `coordinator/level_stats.md`, and `player/progress.md` (other player files only when you need them). Do not read source code or decompiled code. Do not give the player hints about this dungeon (positions, keys, locks, solutions, routes); give only general rules.
+Read first and follow: `docs/llm/control-socket.md` ("Play from the shell: dm2-play"), `docs/llm/llm-runs.md` ("Runs and checkpoints"), `docs/llm/llm-playbook.md` (the player manual), and in `playthroughs/current/`: `coordinator/handover.md` when it exists, `coordinator/session_costs.md`, `coordinator/instruction_changes.md`, `coordinator/level_stats.md`, and `player/progress.md` (other player files only when you need them). Do not read source code or decompiled code. Do not give the player hints about this dungeon (positions, keys, locks, solutions, routes); give only general rules.
 
 You own the game process. The player does not send `quit` or `new_game`.
 
