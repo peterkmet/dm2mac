@@ -1,14 +1,6 @@
 # Interface panels and text
 
-The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`, and `src/ui/ui.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
-
-## Font and text drawing
-
-- The font is [GDAT](../formats/graphics.md#gdat-items) `(1, 0, 7, 0)`: 6 rows of 128 bytes, one byte per character and row. Bits 4 to 0 are the 5 pixels of a glyph row. A character above 127 reads into the next row (the last row reads past the 768 bytes; the port reads zeros there). The font has no lowercase letters: the lowercase letter codes have other glyphs. For example, the name "f m" of item `(0x15, 62)` shows as "B %", as in the original.
-- `build_glyph` makes a 4 bpp glyph of 6 × 6 pixels: the foreground value on the set bits, the background value on the other bits and in column 6. `text_draw` draws one glyph per character, 6 pixels apart, with the glyph rows from `y - 4` to `y + 1` (the base line is at `y`; one glyph row is below it).
-- In an 8 bpp bitmap the glyph holds 0 and 1, and a 2-entry colormap gives the color and the background. A background with bit `0x4000` is transparent. Text uses `MIRROR_NONE`, so the mirrored 4 bpp quirks of the blitters ([view.md](view.md#blitters-gfx_blit-and-its-row-functions)) do not apply.
-- `text_measure` gives the width `6 × length - 1` and the height 5. `text_wrap_line` breaks a line at the last space that fits; a word longer than the line breaks at the width.
-- `text_draw_with_shadow` draws the text in UI color 0 one pixel down, and one pixel down and right, then in the text color. If the background does not have bit `0x4000`, it first fills a box 1 pixel larger than the text.
+The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`, and `src/ui/ui.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md). Font drawing and offscreen bitmaps are in [rendering.md](rendering.md).
 
 ## UI colors and text formats
 
@@ -27,12 +19,6 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 - A text at the bottom row that needs a new row goes into the row bitmap (320 × 7, `g_message_scroll_bitmap`). Before the next text, function `0x105` of the runtime layer `IBMIOP.EXE` ([runtime.md](../formats/runtime.md#ibmiopexe-runtime-layer)) moves the area up by one row; then the first 6 pixel rows of the row bitmap go to the bottom 6 pixel rows of the area.
 - Text before a `\n` goes to the next row; a wrapped line continues at column 12.
 
-## Offscreen bitmaps
-
-- An offscreen bitmap (`offscreen_create`) holds a screen rectangle: the image cache index, the rectangle, and up to 5 changed rectangles. A new rectangle inside a changed one is dropped; a new rectangle that contains a changed one replaces it; with a sixth rectangle, the 5 changed ones first go to the screen. `offscreen_flush` copies the changed rectangles to the screen.
-- A champion's status box (zones `0xa1` + champion) and the action area (zone 11) draw into offscreen bitmaps. `status_box_begin` with `clear` false draws the box background but does not mark it as changed: only the parts that change later go to the screen.
-- `fill_rect_dithered` fills the pixels whose `x + y` is even (for an even bitmap width) with a UI color. The port uses it for the dimmed hands and party faces of a busy or sleeping party, the dimmed pictures of the action area and of the minion map grid, and the portrait of an invisible party.
-
 ## Slots and panels
 
 - The slot table (`0x75538`, 55 records of 8 bytes): layout zone, icon of the empty slot, and the drawn state (icon, GDAT index, active and wounded frame, thing). Records 0 to 7 are the hands in the status boxes, 8 to 37 the inventory slots, 38 to 45 the open container, 46 the object info, 47 to 54 the contents of a chest in the object info.
@@ -42,7 +28,7 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 
 ## Deviations from the original
 
-- No hardware layer: the screen bitmap is `g_video_fb`; `screen_present_*`, `mouse_hide`, `mouse_show`, and `vga_wait_retrace` have no port. Offscreen bitmaps are frame bitmaps (`draw_temp_bitmap`), not image cache entries.
+- No hardware layer: the screen bitmap is `g_video_fb`; `screen_present_*`, `mouse_hide`, `mouse_show`, and `vga_wait_retrace` have no port.
 - Function `0x105` is in `IBMIOP.EXE`, which is not decompiled. The port moves the rows of zone 15 up by 7 pixels and keeps the bottom 7 rows (`shift_message_area`).
 - The action area reads the party map's wall set from the map descriptor; the original reads `g_map_gfx_set`, which `game_enter_map` sets from the same descriptor.
 - `champ_get_load` adds the current weight of the leader hand object; the original adds the weight that it stores when the object goes into the hand.
@@ -58,7 +44,6 @@ The code is in `src/ui/text.c`, `src/engine/game_text.c`, `src/ui/action_area.c`
 - Kept quirks of the original:
   - The action area keeps the champion of the open panel and of the flashing icon as an ordinal (index + 1, 0 none): the input tree compares it with node arguments (`ActionArea` in `src/engine/include/action.h`).
   - The minion map functions (`minion_map_set_location`, `minion_map_click_set_destination`, `minion_dismiss` in `src/engine/minion.c`) switch the current map to the map of the square and back with `dungeon_set_current_map`, which also sets `g_current_map.square_x`, `square_y`, `square_map`, and `ref_dir` again.
-  - `offscreen_draw_ctx` adds the clipped part of a picture to its size, not to its position, and `offscreen_draw_text_at` marks the changed rectangle from the base line down (`src/ui/ui.c`).
   - A gauge bar scales the 16-bit difference of the value and the low end (`show_gauge_bar` in `src/ui/ui.c`, `ui_draw_gauge_bar`).
   - A wall square of the minion map also shows the wall ornaments and the things of the first other map of the level that has a wall on the same square; the search leaves the square on that map, and `show_square` (`src/ui/minion_map.c`) switches the current map to it and back.
   - `select_command_in_list` and `input_find_command_entry` (`src/ui/input_tree.c`) walk an entry list until the first entry without a command, like `input_select_command_in_list` and `input_find_command_entry` in the original; a list without that end entry is read past its end.

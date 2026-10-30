@@ -5,7 +5,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/ui/input_tree.c`, `src/ui
 ## Timing and the game step
 
 - The programmable interval timer (PIT) runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), or every timer tick while the party sleeps.
-- `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `src/ui/play.c` into `step_before_input` and `step_after_input`. [architecture.md](../architecture.md#the-game-step) says what `play_tick` and the two parts run, and [architecture.md](../architecture.md#hooks-between-layers) lists the calls from the rules into the interface.
+- `game_loop` of `SKULL.EXE` ([skull-map.md](../reference/skull-map.md#main-loop)) waits for input in the middle of a step. The port ([architecture.md](../architecture.md#the-frame-loop)) splits it in `src/ui/play.c` into `step_before_input` and `step_after_input`. [architecture.md](../architecture.md#the-game-step) says what `play_tick` and the two parts run, and [architecture.md](../architecture.md#hooks-between-layers) lists the calls from the rules into the interface.
 - Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop alive and clears `g_main_loop.running`, the flag that lets the game time run.
 
 ## The input tree

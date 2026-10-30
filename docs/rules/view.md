@@ -1,22 +1,6 @@
 # Dungeon view
 
-The dungeon view code is in `src/data/gfx.c`, `src/ui/zone.c`, `src/ui/view.c`, `src/ui/view_things.c`, and `src/ui/view_walls.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
-
-## Blitters (`gfx_blit` and its row functions)
-
-- `gfx_blit` selects a row function by the source depth: a 4 bits per pixel (bpp) source goes to a 4 bpp or 8 bpp destination, an 8 bpp source always goes to an 8 bpp destination (mapped through the colormap if it is not `NULL`). Offsets are pixels; a 4 bpp row holds an even pixel count.
-- Mirror 1 reads each row of the source window backwards, mirror 2 reads the rows from the bottom up, mirror 3 does both. A value above 3 works as 0.
-- The transparent value is compared with the source pixel before the colormap.
-- The mirrored 4 bpp to 4 bpp rows with a transparent color have quirks at the row ends: for example, the mirrored row writes its last pixel only if it is the transparent color. The port draws these rows like the other blits. The view does not use this case, and the text drawing uses `MIRROR_NONE` ([interface.md](interface.md#font-and-text-drawing)).
-- The 8 bpp scaler steps in 1/256 pixel, starting at half a step; the 4 bpp scaler steps in 1/128 pixel, starting at half a step. Both copy the previous destination row when the source row repeats.
-- The masked tiled blit (`gfx_blit_tiled_4to8_masked`) skips the masked pixels at the start and at the end of each row; the tile advances for the skipped start pixels, not for the skipped end pixels.
-
-## Layout zones (`zone_compute_rect`)
-
-- A zone record is `{anchor type, parent, x, y}`. The parent chain ends at a zone with parent 0. A size zone (type 9) gives a width and height; the zones under it are placed in it and clipped to it.
-- The image size comes from `*size` (a `ScreenSize`), or from the image header if it is 0. A zone with bit 15 (`ZONE_RELATIVE`) adds `size->w` and `size->h` to its position. On return, `*size` holds the pixels clipped at the left and the top: the source offset of the blit.
-- `g_zone_clip_rect` (`0x7f1c8`) clips the next zones while its width is not 0. `zone_set_clip_margins` sets it to the viewport minus margins; the view sets its width to 0 after each picture.
-- While the party walks (`g_party.move_steps` is not 0), zones of parent 3 (`WALK_PARENT`) clip to the walking view `{21, 8, 182, 110}`.
+The dungeon view code is in `src/data/gfx.c`, `src/ui/zone.c`, `src/ui/view.c`, `src/ui/view_things.c`, and `src/ui/view_walls.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md). Blitters and layout zones are in [rendering.md](rendering.md).
 
 ## View square record and the view
 
@@ -89,7 +73,6 @@ The automap of the advanced mode (`src/ui/automap.c`; the original game has none
 - `src/engine/save.c` reads the static flag from the creature info table of `src/engine/creature.c`.
 - The advanced mode draws views between game steps (the projectile flight). These views change no game state: `show_projectile_flight` (`src/ui/play.c`) restores the random seed, explosions do not count their views again, and a shop display does not choose or create an item. They do not set the seen bit (`GROUP_SEEN`) of a group, because the original has no such views. Because the AI clears the bit at each mood update, the bit in an advanced-mode save can differ from the bit that a view on each tick would leave.
 - Kept quirks, as in the original:
-  - The scaled 4 bpp blit (`gfx_blit_scaled_4bpp`) wraps the nibble index of the source at 16 bits; only a source of more than 65535 pixels reaches the wrap.
   - In the frame text of an animated ornament (`ornament_frame`), a letter `A` to `Z` gives the frame `letter - 'K'`; the letters `A` to `J` give negative frames.
   - The landmarks of an outdoor map use the first sky object of `weather_sky_objects` as their work record. The weather update writes that record again before each use.
   - The explosion zones, the cell of the alcove items, and the side test of a passage read the party direction, not the view direction that `show_linked_squares` turns for the squares behind a passage.
