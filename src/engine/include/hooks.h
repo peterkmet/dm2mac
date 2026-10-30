@@ -8,8 +8,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "game.h"
+#include "dungeon.h"
 #include "gfx.h"
+#include "interface_state.h"
 #include "sound_request.h"
 
 typedef struct {

@@ -6,31 +6,29 @@ import struct
 import pytest
 
 from dm2test import constants as C
+from dm2test.addresses import G_CHAMPIONS
 from dm2test.interface import c_screen, diff
-from dm2test.scenario import Scenario
+from dm2test.scenario import (
+    CHAMPION_SIZE, G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, Scenario, champion_records, ignore_stale, port_globals,
+)
+from dm2test.structs import CurrentMap, Game, MainLoop, Party
 
 
 INPUT_INIT_TABLES, INPUT_FIND_CLICK_COMMAND, INPUT_FIND_KEY_COMMAND = 0x20847, 0x203A3, 0x2048A
 
 
-class MainLoop(ctypes.Structure):
-    _fields_ = [("tick_threshold", ctypes.c_int), ("tick_count", ctypes.c_int), ("timer_ticks", ctypes.c_uint32),
-                ("running", ctypes.c_bool), ("view_hidden", ctypes.c_bool), ("end", ctypes.c_bool),
-                ("quit", ctypes.c_bool), ("closed", ctypes.c_bool)]
-
-
 @pytest.fixture
 def session(lib, gdat, start, tmp_path):
     """start.DAT ready to play, as build/dm2 --save starts it."""
-    from dm2test.scenario import GameRecord, Party
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
-    game = GameRecord.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
-    party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
+    CurrentMap.in_dll(lib, "g_current_map").map = -1
+    party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)
     lib.ui_reset()
     lib.money_init_coin_table()
@@ -55,10 +53,10 @@ LOOP_START, LOOP_STEP, LOOP_WAIT, LOOP_WAIT_END, LOOP_STEP_END = 0x24696, 0x246A
 GAME_START_SESSION, INPUT_MOUSE_CLICK, INPUT_POLL, INPUT_FLUSH = 0x551D4, 0x20C5D, 0x210DC, 0x209E0
 KBD_KEY_AVAILABLE, KBD_READ_KEY = 0x114B8, 0x11413
 G_TIMER_STEP, G_TICK_ELAPSED, G_PARTY_SLEEPING = 0x7EFAC, 0x717F2, 0x7F234
-# The loop functions of later steps: music (Step 19); the mouse areas of an input mode (not ported).
+# The loop functions that are not ported: music; the mouse areas of an input mode (not ported).
 LOOP_STUBS = (0x10AF6, 0x14B1F,
               # game_start_session: the screen fill, the retrace wait, and the dialog after a load with its disk
-              # check (Step 20)
+              # check
               0x13B4D, 0x1C5FD, 0x1A37D, 0x1A0A4, 0x3D187, 0x346D1, 0x3D111,
               0x557B5,  # the expired rows of the message area: the screen only
               0x3F62D)  # the key sequence that prints the free memory (a debug message, not ported)
@@ -116,12 +114,11 @@ class Loop(Scenario):
 
     def assert_tick(self, where):
         """The main loop state, the game time, the cooldowns, the movement state, the pending damage, and the champions."""
-        from dm2test.scenario import G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, GLOBALS, ignore_stale
         game = self.game
         mine = {name: getattr(self.loop, name) for name in LOOP_GLOBALS}
         mine |= {"sleeping": ctypes.c_bool.in_dll(self.lib, "g_party_sleeping").value, "time": game.game_time,
                  "cooldown": game.party_move_cooldown, "throw": game.throw_cooldown}
-        mine |= {name: getattr(self.party, name) for name in GLOBALS}
+        mine |= port_globals(self.party, self.current_map)
         values = LOOP_GLOBALS | GLOBALS | {"sleeping": (G_PARTY_SLEEPING, "<I"), "time": (G_GAME_TIME, "<I"),
                                            "cooldown": (G_MOVE_COOLDOWN, "<H"), "throw": (G_THROW_COOLDOWN, "<H")}
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
@@ -131,7 +128,6 @@ class Loop(Scenario):
 
     def champions(self):
         """(C, original) champion records without the redraw flags: the original status box drawing is a stub."""
-        from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records
 
         def records(data):
             out = []

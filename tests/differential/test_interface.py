@@ -1,28 +1,23 @@
-"""Step 13: text drawing, the interface panels, and the message area against the original code in dm2tools.emu."""
+"""Differential tests of text drawing, the interface panels, and the message area against the original code in dm2tools.emu."""
 import ctypes
 import random
 import struct
 
-import pytest
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EIP
 
 from dm2test import constants as C
-from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
-    CHAMP_DRAW_ALL_STATES, CHAMPION_SIZE, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME,
-    G_IOP_BUFFER, G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT,
-    SCREEN_W, TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VGA, VIEW_W,
-    ZONE_GET_RECT, ActionArea, UiState, c_screen, c_view, champion_bytes, champion_records, diff, draw_game_screen, gdat, open_hand, original, port, set_action, set_leader_hand, set_magic,
-    sync_champions, things_of, update_action_area,
+from dm2test.interface import (
+    CHAMP_DRAW_ALL_STATES, GAME_CHAMPIONS, GFX_DRAW_TEXT, G_CHAMP_DRAW_STATE, G_EYE, G_GAME_TIME, G_IOP_BUFFER,
+    G_LEADER_HAND, G_MOUTH, G_PARTY_SLEEPING, G_SKILL_RAISED, INV_TOGGLE, IOP_SCROLL_CALL, IOP_SCROLL_NEXT, SCREEN_W,
+    TEXT_FORMAT, TEXT_MEASURE, TEXT_PRINT_MESSAGE, TEXT_SET_MESSAGE_CURSOR, TEXT_WRAP_LINE, VIEW_W, ZONE_GET_RECT,
+    c_screen, c_view, diff, draw_game_screen, open_hand, set_action, set_leader_hand, set_magic, things_of,
+    update_action_area,
 )
-from dm2test.save import Game
-from dm2test.view import Bitmap, ScreenPoint, ScreenSize, u8_p
-from dm2test.lib import load_lib
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
+from dm2test.addresses import VGA
+from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, UiState
+from dm2test.view import ScreenPoint, ScreenSize, u8_p
 
 
 def test_game_screen_matches_original(port, original):
@@ -84,11 +79,6 @@ def test_inventory_panels_match_original(port, original):
 
 INV_RENDER_HAND_ICON = 0x38392
 HAND_ICON_SIZE = C.HAND_ICON_SIZE
-
-
-class LeaderHand(ctypes.Structure):
-    _fields_ = [("attr", ctypes.c_uint16), ("weight", ctypes.c_uint16), ("icon", ctypes.c_uint8),
-                ("cursor", ctypes.c_uint8 * HAND_ICON_SIZE ** 2), ("palette", ctypes.c_uint8 * C.HAND_ICON_COLORS)]
 
 
 def test_hand_icon_matches_original(port, original):
@@ -483,7 +473,6 @@ def test_text_format_matches_original(port, original):
         assert mine.value == emu.read(dst, 512).split(b"\0")[0], (case, fmt)
 
 
-
 def test_text_format_stops_at_a_cut_code(port):
     # A damaged text that ends in ".Z" and 1 digit: the code takes no byte after the end of the text.
     port.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
@@ -572,26 +561,26 @@ def test_message_rows_follow_print_scroll_and_expiry(port):
 FONT_SIZE = C.FONT_GLYPH_HEIGHT * 128  # the font of text.c: 128 characters of FONT_GLYPH_HEIGHT rows
 
 
-def test_text_init_refuses_a_short_font_or_color_item(port, gdat):
+def test_text_init_refuses_a_short_font_or_color_item(port, ui_gdat):
     # regression: text_init copied the font and read the 16 UI colors past the end of a shorter item (a damaged
     # GRAPHICS.DAT)
     from dm2test.gdat import item_sizes
     lib = port
-    sizes = item_sizes(gdat)
+    sizes = item_sizes(ui_gdat)
     for kind, entry, need in ((C.GDAT_TYPE_FONT, C.GFX_FONT, FONT_SIZE),
                               (C.GDAT_TYPE_DATA, C.GFX_UI_COLORS, C.UI_COLOR_COUNT)):
-        item = lib.gdat_find(gdat, C.CAT_INTERFACE, 0, kind, entry)
+        item = lib.gdat_find(ui_gdat, C.CAT_INTERFACE, 0, kind, entry)
         assert item >= 0 and sizes[item] >= need
         size = sizes[item]
         sizes[item] = need - 1
         try:
-            assert not lib.text_init(gdat)
+            assert not lib.text_init(ui_gdat)
         finally:
             sizes[item] = size
-    assert lib.text_init(gdat)
+    assert lib.text_init(ui_gdat)
 
 
-def test_message_area_without_its_zone_draws_nothing(port, gdat):
+def test_message_area_without_its_zone_draws_nothing(port, ui_gdat):
     # regression: the message area functions used an unset rectangle when the layout has no message area zone
     lib = port
     lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
@@ -610,10 +599,10 @@ def test_message_area_without_its_zone_draws_nothing(port, gdat):
         assert [lib.text_message_row(i) for i in range(3)] == rows
         assert c_screen(lib) == before
     finally:
-        assert lib.zone_load(gdat)
+        assert lib.zone_load(ui_gdat)
 
 
-def test_face_icon_without_a_palette_gives_black_colors(port, gdat):
+def test_face_icon_without_a_palette_gives_black_colors(port, ui_gdat):
     # regression: ui_draw_champion_face_icon left the face colors unset when the face picture has no palette (a
     # damaged GRAPHICS.DAT); the callers read them
     from dm2test.gdat import item_sizes
@@ -624,8 +613,8 @@ def test_face_icon_without_a_palette_gives_black_colors(port, gdat):
     colors = (ctypes.c_uint8 * C.FACE_ICON_COLORS)()
     lib.ui_draw_champion_face_icon(ctypes.byref(face), 0, colors)
     assert any(colors)
-    item = lib.gdat_find(gdat, C.CAT_INTERFACE, C.UI_INDEX_FACES, C.GDAT_TYPE_IMAGE, 0)
-    sizes = item_sizes(gdat)
+    item = lib.gdat_find(ui_gdat, C.CAT_INTERFACE, C.UI_INDEX_FACES, C.GDAT_TYPE_IMAGE, 0)
+    sizes = item_sizes(ui_gdat)
     size = sizes[item]
     sizes[item] = C.FACE_ICON_COLORS - 1  # shorter than the palette at the end of a 4 bpp picture
     try:

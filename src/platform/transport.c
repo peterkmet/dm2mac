@@ -11,7 +11,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include "control.h"
-#include "state_json.h"
+#include "json.h"
 
 /* The size of the request buffer. */
 #define INPUT_SIZE 4096 /* a request line up to its newline */

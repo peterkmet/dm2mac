@@ -35,13 +35,15 @@ The compiler therefore rejects an include from a higher layer:
 Outside the layers, `src/third_party/` holds the vendored `opl3/` (the OPL3 emulator) and `tinf/` (the deflate decompressor for ZIP archives). Every layer reaches it through
 `-isystem src/third_party`.
 
+Other folders: `tools/dm2tools/` holds the Python tools, `tools/ghidra/` the decompile scripts, `tests/` the tests ([Tests](development.md#tests)), and `docs/` the documentation. Git ignores `game/` (the original files), `reference/` (the Ghidra output and original material), and `tests/saves/`; link them into a new worktree.
+
 ## Modules
 
 A module is one public header, the files `<module>.c` and `<module>_<part>.c`, and an optional `<module>_internal.h`. Each header states its prefixes and has one purpose
 paragraph. A module with several `.c` files has one `<module>_internal.h` for its private declarations:
-`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_data.c`, `ai_move.c`), `engine/champion`
-(`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), and `ui/ui` (`ui.c`,
-`ui_hooks.c`). The tables do not show the internal headers.
+`data/mve` (`mve.c`, `mve_video.c`), `engine/ai` (`ai.c`, `ai_action.c`, `ai_data.c`, `ai_move.c`, `ai_path.c`), `engine/champion`
+(`champion.c`, `champion_action.c`, `champion_damage.c`, `champion_inventory.c`), `ui/input` (`input.c`, `input_feedback.c`,
+`input_tree.c`), `ui/ui` (`ui.c`, `ui_hooks.c`), and `ui/view` (`view.c`, `view_things.c`, `view_walls.c`). The tables do not show the internal headers.
 
 ### data/
 
@@ -71,16 +73,18 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `engine/aspect.h` | `aspect_` `cell_grid_` | What the party sees of a square: the square's aspect and its cell grid. |
 | `engine/champion.h` | `champ_` `champion` `inv_` | The champions: the leader hand, their slots, statistics, wounds, and the effects of their items and actions. |
 | `engine/creature.h` | `creature_` | Creature groups: the creature info records and the group update. |
+| `engine/discard.h` | `discard_` | The discard search: a full dungeon frees a record of a thing far from the party. |
 | `engine/dungeon.h` | `dungeon_` `dir_` `square_` `thing_` `location_` `event_` `door_` `group_` `teleporter_` `container_` `misc_` `potion_` `scroll_` `weapon_` `armour_` `moneybox_` `textrec_` | The dungeon: the things, their record layout, the squares, and the maps. |
 | `engine/game.h` | `game_` | The main loop state of the game rules: step timing, map changes, and timeline events. |
 | `engine/game_text.h` | `gtext_` | Game texts and UI colors: decoding, formatting, and [GDAT](formats/graphics.md#gdat-items) text items. |
 | `engine/hooks.h` | none | Calls from the game rules into the user interface, for events that must run the interface inside a rule. |
+| `engine/interface_state.h` | none | The interface state that the rules and the drawing share: the panels, the input mode, the mouse. |
 | `engine/item.h` | `item_` | The items: their record fields, their GDAT types, and what the party possesses. |
 | `engine/magic.h` | `magic_` | Magic: the spell table, runes, spell casting, and the magic light. |
 | `engine/merchant.h` | `shop_` | Merchant trading: the creature AI plan commands that a shopkeeper runs while the party stands in front of it. |
 | `engine/minion.h` | `minion_` | Minion maps: the grid, the map panel's mana, and the clicks that send a minion. |
 | `engine/money.h` | `money_` | Coins in money boxes, the money box panel, and the merchants' item class sets and prices. |
-| `engine/move.h` | `move_` `dun_` | Party movement and thing movement: the movement commands, the redraw flags, and the doors. |
+| `engine/move.h` | `move_` | Party movement and thing movement: the movement commands, the redraw flags, and the doors. |
 | `engine/projectile.h` | `projectile_` `explosion_` | Projectiles and explosions: their record fields and their timeline events. |
 | `engine/random.h` | `rand_` | The random number generator for the game rules. |
 | `engine/recruit.h` | `recruit_` | Recruiting a champion from its mirror: the candidate joins the party or goes back. |
@@ -126,7 +130,8 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | Header | Prefixes | Purpose |
 |---|---|---|
 | `control/control.h` | `control_` | The line protocol for controlling the running game: one JSON request per line, one JSON reply per line; no socket, no SDL. |
-| `control/state_json.h` | `json_` `state_json_` | The JSON text writer for control replies, and the game state as JSON: party, champions, view, map. |
+| `control/json.h` | `json_` | The JSON text writer of the control replies. |
+| `control/state_json.h` | `state_json_` | The game state as JSON: party, champions, view, map. |
 | `control/turn.h` | `turn_` | Turns of the turn-based mode: an action puts its inputs into the input queue, and the game runs one game step per frame until the party can act again. |
 
 ### platform/
@@ -147,7 +152,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 `main` (`platform/main.c`) runs these steps in order:
 
 1. It reads the options and selects the game mode (`--mode`; otherwise the advanced mode).
-2. It checks the game files and installs them from a source if needed ([game-files.md](formats/game-files.md#startup)). It loads GRAPHICS.DAT and the `--save` file, and opens the window, the `--control` socket, and the
+2. It checks the game files and installs them from a source if needed ([install.md](formats/install.md#startup)). It loads GRAPHICS.DAT and the `--save` file, and opens the window, the `--control` socket, and the
    music. It sets the platform hooks: `g_os_full_path_hook`, `g_optmenu_filter_hook`, and
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.
@@ -211,9 +216,9 @@ The rules request panel redraws with redraw flags, which `ui/` reads to draw the
 
 ## The control socket and the turn
 
-A client controls the running game over a Unix domain socket (`--control PATH`). The commands and the
-turn-based mode are in [llm-mode.md](llm/llm-mode.md). In the turn-based mode, `main` opens the socket before the
-main loop (the default path is in [llm-mode.md](llm/llm-mode.md#turn-based-mode)) and stops with an error if this fails.
+A client controls the running game over a Unix domain socket (`--control PATH`). The commands are in
+[control-socket.md](llm/control-socket.md), the turn-based mode in [turn-based.md](llm/turn-based.md). In the turn-based mode, `main` opens the socket before the
+main loop (the default path is in [control-socket.md](llm/control-socket.md#turn-based-mode)) and stops with an error if this fails.
 
 - `platform/transport.c` holds the socket. It accepts one client and answers a second client with a `busy` error.
   It splits the client's bytes into request lines and sends one reply line per request.
@@ -236,7 +241,7 @@ The control code's interface, all in `build/libdm2.dylib`:
 | `platform/transport.h` (the socket, plain POSIX) | `transport_open(path)` listens on the socket, replaces an old socket file, and returns true on success. `transport_poll()`, one call per frame, accepts a client, answers requests, and ends turns. `transport_close()` closes the sockets and removes the socket file. |
 | `control/control.h` (the line protocol) | `control_frame()` runs one game step of the pending turn. `control_is_turn_pending()` is true while a turn runs. |
 | `control/turn.h` | `turn_is_pending`, `turn_act`, `turn_act_many`, `turn_wait`, `turn_poll`, `turn_reply`, and `turn_drop_reply`. The action table is in `turn.c`, one function per action. |
-| `control/state_json.h` (no SDL) | `state_json_state`, `state_json_view`, and `state_json_map` append one JSON object to a `Json` buffer. `state_json_string(part)` returns a new string; free it with `free`. |
+| `control/state_json.h` (no SDL) | `state_json_state`, `state_json_view`, and `state_json_map` append one JSON object to a `Json` buffer (`control/json.h`). `state_json_string(part)` returns a new string; free it with `free`. |
 
 ## Global state
 
@@ -247,7 +252,8 @@ The game's globals:
   (`engine/timeline.h`), and the random seed `g_random_seed` (`engine/random.h`). The dungeon records are
   `static` in `engine/dungeon.c`; modules outside `engine/dungeon.c` read and write them through the `dungeon_` and `thing_`
   functions.
-- `g_party` (`engine/move.h`): the party's movement state, and the current map for square reads (`cur_map`).
+- `g_party` (`engine/move.h`): the party's movement state.
+- `g_current_map` (`engine/dungeon.h`): the current map for square reads (`map`) and the party position as seen from it.
 - `g_main_loop` (`engine/game.h`): the step timing, the pause, the end of the game, and the quit.
 - `g_session` (`engine/game.h`): the state of one run: the folders, the slot of the last load or save, and the
   exit code. The save file does not hold it.
@@ -282,8 +288,8 @@ no console.
 `build/libdm2.dylib` holds all sources except `platform/main.c` and `platform/platform.c` (the SDL sources) and
 `platform/transport_none.c`. It includes the control socket from `platform/transport.c`, but no window.
 
-- Each test module loads its own copy of the library (`load_lib` in `tests/dm2test/lib.py`), so each module has
-  its own C globals.
+- Each test module loads its own copy of the library (the module-scoped fixture `lib` of
+  `tests/dm2test/lib.py` calls `load_lib` once per module), so each module has its own C globals.
 - `g_game_mode` is the vanilla mode in the library.
 - A test of a modal loop sets `g_play_frame_hook` to its own frame and resets it to NULL afterwards.
 - A symbol that exists only for the tests carries `/* exported for the tests */` on its declaration (rule 2.5 of

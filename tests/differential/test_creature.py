@@ -1,20 +1,15 @@
-"""Scenario tests of Step 16 with the emulator oracle: creature groups, the creature AI, projectiles, explosions,
-magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal."""
+"""Scenario tests with the emulator oracle: creature groups, the creature AI, projectiles, explosions,
+magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal.
+The view tests give the original zeroed active groups because they draw without active groups."""
 
 import ctypes
 
 import pytest
 
 from dm2test import constants as C
-from dm2test.creature import CreatureScenario, creatures, random_champions  # noqa: F401 (creatures is a fixture)
-from dm2test.lib import load_lib
+from dm2test.creature import CreatureScenario, random_champions
 from dm2test.markers import ROOT
-from dm2test.scenario import ENDOFLIST, Position, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
+from dm2test.scenario import ENDOFLIST, Position, square_event
 
 
 def test_activation_after_load(creatures):

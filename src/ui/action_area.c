@@ -10,6 +10,7 @@
 #include "game_text.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "minion.h"
 #include "minion_map.h"

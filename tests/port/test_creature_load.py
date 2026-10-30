@@ -6,8 +6,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
-from dm2test.scenario import Location, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.structs import Location
 
 STALE_INDEX = 200  # an active group index of the saved game, past the active groups of this session
 MOVEMENT = 10  # byte offset of CreatureInfo.movement
@@ -15,9 +14,8 @@ MANY_GROUPS = 1000  # more groups than an active index byte can count
 THING_RECORD_SIZE = 16  # bytes of a group record
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.creature_is_flying.restype = ctypes.c_bool
     lib.creature_is_flying.argtypes = [ctypes.c_uint16]
     lib.creature_get_group_at.restype = ctypes.c_uint16
@@ -26,13 +24,12 @@ def lib():
     lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     lib.thing_word.restype = ctypes.c_uint16
     lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    return lib
 
 
-def walking_group(lib, gdat):  # noqa: F811
+def walking_group(lib, gdat):
     """A creature group whose creature does not fly; its map is the current map."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 group = lib.creature_get_group_at(Location(x, y))
@@ -44,7 +41,7 @@ def walking_group(lib, gdat):  # noqa: F811
     raise AssertionError("no creature group that does not fly")
 
 
-def test_a_stale_active_index_reads_no_active_group(lib, gdat, start, tmp_path):  # noqa: F811
+def test_a_stale_active_index_reads_no_active_group(lib, gdat, start, tmp_path):
     # regression: creature_is_flying read the active group of a stale index past the end of the active groups
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)
@@ -55,7 +52,7 @@ def test_a_stale_active_index_reads_no_active_group(lib, gdat, start, tmp_path):
     assert not lib.creature_is_flying(group)
 
 
-def test_the_active_groups_end_below_the_inactive_index(lib, gdat, tmp_path):  # noqa: F811
+def test_the_active_groups_end_below_the_inactive_index(lib, gdat, tmp_path):
     # regression: with more than 255 walking groups, active index 255 read as GROUP_NOT_ACTIVE and later ones wrapped
     counts = [MANY_GROUPS if t == C.THING_GROUP else 0 for t in range(C.THING_TYPE_COUNT)]
     path = tmp_path / "groups.dat"

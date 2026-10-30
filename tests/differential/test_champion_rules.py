@@ -1,4 +1,4 @@
-"""Differential tests of the champion rules of Step 15 on start.DAT: the same calls in the C port and in the original
+"""Differential tests of the champion rules on start.DAT: the same calls in the C port and in the original
 code in dm2tools.emu, then the same results, random seed, champions, and dungeon."""
 
 import ctypes
@@ -9,15 +9,11 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_bytes, champion_records, sync_champions
-from dm2test.scenario import Scenario, gdat, start  # noqa: F401 (fixtures)
-from dm2test.input import session  # noqa: F401 (fixture)
+from dm2test.addresses import G_CHAMPIONS
+from dm2test.scenario import CHAMPION_SIZE, Scenario, champion_bytes, champion_records, sync_champions
+from dm2test.structs import Game
 from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 G_RANDOM_SEED, G_PARTY_SLEEPING, G_REGEN_COUNTER, G_CHAMPION_COUNT = 0x70518, 0x7F234, 0x7FFF4, 0x7F276
 G_THING_DATA = 0x7F288
@@ -128,7 +124,7 @@ class Rules:
 
 
 @pytest.fixture
-def rules(lib, gdat, start, tmp_path):  # noqa: F811
+def rules(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Rules(Scenario(lib, gdat, start, tmp_path), lib, random.Random(151))
 
@@ -530,7 +526,7 @@ def test_money_and_prices_match_original(rules, lib):
             action_state.mode = ACTION_MODE_MONEY_BOX
             emu.write(G_ACTION_MODE, struct.pack("<h", ACTION_MODE_MONEY_BOX))
         rules.assert_same((n, kind))
-        mine_hand = ctypes.c_uint16.from_address(ctypes.addressof(scenario.game) + 252 + 4 * 263).value
+        mine_hand = ctypes.c_uint16.from_address(ctypes.addressof(scenario.game) + Game.leader_hand.offset).value
         assert mine_hand == struct.unpack("<H", emu.read(G_LEADER_HAND, 2))[0], n
     assert clicks > 30 and taken > 30
     scenario.assert_equal("end")
@@ -551,7 +547,7 @@ def coin_values_changed(values):
     return bytes(data)
 
 
-def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):  # noqa: F811
+def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):
     # regression: with a coin of value 0 (a damaged GRAPHICS.DAT) the exchange of the coins of a box looped forever
     from dm2test.markers import ROOT
     lib = load_lib()  # an own coin table: a library reads it once
@@ -625,19 +621,20 @@ def test_item_value_matches_original(rules, lib):
 
 
 G_MAGIC_LIGHT = 0x7FFEC  # 6 bytes: magic light, invisibility, action effect, haste, ...
-CHAMPIONS_OFFSET, MAGIC_LIGHT_OFFSET = 252, 252 + 4 * CHAMPION_SIZE + 2  # offsetof(Game, ...) in save.h
+CHAMPIONS_OFFSET, MAGIC_LIGHT_OFFSET = Game.champions.offset, Game.magic_light.offset
 EVENT_ITEM_EFFECT, EVENT_MAGIC_LIGHT, EVENT_INVISIBILITY, EVENT_AURA, EVENT_POISON = (
     C.EVENT_ITEM_EFFECT, C.EVENT_MAGIC_LIGHT, C.EVENT_INVISIBILITY, C.EVENT_AURA, C.EVENT_POISON)
 POTION, MISC = C.THING_POTION, C.THING_MISC
 
 
 @pytest.mark.parametrize("dead", [False, True])
-def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, dead):  # noqa: F811
+def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, dead):
     # A save with magic light events (powers in and out of the table), invisibility, an aura on the first champion,
     # poison, and the timed effects of eaten items (34 and 50 have skill modifiers that count when consumed): the
     # load restores the light, the invisibility, the aura value (not on a dead champion), the poison, and the item
     # effects, in the C port and in the original.
-    from dm2test.save import Event, Game, original_load
+    from dm2test.save import original_load
+    from dm2test.structs import TimelineEvent
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == 0
@@ -653,7 +650,7 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
     events += [(EVENT_ITEM_EFFECT, 0, bytes([kind, 0, index]))
                for kind, index in ((MISC, 34), (MISC, 50), (MISC, 3), (POTION, 0), (POTION, 5))]
     for n, (type_, priority, data) in enumerate(events):
-        event = Event(game.game_time + 50 + n | game.party_map << 24, type_, priority,
+        event = TimelineEvent(game.game_time + 50 + n | game.party_map << 24, type_, priority,
                       (ctypes.c_uint8 * 6)(*data.ljust(6, b"\0")))
         lib.timeline_add_event(ctypes.byref(event))
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == 0
@@ -672,7 +669,7 @@ def test_load_restores_timed_effects_like_original(lib, gdat, start, tmp_path, d
 
 def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
     """Loads start.DAT, or starts a new game from DUNGEON.DAT (session_load), in the session of the fixture."""
-    from dm2test.dialog import Session
+    from dm2test.structs import Session
     if new_game:
         (tmp_path / "DATA").mkdir()
         (tmp_path / "DATA" / "DUNGEON.DAT").symlink_to(game_dir / "DATA" / "DUNGEON.DAT")
@@ -691,7 +688,7 @@ def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
 
 
 @pytest.mark.parametrize("new_game", [False, True])
-def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir, tmp_path, new_game):
     # A load or a new game after a repeated action, a raised skill and pending damage starts with no repeats, no
     # raised skills and no pending damage.
     repeats = (ctypes.c_uint8 * 64).in_dll(lib, "g_action_repeats")
@@ -705,10 +702,10 @@ def test_load_and_new_game_clear_step_state(lib, gdat, start, session, game_dir,
 
 
 @pytest.mark.parametrize("new_game", [False, True])
-def test_load_and_new_game_clear_pending_push(lib, gdat, start, session, game_dir, tmp_path, new_game):  # noqa: F811
+def test_load_and_new_game_clear_pending_push(lib, gdat, start, session, game_dir, tmp_path, new_game):
     # A push that waits for a creature group in the last game does not wait in a loaded or a new game: the start of
     # its play clears the group.
-    from dm2test.scenario import Party
+    from dm2test.structs import Party
     party = Party.in_dll(lib, "g_party")
     party.push_pending_group = 0x1000  # group 0 of the last game
     load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game)

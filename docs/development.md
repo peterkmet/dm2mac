@@ -1,6 +1,6 @@
 # Development
 
-Build the port with `make`, test it with `make test`, and check it with `make check`. For the structure of the code, see [Architecture](architecture.md).
+Build the port with `make`, test it with `make test`, and check it with `make check`. For the structure of the code, see [Architecture](architecture.md) (layers and modules). Follow the [Coding standard](coding-standard.md) for every change in `src/`. The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md) (turn-based mode: [section T](manual-test-checklist.md#t-turn-based-mode)). The pages by audience are in [docs/README.md](README.md).
 
 The port is built in three steps:
 
@@ -31,7 +31,7 @@ uv sync
 
 The flags are `-std=c11 -Wall -Wextra -Werror -Wshadow -Wmissing-prototypes -Wstrict-prototypes -Wvla -Wimplicit-fallthrough -O2 -g -fwrapv`.
 
-Put your DOS game (its folder, ZIP archive, or CD image) into the project folder ([game-files.md](formats/game-files.md#sources)), then start the game:
+Put your DOS game (its folder, ZIP archive, or CD image) into the project folder ([install.md](formats/install.md#sources)), then start the game:
 
 ```sh
 build/dm2                                   # New game (mode screen)
@@ -77,22 +77,13 @@ To run several files, add `-n auto`.
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
-| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [llm-mode.md](llm/llm-mode.md) (`test_vocabulary.py`). |
-| `tests/differential/test_creature.py` | The views of running creatures against the original. The view tests give the original zeroed active groups because they draw without active groups. |
+| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
 
-Tests of the control socket and the turn-based mode:
-
-| File | What it proves |
-|---|---|
-| `tests/port/test_state_json.py` | The JSON for the state, the view, and the map. |
-| `tests/port/test_turnbased.py` | The protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`. |
-| `tests/tools/test_play_client.py` | `dm2-play`: the act forms, `--brief`, and the call log. |
-
-```sh
-uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased.py tests/tools/test_play_client.py
-```
+The tests of the control socket and the turn-based mode are `tests/port/test_state_json.py` (the JSON of the state, the view, and the map), `tests/port/test_turnbased.py` (the protocol, the turn-end rules, the stops, `act_many`, `save`, `load`, and `new_game`), and `tests/tools/test_play_client.py` (`dm2-play`).
 
 `tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library).
+
+## Tools
 
 | Command | Result |
 |---|---|
@@ -100,20 +91,9 @@ uv run pytest -q -n auto tests/port/test_state_json.py tests/port/test_turnbased
 | `make format` | `clang-format` over the C files ([coding-standard.md](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
-| `uv run dm2-items docs/reference/items.md` | Regenerates [items.md](reference/items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
-
-## Layout
-
-- `src/`: the C port in five layers; see [Architecture](architecture.md).
-- `tools/dm2tools/`: the Python tools.
-- `tools/ghidra/`: the decompile scripts.
-- `tests/`: see [Tests](#tests).
-- `docs/`: the documentation.
-- Git-ignored data: `game/` (the original files), `reference/` (the Ghidra output and original material), `tests/saves/`. Link them into a new worktree.
-
-## Coding standard
-
-Follow [Coding standard](coding-standard.md) for every change in `src/`.
+| `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
+| `dm2tools.emu` (Python, in `tools/dm2tools/emu.py`) | Run a `SKULL.EXE` function in an x86 emulator. `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
+| `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
 
 ## Add a game rule
 
@@ -127,42 +107,3 @@ Follow [Coding standard](coding-standard.md) for every change in `src/`.
    [docs/rules/](rules/).
 7. Run `make check`.
 
-## Manual checks
-
-The checks that no test covers are in [manual-test-checklist.md](manual-test-checklist.md); the turn-based mode checks are in its section [T](manual-test-checklist.md#t-turn-based-mode).
-
-## Documentation
-
-- [Player manual](manual.md): the options, the modes, the controls, and the cheats.
-- [Architecture](architecture.md) and [Coding standard](coding-standard.md): the structure of the code.
-- [Decompiling](decompiling.md), [SKULL.EXE map](reference/skull-map.md),
-  [skull-symbols.csv](reference/skull-symbols.csv), [SKULL.EXE address layout](reference/symbols/ranges.md) with its
-  range notes, and [Cross-check with reDM2](reference/reference-crosscheck.md): the original program.
-- [Items](reference/items.md): the values of every item.
-- [Manual test checklist](manual-test-checklist.md): the checks that no test covers.
-- [LLM mode](llm/llm-mode.md), [LLM runs](llm/llm-runs.md), and [LLM playbook](llm/llm-playbook.md): a program
-  plays the game.
-- [TODO](todo.md): the open work. [Changelog](../CHANGELOG.md): the changes.
-
-Data formats:
-
-- [Graphics data files](formats/graphics.md)
-- [Movies](formats/movies.md)
-- [Music](formats/music.md)
-- [Digital sound effects](formats/sound.md)
-- [Save file format](formats/save.md)
-- [Runtime layer and timing](formats/runtime.md)
-- [Game files and install](formats/game-files.md)
-- [ZIP archives](formats/zip.md)
-- [CD images](formats/cd-image.md)
-
-Game rules:
-
-- [Start menu, save and load, dialogs, and end of game](rules/game-flow.md)
-- [Main loop, input, and movement](rules/movement.md)
-- [Dungeon view](rules/view.md)
-- [Interface panels and text](rules/interface.md)
-- [Champions, inventory, items, money, and shops](rules/champions.md)
-- [Creatures, projectiles, magic, and minions](rules/creatures.md)
-- [Weather, day and night, light, and Skullkeep machines](rules/world.md)
-- [Advanced mode](rules/advanced-mode.md)

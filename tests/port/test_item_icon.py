@@ -6,9 +6,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 from dm2test.save import GRAPHICS
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 KEYS = 0x2BF6  # the key table: a big-endian row count at +2, the rows at +20
 KEY_ROWS, ROW_SIZE, ROW_VALUE = 20, 8, 6
@@ -17,15 +15,13 @@ GFX_ITEM_ICON = 0x18
 NO_STEP = 0x0402  # mode 4 (by charges and time), step 0, 2 frames
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.dungeon_unused_thing.restype = ctypes.c_uint16
     lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     lib.gdat_select.argtypes = [ctypes.c_void_p]
     lib.gdat_free.argtypes = [ctypes.c_void_p]
     lib.item_icon_index.argtypes = [ctypes.c_uint16, ctypes.c_int16, ctypes.c_bool]
-    return lib
 
 
 def with_icon_animation(data, index, value):
@@ -39,7 +35,7 @@ def with_icon_animation(data, index, value):
     raise AssertionError("no icon animation key of the weapon")
 
 
-def test_an_icon_step_of_0_gives_the_first_icon(lib, gdat, start, tmp_path):  # noqa: F811
+def test_an_icon_step_of_0_gives_the_first_icon(lib, gdat, start, tmp_path):
     # regression: an icon animation by charges and time with a step of 0 divided by 0
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(start)

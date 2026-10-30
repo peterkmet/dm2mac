@@ -1,10 +1,10 @@
-"""The creature part of the emulator oracle (Step 16): see CreatureOracle."""
+"""The creature part of the emulator oracle: see CreatureOracle."""
 
 import ctypes
 import struct
 
 from dm2test import constants as C
-from dm2test.save import Timeline
+from dm2test.structs import Timeline
 
 ACTIVE_GROUP_SIZE = C.ACTIVE_GROUP_SIZE
 G_ACTIVE_GROUPS, G_ACTIVE_GROUP_COUNT, G_ACTIVE_GROUP_MAX = 0x7F898, 0x7301C, 0x7F89C

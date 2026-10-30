@@ -15,13 +15,13 @@
 #include "gdat.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
 #include "minion_map.h"
 #include "money.h"
 #include "move.h"
-#include "os.h"
 #include "projectile.h"
 #include "random.h"
 #include "save.h"
@@ -32,11 +32,7 @@
 #include "view.h"
 #include "weather.h"
 
-/* Sizes of the JSON text and of the texts of the game state. */
-#define JSON_START_SIZE  1024            /* the first size of the text buffer */
-#define INT64_TEXT_SIZE  24              /* the digits and sign of an int64_t */
-#define ESCAPE_SIZE      8               /* a \u00XX escape and its end mark */
-#define ESCAPE_LENGTH    6               /* the length of a \u00XX escape */
+/* Sizes of the texts of the game state. */
 #define RUNE_NAME_MAX    4               /* the letters of the longest rune name */
 #define SCROLL_TEXT_SIZE (TEXT_SIZE * 2) /* a decoded scroll text, as the scroll panel holds it */
 #define MAP_GRID_PREFIX  3               /* the "yy " in front of each grid row */
@@ -166,98 +162,6 @@ static const char *const explosion_names[] = {
     [EXPLOSION_SMOKE - SPELL_THING_FIRST] = "smoke",
 };
 
-/* Appends n bytes; the buffer doubles when they do not fit. */
-static void put(Json *j, const char *text, size_t n)
-{
-    if (j->len + n + 1 > j->cap) {
-        size_t cap = j->cap ? j->cap : JSON_START_SIZE;
-        while (cap < j->len + n + 1)
-            cap *= 2;
-        char *s = realloc(j->s, cap);
-        if (!s)
-            os_fatal("out of memory");
-        j->s = s;
-        j->cap = cap;
-    }
-    memcpy(j->s + j->len, text, n);
-    j->len += n;
-    j->s[j->len] = 0;
-}
-
-/* A comma when a value comes before this one. */
-static void separate(Json *j)
-{
-    if (j->len && !strchr("{[:", j->s[j->len - 1]))
-        put(j, ",", 1);
-}
-
-void json_raw(Json *j, const char *text)
-{
-    put(j, text, strlen(text));
-}
-void json_open(Json *j, char bracket)
-{
-    separate(j);
-    put(j, &bracket, 1);
-}
-void json_close(Json *j, char bracket)
-{
-    put(j, &bracket, 1);
-}
-void json_bool(Json *j, bool flag)
-{
-    separate(j);
-    json_raw(j, flag ? "true" : "false");
-}
-
-void json_int(Json *j, int64_t value)
-{
-    char buf[INT64_TEXT_SIZE];
-    separate(j);
-    snprintf(buf, sizeof buf, "%" PRId64, value);
-    json_raw(j, buf);
-}
-
-void json_strn(Json *j, const char *text, size_t n)
-{
-    char buf[ESCAPE_SIZE];
-    separate(j);
-    put(j, "\"", 1);
-    for (size_t i = 0; i < n && text[i]; i++) {
-        unsigned char c = (unsigned char)text[i];
-        if (c == '"' || c == '\\') {
-            buf[0] = '\\';
-            buf[1] = (char)c;
-            put(j, buf, 2);
-        } else if (c == '\n') {
-            put(j, "\\n", 2);
-        } else if (c < ' ') {
-            snprintf(buf, sizeof buf, "\\u%04x", c);
-            put(j, buf, ESCAPE_LENGTH);
-        } else {
-            put(j, text + i, 1);
-        }
-    }
-    put(j, "\"", 1);
-}
-
-void json_str(Json *j, const char *text)
-{
-    json_strn(j, text, strlen(text));
-}
-
-void json_key(Json *j, const char *key)
-{
-    json_str(j, key);
-    put(j, ":", 1);
-}
-
-void json_key_int(Json *j, const char *key, int64_t value)
-{
-    json_key(j, key);
-    json_int(j, value);
-}
-
 /* ---- The game state ---- */
 
 const char *state_json_mode_name(enum InputMode mode)
@@ -273,7 +177,7 @@ bool state_json_game_over(void)
 /* Appends null. */
 static void put_null(Json *j)
 {
-    separate(j);
+    json_separate(j);
     json_raw(j, "null");
 }
 
@@ -312,7 +216,7 @@ static void pair(Json *j, const char *key, int64_t a, int64_t b)
 static void tenths(Json *j, int64_t value)
 {
     char buf[INT64_TEXT_SIZE];
-    separate(j);
+    json_separate(j);
     snprintf(buf, sizeof buf, "%" PRId64 ".%" PRId64, value / WEIGHT_TENTHS, value % WEIGHT_TENTHS);
     json_raw(j, buf);
 }
@@ -530,7 +434,7 @@ static void put_champion(Json *j, int16_t champion_index)
 }
 
 /* The open dialog and its button texts. The slot dialogs do not set g_dialog.id: they give the id of the last
-   dialog (docs/llm/llm-mode.md). */
+   dialog (docs/llm/turn-based.md). */
 static void put_dialog(Json *j, enum InputMode mode)
 {
     if (mode != INPUT_MODE_DIALOG) {
@@ -892,11 +796,6 @@ static const char *name_of_door_state(int state)
     return "partly_open";
 }
 
-static bool is_object(uint16_t thing)
-{
-    return thing_type(thing) >= THING_WEAPON && thing_type(thing) <= THING_MISC;
-}
-
 /* What the view draws on the square at at view position pos, seen to dir: VIEW_DRAWS_* bits. */
 static unsigned draws_at(int pos, int16_t dir, Location at)
 {
@@ -916,7 +815,7 @@ static bool is_drawn(uint16_t thing, unsigned draws)
     case THING_EXPLOSION:
         return (draws & VIEW_DRAWS_EXPLOSIONS) != 0;
     }
-    return is_object(thing) && draws & VIEW_DRAWS_OBJECTS;
+    return thing_is_item(thing) && draws & VIEW_DRAWS_OBJECTS;
 }
 
 int state_json_visible_things(uint16_t type, StateJsonSeenThing *things, int max)
@@ -955,7 +854,7 @@ static void flying_json(Json *j, uint16_t thing)
         uint16_t payload = thing_word(thing, PROJECTILE_PAYLOAD);
         key_str(j, "kind", "projectile");
         json_key(j, "name");
-        if (payload < SPELL_THING_FIRST && is_object(payload))
+        if (payload < SPELL_THING_FIRST && thing_is_item(payload))
             trimmed(j, item_name(payload), TEXT_SIZE);
         else
             json_str(j, "spell");
@@ -997,7 +896,7 @@ static void put_square_things(Json *j, unsigned draws, Location at, int16_t dir)
             state_json_creature_name(&creatures, group_creature(t));
             json_key_int(&creatures, "count", 1);
             json_close(&creatures, '}');
-        } else if (is_object(t)) {
+        } else if (thing_is_item(t)) {
             json_open(&objects, '{');
             key_str(&objects, "cell", party_cell_names[dir_relative(thing_cell(t), dir)]);
             json_key(&objects, "name");
@@ -1192,7 +1091,7 @@ static ZoneTop top_of_zone(const ViewClickZone *z)
         return found;
     for (uint16_t t = dungeon_square_first_thing(g_game.party_map, found.at.x, found.at.y); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t))
-        if (is_object(t) && thing_cell(t) == thing_cell(z->thing))
+        if (thing_is_item(t) && thing_cell(t) == thing_cell(z->thing))
             found.top = t;
     return found;
 }
@@ -1203,7 +1102,7 @@ static void put_pile_objects(Json *j, uint16_t t, int16_t cell)
     if (t == THING_ENDOFLIST)
         return;
     put_pile_objects(j, dungeon_next_thing(t), cell);
-    if (is_object(t) && thing_cell(t) == cell)
+    if (thing_is_item(t) && thing_cell(t) == cell)
         trimmed(j, item_name(t), TEXT_SIZE);
 }
 

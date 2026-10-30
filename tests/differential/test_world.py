@@ -1,4 +1,4 @@
-"""Step 17 tests with the emulator oracle: weather, day and night, the party light, and the object transfer sensors
+"""Tests with the emulator oracle: weather, day and night, the party light, and the object transfer sensors
 (Skullkeep machines). start.DAT goes into the C port and into the original code (dm2test.scenario.Scenario); both run the
 same calls; then the weather, the light, the sky objects, the dungeon, and the timeline must be equal."""
 
@@ -10,22 +10,19 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.audio import SoundCue
-from dm2test.gdat import GdatKey
-from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
-from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
-    COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Location, Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
+from dm2test.structs import Game, GdatKey, Location, Timeline
+from dm2test.interface import GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND
+from dm2test.scenario import (
+    CHAMPION_SIZE, LIGHT_UPDATE_PARTY_LIGHT, NONE, WORLD_UPDATE_DAY_NIGHT, Scenario, Weather, champion_bytes, sky_list, square_event,
+    squares, sync_champions,
 )
-from dm2test.save import Game, Timeline
+from dm2test.addresses import G_SKY_OBJECTS, SKY_OBJECTS_SIZE, WEATHER
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.light_add_square_light.argtypes = [ctypes.c_int, ctypes.c_int16, Location, ctypes.c_uint]
-    return lib
 
 WEATHER_INIT, TIMELINE_DELETE_EVENT, LIGHT_ADD_SQUARE_LIGHT, ZONE_INTERPOLATE_OFFSET = 0x59F38, 0x562FF, 0x38C46, 0x19234
 G_GLOBAL_BYTES, G_INVENTORY, G_PARTY_SLEEPING, G_MAGIC_LIGHT = 0x7F0C0, 0x7F972, 0x7F234, 0x7FFEC
@@ -52,9 +49,9 @@ def world(lib, gdat, start, tmp_path):
 
 
 def set_weather(sc, **values):
-    """Writes weather globals (names of dm2test.scenario.WEATHER) into both."""
+    """Writes weather globals (names of dm2test.addresses.WEATHER) into both."""
     lib, emu = sc.lib, sc.emu
-    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), Weather.in_dll(lib, "g_weather")
     for name, value in values.items():
         if name == "light_level":
             ctypes.c_int.in_dll(lib, "g_view_light_level").value = value
@@ -343,7 +340,7 @@ def test_object_transfer_sensors_match_original(world, lib):
     # Every object transfer sensor of the dungeon on walls and floors, in its own kind and as each of the kinds 0x3b,
     # 0x40, 0x47, 0x48, 0x49, wanting its item or any object, with each charge change, inverted or not, sometimes
     # aimed at its own square: objects of its map go on its source cell, then square events with each effect; the
-    # objects move to the target (or back), with the charge changes; bones bring back a champion (Step 15 hook).
+    # objects move to the target (or back), with the charge changes; bones bring back a champion (the champion hook).
     rng = random.Random(176)
     sc = world
     moved = recharged = 0
@@ -565,7 +562,7 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     for n, (map_, x, y, d) in enumerate(approaches(lib, 2, lambda s: s & 8, limit=40)):
         sc.place(map_, x, y, d)
         set_weather(sc, **random_weather(rng))
-        for c in range(sc.game.champion_count):  # the falls hurt (Step 15): the party must not die (Step 20)
+        for c in range(sc.game.champion_count):  # the falls hurt: the party must not die
             champion_bytes(lib, c, 0x36, struct.pack("<h", 900))
         sync_champions(lib, sc)
         for i in range(48):
@@ -587,7 +584,7 @@ DUN_UNLINK_THING_FROM_SQUARE, DUN_LINK_THING_TO_SQUARE = 0x1D542, 0x1D3DB
 
 def sound_keys(lib, gdat):
     """GDAT sounds of the kinds that the game requests."""
-    from dm2test.scenario import Sound
+    from dm2test.structs import Sound
     s = Sound()
     keys = []
     for category in (C.CAT_DUNGEON, C.CAT_WALL_ORNAMENT, C.CAT_FLOOR_ORNAMENT, C.CAT_EXPLOSION, C.CAT_CREATURE, C.CAT_CHAMPION,
@@ -619,7 +616,7 @@ def test_sound_requests_match_original(world, lib, gdat):
         other = rng.choice(maps)
         passage = rng.random() < 0.3
         if passage:  # the party sees the map other through a seamless passage
-            sc.party.alt_view_map = other
+            sc.current_map.alt_view_map = other
             sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", other))
         requests, last = rng.randrange(1, 7), None
         several += requests > 1
@@ -627,7 +624,7 @@ def test_sound_requests_match_original(world, lib, gdat):
             delay = rng.choice((0, 1, 1, 1, -1, -1, 2, 5, 8))
             delayed += delay > 1
             source = other if passage and rng.random() < 0.6 else map_
-            lib.dun_set_current_map(source)
+            lib.dungeon_set_current_map(source)
             sc.emu.call(DUN_SET_CURRENT_MAP, source)
             args = (*rng.choice(keys), rng.randrange(256), rng.choice((0x40, C.SOUND_VOLUME_NORMAL, C.SOUND_VOLUME_LOUD, C.SOUND_VOLUME_FULL, rng.randrange(256))),
                     x + rng.randrange(-5, 6), y + rng.randrange(-5, 6), delay)
@@ -640,13 +637,13 @@ def test_sound_requests_match_original(world, lib, gdat):
             else:
                 lib.sndreq_request(SoundCue(*args[:5]), *args[5:7], WHEN[args[7]])
             sc.emu.call(SOUND_REQUEST, *args)
-        lib.dun_set_current_map(map_)
+        lib.dungeon_set_current_map(map_)
         sc.emu.call(DUN_SET_CURRENT_MAP, map_)
         if rng.random() < 0.5:
             lib.sndreq_flush_requests(True)
             sc.emu.call(0x1616D, 1)
         if passage:
-            sc.party.alt_view_map = -1
+            sc.current_map.alt_view_map = -1
             sc.emu.write(G_ALT_VIEW_MAP, struct.pack("<h", -1))
         assert_world(sc, (n, map_, x, y))
         if rng.random() < 0.3:  # the party leaves before the delayed sounds play
@@ -691,7 +688,7 @@ def ambient_wall_sensors(lib, gdat):
 def turn_wall_thing(sc, thing, x, y, cell):
     """Moves a wall thing of the current map to the wall face cell (to the end of its square list) in both."""
     turned = (thing & C.THING_ID_MASK) | cell << C.THING_CELL_SHIFT
-    map_ = sc.party.cur_map
+    map_ = sc.current_map.map
     sc.lib.dungeon_unlink_thing_from_square(thing, map_, x, y)
     sc.emu.call(DUN_UNLINK_THING_FROM_SQUARE, thing, 0, x, y)
     sc.lib.dungeon_link_thing_to_square(turned, map_, x, y)

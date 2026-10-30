@@ -10,33 +10,14 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 - DOSBox with the folder `game/` mounted as drive `C:`, for the items C10, I4, and K2 to K7.
 - `make` and `uv run pytest` pass.
 - The default mode is `advanced`. Use `--mode vanilla` for items A to K that compare the port with the original ([Modes](manual.md#modes)).
+- Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [turn-based.md](llm/turn-based.md#deviations-from-the-original).
 - Optional: a DOS save near the end of the game, for the end sensor (item J16).
 
 ## Build and start
 
-1. Build the program and the test library:
+1. Build and start the port as in [Build](development.md#build). Expected result: no warnings; `build/dm2` and `build/libdm2.dylib`; for `make windows`, `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`. The port shows the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu.
 
-   ```sh
-   make
-   ```
-
-   Expected result: `build/dm2` and `build/libdm2.dylib`, no warnings.
-
-   Build the Windows program:
-
-   ```sh
-   make windows
-   ```
-
-   Expected result: `build/dm2.exe`, no warnings; `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`.
-
-2. Start the port. It shows the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu:
-
-   ```sh
-   build/dm2
-   ```
-
-3. Start the DOS version in DOSBox:
+2. Start the DOS version in DOSBox:
 
    ```text
    C:
@@ -107,7 +88,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - C7. Click the sleep button. Expected: the party sleeps (the sleep message shows, time runs faster); a key or click wakes the party. Covered by `tests/differential/test_input.py::test_sleep_and_wake_match_original`, `tests/differential/test_interface.py::test_party_states_match_original`.
 - C8. Click a wall button and a lever. Expected: the click feedback shows and the sensor acts as in DOS. Covered by `tests/differential/test_move.py::test_wall_clicks_on_all_wall_cells`, `tests/differential/test_move.py::test_square_events_on_all_sensors`.
 - C9. Click the champion hands and the action icons. Expected: the action menu opens; the choice runs. Covered by `tests/differential/test_input.py::test_champion_clicks_match_original`, `tests/differential/test_interface.py::test_action_area_panels_match_original`, `tests/differential/test_interface.py::test_action_results_match_original`, `tests/differential/test_magic.py::test_icon_click_feedback_matches_original`.
-- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; [Unknown values](formats/runtime.md#unknown-values) marks the real DOS rate as an open measurement).
+- [ ] C10. Compare the game speed with DOSBox for one minute. Expected: the game time runs at the same rate (a game step every 8 timer ticks at 60 Hz; [Unknown values](reference/runtime.md#unknown-values) marks the real DOS rate as an open measurement).
 
 ## D. Champions, inventory, items, money, and shops
 
@@ -207,7 +188,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 
 ## L. Advanced mode
 
-Details: [Advanced features](manual.md#advanced-features).
+Details: [Advanced mode](manual.md#advanced-mode).
 
 - [ ] L1. Run `build/dm2 --save tests/saves/start.DAT`. Press W, S, A, D, Q, and E. Expected: forward, back, strafe left, strafe right, turn left, turn right, like the arrow keys.
 - [ ] L2. Run `build/dm2 --mode vanilla --save tests/saves/start.DAT`. Press W, Q, F5, and F9. Expected: nothing happens; no `game/DATA/QUICK.DAT` is written.
@@ -245,7 +226,7 @@ Details: [Advanced features](manual.md#advanced-features).
 - [ ] L28. In advanced mode, stand still and cast a fireball, or throw a dagger, down a long corridor. Expected: the projectile glides smoothly away, with no jumps or steps back. Turn while it flies. Expected: the view turns immediately; no projectile jumps. In vanilla mode, the projectile moves in steps.
 - [ ] L29. In advanced mode, open the automap, the cheat screen, and the options menu in turn, and right-click in each. Expected: each closes and the dungeon view comes back. Open an inventory, press Alt+S, and right-click. Expected: the save menu closes and the inventory shows again. Click SAVE and right-click in the slot list. Expected: the save menu shows again. Wait more than 100 game steps after the last save, click QUIT, and right-click. Expected: the save menu shows again. In vanilla mode, right-click in the save menu. Expected: nothing.
 
-## Movies
+## M. Movies
 
 Start `build/dm2` without `--save` unless an item says otherwise. Use a window with sound.
 
@@ -262,12 +243,12 @@ Start `build/dm2` without `--save` unless an item says otherwise. Use a window w
 - [ ] M10. Resize the window during a movie. Expected: the picture stays 4:3 with black borders.
 - [ ] M11. Watch `INTRO`, `END`, and `CREDITS` to the end. Expected: clean pictures without broken blocks; the sound fits the picture.
 - [ ] M12. Rename `game/FTL` and start. Expected: the splash, then `INTRO`, then the start menu. Rename it back.
-- [ ] M13. With the control socket ([Movies](llm/llm-mode.md#movies)): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
+- [ ] M13. With the control socket ([Movies](llm/turn-based.md#movies)): `state` during the splash gives `"mode":"movie"`; `click` skips by the rules of M3 and M4.
 - [ ] M14. Optional, DOSBox (`tools/dosbox-dm2.conf`): compare the size and the position of the `INTRO` picture with the port.
 
 ## T. Turn-based mode
 
-Details: [The turn-based mode](llm/llm-mode.md#the-turn-based-mode). Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
+Details: [Turn-based mode](llm/turn-based.md). Run the game with `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves DIR` (DIR is an existing folder) and send requests with `uv run dm2-play`.
 
 - [ ] T1. Start the game. Expected: no start menu and no movie; the dungeon view shows immediately; the party has one champion; `get_state` gives `game_mode` `turnbased`. Press keys and click in the window. Expected: nothing happens. Send `key '{"key": "up"}'`. Expected: the error `use act in turnbased mode`. Send `quit`. Expected: the program exits with code 0.
 - [ ] T2. Send `new_game`. Expected: the party is on the start square (map 0, x 1, y 8, facing north); the reply has `state`.
@@ -289,7 +270,3 @@ Copy `SDL3.dll` next to `build/dm2.exe` and set up Wine ([Windows build](develop
 - [ ] W1. Remove `SDL3.dll` from `build/` and run `"$WINE" build/dm2.exe`. Expected: Windows reports the missing `SDL3.dll`. Copy it back.
 - [ ] W2. Run `"$WINE" build/dm2.exe`. Expected: the program starts a new game with `game/`: the splash picture, the movies, and the start menu, with image and sound.
 - [ ] W3. Run `"$WINE" build/dm2.exe --mode turnbased`. Expected: the program stops with exit code 1; `game/dm2.log` holds the line `the turn-based mode and --control need macOS`.
-
-## Known deviations
-
-Do not report a documented deviation as a bug: see the sections "Deviations from the original" of the pages in `docs/formats/`, `docs/rules/`, and [llm-mode.md](llm/llm-mode.md#deviations-from-the-original).

@@ -12,24 +12,17 @@ import tempfile
 import time
 import zlib
 
-import pytest
 
 from dm2tools.control_client import request
 from dm2test import constants as C
-from dm2test.control import (  # noqa: F401 (control is a fixture)
-    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, GameWithChampions, control, pumped,
+from dm2test.control import (
+    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, pumped,
 )
-from dm2test.input import session  # noqa: F401 (a fixture)
+from dm2test.structs import Game, UiState
 from dm2test.markers import ROOT
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.interface import UiState, things_of
+from dm2test.interface import things_of
 from dm2test.view import ScreenPoint
-from dm2test.lib import load_lib
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 KEY_SHIFTED, KEY_ALT = C.KEY_SHIFTED, C.KEY_ALT
 SCAN_A, SCAN_ENTER = 0x1E, 0x1C
@@ -102,7 +95,7 @@ def test_state_tells_the_party_and_the_champions(control, lib):
     assert state["champion_count"] == game.champion_count == len(state["champions"]) and state["leader"] == 0
     champion = state["champions"][0]
     name = (ctypes.c_char * NAME_SIZE).from_address(
-        ctypes.addressof(game) + GameWithChampions.champions.offset).value.decode()
+        ctypes.addressof(game) + Game.champions.offset).value.decode()
     assert champion["name"] == name
     assert champion["health"][0] > 0 and champion["health"][0] <= champion["health"][1]
     assert state["inventory"] == state["candidate"] == -1 and state["end"] == state["quit"] == 0
@@ -294,7 +287,7 @@ def test_bad_requests_get_errors(control, lib):
             assert request(payload, path) == {"ok": False, "error": error}
 
 
-def test_program_with_control_answers_and_quits(start, tmp_path):  # noqa: F811
+def test_program_with_control_answers_and_quits(start, tmp_path):
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")
     path = os.path.join(folder, "control.sock")
     env = dict(os.environ, SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy")

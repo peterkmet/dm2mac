@@ -4,23 +4,13 @@ import ctypes
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test.markers import ROOT
+from dm2test.structs import ImageInfo
 
 
 GDAT = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 OK, ERR_IO, ERR_FORMAT, ERR_NOT_IMAGE, ERR_DATA, ERR_SPACE = 0, -1, -2, -4, -5, -6
-
-class GdatKey(ctypes.Structure):
-    """The GdatKey of gdat.h: category, index, entry."""
-
-    _fields_ = [("category", ctypes.c_int), ("index", ctypes.c_int), ("entry", ctypes.c_int)]
-
-
-class ImageInfo(ctypes.Structure):
-    """The ImageInfo of gdat.h: width, height, bits per pixel, decoded byte size."""
-
-    _fields_ = [("width", ctypes.c_int), ("height", ctypes.c_int), ("bpp", ctypes.c_int), ("size", ctypes.c_size_t)]
-
 
 class GdatSizes(ctypes.Structure):
     """The start of struct gdat of gdat.c: the file, the item count, the item offsets and sizes."""
@@ -46,8 +36,7 @@ u8_p = ctypes.POINTER(ctypes.c_uint8)
 
 @pytest.fixture(scope="module")
 def gd(lib):
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GDAT)
     lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     lib.gdat_free.argtypes = [ctypes.c_void_p]
     lib.gdat_item_count.argtypes = [ctypes.c_void_p]

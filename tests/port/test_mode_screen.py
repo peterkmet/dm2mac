@@ -5,18 +5,15 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
 Rect = ctypes.c_int16 * C.RECT_SIZE
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.mode_screen_key.argtypes = [ctypes.c_int16]
     lib.mode_screen_click.argtypes = [ctypes.c_int16, ctypes.c_int16]
     lib.mode_screen_item_box.argtypes = [ctypes.c_int16, ctypes.c_void_p]
-    return lib
 
 
 @pytest.fixture

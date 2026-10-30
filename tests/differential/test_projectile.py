@@ -1,4 +1,4 @@
-"""Scenario tests of Step 16 with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
+"""Scenario tests with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
 creature attacks on champions run in the C port and in the original code from start.DAT; the game state must stay
 equal."""
 
@@ -12,13 +12,8 @@ from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
-from dm2test.scenario import Location, gdat, start  # noqa: F401 (fixtures)
-from dm2test.lib import load_lib
+from dm2test.structs import Location, ProjectileLaunch
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 PROJECTILE_CREATE, EXPLOSION_CREATE, MOVE_CHECK_MISSILES = 0x16457, 0x16746, 0x4A0FE
 SENSOR_LAUNCH_MISSILE, CHAMP_LAUNCH_PROJECTILE, CREATURE_ATTACK_CHAMPION = 0x57A63, 0x47773, 0x18758
@@ -65,7 +60,7 @@ def both(s, c_fn, addr, *args):
 
 def flying(s):
     """The number of projectile and explosion events in the C timeline."""
-    from dm2test.save import Timeline
+    from dm2test.structs import Timeline
     tl = Timeline.in_dll(s.lib, "g_timeline")
     raw = ctypes.string_at(ctypes.cast(tl.events, ctypes.c_void_p), tl.capacity * C.TIMELINE_EVENT_SIZE)
     return sum(raw[i * C.TIMELINE_EVENT_SIZE + 4] in (EVENT_EXPLOSION, EVENT_PROJECTILE, EVENT_PROJECTILE_2) for i in range(tl.capacity))
@@ -74,7 +69,7 @@ def flying(s):
 def assert_saves(s, where):
     """The full check: the quick check and the champion records. (The save file comparison of test_move does not fit
     the creature scenario: the original save deactivates the creature groups of its active group table.)"""
-    from dm2test.interface import champion_records
+    from dm2test.scenario import champion_records
     check(s, where)
     mine, theirs = bytearray(champion_records(s.lib)), bytearray(s.emu.read(G_CHAMPIONS, C.CHAMPION_MAX * CHAMPION_SIZE))
     for champ in range(C.CHAMPION_MAX):
@@ -133,14 +128,8 @@ def groups(lib):
 
 def take(s, x, y, thing):
     """Removes an object from its square of the current map in both."""
-    s.lib.dungeon_unlink_thing_from_square(thing, s.party.cur_map, x, y)
+    s.lib.dungeon_unlink_thing_from_square(thing, s.current_map.map, x, y)
     s.emu.call(DUN_UNLINK_THING, thing, 0, x, y)
-
-
-class ProjectileLaunch(ctypes.Structure):
-    _fields_ = [("payload", ctypes.c_uint16), ("x", ctypes.c_int16), ("y", ctypes.c_int16), ("cell", ctypes.c_int16),
-                ("dir", ctypes.c_int16), ("energy", ctypes.c_uint8), ("hit_chance", ctypes.c_uint8),
-                ("step", ctypes.c_uint8), ("from_sensor", ctypes.c_bool)]
 
 
 def launch(s, payload, x, y, cell, direction, energy, attack, step):
@@ -162,7 +151,7 @@ def place_near(s, rng, map_, x, y):
 
 def four_champions(s, rng):
     """Four champions (copies of the first) in random cells, in both."""
-    from dm2test.interface import champion_bytes, champion_records, sync_champions
+    from dm2test.scenario import champion_bytes, champion_records, sync_champions
     lib = s.lib
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     s.game.champion_count = C.CHAMPION_MAX
@@ -239,8 +228,6 @@ def test_explosions(pj, lib):
         check(pj, ("create", n))
         run_out(pj, ("explosion", n, map_, x, y, hex(kind)), limit=300)
     assert_saves(pj, "end")
-
-
 
 
 def safe_command(s, rng):
@@ -435,7 +422,6 @@ def test_ordered_attack_cells(pj, lib):
         assert ctypes.c_uint32.in_dll(lib, "g_random_seed").value == pj.emu.read_u32(0x70518), n
 
 
-
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 
@@ -601,7 +587,7 @@ def test_projectiles_at_wall_sensors(pj, lib):
         if wanted and n % 3 == 0:
             om, ox, oy, payload = wanted.pop()
             place_near(pj, rng, om, ox, oy)
-            if pj.party.cur_map != om:
+            if pj.current_map.map != om:
                 continue
             take(pj, ox, oy, payload)
             place_near(pj, rng, map_, sx, sy)

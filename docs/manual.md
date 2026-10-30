@@ -2,7 +2,7 @@
 
 DM2Mac plays Dungeon Master II as the original PC game does. This manual covers only what is new: how to start
 the game, the vanilla and advanced modes, and the advanced-mode extras. For the game itself, see the original game's
-manual. Item values are in [items.md](reference/items.md).
+manual. Item values are in [items.md](items.md).
 
 ## Run the game
 
@@ -10,7 +10,7 @@ Install the game as the [README](../README.md#play) says, or [build it](developm
 (`build/dm2.exe` on Windows) from the folder that holds your copy of the game.
 
 On first startup the game copies the 10 files it needs from your folder, ZIP archive, or CD image into `game/`
-([Game files and install](formats/game-files.md)). On Windows, the game's messages go to `game/dm2.log`.
+([Game files and install](formats/install.md)). On Windows, the game's messages go to `game/dm2.log`.
 
 ## Options
 
@@ -18,7 +18,7 @@ You need these only when you start the game from Terminal or a shortcut:
 
 | Option | What it does |
 |---|---|
-| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([LLM mode](llm/llm-mode.md), macOS only). |
+| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([Turn-based mode](llm/turn-based.md), macOS only). |
 | `--save PATH` | Loads a save and starts it immediately, in advanced mode unless `--mode` says otherwise. |
 | `--filter NAME` | The window's pixel-art filter: `none`, `scale2x`, or `scale3x`. The `DM2_FILTER` environment variable does the same. |
 | `--data DIR` | Uses the game files in `DIR` instead of `game/`, and skips the check and the install. Saves go to `DIR/DATA`. |
@@ -43,11 +43,11 @@ RESTART in the save menu keeps the mode.
 | Mode | What you get |
 |---|---|
 | `vanilla` | The original game, nothing added. |
-| `advanced` | The default. The original game with the [advanced features](#advanced-features). |
-| `turnbased` | A program plays the game turn by turn ([LLM mode](llm/llm-mode.md)). macOS only. |
+| `advanced` | The default. The original game with the [advanced features](#advanced-mode). |
+| `turnbased` | A program plays the game turn by turn ([Turn-based mode](llm/turn-based.md)). macOS only. |
 
 The game rules are the same in all modes, except for the cheats and the few changes under
-[Advanced features](#advanced-features).
+[Advanced mode](#advanced-mode).
 
 ## Controls
 
@@ -59,6 +59,27 @@ The mouse, arrow keys, and numeric keypad work as in the original game. Keys tha
 | Shift+Left, Shift+Right | Step sideways |
 | Alt+S (Option+S on a Mac) | Save menu |
 | `Esc` | Pause (in advanced mode: the options menu) |
+
+## Saved games
+
+Save in a slot with Alt+S and load a slot from the start menu, as in the original game. The slots are in
+`game/DATA`.
+
+## Advanced mode
+
+Advanced mode adds the advanced keys, the quick save, the automap, the cheats, and the options menu. It also
+changes a few things:
+
+- When you release a held key, the party stops. In vanilla mode the party keeps walking, as in the original.
+- An antidote always cures poison. In vanilla mode it can fail, as in the original.
+- A click on a champion's status box puts the object in your hand into that champion's inventory, or opens the
+  inventory if your hand is empty.
+- After a hit, the damage star stays a moment longer in the action area. A click ends it.
+- Projectiles fly smoothly from square to square in the dungeon view.
+- A save keeps the automap and the cheats.
+
+The automap, the cheat screen, and the options menu stop game time while they are open. The exact rules are in
+[Advanced mode rules](rules/advanced-mode.md).
 
 ### Advanced keys
 
@@ -75,11 +96,6 @@ The mouse, arrow keys, and numeric keypad work as in the original game. Keys tha
 The keys work only in the dungeon view. In the inventory, a dialog, or a menu they do nothing, except `Tab`, which
 closes the inventory. `Esc` and a right click close the automap, the cheat screen, and the options menu.
 
-## Saved games
-
-Save in a slot with Alt+S and load a slot from the start menu, as in the original game. The slots are in
-`game/DATA`.
-
 ### Quick save and quick load
 
 In advanced mode, `F5` saves to one quick slot (`game/DATA/QUICK.DAT`) and `F9` loads it, without a dialog. The
@@ -87,22 +103,6 @@ message area says what happened: `GAME SAVED`, `GAME LOADED`, `NO QUICK SAVE`, o
 `UNABLE TO SAVE` means that the game could not write a file: after `F5` the earlier quick save stays, and after `F9`
 the game does not load. The quick slot does not appear in the save menu, and RESTART GAME after the party's death
 loads only the normal slots.
-
-## Advanced features
-
-Advanced mode adds the advanced keys, the quick save, the automap, the cheats, and the options menu. It also
-changes a few things:
-
-- When you release a held key, the party stops. In vanilla mode the party keeps walking, as in the original.
-- An antidote always cures poison. In vanilla mode it can fail, as in the original.
-- A click on a champion's status box puts the object in your hand into that champion's inventory, or opens the
-  inventory if your hand is empty.
-- After a hit, the damage star stays a moment longer in the action area. A click ends it.
-- Projectiles fly smoothly from square to square in the dungeon view.
-- A save keeps the automap and the cheats.
-
-The automap, the cheat screen, and the options menu stop game time while they are open. The exact rules are in
-[Advanced mode](rules/advanced-mode.md).
 
 ### Automap
 
@@ -145,7 +145,5 @@ panel casts it, otherwise the leader. A potion spell still needs an empty flask 
 shows immediately. CONTINUE closes the menu. Sound and music volume stay in the original game's volume dialog (the
 speaker button in the inventory).
 
-#### SETTINGS.TXT
-
 The game remembers the filter in `game/DATA/SETTINGS.TXT` and uses it on the next startup. `--filter` overrides it.
-If the file cannot be written, the message area shows `UNABLE TO SAVE OPTIONS`.
+If the file cannot be written, the message area shows `UNABLE TO SAVE OPTIONS`. The file is described in [Save files](formats/save.md#settingstxt).

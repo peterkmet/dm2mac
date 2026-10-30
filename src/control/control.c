@@ -12,6 +12,7 @@
 #include "game.h"
 #include "gfx.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "le.h"
 #include "movie.h"

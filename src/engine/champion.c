@@ -10,8 +10,8 @@
 #include "gdat.h"
 #include "hooks.h"
 #include "ids.h"
+#include "interface_state.h"
 #include "item.h"
-#include "move.h"
 #include "num.h"
 #include "random.h"
 #include "recruit.h"
@@ -64,7 +64,7 @@ static void add_start_champion(void)
 {
     g_game.leader_hand = THING_NONE;
     g_leader_hand.icon = HAND_ICON_NONE;
-    for (uint16_t t = dungeon_square_first_thing(g_party.cur_map, 0, 0); t != THING_ENDOFLIST;
+    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, 0, 0); t != THING_ENDOFLIST;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_SENSOR || sensor_type(t) != WALL_CLICK_PORTRAIT)
             continue;
@@ -359,10 +359,10 @@ void champ_set_party_direction(int16_t dir)
         c->dir = (uint8_t)dir_turn(c->dir, turn);
     }
     g_game.party_dir = (uint16_t)dir;
-    g_party.ref_dir = (int16_t)dir;
-    if (g_party.alt_view_active) {
-        g_party.alt_view_dir = (int16_t)dir_turn(g_party.alt_view_dir, turn);
-        g_party.ref_dir = g_party.alt_view_dir;
+    g_current_map.ref_dir = (int16_t)dir;
+    if (g_current_map.alt_view_active) {
+        g_current_map.alt_view_dir = (int16_t)dir_turn(g_current_map.alt_view_dir, turn);
+        g_current_map.ref_dir = g_current_map.alt_view_dir;
     }
 }
 

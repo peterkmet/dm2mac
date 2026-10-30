@@ -5,8 +5,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.dialog import Session
 from dm2test.input import run_ticks
+from dm2test.structs import Session
 
 
 VANILLA, ADVANCED = C.GAME_MODE_VANILLA, C.GAME_MODE_ADVANCED
@@ -23,7 +23,7 @@ def set_mode(lib, mode):
 
 
 @pytest.fixture
-def advanced(lib, session, tmp_path):  # noqa: F811
+def advanced(lib, session, tmp_path):
     """start.DAT in the advanced mode, with the game folder in tmp_path; vanilla again after the test."""
     (tmp_path / "DATA").mkdir()
     state = Session.in_dll(lib, "g_session")

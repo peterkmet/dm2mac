@@ -39,21 +39,21 @@ On startup you choose how to play:
 
 - **Vanilla**: the original game, unchanged.
 - **Advanced** (the default): the original game with a few additions:
-  - movement with `W` `A` `S` `D` and turns with `Q` `E`;
-  - an automap of the squares you have seen (`Tab` or `M`);
-  - quick save and quick load (`F5`, `F9`);
-  - a cheat screen with six cheats and a list of all spells (`C`);
-  - a pixel-art filter for the window, in the options menu (`Esc`).
+  - movement with the keyboard;
+  - an automap of the squares you have seen;
+  - quick save and quick load;
+  - a cheat screen with six cheats and a list of all spells;
+  - a pixel-art filter for the window, in the options menu.
 
-In both modes the mouse and the arrow keys work as in the original game. All controls and cheats are in the
-[Player manual](docs/manual.md).
+In both modes the mouse and the arrow keys work as in the original game. The keys, the cheats, and the options are in the
+[advanced mode section of the Player manual](docs/manual.md#advanced-mode).
 
 ## For developers
 
 DM2Mac is a C11 and SDL3 reimplementation of `SKULL.EXE`, built from its own Ghidra decompilation and checked
-against the original in an emulator. Build instructions, tests, and the documentation index are in
-[Development](docs/development.md). On macOS, a program such as an LLM can play the game turn by turn
-([LLM mode](docs/llm/llm-mode.md)).
+against the original in an emulator. Build instructions and tests are in [Development](docs/development.md); the documentation index is
+[docs/README.md](docs/README.md). On macOS, a program such as an LLM can play the game turn by turn
+([Control socket](docs/llm/control-socket.md), [Turn-based mode](docs/llm/turn-based.md)).
 
 ## Acknowledgements
 

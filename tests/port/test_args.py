@@ -3,16 +3,10 @@
 import ctypes
 
 import pytest
-from dm2test.lib import load_lib
 
 
 # The option table of platform/main.c.
 VALUE_OPTIONS = [b"--data", b"--filter", b"--save", b"--control", b"--mode", b"--saves"]
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 
 @pytest.mark.parametrize("args, expected", [

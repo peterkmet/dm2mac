@@ -6,7 +6,6 @@ import random
 import pytest
 from dm2test import constants as C
 from dm2test.iso import SECTOR, build_iso
-from dm2test.lib import load_lib
 
 FILES = {"FTL": b"ftl" * 100, "DATA/GRAPHICS.DAT": bytes(range(256)) * 20}
 PRIMARY = 16 * SECTOR  # the primary volume descriptor
@@ -19,14 +18,12 @@ class IsoFile(ctypes.Structure):
     _fields_ = [("sector", ctypes.c_uint32), ("size", ctypes.c_uint32)]
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.iso_open.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     lib.iso_close.argtypes = [ctypes.c_void_p]
     lib.iso_find.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(IsoFile)]
     lib.iso_read.argtypes = [ctypes.c_void_p, ctypes.POINTER(IsoFile), ctypes.c_char_p, ctypes.c_uint32]
-    return lib
 
 
 @pytest.fixture

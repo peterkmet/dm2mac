@@ -1,4 +1,4 @@
-"""Scenario tests of Step 15 with the emulator oracle: champions, the leader hand, inventory, items, money."""
+"""Scenario tests with the emulator oracle: champions, the leader hand, inventory, items, money."""
 
 import ctypes
 import struct
@@ -8,17 +8,12 @@ import pytest
 from dm2test import constants as C
 from dm2test.gdat import item_sizes
 from dm2test.input import Loop
-from dm2test.interface import LeaderHand
-from dm2test.scenario import gdat, scenario, start, square_event  # noqa: F401 (fixtures)
-from dm2test.lib import load_lib
+from dm2test.structs import Game, LeaderHand
+from dm2test.scenario import square_event
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAP_COLUMNS = 0x7FBB4, 0x7FBCE, 0x7F3C8
-HAND_OFFSET = 252 + 4 * C.CHAMPION_SIZE  # offsetof(Game, leader_hand) in save.h
+HAND_OFFSET = Game.leader_hand.offset
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
 LEFT = C.INPUT_BUTTON_LEFT
 GOLD_COIN = 0x108
@@ -28,7 +23,7 @@ DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = C.SQUARE_DOOR_STATE, C.DOOR_STATE_OPEN, C.D
 
 
 @pytest.fixture
-def loop(lib, gdat, start, tmp_path):  # noqa: F811
+def loop(lib, gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Loop(lib, gdat, start, tmp_path)
 
@@ -247,7 +242,7 @@ def test_drink_and_hand_actions(loop, lib):
     # The inventory of the first champion: the bota of the pouch goes into the leader hand, a click on the mouth
     # drinks from it, and it goes back into the pouch. Then the action menu of the ready hand and its first action,
     # several times, with the busy hand counting down between them.
-    from dm2test.interface import champion_records
+    from dm2test.scenario import champion_records
     run(loop, [("k", KEY_INVENTORY), ("t", 16)], "inventory")
     pouch = find_click(lib, MODE_INVENTORY, CMD_SLOT_FIRST + 13)
     run(loop, [("c", *pouch), ("t", 8)], "take bota")
@@ -289,7 +284,8 @@ def test_recruit_and_cancel(loop, lib):
     # The party walks to the first mirror and recruits its champion; then it walks to the next mirror, takes that
     # champion as a candidate, and sends it back. The candidate panel shows on the screen, as the original
     # ui_draw_champion_state (0x48890) presents the viewport after it draws the inventory.
-    from dm2test.interface import UiState, c_view
+    from dm2test.interface import c_view
+    from dm2test.structs import UiState
     ui = UiState.in_dll(lib, "g_ui")
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
     for n, command in enumerate((CMD_RECRUIT, CMD_RECRUIT_CANCEL)):
@@ -310,10 +306,10 @@ def test_recruit_and_cancel(loop, lib):
 PORTRAIT_DATA_TYPE, CHAMPION_DATA_SIZE, CH_HEALTH = 8, 52, 0x36
 
 
-def test_recruit_with_a_short_champion_data_item(loop, lib, gdat):  # noqa: F811
+def test_recruit_with_a_short_champion_data_item(loop, lib, gdat):
     # regression: the recruit read the 52 bytes of the champion data past the end of a shorter item (a damaged
     # GRAPHICS.DAT); the port then leaves the values of the champion at 0
-    from dm2test.interface import CHAMPION_SIZE, champion_records
+    from dm2test.scenario import CHAMPION_SIZE, champion_records
     run(loop, walk(KEY_FORWARD, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT), "mirror")
     sizes = item_sizes(gdat)
     items = [i for p in range(256) if (i := lib.gdat_find(gdat, C.CAT_CHAMPION, p, PORTRAIT_DATA_TYPE, 0)) >= 0]

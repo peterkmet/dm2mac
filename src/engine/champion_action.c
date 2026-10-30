@@ -10,6 +10,7 @@
 #include "game_text.h"
 #include "hooks.h"
 #include "ids.h"
+#include "interface_state.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
@@ -21,16 +22,44 @@
 #include "sound_request.h"
 #include "weather.h"
 
+/* Action commands (FIELD_COMMAND of an action text). */
+#define COMMAND_INVISIBILITY     0x02
+#define COMMAND_SPELL_PROJECTILE 0x03
+#define COMMAND_MELEE            0x04
+#define COMMAND_FRIGHTEN         0x05
+#define COMMAND_LIGHT            0x06
+#define COMMAND_EXPLOSION        0x07
+#define COMMAND_MELEE_2          0x08
+#define COMMAND_HASTE            0x09
+#define COMMAND_LEVITATE_DOWN    0x0a
+#define COMMAND_ACTION_EFFECT    0x0b
+#define COMMAND_AURA_FIRST       0x0c
+#define COMMAND_AURA_2           0x0d
+#define COMMAND_AURA_3           0x0e
+#define COMMAND_AURA_LAST        0x0f
+#define COMMAND_CONSUME          0x10
+#define COMMAND_SHOOT            0x20
+#define COMMAND_SHIELD_FIRST     0x21
+#define COMMAND_SHIELD_2         0x22
+#define COMMAND_SHIELD_LAST      0x23
+#define COMMAND_HEAL             0x24
+#define COMMAND_LIGHT_2          0x26
+#define COMMAND_LIGHT_3          0x27
+#define COMMAND_THROW            0x2a
+#define COMMAND_SUMMON_FIRST     0x31
+#define COMMAND_SUMMON_2         0x32
+#define COMMAND_SUMMON_LAST      0x33
+#define COMMAND_WARP             0x36
 /* The charges that CHARGES_USE_ALL takes. */
-#define ALL_CHARGES            0x000f
+#define ALL_CHARGES              0x000f
 /* The alerts of a fear and of a melee hit. */
-#define FRIGHTEN_ALERT_FLAGS   (ALERT_LOUD | ALERT_MOOD_BORED)
-#define MELEE_ALERT_FLAGS      (ALERT_ANGER | ALERT_LOUD | ALERT_MOOD_ANGRY)
+#define FRIGHTEN_ALERT_FLAGS     (ALERT_LOUD | ALERT_MOOD_BORED)
+#define MELEE_ALERT_FLAGS        (ALERT_ANGER | ALERT_LOUD | ALERT_MOOD_ANGRY)
 /* The redraw of a level gain: the titles, the load, and the bars. */
-#define REDRAW_LEVEL           (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
-#define MELEE_ATTACK_PIERCES   0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
+#define REDRAW_LEVEL             (REDRAW_TITLE_ALL | REDRAW_LOAD | REDRAW_BARS)
+#define MELEE_ATTACK_PIERCES     0x8000 /* FIELD_ATTACK bit: the hit reaches CREATURE_NON_MATERIAL creatures */
 /* The random masks of the hit rolls and the throw. */
-#define MELEE_WEAK_RANDOM      0x0f /* the random part of the rest of a weak hit */
+#define MELEE_WEAK_RANDOM        0x0f /* the random part of the rest of a weak hit */
 #define MELEE_RANDOM           0x1f /* the random part of the hit chance, the defense, the damage, and the armor test */
 #define THROW_ATTACK_RANDOM    0x1f /* the random part of the attack of a throw */
 #define MELEE_CRITICAL_ROLL    0x3f /* a skill level above a roll of 0 to 63 doubles the damage plus a bonus */
@@ -348,7 +377,7 @@ void champ_add_experience(int16_t champion_index, int skill, uint32_t experience
         experience >>= 1;
     if (!experience)
         return;
-    int factor = dungeon_map_difficulty(g_party.cur_map);
+    int factor = dungeon_map_difficulty(g_current_map.map);
     if (factor)
         experience *= (uint32_t)factor;
     Champion *c = champion(champion_index);
@@ -418,12 +447,12 @@ static int melee_attack_group(const ActionRun *a, uint16_t attack, uint16_t fact
     Champion *c = a->c;
     if ((uint16_t)champion_index >= g_game.champion_count || !c->health)
         return 0;
-    int difficulty = dungeon_map_difficulty(g_party.cur_map) * 2;
+    int difficulty = dungeon_map_difficulty(g_current_map.map) * 2;
     const CreatureInfo *info = creature_group_info(group);
     int16_t damage = 0;
     int16_t stamina;
     bool hit = info->dexterity != DEXTERITY_UNHITTABLE;
-    uint16_t at = creature_group_at((Position){g_party.cur_map, a->front.x, a->front.y});
+    uint16_t at = creature_group_at((Position){g_current_map.map, a->front.x, a->front.y});
     if (hit && at != THING_NONE && creature_current_step_acts(at))
         hit = false;
     if (hit && info->flags & CREATURE_NON_MATERIAL && !pierces)
@@ -482,7 +511,7 @@ static bool melee_attack_front(const ActionRun *a, int mode, int kind)
     Champion *c = a->c;
     if (a->target == THING_NONE)
         return false;
-    uint16_t group = creature_group_at((Position){g_party.cur_map, a->front.x, a->front.y});
+    uint16_t group = creature_group_at((Position){g_current_map.map, a->front.x, a->front.y});
     if (group == THING_NONE)
         return false;
     int rel = dir_relative(c->cell, c->dir);
@@ -644,10 +673,10 @@ static bool run_melee(ActionRun *a)
                                 DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
         sndreq_request_with_fallback(
-            (SoundCue){
-                CAT_DOOR,
-                dungeon_door_type(g_party.cur_map, dungeon_square_first_thing(g_party.cur_map, a->front.x, a->front.y)),
-                SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
+            (SoundCue){CAT_DOOR,
+                       dungeon_door_type(g_current_map.map,
+                                         dungeon_square_first_thing(g_current_map.map, a->front.x, a->front.y)),
+                       SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
             SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
         return true;
     }
@@ -674,10 +703,10 @@ static void run_levitate_down(ActionRun *a)
     int px = g_game.party_x + g_dir_dx[g_game.party_dir];
     int py = g_game.party_y + g_dir_dy[g_game.party_dir];
     bool open = true;
-    uint16_t g = creature_group_at((Position){g_party.cur_map, px, py});
+    uint16_t g = creature_group_at((Position){g_current_map.map, px, py});
     if (g != THING_NONE && !(creature_group_info(g)->flags & CREATURE_NOT_SOLID))
         open = false;
-    if (square_type(dun_get_square((Location){px, py})) == SQUARE_PIT && open) {
+    if (square_type(dungeon_square_at((Location){px, py})) == SQUARE_PIT && open) {
         g_party.fell = 1;
         move_thing(THING_NONE, g_game.party_x, g_game.party_y, px, py);
         g_party.fell = 0;
@@ -943,7 +972,7 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
                    .item = c->slots[hand],
                    .action = action};
     a.front = (Location){g_game.party_x + g_dir_dx[c->dir], g_game.party_y + g_dir_dy[c->dir]};
-    a.target = creature_group_at((Position){g_party.cur_map, a.front.x, a.front.y});
+    a.target = creature_group_at((Position){g_current_map.map, a.front.x, a.front.y});
     a.delay = (uint16_t)field_of(action, FIELD_DELAY);
     a.skill = field_of(action, FIELD_SKILL);
     int16_t stamina = field_of(action, FIELD_STAMINA);
@@ -951,7 +980,7 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
     a.experience = field_of(action, FIELD_EXPERIENCE);
     a.power = field_of(action, FIELD_POWER);
     c->defense[hand] = (int8_t)field_of(action, FIELD_DEFENSE);
-    a.front_square = dun_get_square(a.front);
+    a.front_square = dungeon_square_at(a.front);
     bool done = run_command(&a, command);
     if (!a.silent)
         sndreq_request_with_fallback(

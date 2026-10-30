@@ -34,48 +34,48 @@ decimal ui/dialog.c:button_zone_first rule 3.12: the first button text zone by b
 decimal ui/fm.c:level_attenuation rule 3.12: a driver table of HMIMDRV.386
 decimal ui/fm.c:op_carrier rule 3.12: a driver table of HMIMDRV.386
 decimal ui/fm.c:op_modulator rule 3.12: a driver table of HMIMDRV.386
-decimal ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
-decimal ui/input.c:push_arrows rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:cell_view_position rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:depth_center rule 3.12: a table of SKULL.EXE
+decimal ui/input_feedback.c:push_arrows rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:g_input_cursor_zones rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:g_input_mode_roots rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:input_nodes rule 3.12: a table of SKULL.EXE
+decimal ui/input_tree.c:input_zones rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:depth_light rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:depth_scale rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_ornament_row rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_side_frame rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_top_frame rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_top_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:door_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:explosion_cell_order rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:eye_cell rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:far_order rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_ornament_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_ornament_scaled_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_pit_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_pit_entry_up rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:floor_pit_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:jitter rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:jitter_offset rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:linked_squares rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:possession_cells rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:possession_lift rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:g_view_depth_scale rule 3.12: a table of SKULL.EXE
+decimal ui/view.c:g_view_linked_squares rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:side_ornament_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:sparkle_field rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:square_grid_corner rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:stairs_front_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:stairs_front_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:stairs_side_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:stairs_side_flipped_entry rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:stairs_side_zone rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:thing_cell_order rule 3.12: a table of SKULL.EXE
-decimal ui/view.c:view_mirror rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:view_offset rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_back_light rule 3.12: a table of SKULL.EXE
 decimal ui/view.c:walk_light rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:explosion_cell_order rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:g_view_cell_view_position rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:g_view_eye_cell rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:g_view_square_grid_corner rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:jitter rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:jitter_offset rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:possession_cells rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:possession_lift rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:sparkle_field rule 3.12: a table of SKULL.EXE
+decimal ui/view_things.c:thing_cell_order rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:ceiling_pit_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:ceiling_pit_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:depth_center rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:door_ornament_row rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:door_side_frame rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:door_top_frame rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:door_top_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:door_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:floor_ornament_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:floor_ornament_scaled_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:floor_pit_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:floor_pit_entry_up rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:floor_pit_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:stairs_front_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:stairs_front_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:stairs_side_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:stairs_side_flipped_entry rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:stairs_side_zone rule 3.12: a table of SKULL.EXE
+decimal ui/view_walls.c:view_mirror rule 3.12: a table of SKULL.EXE
 engine-write ui/action_area.c:party_icons_changed rule 1.5: g_action.dirty
 engine-write ui/action_area.c:redraw_changes rule 1.5: g_action.redraw_delay, g_action.dirty, g_action.mode, g_action.result
 engine-write ui/action_area.c:show_hand_icons rule 1.5: g_action.hand_items
@@ -125,32 +125,32 @@ hex engine/sound_request.c:pan_thresholds rule 3.12: a table of SKULL.EXE
 hex engine/sound_request.c:pan_values rule 3.12: a table of SKULL.EXE
 hex platform/main.c:scan_codes rule 3.12: the PC keyboard scan codes of the SDL keys
 hex ui/fm.c:note_freq_table rule 3.12: a driver table of HMIMDRV.386
-hex ui/input.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_arrow rule 3.12: a table of SKULL.EXE
 hex ui/input.c:cursor_hand rule 3.12: a table of SKULL.EXE
-hex ui/input.c:cursor_zones rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_children rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_commands rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_keys rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_mode_roots rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_nodes rule 3.12: a table of SKULL.EXE
-hex ui/input.c:input_zones rule 3.12: a table of SKULL.EXE
+hex ui/input_feedback.c:click_feedback_scripts rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:g_input_cursor_zones rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:g_input_mode_roots rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_children rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_commands rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_keys rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_nodes rule 3.12: a table of SKULL.EXE
+hex ui/input_tree.c:input_zones rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:skill_level_texts rule 3.12: a table of SKULL.EXE
 hex ui/ui.c:slot_layout rule 3.12: a table of SKULL.EXE
-hex ui/view.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE
-hex ui/view.c:alcove_explosion_size rule 3.12: a table of SKULL.EXE
-hex ui/view.c:arrow_cells rule 3.12: a table of SKULL.EXE
-hex ui/view.c:arrow_scales rule 3.12: a table of SKULL.EXE
 hex ui/view.c:hide_row1 rule 3.12: a table of SKULL.EXE
 hex ui/view.c:hide_row2 rule 3.12: a table of SKULL.EXE
 hex ui/view.c:hide_row3 rule 3.12: a table of SKULL.EXE
 hex ui/view.c:hide_row4 rule 3.12: a table of SKULL.EXE
-hex ui/view.c:missile_scale rule 3.12: a table of SKULL.EXE
-hex ui/view.c:sparkle_field rule 3.12: a table of SKULL.EXE
-hex ui/view.c:thing_scale rule 3.12: a table of SKULL.EXE
-long engine/ai.c:exec_plan_command rule 5.8: one short case for each plan command
+hex ui/view_things.c:alcove_explosion_scale rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:alcove_explosion_size rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:arrow_cells rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:arrow_scales rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:missile_scale rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:sparkle_field rule 3.12: a table of SKULL.EXE
+hex ui/view_things.c:thing_scale rule 3.12: a table of SKULL.EXE
 long engine/ai.c:run_target_scanner rule 5.8: one short case for each scanner kind
 long engine/ai.c:test_condition rule 5.8: one short case for each target condition
-long engine/ai_move.c:test_entered rule 5.8: one short case for each search target kind
+long engine/ai_action.c:ai_exec_plan_command rule 5.8: one short case for each plan command
+long engine/ai_path.c:test_entered rule 5.8: one short case for each search target kind
 module platform/main.c rule 1.7: the entry point has no header
 record engine/save.c rule 3.11: the save image packs whole thing records bit by bit

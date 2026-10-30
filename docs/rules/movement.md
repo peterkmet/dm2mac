@@ -1,16 +1,16 @@
 # Main loop, input, and movement
 
-The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/ui/play.c`, `src/ui/input.c`, `src/ui/input_tree.c`, `src/ui/input_feedback.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Timing and the game step
 
 - The programmable interval timer (PIT) runs at 240 Hz. Every 4th PIT tick is a timer tick (60 Hz). A game step runs every 8 timer ticks (`g_main_loop.tick_threshold`), or every timer tick while the party sleeps.
-- `game_loop` of `SKULL.EXE` waits for input in the middle of a step. The port splits it in `src/ui/play.c` into `step_before_input` and `step_after_input`. [architecture.md](../architecture.md#the-game-step) says what `play_tick` and the two parts run, and [architecture.md](../architecture.md#hooks-between-layers) lists the calls from the rules into the interface.
+- `game_loop` of `SKULL.EXE` ([skull-map.md](../reference/skull-map.md#main-loop)) waits for input in the middle of a step. The port ([architecture.md](../architecture.md#the-frame-loop)) splits it in `src/ui/play.c` into `step_before_input` and `step_after_input`. [architecture.md](../architecture.md#the-game-step) says what `play_tick` and the two parts run, and [architecture.md](../architecture.md#hooks-between-layers) lists the calls from the rules into the interface.
 - Pause (`pause_game`) stops the game time until the resume command. The port keeps the main loop alive and clears `g_main_loop.running`, the flag that lets the game time run.
 
 ## The input tree
 
-- The tables in `SKULL.EXE` and `src/ui/input.c`:
+- The tables in `SKULL.EXE` and `src/ui/input_tree.c`:
   - Nodes: condition (bit 7 for a node with children), argument, child list or zone.
   - Child lists: bit 7 starts a list.
   - A root node for each of the 10 input modes.
@@ -49,7 +49,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
 
 ## Movement
 
-- `g_party.cur_map` is the map that dungeon reads use (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
+- `g_current_map.map` is the map that dungeon reads use (`dungeon_square_at`, `dungeon_move_relative`). The party map and the current map differ while things move on other maps.
 - A slow party (`champ_get_move_delay`) walks: `g_party.move_steps` holds the view one square back for the steps of the walk.
 - `move_follow_square_transitions` takes a thing through teleporters, open pits, and stairs until it stays on a square. A pit can lead to the map below or to a marker of the map.
 - If the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the champions' step times, plus a random part up to half of that quarter. A champion's step time (`get_step_time` in `src/engine/move.c`):
@@ -86,7 +86,7 @@ The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engi
 - The video driver of the original (`IBMIOP.EXE`, service `0x109`, mode `0x8008`) shows the walking frame stretched to the full viewport. The port does not reimplement the driver. `play_present_viewport` stretches the walk rectangle of the frame to the viewport with nearest neighbor while `move_steps` is not 0. The exact rounding of the driver is unverified.
 - The advanced mode takes the autorepeat of a held key only if no key, event, or command waits (`input_key_repeat`). In the original, the repeats of a held key fill the event ring, and the party continues to walk after the key is released. The vanilla mode keeps that behavior.
 - In the original, a move without a destination (a removal) leaves a stale register value in the destination map (`g_party.dest_map`). The port writes the current map.
-- The search for a discarded record (`dun_get_discarded_thing` in `src/engine/move.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
+- The search for a discarded record (`discard_find_thing` in `src/engine/discard.c`) on a dungeon of one map (a test or damaged file) scans the party map and stops; the original loops forever in its search for the next map.
 - Kept quirks of the original:
   - `move_follow_square_transitions` follows at most 49 square transitions (teleporters, pits, stairs) in one move: its loop limit `TRANSITION_MAX` is 50, but the loop pre-decrements the counter.
   - `dungeon_location_on_map_from` compares the upper map bounds unsigned, so a location at x or y = -1 next to a map at offset 0 is not on that map.

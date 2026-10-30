@@ -7,7 +7,7 @@
    until the party can act again; a batch runs a list of actions and a wait runs game steps, both stop on news. */
 
 #include <stdbool.h>
-#include "state_json.h"
+#include "json.h"
 
 /* The state of the turn */
 

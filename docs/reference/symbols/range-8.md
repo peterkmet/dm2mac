@@ -1,5 +1,7 @@
 # Range 8 notes (0x00062272-0x000695ac, 211 functions)
 
+Analysis notes of the address range 0x62272-0x695ac; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 Method: names come from the disassembly (INT 21h and INT 31h function numbers, PIT ports, data tables) and from the call sites in range 7. 80 names are low confidence (see the end). Marker, clib, and DPMI names are firm unless listed there.
 
 ## Layout
@@ -77,8 +79,8 @@ DOS extender type: `g_clib_extender_type` (0x7eaae) is set in `clib_cstart` from
 
 None renamed. Notes:
 - `dpmi_simulate_real_int` (0x638a0) is VDS function 8107h (request DMA buffer) through INT 31h 0300 to INT 4Bh. The new name for the sibling at 0x6390c is `dpmi_simulate_real_int_vds_release` (8108h).
-- `dpmi_map_physical_address` (0x63959) takes the address in the stack, returns a new selector. Signature in anchors.csv is wrong (it says no parameters and returns uint32_t).
-- `hmi_load_digi_driver_file` (0x63adc) and `hmi_load_midi_driver_file` (0x655e6) take 9 stack-like parameters; signatures in anchors.csv show `void`. Step 5 needs only the names.
+- `dpmi_map_physical_address` (0x63959) takes the address in the stack, returns a new selector. A first signature with no parameters and a uint32_t result was wrong.
+- `hmi_load_digi_driver_file` (0x63adc) and `hmi_load_midi_driver_file` (0x655e6) take 9 stack-like parameters; a first signature showed `void`. Step 5 needs only the names.
 
 ## DM2-specific systems
 

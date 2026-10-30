@@ -10,7 +10,6 @@
 #include "hooks.h"
 #include "ids.h"
 #include "item.h"
-#include "move.h"
 
 /* Game ticks between the mana points of an open minion map. */
 #define MINION_MAP_MANA_TICKS 25
@@ -78,13 +77,13 @@ void minion_toggle_map_option(int option)
 bool minion_map_set_location(uint16_t thing, Position at)
 {
     /* as in the original: switches the current map to the map of at, then back */
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(at.map);
-    bool inside = at.x >= 0 && at.x < dungeon_map_width(g_party.cur_map) && at.y >= 0 &&
-                  at.y < dungeon_map_height(g_party.cur_map);
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(at.map);
+    bool inside = at.x >= 0 && at.x < dungeon_map_width(g_current_map.map) && at.y >= 0 &&
+                  at.y < dungeon_map_height(g_current_map.map);
     if (inside)
         thing_set_word(thing, MINION_MAP_LOCATION, (uint16_t)location_pack(at.x, at.y, at.map));
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
     return inside;
 }
 
@@ -104,8 +103,8 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         return;
     int col = px / MAP_CELL_SIZE;
     int row = py / MAP_CELL_SIZE;
-    Location at = dun_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
-                                    col - GRID_RADIUS);
+    Location at = dungeon_move_relative((Location){g_minion_map.x, g_minion_map.y}, g_minion_map.dir, GRID_RADIUS - row,
+                                        col - GRID_RADIUS);
     Position found = dungeon_location_on_map((Position){g_minion_map.map, at.x, at.y}, 0);
     if (found.map < 0)
         return;
@@ -113,9 +112,9 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
     int16_t sy = found.y;
     int16_t map = found.map;
     /* as in the original: switches the current map to the map of the square, then back */
-    int16_t saved = g_party.cur_map;
-    dun_set_current_map(map);
-    uint8_t square = dun_get_square((Location){sx, sy});
+    int16_t saved = g_current_map.map;
+    dungeon_set_current_map(map);
+    uint8_t square = dungeon_square_at((Location){sx, sy});
     int type = square_type(square);
     if (type != SQUARE_WALL && type != SQUARE_UNKNOWN &&
         (type != SQUARE_FAKE_WALL || square & (SQUARE_FAKE_WALL_OPEN | SQUARE_FAKE_WALL_BLINK))) {
@@ -136,18 +135,18 @@ void minion_map_click_set_destination(int command, int16_t x, int16_t y)
         ai_free_cached_data(group);
         g_hooks.update_action_area(false);
     }
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }
 
 void minion_dismiss(uint16_t group)
 {
     uint16_t projectile = item_find_link_projectile(group, THING_NONE);
     /* as in the original: switches the current map to the map of the minion map, then back */
-    int16_t saved = g_party.cur_map;
+    int16_t saved = g_current_map.map;
     if (projectile == THING_NONE)
         return;
     uint16_t at = thing_word(projectile, PROJECTILE_LOCATION);
-    dun_set_current_map(location_map(at));
+    dungeon_set_current_map(location_map(at));
     creature_set_next_action(group, (Location){location_x(at), location_y(at)}, ACTION_VANISH, true);
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }

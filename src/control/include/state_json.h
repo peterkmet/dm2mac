@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #ifndef DM2_CONTROL_STATE_JSON_H
 #define DM2_CONTROL_STATE_JSON_H
-/* Prefixes: json_ state_json_ */
+/* Prefixes: state_json_ */
 
-/* The JSON text writer of the control replies, and the state of the game as JSON: party, champions, view, map. */
+/* The state of the game as JSON: party, champions, view, map. */
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "game.h"
+#include "interface_state.h"
+#include "json.h"
 #include "seen.h"
 
 /* The parts of the game state that state_json_string gives. */
@@ -17,38 +18,11 @@ typedef enum { STATE_JSON_STATE, STATE_JSON_VIEW, STATE_JSON_MAP } StateJsonPart
 /* The limit of the creature groups in view. */
 #define STATE_JSON_VISIBLE_GROUPS_MAX SEEN_VISIBLE_MAX
 
-/* A growing JSON text. Start with {0}; free s when done. */
-typedef struct {
-    char *s;
-    size_t len, cap;
-} Json;
-
 /* A thing on a square of the view: the row, the side (negative to the left), the square, the thing. */
 typedef struct {
     int16_t depth, side, x, y;
     uint16_t thing;
 } StateJsonSeenThing;
-
-/* The JSON writer */
-
-/* Appends text as it is (no comma). */
-void json_raw(Json *j, const char *text);
-/* Opens an object or a list with its bracket (a comma first when a value comes before). */
-void json_open(Json *j, char bracket);
-/* Closes an object or a list with its bracket. */
-void json_close(Json *j, char bracket);
-/* Appends true or false. */
-void json_bool(Json *j, bool flag);
-/* Appends an integer. */
-void json_int(Json *j, int64_t value);
-/* Appends a JSON string of the first n bytes of text (up to its end mark); bytes from 0x80 go as they are (UTF-8). */
-void json_strn(Json *j, const char *text, size_t n);
-/* Appends a JSON string of text. */
-void json_str(Json *j, const char *text);
-/* Appends "key": (a comma first when a value comes before). */
-void json_key(Json *j, const char *key);
-/* Appends "key":value of an integer. */
-void json_key_int(Json *j, const char *key, int64_t value);
 
 /* The game state */
 

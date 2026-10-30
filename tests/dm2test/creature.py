@@ -5,10 +5,10 @@ import struct
 
 import pytest
 
-from dm2test.scenario import Scenario
+from dm2test.scenario import CHAMPION_SIZE, Scenario, champion_bytes, champion_records, sync_champions
 
 
-CreatureScenario = Scenario  # the scenario harness runs the creatures since Step 16
+CreatureScenario = Scenario  # the scenario harness runs the creatures
 
 
 @pytest.fixture
@@ -23,7 +23,6 @@ G_CHAMPION_COUNT = 0x7F276
 
 def random_champions(s, rng):
     """1 to 4 champions (copies of the first) with random strength, stamina, and health (some dead), in both."""
-    from dm2test.interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
     lib = s.lib
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     count = rng.randrange(1, 5)

@@ -6,12 +6,8 @@ import pytest
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test import constants as C
-from dm2test.lib import load_lib
+from dm2test.structs import Bitmap
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 GFX_BLIT, GFX_BLIT_SCALED_4BPP, GFX_BLIT_SCALED_8BPP = 0x12AD2, 0x1410D, 0x1424B
 GFX_BLIT_TILED_4TO8_MASKED = 0x13BE5
@@ -31,10 +27,6 @@ class TileFill(ctypes.Structure):
     _fields_ = [("tile", u8_p), ("tile_width", ctypes.c_int), ("tile_offset", ctypes.c_int), ("mask", u8_p),
                 ("mask_x", ctypes.c_int), ("mask_y", ctypes.c_int), ("mask_width", ctypes.c_int),
                 ("transparent", ctypes.c_int), ("colormap", u8_p)]
-
-
-class Bitmap(ctypes.Structure):
-    _fields_ = [("pixels", u8_p), ("width", ctypes.c_int16), ("height", ctypes.c_int16), ("bpp", ctypes.c_uint8)]
 
 
 def buf(data):

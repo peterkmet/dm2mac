@@ -7,12 +7,8 @@ import pytest
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
 from dm2test import constants as C
-from dm2test.lib import load_lib
+from dm2test.structs import Timeline
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 RAND_NEXT, RAND_BELOW, RAND_BIT, RAND_2BITS = 0x1C6A1, 0x1C6B7, 0x1C6DC, 0x1C6F6
 G_RANDOM_SEED = 0x70518
@@ -23,12 +19,6 @@ G_TIMELINE_CAPACITY, G_NEW_GAME, G_GAME_TIME = 0x80428, 0x7F280, 0x7F22C
 EVENT_SIZE = C.TIMELINE_EVENT_SIZE
 EVENTS, QUEUE, ARG = SCRATCH, SCRATCH + 0x10000, SCRATCH + 0x20000
 SEEDS = [0, 1, 0x12345678, 0xFFFFFFFF]
-
-
-class Timeline(ctypes.Structure):
-    _fields_ = [("events", ctypes.c_void_p), ("queue", ctypes.c_void_p), ("fix_slot", ctypes.c_int16),
-                ("first_free", ctypes.c_int16), ("capacity", ctypes.c_uint16), ("count", ctypes.c_uint16),
-                ("used_end", ctypes.c_int16)]
 
 
 @pytest.fixture
@@ -104,6 +94,6 @@ def test_timeline_matches_original(lib, emu, seed):
             lib.timeline_pop_first_event(popped)
             emu.call(TIMELINE_POP_FIRST, ARG)
             assert popped.raw == emu.read(ARG, EVENT_SIZE), step
-            queued = {i for i in queued if ctypes.string_at(tl.events + i * EVENT_SIZE + 4, 1) != b"\0"}
+            queued = {i for i in queued if tl.events[i].type != C.EVENT_NONE}
         assert c_state(lib, tl) == emu_state(emu, capacity), step
     assert len(queued) == tl.count

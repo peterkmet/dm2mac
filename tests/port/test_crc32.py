@@ -5,15 +5,12 @@ import zlib
 
 import pytest
 
-from dm2test.lib import load_lib
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.crc32_update.argtypes = [ctypes.c_uint32, ctypes.c_char_p, ctypes.c_size_t]
     lib.crc32_update.restype = ctypes.c_uint32
-    return lib
 
 
 @pytest.mark.parametrize("data", [b"", b"a", b"123456789", bytes(range(256)) * 40])

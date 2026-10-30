@@ -1,6 +1,6 @@
 # LLM runs
 
-An LLM run is a playthrough of the game by an LLM player in the turn-based mode ([llm-mode.md](llm-mode.md)). The player's playbook is [llm-playbook.md](llm-playbook.md).
+An LLM run is a playthrough of the game by an LLM player in the turn-based mode ([turn-based.md](turn-based.md)). The player's playbook is [llm-playbook.md](llm-playbook.md).
 
 ## Goal of the runs
 
@@ -27,7 +27,7 @@ playthroughs/
   1. Create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/`.
   2. Copy the files from `playthroughs/template/` to `player/`.
   3. Point the link: `ln -sfn run<N> playthroughs/current`.
-  4. Start the game with `--saves playthroughs/current/game` ([llm-mode.md](llm-mode.md#turn-based-mode)).
+  4. Start the game with `--saves playthroughs/current/game` ([control-socket.md](control-socket.md#turn-based-mode)).
   5. Send `new_game`, then `save`. The player recruits the champions.
 - To make a checkpoint after a session: copy `game/QUICK.DAT` to `saves/<name>/` and the files from `player/` to `saves/<name>/files/`.
 - To resume: copy the checkpoint's `QUICK.DAT` to `game/` and its `files/` to `player/`, then send `load`.

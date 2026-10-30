@@ -294,7 +294,7 @@ this document names. The rule numbers follow the coding standard of the Dungeon 
    rest review only]
 3. A kept quirk of the original and a fixed bug of the original (a stale register, an overflow) get a short
    comment at the site, and an entry in "Deviations from the original" of its page in `docs/formats/`,
-   `docs/rules/`, or `docs/llm/llm-mode.md`. [review only]
+   `docs/rules/`, or `docs/llm/turn-based.md`. [review only]
 4. No TODO marker in code (`ponytail:`, `TODO`, `FIXME`, `XXX`); open work goes to `docs/todo.md`. [todo]
 5. Add a comment only where needed: one line about what the code does, never about its history. Do not delete
    existing comments. [review only]
@@ -312,7 +312,7 @@ this document names. The rule numbers follow the coding standard of the Dungeon 
    close or free; `malloc` and `free` of one buffer stay in one module. [review only]
 5. Do not reproduce undefined register values, overflows or out-of-bounds reads of the original. Use a
    defined value, mark it with a short comment, record it as a deviation in `docs/formats/`, `docs/rules/`, or
-   `docs/llm/llm-mode.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
+   `docs/llm/turn-based.md`, mask it in the tests. Keep a quirk of the original only when it changes what the
    player sees. [review only]
 6. Unused: the port plays one game, so no code detects which game it plays.
 7. No packed struct attribute (`__attribute__((packed))`, `#pragma pack`), and no `fread`, `fwrite` or `memcpy`
@@ -349,7 +349,7 @@ dependency group (version 23). [format]
 -Wstrict-prototypes -Wvla -Wimplicit-fallthrough`. `make windows` (MinGW-w64 GCC, the same flags) also builds with 0
 warnings before a merge to `main`; for a series of commits, it runs once at the end.
 
-`make check` runs the checks ([Development](development.md#tests)). The checks of `tests/standard/test_standard.py`, by
+`make check` runs the checks ([Development](development.md#tools)). The checks of `tests/standard/test_standard.py`, by
 their allowlist key:
 
 | Key | Fails on |

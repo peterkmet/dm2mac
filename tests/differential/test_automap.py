@@ -8,20 +8,18 @@ import pytest
 from dm2test import constants as C
 from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
-                           VANILLA, advanced, key_command, press, set_mode)  # noqa: F401 (advanced is a fixture)
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import GameRecord, Location, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.lib import load_lib
+                           VANILLA, key_command, press, set_mode)
+from dm2test.input import run_ticks
+from dm2test.scenario import Position
+from dm2test.structs import Bitmap, Game, Location
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
     lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     lib.seen_is_seen.restype = ctypes.c_bool
-    return lib
 
 NORTH, EAST, SOUTH, WEST = C.DIR_NORTH, C.DIR_EAST, C.DIR_SOUTH, C.DIR_WEST
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
@@ -38,7 +36,7 @@ SAVE_OK = C.SAVE_OK
 
 
 @pytest.fixture
-def automap(lib, advanced):  # noqa: F811
+def automap(lib, advanced):
     """The advanced game with the bright light and the cheats off."""
     lib.dungeon_square.restype = ctypes.c_uint8
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
@@ -114,7 +112,7 @@ def test_marks_start_and_squares_ahead(lib, automap):
     assert seen_squares(lib, m) == expected(lib, m, x, y, d)
 
 
-def test_vanilla_marks_no_square(lib, session):  # noqa: F811
+def test_vanilla_marks_no_square(lib, session):
     # Only the advanced mode marks the view of the party (game.c): a vanilla walk and turn mark nothing.
     game, _ = session
     set_mode(lib, VANILLA)
@@ -187,7 +185,7 @@ def test_darkness_shortens_the_view_and_the_light_cheat_does_not(lib, automap):
         assert ahead(x, y, d, depth) in seen and ahead(x, y, d, depth + 1) not in seen, (level, light)
 
 
-def write(lib, gdat, path, mode):  # noqa: F811
+def write(lib, gdat, path, mode):
     set_mode(lib, mode)
     try:
         assert lib.save_write(str(path).encode(), str(path.with_suffix(".BAK")).encode(), b"AUTOMAP", gdat) == SAVE_OK
@@ -202,7 +200,7 @@ def block_size(lib):
 
 
 @pytest.fixture
-def saves(lib, gdat, automap, tmp_path):  # noqa: F811
+def saves(lib, gdat, automap, tmp_path):
     """A marked game saved in vanilla and in the advanced mode; the seen squares."""
     game, _ = automap
     run_ticks(lib, 20)
@@ -215,7 +213,7 @@ def saves(lib, gdat, automap, tmp_path):  # noqa: F811
     return game, seen, vanilla, write(lib, gdat, tmp_path / "A.DAT", ADVANCED)
 
 
-def load(lib, gdat, path, data):  # noqa: F811
+def load(lib, gdat, path, data):
     path.write_bytes(data)
     return lib.save_load(str(path).encode(), gdat)
 
@@ -229,7 +227,7 @@ def test_advanced_save_appends_the_amap_block(lib, saves):
     assert block[6:8] == bytes([lib.dungeon_map_width(0), lib.dungeon_map_height(0)])
 
 
-def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
+def test_amap_block_round_trip(lib, gdat, saves, tmp_path):
     game, seen, vanilla, mine = saves
     lib.seen_reset()
     assert load(lib, gdat, tmp_path / "L.DAT", mine) == SAVE_OK
@@ -239,7 +237,7 @@ def test_amap_block_round_trip(lib, gdat, saves, tmp_path):  # noqa: F811
 
 
 @pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "map_count", "map_size", "value", "chts"])
-def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):  # noqa: F811
+def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damage):
     game, seen, vanilla, mine = saves
     n = len(vanilla)
     data = bytearray(mine)
@@ -258,7 +256,7 @@ def test_damaged_amap_block_gives_an_empty_map(lib, gdat, saves, tmp_path, damag
     assert not seen_squares(lib, game.party_map)
 
 
-def test_original_loader_ignores_the_amap_block(lib, gdat, saves, game_dir):  # noqa: F811
+def test_original_loader_ignores_the_amap_block(lib, gdat, saves, game_dir):
     # The original load of SKULL.EXE stops at the last bit of the game state: the block changes nothing it reads.
     from dm2test.save import RECORD_GLOBALS, original_load
     _, _, vanilla, mine = saves
@@ -294,7 +292,7 @@ def test_damaged_quick_save_keeps_the_automap(lib, automap):
 
 def test_new_game_starts_with_an_empty_automap_and_no_cheats(lib, automap, game_dir):
     game, data = automap
-    from dm2test.dialog import Session
+    from dm2test.structs import Session
     run_ticks(lib, 20)
     assert seen_squares(lib, game.party_map)
     lib.game_set_cheats(C.CHEAT_ALL)
@@ -327,7 +325,7 @@ def party_frame(lib, dx=0):
     """A pixel of the red frame around the party square, dx squares right of the middle: the middle of the left side, or
     of the top side when the party faces west (the side toward the party direction is white)."""
     x, y, w, h = viewport(lib)
-    west = GameRecord.in_dll(lib, "g_game").party_dir == C.DIR_WEST
+    west = Game.in_dll(lib, "g_game").party_dir == C.DIR_WEST
     px, py = (CELL // 2, 0) if west else (0, CELL // 2)
     return screen(lib)[(y + (h - CELL) // 2 + py) * SCREEN_W + x + (w - CELL) // 2 + dx * CELL + px]
 
@@ -493,7 +491,7 @@ def test_reveal_map_draws_every_square_and_keeps_the_seen_squares(lib, automap):
 
 
 def champion_word(lib, offset, value=None):
-    from dm2test.interface import champion_records
+    from dm2test.scenario import champion_records
     word = ctypes.c_int16.from_buffer(champion_records(lib), offset)
     if value is not None:
         word.value = value
@@ -550,8 +548,6 @@ def test_quick_load_takes_the_saved_cheats(lib, automap):
     assert lib.game_get_cheats() == C.CHEAT_FOOD | C.CHEAT_KILL, "a session start keeps the cheats"
 
 
-
-
 TREE, MOVING, CREATURE_STATIC = 20, 27, 0x0001  # a static tree of the outdoor maps; a creature that map 0 takes
 GROUP_CREATURE = 4  # the creature type byte of a group record
 
@@ -580,7 +576,7 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
 
     for (x, y), kind in zip(squares, (MOVING, TREE)):
         before = cell(x, y)
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
         assert g != 0xFFFF
         lib.dungeon_thing_record(g)[GROUP_CREATURE] = kind
@@ -592,11 +588,6 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
 
 MINION, CAT_CONTAINER, MAP_ITEM_ICONS, ICON_KEY = 48, 0x14, 0x40, 10  # a moving creature without a map icon strip
 ICON_SIZE, ICON_GAP = 7, 1
-
-
-class Bitmap(ctypes.Structure):
-    _fields_ = [("pixels", ctypes.POINTER(ctypes.c_uint8)), ("width", ctypes.c_int16), ("height", ctypes.c_int16),
-                ("bpp", ctypes.c_uint8)]
 
 
 def icon_pixels(lib, category, index, entry, icon):
@@ -628,7 +619,7 @@ def test_automap_draws_a_creature_without_map_icons_with_the_map_item_icon(lib, 
     m, d = game.party_map, game.party_dir
     x, y = ahead(game.party_x, game.party_y, d, 1)
     assert lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m)
-    lib.dun_set_current_map(m)
+    lib.dungeon_set_current_map(m)
     g = lib.creature_create_group(MOVING, 1, C.DIR_NORTH, Location(x, y))
     assert g != 0xFFFF
     lib.dungeon_thing_record(g)[GROUP_CREATURE] = MINION

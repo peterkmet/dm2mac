@@ -9,7 +9,6 @@ import pytest
 from dm2test import constants as C
 from dm2test import gamefiles
 from dm2test.iso import build_iso
-from dm2test.lib import load_lib
 from dm2test.markers import GAME, needs_game
 
 CONTENTS = gamefiles.contents()
@@ -26,14 +25,12 @@ def log_line(message):
     LOG.append(message.decode())
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.install_game_files.argtypes = [ctypes.c_char_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
     lib.install_game_files.restype = ctypes.c_int
     lib.gamefile_table.restype = ctypes.c_void_p
     ctypes.c_void_p.in_dll(lib, "g_os_log_hook").value = ctypes.cast(log_line, ctypes.c_void_p).value
-    return lib
 
 
 @pytest.fixture(autouse=True)

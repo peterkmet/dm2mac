@@ -9,9 +9,9 @@
 #include "control.h"
 #include "creature.h"
 #include "dungeon.h"
-#include "game.h"
 #include "ids.h"
 #include "input.h"
+#include "interface_state.h"
 #include "item.h"
 #include "magic.h"
 #include "minion.h"
@@ -21,6 +21,7 @@
 #include "projectile.h"
 #include "recruit.h"
 #include "save.h"
+#include "state_json.h"
 #include "text.h"
 #include "ui.h"
 #include "video.h"
@@ -382,7 +383,7 @@ static const char *displacement(void)
 {
     Location to = {turn.x, turn.y};
     if (turn.moving)
-        to = dun_move_relative(to, turn.dir, turn.step_forward, turn.step_right);
+        to = dungeon_move_relative(to, turn.dir, turn.step_forward, turn.step_right);
     bool stayed = g_game.party_x == turn.x && g_game.party_y == turn.y;
     if (g_game.party_map != turn.map || (!stayed && (g_game.party_x != to.x || g_game.party_y != to.y)))
         return "moved";
@@ -957,7 +958,7 @@ static const char *click(const char *r)
     return NULL;
 }
 
-/* A raw key: a key name of docs/llm/llm-mode.md or a key code. */
+/* A raw key: a key name of docs/llm/control-socket.md or a key code. */
 static const char *key(const char *r)
 {
     char name[ACTION_NAME_SIZE];
@@ -1111,7 +1112,7 @@ static const char *batch_stop_reason(void)
 }
 
 /* The next act_many item, a "name" or an {"action": "name", "args": {...}} object, copied to out; ELEMENT_END at the
-   end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/llm/llm-mode.md). */
+   end of the list, ELEMENT_BAD for an item that is not an action. Strings hold no '"' (docs/llm/turn-based.md). */
 static ElementResult next_element(char *out, size_t size)
 {
     const char *p = turn.batch.next;

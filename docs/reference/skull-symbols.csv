@@ -141,8 +141,8 @@ address,name,signature,subsystem
 0x000155ef,money_get_coin_type_for_slot,"int16_t money_get_coin_type_for_slot(uint16_t container, uint16_t slot)",money and shops
 0x00015737,money_get_item_value,"uint16_t money_get_item_value(uint16_t thing, uint8_t creature_type, int16_t list, int buying, int apply_margin, int16_t charges)",money and shops
 0x00015958,money_split_amount,"MoneySplit money_split_amount(int16_t amount, int16_t max_coins, uint8_t *coin_types)",money and shops
-0x000159c3,position_to_cell,int16_t position_to_cell(int16_t position),dungeon view
-0x00015a02,get_thing_position,"int16_t get_thing_position(uint16_t thing, int16_t dir)",dungeon view
+0x000159c3,view_position_to_cell,int16_t view_position_to_cell(int16_t position),dungeon view
+0x00015a02,view_get_thing_position,"int16_t view_get_thing_position(uint16_t thing, int16_t dir)",dungeon view
 0x00015a91,sound_alloc_buffers,void sound_alloc_buffers(void),sound
 0x00015b4a,sound_set_volume_and_test,"void sound_set_volume_and_test(int16_t volume, int16_t device)",sound
 0x00015baa,sndreq_request_with_fallback,"void sndreq_request_with_fallback(uint8_t category, uint8_t index, uint8_t entry, uint8_t fallback_index, int16_t x, int16_t y, int16_t delay, int16_t priority, int16_t volume)",sound
@@ -167,7 +167,7 @@ address,name,signature,subsystem
 0x000181f0,explosion_get_attack,"uint16_t explosion_get_attack(uint16_t explosion, uint16_t target)",projectiles
 0x00018395,explosion_process_event,void explosion_process_event(void *event),projectiles
 0x0001861b,math_square_distance,"int16_t math_square_distance(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
-0x0001863d,dun_get_direction_to,"uint16_t dun_get_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
+0x0001863d,dungeon_direction_to,"uint16_t dungeon_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2)",dungeon data
 0x0001869a,projectile_order_attack_cells,"void projectile_order_attack_cells(uint8_t *cells, int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t cell)",creatures
 0x00018758,projectile_attack_champion,"int16_t projectile_attack_champion(uint8_t *group, int16_t champion_index)",creatures
 0x00018a57,melee_attack_group,"int16_t melee_attack_group(uint8_t *champion, uint16_t champion_index, uint16_t group_thing, uint16_t cell, int16_t action_value, uint16_t flags, uint16_t skill, int16_t x, int16_t y)",champions
@@ -180,7 +180,7 @@ address,name,signature,subsystem
 0x00018f43,rect_inflate,"void rect_inflate(int16_t *rect, int16_t dx, int16_t dy)",interface
 0x00018f57,clip_icon_rect,"int16_t *clip_icon_rect(int16_t *rect, const int16_t *clip, int16_t *clipped_x, int16_t *clipped_y)",interface
 0x00018fe7,rect_center_in,"void rect_center_in(int16_t *rect, const int16_t *outer, int16_t w, int16_t h)",interface
-0x0001902b,point_in_rect,"int point_in_rect(int16_t *rect, int16_t x, int16_t y)",interface
+0x0001902b,rect_contains_point,"int rect_contains_point(int16_t *rect, int16_t x, int16_t y)",interface
 0x0001906d,point_in_zone,"int point_in_zone(int16_t zone, int16_t x, int16_t y)",interface
 0x00019091,zone_record_data_size,int zone_record_data_size(uint8_t flags),interface
 0x000190e9,zone_find_record,"int16_t *zone_find_record(void *list, int16_t zone)",interface
@@ -189,7 +189,7 @@ address,name,signature,subsystem
 0x00019ac4,zone_set_clip_margins,"void zone_set_clip_margins(int16_t left, int16_t top, int16_t right, int16_t bottom)",interface
 0x00019b0b,aspect_rotate_cell,"int aspect_rotate_cell(int16_t cell, int16_t dir)",dungeon view
 0x00019b77,zone_id_for_view_cell,"int zone_id_for_view_cell(int16_t base, int16_t cell, int16_t dir)",dungeon view
-0x00019b91,element_zone,"int element_zone(int16_t element, int16_t offset, int use_table)",dungeon view
+0x00019b91,view_element_zone,"int view_element_zone(int16_t element, int16_t offset, int use_table)",dungeon view
 0x00019bae,zone_get_position,"void zone_get_position(int16_t zone, int16_t *x, int16_t *y)",interface
 0x00019bf2,zone_get_rect_clipped,"int16_t *zone_get_rect_clipped(int16_t zone, int16_t *rect, uint16_t w_scale, uint16_t h_scale)",interface
 0x00019cfc,zone_get_rect,"int16_t *zone_get_rect(int16_t zone, int16_t *rect)",interface
@@ -257,18 +257,18 @@ address,name,signature,subsystem
 0x0001c6dc,rand_bit,uint32_t rand_bit(void),runtime library
 0x0001c6f6,rand_2bits,uint32_t rand_2bits(void),runtime library
 0x0001c710,math_mul_shift,"int math_mul_shift(uint16_t a, uint8_t shift, uint16_t b)",runtime library
-0x0001c724,dun_set_current_map,void dun_set_current_map(int16_t map),dungeon data
-0x0001c82d,dun_set_party_position,"void dun_set_party_position(int16_t x, int16_t y, int16_t map)",dungeon data
+0x0001c724,dungeon_set_current_map,void dungeon_set_current_map(int16_t map),dungeon data
+0x0001c82d,dungeon_set_party_position,"void dungeon_set_party_position(int16_t x, int16_t y, int16_t map)",dungeon data
 0x0001c8e5,dun_find_thing_in_list,"uint16_t *dun_find_thing_in_list(uint16_t *list, uint8_t cell, uint16_t **found_list, int (*match)(uint16_t thing), void *arg, int search_groups, int search_chests)",dungeon data
-0x0001c9e9,dun_move_relative,"void dun_move_relative(int16_t dir, int16_t forward, int16_t right, int16_t *x, int16_t *y)",dungeon data
+0x0001c9e9,dungeon_move_relative,"void dungeon_move_relative(int16_t dir, int16_t forward, int16_t right, int16_t *x, int16_t *y)",dungeon data
 0x0001ca43,dun_is_open_square_raw,"int dun_is_open_square_raw(int16_t x, int16_t y)",dungeon data
-0x0001ca96,dun_get_square,"uint8_t dun_get_square(int16_t x, int16_t y)",dungeon data
+0x0001ca96,dungeon_square_at,"uint8_t dungeon_square_at(int16_t x, int16_t y)",dungeon data
 0x0001cc4f,dun_get_square_relative,"uint8_t dun_get_square_relative(int16_t dir, int16_t forward, int16_t right, int16_t x, int16_t y)",dungeon data
 0x0001cc7e,dun_get_location_on_map,"int dun_get_location_on_map(int16_t map, int16_t level_delta, int16_t *x, int16_t *y, char **link_cursor)",dungeon data
-0x0001ce6f,dun_get_stairs_exit_direction,"int dun_get_stairs_exit_direction(int16_t x, int16_t y)",dungeon data
-0x0001cee1,dun_find_adjacent_level_link,"int dun_find_adjacent_level_link(int16_t x, int16_t y, int16_t level_delta, void **sensor)",dungeon data
+0x0001ce6f,dungeon_stairs_exit_direction,"int dungeon_stairs_exit_direction(int16_t x, int16_t y)",dungeon data
+0x0001cee1,dungeon_find_level_link,"int dungeon_find_level_link(int16_t x, int16_t y, int16_t level_delta, void **sensor)",dungeon data
 0x0001d074,dun_get_teleporter_link_side,"int dun_get_teleporter_link_side(void **teleporter, int16_t x, int16_t y)",dungeon data
-0x0001d113,dun_get_linked_teleporter_dest,"int dun_get_linked_teleporter_dest(uint8_t *dest, int16_t x, int16_t y)",dungeon data
+0x0001d113,dungeon_linked_teleporter_dest,"int dungeon_linked_teleporter_dest(uint8_t *dest, int16_t x, int16_t y)",dungeon data
 0x0001d1d2,dun_find_open_teleporter_link,"void *dun_find_open_teleporter_link(int16_t x, int16_t y)",dungeon data
 0x0001d2c6,system_debug_hook,void system_debug_hook(int value),main loop
 0x0001d2cc,dun_get_square_first_thing_data,"void *dun_get_square_first_thing_data(int16_t x, int16_t y)",dungeon data
@@ -280,7 +280,7 @@ address,name,signature,subsystem
 0x0001d3db,dun_link_thing_to_square,"void dun_link_thing_to_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data
 0x0001d542,dun_unlink_thing_from_square,"void dun_unlink_thing_from_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data
 0x0001d6ec,dun_set_thing_do_not_discard,"void dun_set_thing_do_not_discard(uint16_t thing, int flag)",dungeon data
-0x0001d748,dun_get_discarded_thing,"uint16_t dun_get_discarded_thing(uint16_t type, uint8_t subtype)",dungeon data
+0x0001d748,discard_find_thing,"uint16_t discard_find_thing(uint16_t type, uint8_t subtype)",dungeon data
 0x0001ddd7,dun_get_unused_thing,uint16_t dun_get_unused_thing(uint16_t type),dungeon data
 0x0001de8e,item_create_by_index,uint16_t item_create_by_index(uint16_t item_index),items
 0x0001ded7,item_create_by_index_reuse,uint16_t item_create_by_index_reuse(uint16_t item_index),items
@@ -352,7 +352,7 @@ address,name,signature,subsystem
 0x000201f7,input_cond_action_champion_mask,int input_cond_action_champion_mask(const uint8_t *node),input
 0x00020241,input_cond_action_panel_variant,int input_cond_action_panel_variant(const uint8_t *node),input
 0x0002028d,input_cond_value_757b8,int input_cond_value_757b8(const uint8_t *node),input
-0x0002029e,get_input_zone_rect,"int16_t *get_input_zone_rect(uint16_t zone_flags, int16_t *rect)",input
+0x0002029e,input_get_zone_rect,"int16_t *input_get_zone_rect(uint16_t zone_flags, int16_t *rect)",input
 0x000202fa,input_mode_node_children,const uint8_t *input_mode_node_children(const int32_t *node),input
 0x00020305,input_mode_node_commands,const uint16_t *input_mode_node_commands(const int32_t *node),input
 0x00020333,input_mark_active_zones,void input_mark_active_zones(const uint8_t *node),input
@@ -435,7 +435,7 @@ address,name,signature,subsystem
 0x00026873,run_target_scanner,"void run_target_scanner(uint8_t scanner, int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x00026896,creature_ai_add_candidate,"void creature_ai_add_candidate(uint8_t kind, const uint8_t *target, const int8_t *entry, uint8_t scan_kind, int8_t bonus, uint16_t param, int8_t step, int8_t plan)",creatures
 0x0002697b,ai_count_matching_items,"int16_t ai_count_matching_items(int16_t flag, uint16_t first_thing, uint8_t cell, int into_groups, int into_containers)",creatures
-0x00026a67,get_item_counts,"uint8_t *get_item_counts(const uint8_t *targets, int16_t kind)",creatures
+0x00026a67,ai_get_item_counts,"uint8_t *ai_get_item_counts(const uint8_t *targets, int16_t kind)",creatures
 0x00026d16,test_condition,"int test_condition(uint8_t condition, uint16_t value, int8_t plan)",creatures
 0x00027578,creature_ai_scan_idle,"void creature_ai_scan_idle(int8_t plan, int8_t step, const uint8_t *targets)",creatures
 0x0002759e,creature_ai_scan_targets,"void creature_ai_scan_targets(int8_t kind, int8_t step, const uint8_t *targets, uint8_t bonus, uint16_t param)",creatures
@@ -460,7 +460,7 @@ address,name,signature,subsystem
 0x00027b3a,creature_ai_scan_by_condition,"void creature_ai_scan_by_condition(int8_t ignore_path, uint8_t step, const uint8_t *targets, int8_t kind)",creatures
 0x00027be3,creature_ai_scan_by_condition_15,"void creature_ai_scan_by_condition_15(int8_t ignore_path, int8_t step, const uint8_t *targets)",creatures
 0x00027bf6,creature_ai_scan_party,"void creature_ai_scan_party(int8_t plan, int8_t step, const uint8_t *targets)",creatures
-0x00027cd2,exec_plan_command,int8_t exec_plan_command(int8_t command),creatures
+0x00027cd2,ai_exec_plan_command,int8_t ai_exec_plan_command(int8_t command),creatures
 0x00027e28,creature_ai_cmd_follow_candidate_path,int8_t creature_ai_cmd_follow_candidate_path(void),creatures
 0x00027eeb,creature_ai_cmd_shoot_random,void creature_ai_cmd_shoot_random(void),creatures
 0x00027f28,creature_ai_cmd_move_forward,int8_t creature_ai_cmd_move_forward(void),creatures
@@ -496,7 +496,7 @@ address,name,signature,subsystem
 0x00029c2d,creature_ai_cmd_path_to_target_alt,int8_t creature_ai_cmd_path_to_target_alt(void),creatures
 0x00029c88,creature_ai_cmd_random_chance,int8_t creature_ai_cmd_random_chance(void),creatures
 0x00029caa,creature_ai_cmd_carries_item,int8_t creature_ai_cmd_carries_item(void),creatures
-0x00029d0c,dun_set_pit_teleporter_state,"int dun_set_pit_teleporter_state(uint16_t x, uint16_t y, uint16_t mode)",dungeon data
+0x00029d0c,move_set_pit_teleporter_state,"int move_set_pit_teleporter_state(uint16_t x, uint16_t y, uint16_t mode)",dungeon data
 0x00029de7,creature_ai_act_move,int creature_ai_act_move(void),creatures
 0x00029f39,creature_ai_act_turn_then_move,int16_t creature_ai_act_turn_then_move(void),creatures
 0x00029f6b,creature_ai_act_move_two_steps,int creature_ai_act_move_two_steps(void),creatures
@@ -518,7 +518,7 @@ address,name,signature,subsystem
 0x0002b35d,creature_ai_act_transform,void creature_ai_act_transform(void),creatures
 0x0002b570,creature_ai_act_explode_or_spawn,int creature_ai_act_explode_or_spawn(void),creatures
 0x0002b724,creature_ai_act_cloud_explosion,void creature_ai_act_cloud_explosion(void),creatures
-0x0002b75e,execute_action,int execute_action(void),creatures
+0x0002b75e,ai_execute_action,int ai_execute_action(void),creatures
 0x0002b96a,ai_square_is_obstacle,"int ai_square_is_obstacle(int16_t x, int16_t y)",creatures
 0x0002b9fc,ai_square_blocks_line,"int ai_square_blocks_line(int16_t x, int16_t y)",creatures
 0x0002bb78,ai_blocks_line_to_target,"int ai_blocks_line_to_target(int16_t x, int16_t y)",creatures
@@ -881,7 +881,7 @@ address,name,signature,subsystem
 0x0004a34a,move_follow_square_transitions,"int move_follow_square_transitions(uint16_t thing, int16_t x, int16_t y, int16_t map, int fall_allowed)",dungeon data
 0x0004ae20,move_compute_map_arrival,"void move_compute_map_arrival(int16_t x, int16_t y, int16_t map)",dungeon data
 0x0004af50,set_party_position,"void set_party_position(int16_t x, int16_t y)",champions
-0x0004af72,dun_square_blocks_movement,int dun_square_blocks_movement(uint8_t square),dungeon data
+0x0004af72,dungeon_square_blocks_movement,int dungeon_square_blocks_movement(uint8_t square),dungeon data
 0x0004afcd,find_free_adjacent_square,"int find_free_adjacent_square(uint16_t thing, int16_t x, int16_t y, int16_t *out_x, int16_t *out_y)",dungeon data
 0x0004b108,move_thing,"int move_thing(uint16_t thing, int16_t from_x, int16_t from_y, int16_t to_x, int16_t to_y)",dungeon data
 0x0004bbe4,sensor_schedule_square_event,"void sensor_schedule_square_event(uint8_t x, uint8_t y, uint8_t cell, uint16_t effect, uint32_t time)",Skullkeep machines
@@ -901,15 +901,15 @@ address,name,signature,subsystem
 0x0004dcee,view_hit_test_creature,"int view_hit_test_creature(int16_t x, int16_t y, int16_t square_x, int16_t square_y, int16_t *out_side)",dungeon view
 0x0004ddc0,view_hit_test_wall_ornament,"int view_hit_test_wall_ornament(int16_t view_pos, int16_t x, int16_t y)",dungeon view
 0x0004df08,view_hit_test_object,"uint16_t view_hit_test_object(int16_t x, int16_t y, int16_t view_pos, int16_t square_x, int16_t square_y, uint16_t thing, int16_t kind, int put)",dungeon view
-0x0004e226,get_shaded_palette,"uint8_t *get_shaded_palette(uint8_t category, uint8_t index, uint8_t entry, int16_t color_key)",dungeon view
+0x0004e226,view_get_shaded_palette,"uint8_t *view_get_shaded_palette(uint8_t category, uint8_t index, uint8_t entry, int16_t color_key)",dungeon view
 0x0004e294,view_clear_viewport,void view_clear_viewport(void),dungeon view
 0x0004e31d,copy_mirrored,"void copy_mirrored(uint8_t *src, uint8_t *dst)",dungeon view
-0x0004e32a,show_map_picture,"void show_map_picture(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t color_key, int flip)",dungeon view
-0x0004e3d5,get_depth_shading,"void get_depth_shading(uint8_t *palette, int16_t depth, int16_t color_key, int16_t count, int16_t *out_size)",dungeon view
-0x0004e502,setup_picture,"void setup_picture(int flip, int16_t scale_x, int16_t scale_y, int16_t dx, int16_t dy, int16_t depth, int16_t zone, int16_t align, int16_t color_key, int16_t mirror, uint8_t category, uint8_t index, uint8_t entry)",dungeon view
-0x0004e616,flush_picture,void flush_picture(void),dungeon view
-0x0004e620,render_offscreen,"int16_t render_offscreen(uint8_t *context, uint8_t category, uint8_t index, uint8_t entry, int16_t scale_x, int16_t scale_y, int16_t depth, int flip, int16_t color_key, int16_t mirror)",dungeon view
-0x0004e6c3,add_click_zone,"void add_click_zone(const int16_t *rect, uint8_t kind, uint8_t view_pos)",dungeon view
+0x0004e32a,view_show_map_picture,"void view_show_map_picture(uint8_t category, uint8_t index, uint8_t entry, int16_t zone, int16_t color_key, int flip)",dungeon view
+0x0004e3d5,view_get_depth_shading,"void view_get_depth_shading(uint8_t *palette, int16_t depth, int16_t color_key, int16_t count, int16_t *out_size)",dungeon view
+0x0004e502,view_setup_picture,"void view_setup_picture(int flip, int16_t scale_x, int16_t scale_y, int16_t dx, int16_t dy, int16_t depth, int16_t zone, int16_t align, int16_t color_key, int16_t mirror, uint8_t category, uint8_t index, uint8_t entry)",dungeon view
+0x0004e616,view_flush_picture,void view_flush_picture(void),dungeon view
+0x0004e620,view_render_offscreen,"int16_t view_render_offscreen(uint8_t *context, uint8_t category, uint8_t index, uint8_t entry, int16_t scale_x, int16_t scale_y, int16_t depth, int flip, int16_t color_key, int16_t mirror)",dungeon view
+0x0004e6c3,view_add_click_zone,"void view_add_click_zone(const int16_t *rect, uint8_t kind, uint8_t view_pos)",dungeon view
 0x0004e733,rain_picture,"void rain_picture(char *out_entry, uint16_t *out_relative_dir)",weather
 0x0004e79c,show_rain,void show_rain(void),weather
 0x0004e930,view_draw_wet_image,"void view_draw_wet_image(uint8_t *context, int16_t image_id, uint16_t color_key)",weather
@@ -917,43 +917,43 @@ address,name,signature,subsystem
 0x0004eb6e,target_has_item,"int target_has_item(uint8_t *sensor, int16_t object_type, int skip_loose_items)",money and shops
 0x0004ec19,show_shop_display,"void show_shop_display(uint8_t *sensor, uint8_t ornament, int16_t x, int16_t y)",money and shops
 0x0004f3c0,view_wall_text_glyph,uint8_t view_wall_text_glyph(uint8_t c),text
-0x0004f3df,show_wall_ornament,"int16_t show_wall_ornament(int16_t view_pos, int16_t side, int record_click)",dungeon view
-0x00050081,show_floor_ornament,int show_floor_ornament(uint16_t view_pos),dungeon view
-0x000507ab,show_ceiling_pit,void show_ceiling_pit(int16_t view_pos),dungeon view
-0x000508ff,show_floor_pit,void show_floor_pit(int16_t view_pos),dungeon view
-0x000509e6,show_sparkle_field,"void show_sparkle_field(int16_t view_pos, uint8_t category, uint8_t index)",dungeon view
+0x0004f3df,view_show_wall_ornament,"int16_t view_show_wall_ornament(int16_t view_pos, int16_t side, int record_click)",dungeon view
+0x00050081,view_show_floor_ornament,int view_show_floor_ornament(uint16_t view_pos),dungeon view
+0x000507ab,view_show_ceiling_pit,void view_show_ceiling_pit(int16_t view_pos),dungeon view
+0x000508ff,view_show_floor_pit,void view_show_floor_pit(int16_t view_pos),dungeon view
+0x000509e6,view_show_sparkle_field,"void view_show_sparkle_field(int16_t view_pos, uint8_t category, uint8_t index)",dungeon view
 0x00050bf4,input_update_viewport_arrow,void input_update_viewport_arrow(void),input
-0x00050dee,show_creature,"void show_creature(int16_t view_pos, int16_t depth, uint8_t *group, uint8_t *active_group, uint16_t group_thing)",dungeon view
-0x00051203,show_creatures,"int show_creatures(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
+0x00050dee,view_show_creature,"void view_show_creature(int16_t view_pos, int16_t depth, uint8_t *group, uint8_t *active_group, uint16_t group_thing)",dungeon view
+0x00051203,view_show_creatures,"int view_show_creatures(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
 0x00051359,setup_explosion_picture,"void setup_explosion_picture(uint8_t explosion_type, uint16_t size, int16_t color_key, int16_t zone)",dungeon view
-0x0005142d,show_explosions,"void show_explosions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
+0x0005142d,view_show_explosions,"void view_show_explosions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask)",dungeon view
 0x000518b0,show_missiles,"void show_missiles(uint16_t first_thing, int16_t view_pos, int16_t cell)",dungeon view
-0x00051cc6,set_click_zone,"void set_click_zone(int16_t slot, uint16_t thing, uint8_t view_pos, uint8_t kind)",dungeon view
+0x00051cc6,view_set_click_zone,"void view_set_click_zone(int16_t slot, uint16_t thing, uint8_t view_pos, uint8_t kind)",dungeon view
 0x00051df8,shift_object_cell,"int shift_object_cell(int16_t *view_pos, int16_t *cell, int16_t dx, int16_t dy)",dungeon view
-0x00051eb7,show_object,"void show_object(uint16_t thing, int16_t view_pos, int16_t dx, int16_t dy, uint8_t *group, int record_click, uint16_t open_state, int in_alcove)",dungeon view
+0x00051eb7,view_show_object,"void view_show_object(uint16_t thing, int16_t view_pos, int16_t dx, int16_t dy, uint8_t *group, int record_click, uint16_t open_state, int in_alcove)",dungeon view
 0x000522a7,show_cell_objects,"void show_cell_objects(uint16_t first_thing, int16_t view_pos, int16_t cell, uint8_t *group)",dungeon view
-0x00052518,show_square_things,"void show_square_things(uint16_t view_pos, uint32_t cell_mask, int with_explosions)",dungeon view
+0x00052518,view_show_square_things,"void view_show_square_things(uint16_t view_pos, uint32_t cell_mask, int with_explosions)",dungeon view
 0x000527ba,show_possessions,"void show_possessions(uint16_t first_thing, int16_t view_pos, uint32_t cell_mask, uint8_t *group)",dungeon view
-0x0005288f,show_pending_possessions,void show_pending_possessions(int16_t view_pos),dungeon view
-0x000528c5,show_alcove_contents,void show_alcove_contents(int16_t view_pos),dungeon view
+0x0005288f,view_show_pending_possessions,void view_show_pending_possessions(int16_t view_pos),dungeon view
+0x000528c5,view_show_alcove_contents,void view_show_alcove_contents(int16_t view_pos),dungeon view
 0x00052a88,view_offset_toward_party,"void view_offset_toward_party(int16_t party_x, int16_t party_y, int16_t size, int16_t *x, int16_t *y)",dungeon view
 0x00052bf6,view_load_square,"void view_load_square(int16_t x, int16_t y, int16_t view_pos, uint16_t dir)",dungeon view
 0x000530d1,show_door_ornament,"void show_door_ornament(uint8_t category, uint8_t index, uint8_t entry, int16_t view_pos)",dungeon view
 0x000531ec,show_door_frame,"void show_door_frame(int16_t view_pos, uint16_t parts)",dungeon view
 0x0005342f,inverse_scale,"int inverse_scale(uint16_t size, uint16_t scaled)",dungeon view
 0x0005346e,show_door,"void show_door(int16_t view_pos, int16_t frame_before, int16_t frame_after, uint32_t cell_mask)",dungeon view
-0x000539cb,show_door_front,void show_door_front(uint16_t view_pos),dungeon view
-0x00053b1b,show_stairs_side,void show_stairs_side(int16_t view_pos),dungeon view
-0x00053bfb,show_stairs_front,void show_stairs_front(int16_t view_pos),dungeon view
+0x000539cb,view_show_door_front,void view_show_door_front(uint16_t view_pos),dungeon view
+0x00053b1b,view_show_stairs_side,void view_show_stairs_side(int16_t view_pos),dungeon view
+0x00053bfb,view_show_stairs_front,void view_show_stairs_front(int16_t view_pos),dungeon view
 0x00053c7b,show_wall_block,void show_wall_block(int16_t view_pos),dungeon view
-0x00053e41,show_wall_square,void show_wall_square(int16_t view_pos),dungeon view
+0x00053e41,view_show_wall_square,void view_show_wall_square(int16_t view_pos),dungeon view
 0x00053e9e,show_far_squares,void show_far_squares(void),dungeon view
 0x00054117,show_party_square,void show_party_square(void),dungeon view
 0x000542f6,outdoor_relative_distance,"uint16_t outdoor_relative_distance(int16_t dir, int16_t *dx, int16_t *dy, int16_t party_x, int16_t party_y)",outdoor view
 0x0005439a,outdoor_place_sky_object,"int outdoor_place_sky_object(uint8_t *object, const char *definition, int16_t dir, int16_t x, int16_t y)",outdoor view
 0x000544be,outdoor_draw_sky_object,"void outdoor_draw_sky_object(uint8_t *object, int16_t dir, int16_t x, int16_t y)",outdoor view
-0x00054699,outdoor_draw_sky,"void outdoor_draw_sky(int16_t dir, int16_t x, int16_t y)",outdoor view
-0x00054874,get_flip_parity,"uint16_t get_flip_parity(uint16_t kind, int16_t dir, int16_t x, int16_t y)",dungeon view
+0x00054699,view_outdoor_draw_sky,"void view_outdoor_draw_sky(int16_t dir, int16_t x, int16_t y)",outdoor view
+0x00054874,view_get_flip_parity,"uint16_t view_get_flip_parity(uint16_t kind, int16_t dir, int16_t x, int16_t y)",dungeon view
 0x0005497e,view_mark_hidden_squares,void view_mark_hidden_squares(void),dungeon view
 0x00054abd,view_unhide_linked_squares,void view_unhide_linked_squares(void),dungeon view
 0x00054b3f,view_draw_dungeon,"void view_draw_dungeon(int16_t dir, int16_t x, int16_t y)",dungeon view

@@ -1,4 +1,4 @@
-"""Scenario tests of Step 14 with the emulator oracle: start.DAT goes into the C port and into the memory of the
+"""Scenario tests with the emulator oracle: start.DAT goes into the C port and into the memory of the
 original code; both run the same commands and timeline events; then the game state must be equal."""
 
 import ctypes
@@ -8,15 +8,12 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.lib import load_lib
-from dm2test.scenario import (  # noqa: F401 (gdat, start and scenario are fixtures)
-    CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, Location, approaches, gdat, scenario, sensor_squares, square_event, square_things, squares, start,
+from dm2test.scenario import (
+    CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, Command, approaches,
+    sensor_squares, square_event, square_things, squares,
 )
-
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
+from dm2test.addresses import SKY_OBJECTS_SIZE
+from dm2test.structs import Location
 
 
 def test_states_equal_after_load(scenario):
@@ -66,7 +63,7 @@ def test_bump_damage_hits_the_champions_of_the_bump_side(scenario, lib):
     # Four champions (copies of the first) in random cells, random places and directions, moves in all four
     # directions: on a bump into a wall the champions of the two cells on that side take the damage.
     import random
-    from dm2test.interface import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
+    from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
     rng = random.Random(15)
     first = bytes(champion_records(lib)[:CHAMPION_SIZE])
     scenario.game.champion_count = C.CHAMPION_MAX
@@ -266,5 +263,5 @@ def test_discard_search_on_a_dungeon_of_one_map(tmp_path):
     path.write_bytes(header + map_desc + struct.pack("<H", 0) + b"\0")  # column 0 starts at thing 0; a wall
     assert own.dungeon_load(str(path).encode()) == 1
     assert own.dungeon_map_count() == 1
-    own.dun_get_discarded_thing.restype = ctypes.c_uint16
-    assert own.dun_get_discarded_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE
+    own.discard_find_thing.restype = ctypes.c_uint16
+    assert own.discard_find_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE

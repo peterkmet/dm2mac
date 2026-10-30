@@ -7,7 +7,6 @@
 #include "game_text.h"
 #include "minion.h"
 #include "minion_map.h"
-#include "move.h"
 #include "num.h"
 #include "save.h"
 #include "seen.h"
@@ -260,7 +259,7 @@ static void show_level_square(Offscreen *o, const int16_t *clip, Location level_
     if (!automap_level_square(level_at, &position) || !(game_has_cheat(CHEAT_MAP) || automap_level_seen(level_at)))
         return;
     bool party = position.map == g_game.party_map && position.x == g_game.party_x && position.y == g_game.party_y;
-    dun_set_current_map(position.map);
+    dungeon_set_current_map(position.map);
     /* the things of a minion map without options: the static creatures */
     SquareIcon icon = {.sx = position.x,
                        .sy = position.y,
@@ -293,13 +292,13 @@ void automap_draw(Offscreen *o, const int16_t *clip)
     int top = clip[RECT_Y] + (clip[RECT_H] - MAP_CELL_SIZE) / 2 + ICON_GAP - middle.y * MAP_CELL_SIZE;
     Span xs = visible_span(left, rect[RECT_X], rect[RECT_W], clip[RECT_X], clip[RECT_W]);
     Span ys = visible_span(top, rect[RECT_Y], rect[RECT_H], clip[RECT_Y], clip[RECT_H]);
-    int saved = g_party.cur_map;
+    int saved = g_current_map.map;
     for (int x = xs.first; x <= xs.last; x++)
         for (int y = ys.first; y <= ys.last; y++)
             show_level_square(o, clip, (Location){x, y}, (int16_t)(left + x * MAP_CELL_SIZE),
                               (int16_t)(top + y * MAP_CELL_SIZE));
     map_frame(o, clip, left, top, rect);
-    dun_set_current_map(saved);
+    dungeon_set_current_map(saved);
 }
 
 /* Scrolling */

@@ -1,6 +1,6 @@
 # Creatures, projectiles, magic, and minions
 
-The code for creatures, projectiles, magic, and minions is in `src/engine/creature.c`, `src/engine/ai.c`, `src/engine/ai_move.c`, `src/engine/ai_data.c`, `src/engine/projectile.c`, `src/engine/magic.c`, `src/engine/minion.c`, and `src/ui/minion_map.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code for creatures, projectiles, magic, and minions is in `src/engine/creature.c`, `src/engine/ai.c`, `src/engine/ai_action.c`, `src/engine/ai_move.c`, `src/engine/ai_path.c`, `src/engine/ai_data.c`, `src/engine/projectile.c`, `src/engine/magic.c`, `src/engine/minion.c`, and `src/ui/minion_map.c`. Addresses and notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Creature data
 
@@ -58,7 +58,7 @@ The code for creatures, projectiles, magic, and minions is in `src/engine/creatu
   - the level counts of the cost search (`search_entered`): the original counts past its 51 levels into its own variables, the port counts in a table of 256 levels
   - the move command of the path check of `ai_plan_path`: the original reads a byte after the path buffer that nothing writes, the port uses 0 (`PATH_CHECK_COMMAND`)
   - the back-off of a ranged attack along a line out of the distance map (`back_off_line` in `src/engine/ai_move.c`): the original reads before or after the distance map, the port stops the line on the last square inside the map; any cell before the map (x below 0, and x = 0 with y = -1) or after it (x = 32 on a map 32 wide, and x = 31 with y = 32) stops it (the reads inside the distance map are a kept quirk, below)
-  - a melee attack of a creature info with random champions and two champions together (`melee_attack_party` in `src/engine/ai.c`; no shipped creature info has both): when no living champion is left to pick, the original attacks champion -1, the port skips the pick
+  - a melee attack of a creature info with random champions and two champions together (`melee_attack_party` in `src/engine/ai_action.c`; no shipped creature info has both): when no living champion is left to pick, the original attacks champion -1, the port skips the pick
   - the AI condition "health below" (`test_condition` in `src/engine/ai.c`) of a creature info with a maximum health of 0 (no shipped creature info has one): the original divides by 0, the port divides by 1
   - the cells in reach of a floor item (`floor_item_in_reach` in `src/engine/ai_move.c`) for another square and direction -1 (no caller passes both): the original writes the cell byte before its table, the port starts at cell 0
 - `ai_search_area` always clears the first search map. The original clears it only for line targets or a cost.
@@ -76,7 +76,7 @@ The code for creatures, projectiles, magic, and minions is in `src/engine/creatu
   - `creature_cell_mask` and the movement table read kinds 5 to 15 from the bytes after their tables (`g_ai_possession_cells` in `src/engine/ai_data.c`: kinds 1 to 4 are the group cell masks, and kind 0 gives no cells without a read)
   - `creature_find_group_near_point` reads 4 offset pairs from an offset of 2 pairs per cell, so a cell reads into the row of the next cell; the port table keeps these pairs
   - the AI commands past `g_ai_command_enabled` read their enabled byte from the data after it: the commands `0x14` to `0x1f` from the distance map and light globals, the commands `0x20` to `0x5b` from the hit offset and hit radius tables of `creature_find_group_near_point` (`g_ai_command_enabled_overrun` in `src/engine/ai_data.c`); the port gives 0 for the commands after them
-  - `get_item_counts` (`src/engine/ai.c`) does not flush the last wanted and extra run after its loop, so a reused count slot keeps the old counts of that run
+  - `ai_get_item_counts` (`src/engine/ai.c`) does not flush the last wanted and extra run after its loop, so a reused count slot keeps the old counts of that run
   - an AI command test that sets no result keeps the result of the command before (`AiCommand` in `src/engine/ai_internal.h`)
   - the activation target of a search (`setup_target_kind`) compares the activation position with the party position in a mismatched order: its x with the party map, its y with the party x, its map with the party y
   - `ai_square_blocks_line` passes its square to `creature_find_group_near_point`: a group found next to the square changes the square that the remaining things of the list test
@@ -85,6 +85,6 @@ The code for creatures, projectiles, magic, and minions is in `src/engine/creatu
   - the action "move two steps" in phase 2: when the fall of the group is pending or the group leaves the dungeon, the AI position takes `g_party.dest_*` from the last nested move (for example a dropped possession or the removal of the group), not the square of the group
   - the back-off of a ranged attack along a line (`back_off_line` in `src/engine/ai_move.c`) has no map test: a step to y = -1 with x above 0 reads the last cell of the column before, a step to x = map width on a map less than 32 wide reads a cell of the next column of the distance map, and a step to y = 32 on a map 32 high (x below 31) reads the first cell of the next column
   - `ai_free_cached_data` frees the plan state of the group whose index is the bitwise OR of the freed group and the group of the update in progress, so during a creature update it can free the plan state of another group, which then plans again
-  - the action "pick up items" with `SUB_REPEAT` (`act_pick_up_items` in `src/engine/ai.c`) ends after one item: the item joins the end of the possessions before the loop takes the next thing
+  - the action "pick up items" with `SUB_REPEAT` (`act_pick_up_items` in `src/engine/ai_action.c`) ends after one item: the item joins the end of the possessions before the loop takes the next thing
   - `magic_add_party_aura` (`0x4565a`) loops over all four champion slots, even those that hold no champion; a slot without a champion counts for the "big aura" test with its stale `aura_value`
   - `magic_add_party_aura` with a new aura type removes the whole champion mask of the cast from the aura events, not only the bit of the champion whose aura ends

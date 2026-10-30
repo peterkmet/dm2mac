@@ -7,17 +7,14 @@ import pytest
 
 from dm2test import gamefiles
 from dm2test.gamefiles import GameFile
-from dm2test.lib import load_lib
 from dm2test.markers import GAME, needs_game
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.gamefile_table.restype = ctypes.POINTER(GameFile)
     lib.gamefile_find_bad.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
     lib.gamefile_find_bad.restype = ctypes.POINTER(GameFile)
-    return lib
 
 
 def find_bad(lib, tmp_path, files):

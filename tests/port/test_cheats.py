@@ -6,12 +6,11 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
+from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.save import Event, Timeline
-from dm2test.scenario import Location, Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.lib import load_lib
+from dm2test.structs import CurrentMap, Location, Party, Timeline, TimelineEvent
+from dm2test.scenario import Position
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 CHEATS = (C.CHEAT_LIGHT, C.CHEAT_IMMORTAL, C.CHEAT_FOOD, C.CHEAT_KILL, C.CHEAT_WALLS, C.CHEAT_MAP)
@@ -20,9 +19,8 @@ FLAGS, DEFENSE, PUSH_RESISTANCE = 0, 2, 0x1D  # byte offsets in a creature info 
 UNPUSHABLE = 0xFE  # push resistance 0xfe and 0xff: the party cannot push the creature
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.game_get_cheats.restype = ctypes.c_uint8
     lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     lib.game_toggle_cheat.argtypes = [ctypes.c_uint8]
@@ -38,11 +36,10 @@ def lib():
     lib.creature_alert.argtypes = [ctypes.c_uint16, Location, ctypes.c_uint, ctypes.c_int, ctypes.c_int]
     lib.creature_process_event.argtypes = [Location, ctypes.c_int]
     lib.move_party.restype = ctypes.c_bool
-    return lib
 
 
 @pytest.fixture
-def game(lib, session):  # noqa: F811
+def game(lib, session):
     """start.DAT with all cheats off; all off again after the test."""
     lib.game_set_cheats(0)
     yield session[0]
@@ -63,11 +60,11 @@ def test_cheat_bits(lib, game):
 # One-hit kill.
 
 
-def first_group(lib, gdat, game, wanted=lambda info: True):  # noqa: F811
+def first_group(lib, gdat, game, wanted=lambda info: True):
     """(group, x, y) of the first creature group of the dungeon whose creature info fits wanted(info); the party enters
     its map, the group is active."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 group = lib.creature_get_group_at(Location(x, y))
@@ -82,12 +79,12 @@ def enter(lib, game, m, x, y, d):
     """The party arrives on (x, y) of map m, looking to d; the groups of the map become active."""
     party = Party.in_dll(lib, "g_party")
     game.party_dir = d
-    party.move_steps, party.cur_map = 0, -1  # the party square follows on the map change
+    party.move_steps, CurrentMap.in_dll(lib, "g_current_map").map = 0, -1  # the party square follows on the map change
     lib.game_enter_map.argtypes = [Position, ctypes.c_bool]
     lib.game_enter_map(Position(m, x, y), False)
 
 
-def unhurt_creature(lib, gdat):  # noqa: F811
+def unhurt_creature(lib, gdat):
     """A creature type whose defense is CREATURE_NO_HURT."""
     for creature in range(256):
         if lib.creature_info(gdat, creature)[DEFENSE] == C.CREATURE_NO_HURT:
@@ -104,7 +101,7 @@ def hit(lib, group, x, y, damage):
 
 
 @pytest.mark.parametrize("cheat", [False, True])
-def test_one_hit_kill(lib, gdat, game, cheat):  # noqa: F811
+def test_one_hit_kill(lib, gdat, game, cheat):
     group, x, y = first_group(lib, gdat, game)
     lib.game_set_cheats(C.CHEAT_KILL if cheat else 0)
     assert hit(lib, group, x, y, 3) == cheat
@@ -112,7 +109,7 @@ def test_one_hit_kill(lib, gdat, game, cheat):  # noqa: F811
         assert lib.thing_word(group, C.GROUP_HEALTH) == HEALTH - 3
 
 
-def test_one_hit_kill_keeps_a_creature_that_cannot_be_hurt(lib, gdat, game):  # noqa: F811
+def test_one_hit_kill_keeps_a_creature_that_cannot_be_hurt(lib, gdat, game):
     group, x, y = first_group(lib, gdat, game)
     word = lib.thing_word(group, C.GROUP_CREATURE)
     lib.thing_set_word(group, C.GROUP_CREATURE, word & 0xFF00 | unhurt_creature(lib, gdat))
@@ -121,7 +118,7 @@ def test_one_hit_kill_keeps_a_creature_that_cannot_be_hurt(lib, gdat, game):  # 
     assert lib.thing_word(group, C.GROUP_HEALTH) == HEALTH
 
 
-def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(lib, gdat, game):  # noqa: F811
+def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(lib, gdat, game):
     # regression: a hit with the cheat moved the next update of the creature to the next game step
     group, x, y = first_group(lib, gdat, game)
     word = lib.thing_word(group, C.GROUP_CREATURE)
@@ -129,9 +126,9 @@ def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(li
     lib.game_set_cheats(C.CHEAT_KILL)
     game.game_time += 100  # the scheduled update lies before the next game step
     timeline = Timeline.in_dll(lib, "g_timeline")
-    before = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    before = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(TimelineEvent))
     lib.creature_alert(group, Location(x, y), 0, 0, 3)
-    after = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(Event))
+    after = ctypes.string_at(ctypes.cast(timeline.events, ctypes.c_void_p), timeline.capacity * ctypes.sizeof(TimelineEvent))
     assert after == before
 
 
@@ -141,7 +138,7 @@ def test_one_hit_kill_keeps_the_update_time_of_a_creature_that_cannot_be_hurt(li
 def find_place(lib, game, wanted):
     """(map, x, y, dir): an empty floor square whose next square in dir fits wanted(map, x, y)."""
     for m in range(lib.dungeon_map_count()):
-        lib.dun_set_current_map(m)
+        lib.dungeon_set_current_map(m)
         for x in range(lib.dungeon_map_width(m)):
             for y in range(lib.dungeon_map_height(m)):
                 if lib.dungeon_square(m, x, y) >> C.SQUARE_TYPE_SHIFT != C.SQUARE_FLOOR or \
@@ -205,7 +202,7 @@ def is_solid_and_unpushable(info):
     return not flags & (C.CREATURE_NOT_SOLID | C.CREATURE_STATIC) and info[PUSH_RESISTANCE] >= UNPUSHABLE
 
 
-def test_walk_through_walls_stops_at_a_creature(lib, gdat, game):  # noqa: F811
+def test_walk_through_walls_stops_at_a_creature(lib, gdat, game):
     group, gx, gy = first_group(lib, gdat, game, is_solid_and_unpushable)
     m = game.party_map
     place = find_place(lib, game, lambda m2, x, y: (m2, x, y) == (m, gx, gy))
@@ -215,14 +212,14 @@ def test_walk_through_walls_stops_at_a_creature(lib, gdat, game):  # noqa: F811
 # The CHTS save block.
 
 
-def save(lib, gdat, path, mode, cheats):  # noqa: F811
+def save(lib, gdat, path, mode, cheats):
     set_mode(lib, mode)
     lib.game_set_cheats(cheats)
     assert lib.save_write(str(path).encode(), str(path.with_suffix(".BAK")).encode(), b"CHEATS", gdat) == C.SAVE_OK
     return path.read_bytes()
 
 
-def load(lib, gdat, path, mode, data):  # noqa: F811
+def load(lib, gdat, path, mode, data):
     set_mode(lib, mode)
     lib.game_set_cheats(C.CHEAT_ALL)
     path.write_bytes(data)
@@ -230,7 +227,7 @@ def load(lib, gdat, path, mode, data):  # noqa: F811
     return lib.game_get_cheats()
 
 
-def test_advanced_save_appends_the_chts_block(lib, gdat, game, tmp_path):  # noqa: F811
+def test_advanced_save_appends_the_chts_block(lib, gdat, game, tmp_path):
     turnbased = save(lib, gdat, tmp_path / "T.DAT", C.GAME_MODE_TURNBASED, C.CHEAT_FOOD)
     mine = save(lib, gdat, tmp_path / "A.DAT", ADVANCED, C.CHEAT_FOOD | C.CHEAT_MAP)
     assert len(mine) == len(turnbased) + 6 and mine[-6:] == b"CHTS\x01" + bytes([C.CHEAT_FOOD | C.CHEAT_MAP])
@@ -243,7 +240,7 @@ def test_advanced_save_appends_the_chts_block(lib, gdat, game, tmp_path):  # noq
 
 
 @pytest.mark.parametrize("damage", ["short", "long", "magic", "version", "bits"])
-def test_damaged_chts_block_gives_no_cheats(lib, gdat, game, tmp_path, damage):  # noqa: F811
+def test_damaged_chts_block_gives_no_cheats(lib, gdat, game, tmp_path, damage):
     data = bytearray(save(lib, gdat, tmp_path / "A.DAT", ADVANCED, C.CHEAT_KILL))
     if damage == "short":
         del data[-1]
@@ -252,12 +249,6 @@ def test_damaged_chts_block_gives_no_cheats(lib, gdat, game, tmp_path, damage): 
     else:
         data[{"magic": -6, "version": -2, "bits": -1}[damage]] |= 0x80
     assert load(lib, gdat, tmp_path / "L.DAT", ADVANCED, bytes(data)) == 0
-
-
-
-class TimelineEvent(ctypes.Structure):
-    _fields_ = [("time_map", ctypes.c_uint32), ("type", ctypes.c_uint8), ("priority", ctypes.c_uint8),
-                ("data", ctypes.c_uint8 * C.TIMELINE_EVENT_DATA_SIZE)]
 
 
 @pytest.mark.parametrize("cheat", [False, True])

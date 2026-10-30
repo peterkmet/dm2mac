@@ -11,7 +11,7 @@ Details: `docs/development.md`.
 - Windows build: `make windows` builds `build/dm2.exe` with MinGW-w64 and the SDL3 MinGW package of `../dm` (in a worktree: `make windows DM_DIR=<path to the dm folder>`).
 - Run: `build/dm2` starts a new game; `build/dm2 --save game/DATA/SKSAVE0.DAT` loads a save.
 - Never stop or restart a running game of the user; after a build, tell the user and let them restart it.
-- Turn-based mode: `build/dm2 --mode turnbased --saves DIR`; `uv run dm2-play --brief get_state` (`docs/llm/llm-mode.md`).
+- Turn-based mode: `build/dm2 --mode turnbased --saves DIR`; `uv run dm2-play --brief get_state` (`docs/llm/turn-based.md`).
 - One test file: `uv run pytest -q tests/<folder>/test_x.py`.
 - Full suite: `make test` runs `tools/test-suite` (parallel; skips a clean tree that already passed; log in `build/test-suite.log`).
 - Check: `make check` (ruff, the standard check, the full suite); `make format` (clang-format); `tools/standard-allowlist` (regenerates `tests/standard/allowlist.txt`); `tools/rename-symbol OLD NEW` (renames a public symbol in `src/`, `tests/`, the symbol table and the docs).
@@ -25,6 +25,6 @@ Details: `docs/development.md`.
 
 ## Conventions
 - `docs/coding-standard.md` is the coding standard of the C port; follow it for every change in `src/`.
-- `docs/formats/`: data formats; `docs/rules/`: game rules. Each page ends with the deviations of the port in "Deviations from the original"; the deviations of the turn-based mode are in `docs/llm/llm-mode.md`. `docs/reference/skull-symbols.csv`: original addresses and names.
+- `docs/formats/`: data formats; `docs/rules/`: game rules. Each page ends with the deviations of the port in "Deviations from the original"; the deviations of the turn-based mode are in `docs/llm/turn-based.md`. `docs/reference/skull-symbols.csv`: original addresses and names.
 - `docs/architecture.md`: the layers; `docs/development.md`: build, test and check; `docs/decompiling.md`: the Ghidra output of `reference/`.
 - Plans in `research/superpowers/` (private, optional); manual checks in `docs/manual-test-checklist.md`; open work in `docs/todo.md`.

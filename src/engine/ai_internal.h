@@ -3,27 +3,20 @@
 #define DM2_ENGINE_AI_INTERNAL_H
 /* Prefixes: ai_ */
 
-/* The shared private declarations of the creature AI (ai.c, ai_data.c, ai_move.c): the AI tables of SKULL.EXE, the
-   square that the AI read last, and the perception, command test and path functions of ai_move.c that ai.c calls. */
+/* The shared private declarations of the creature AI (ai.c, ai_action.c, ai_data.c, ai_move.c, ai_path.c): the AI
+   tables of SKULL.EXE, the square that the AI read last, the helpers that the files share, and the perception, command
+   test and path functions that ai.c and ai_action.c call. */
 
 #include <stdbool.h>
 #include <stdint.h>
 #include "ai.h"
+#include "creature.h"
 #include "dungeon.h"
-#include "move.h"
 #include "sensor.h"
 
-/* The AI tables of SKULL.EXE (ai_data.c). Records link each other by their SKULL.EXE address. */
-#define AI_SCRIPTS_BASE          0x73020u
-#define AI_TARGET_IDLE           0x731d2u /* the target of a creature that waits or wanders */
-#define AI_CHOICES_WANDER        0x73392u /* ... of a creature that wanders at random */
-#define AI_CHOICES_NONE          0x73399u /* the plan choices of a creature that does nothing */
 /* The sizes of the AI tables and of their records. */
 #define AI_PLAN_COUNT            63
 #define AI_TARGET_SIZE           14
-#define AI_PLAN_STEP_SIZE        7
-#define AI_CHOICE_SIZE           7
-#define AI_MOOD_ENTRY_SIZE       6 /* a mood mask word and the address of its plan choices */
 #define AI_SCRIPTS_SIZE          8030
 #define AI_ACTION_COUNT          86
 #define AI_MOVE_TEST_KINDS       20 /* the move test kinds of g_ai_command_enabled */
@@ -91,6 +84,43 @@ typedef struct {
     uint16_t location;
 } AiLineTarget;
 
+/* The filter words of a target record that filter nothing. */
+#define TARGET_NO_ITEM     0xffff /* a target record without an item filter */
+#define CANDIDATE_MASK_ALL 0xffff
+
+/* A target record (14 bytes): what a scanner looks for. */
+typedef struct {
+    int8_t kind;       /* candidate kind */
+    uint8_t condition; /* COND_*, bit 6 plan test, bit 7 negation */
+    int16_t condition_arg;
+    uint16_t item; /* item filter or marker */
+    uint16_t mask;
+    int8_t cost;
+    uint8_t value;
+    int8_t wanted; /* the items of the record that the creature wants; -1: the count before goes on */
+    int8_t extra;  /* ... that it wants on top of them */
+    int8_t scan;   /* the scanner kind that uses the record */
+    uint8_t more;  /* 0 for the last record of a list */
+} AiTarget;
+
+/* The scan that adds candidates: its plan, the scan kind and the scan argument that the candidates keep. */
+typedef struct {
+    int plan;
+    int kind;
+    int arg;
+} TargetScan;
+
+/* AI tables and helpers that several sections share (ai.c) */
+
+/* A target record from the AI tables. */
+AiTarget ai_read_target(uint32_t addr);
+/* The distance between two squares along the axes. */
+int16_t ai_manhattan(Location a, Location b);
+/* The facing of the group in the AI context. */
+int ai_facing(void);
+/* Keeps an animation step as the animation of the group; returns how the animation goes on. */
+AnimStepResult ai_set_animation(AnimStep step);
+
 /* The update context (ai.c) */
 
 /* Makes map the current map of the AI and reads where the party stands as that map sees it. */
@@ -98,11 +128,45 @@ void ai_set_map(int16_t map);
 /* The stored path of the group in the AI context, NULL when it has none. */
 uint8_t *ai_find_path(void);
 
+/* Target scanners (ai.c) */
+
+/* Adds a candidate destination for the search, with its cost lowered away from the party map. */
+void ai_add_candidate(const TargetScan *scan, uint32_t record, const AiTarget *t, int8_t bonus, uint16_t marker);
+/* The item counts of a target list for a scan: how many of each wanted item the creature carries. */
+AiItemCounts *ai_get_item_counts(uint32_t targets, int scan);
+
+/* Plan commands and actions (ai_action.c) */
+
+/* A creature that cannot stay flees: it sees a missile, is not alert, cannot attack, or by chance by its armor;
+   true when it moved. */
+bool ai_try_flee(uint32_t class_flags);
+/* Runs a plan command for the creature; returns AI_RESULT_* or the result of the command. */
+int ai_exec_plan_command(int command);
+/* Runs the action of the creature at the acting step of its animation. The result is 0 when it was done; else the
+   low byte of the result interrupts the animation. */
+int ai_execute_action(void);
+
 /* Creature perception and movement (ai_move.c): the functions work on the AI context; the command tests set
    g_ai.command_result and return it. */
 
 /* Squares (ai_move.c) */
 
+/* The cell of (x, y) in the search map cells. */
+uint8_t *ai_search_cell(uint8_t *cells, int16_t x, int16_t y);
+/* True for (x, y) on the current map. */
+bool ai_on_map(int16_t x, int16_t y);
+/* A location word of (x, y) of map. */
+uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map);
+/* The x of the square of the group in the AI context. */
+int16_t ai_own_x(void);
+/* The y of the square of the group in the AI context. */
+int16_t ai_own_y(void);
+/* True for the party square on the current map. */
+bool ai_at_party(int16_t x, int16_t y);
+/* The AI class flags of the creature. */
+uint32_t ai_class_flags(void);
+/* The enabled byte of a command; the commands past the table read the data after it in SKULL.EXE. */
+int ai_enabled_byte(int command);
 /* True for squares that the sight of a creature does not cross: walls, closed doors that hide, closed fake walls. */
 bool ai_square_is_obstacle(Location at);
 /* Walks the squares of the line from target toward viewer: the square distance of the ends (1 for adjacent
@@ -111,6 +175,8 @@ int16_t ai_trace_line(Location viewer, Location target, bool (*blocked)(Location
 /* Makes the square at of the current map the square that the AI reads; keeps the cache when it is the same
    square. */
 void ai_cache_square(Location at);
+/* The first thing of the square in the AI cache, read once. */
+uint16_t ai_cached_first_thing(void);
 /* Turns the group toward dir (action turn left or right); not passed when it already faces dir. */
 AiCommand ai_turn_toward(int16_t dir);
 /* Looks along the lines from the square from (dir -1: all four) for a target of filter in attack range: a group, or for a
@@ -151,13 +217,13 @@ int ai_count_matching_items(int16_t filter, uint16_t first_thing, int16_t cell, 
 /* The AI marker text on the square in the AI cache for the level delta with kind id: its id, -1 none. */
 int16_t ai_find_marker_by_id(int16_t level_delta, int16_t id);
 
-/* The path search (ai_move.c) */
+/* The path search (ai_path.c) */
 
 /* The breadth-first search from the square from with the move command: the nearest of count candidates; returns its index,
    -1 for none. out_path gets the steps to it (2 bytes each). */
 int ai_search_area(Location from, int command, int count, AiCandidate *candidates, uint8_t *out_path);
 
-/* Paths (ai_move.c) */
+/* Paths (ai_path.c) */
 
 /* The direction of the next step of the stored path into the action; returns the steps left (0: none). A group
    at the end of its path forgets the found square. */
@@ -166,11 +232,19 @@ int ai_next_path_step(void);
    and the next steps (at most 5) of the path are free; true when the path holds. */
 bool ai_plan_path(void);
 
-/* Shared state of the creature movement (ai_move.c): the move directions past the map, the last read square. */
+/* Shared state of the creature movement (ai_move.c, ai_path.c): the move directions past the map, the search maps, the
+   AI marker levels, the last read square, the light sums and the party map of the last refresh, the search direction
+   bits. */
 /* The directions of a move test past the four map directions. */
-#define DIR_LEVEL_UP    4
-#define DIR_LEVEL_DOWN  5
-#define DIR_KEEP_FACING 6 /* a move to the given square that keeps the facing */
+#define DIR_LEVEL_UP   4
+#define DIR_LEVEL_DOWN 5
+
+/* The search queue and the search maps. */
+#define SEARCH_CELL_SIZE   4 /* a square of a search map: distance, direction, previous square */
+#define SEARCH_COLUMN_SIZE (MAP_SIDE_MAX * SEARCH_CELL_SIZE)
+/* AI marker levels: the markers whose id holds the sides of a square that a creature does not enter, and the
+   markers of level 2 that count with them while their text shows. */
+#define MARKER_LEVEL_SIDES 1
 
 /* More of the square that the AI read last; ai_cache_square resets it. */
 typedef struct {
@@ -184,5 +258,10 @@ typedef struct {
                                    a wall: cells[0] is the face toward the creature */
 } AiSquareScan;
 extern AiSquareScan g_ai_square_scan; /* exported for the tests */
+
+/* The light sums of the last light search and the party map of the last refresh; exported for the tests. */
+extern int16_t g_cached_light_sum, g_cached_explosion_light_sum, g_last_party_map;
+/* The shift register that picks the first search direction; exported for the tests. */
+extern uint16_t g_search_direction_bits;
 
 #endif /* DM2_ENGINE_AI_INTERNAL_H */

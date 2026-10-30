@@ -1,5 +1,7 @@
 # Range 5 notes (0x3ba23-0x49ef8)
 
+Analysis notes of the address range 0x3ba23-0x49ef8; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 208 functions. Names are in `range-5.csv`, new globals in `range-5-globals.csv`.
 
 ## Anchor corrections

@@ -1,7 +1,7 @@
 # Advanced mode
 
 The exact rules of the advanced mode, for developers. The advanced mode is port only; the player view is in the
-[Player manual](../manual.md#advanced-features).
+[Player manual](../manual.md#advanced-mode).
 
 ## Advanced keys
 

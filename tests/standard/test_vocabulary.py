@@ -17,7 +17,7 @@ STATE_TABLES = {
 
 
 def section():
-    text = (ROOT / "docs/llm/llm-mode.md").read_text()
+    text = (ROOT / "docs/llm/control-socket.md").read_text()
     start = text.index("## Protocol vocabulary")
     end = text.find("\n## ", start + 1)
     return text[start : end if end > 0 else None]
@@ -50,4 +50,4 @@ def protocol_names():
 def test_every_protocol_name_is_documented():
     documented = section()
     missing = sorted(name for name in protocol_names() if f"`{name}`" not in documented)
-    assert not missing, f"names missing in docs/llm/llm-mode.md, Protocol vocabulary: {missing}"
+    assert not missing, f"names missing in docs/llm/control-socket.md, Protocol vocabulary: {missing}"

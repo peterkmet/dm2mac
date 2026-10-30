@@ -8,22 +8,17 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.markers import ROOT
-from dm2test.control import GameWithChampions
-from dm2test.input import MainLoop
-from dm2test.interface import ActionArea
-from dm2test.scenario import Party, Position, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.lib import load_lib
+from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, ViewSquare
+from dm2test.scenario import Position
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.seen_visible.argtypes = [Position, ctypes.c_int16, ctypes.POINTER(SeenSquare)]
     lib.seen_visible.restype = ctypes.c_int
     lib.seen_mark.argtypes = [Position, ctypes.c_int16]
     lib.seen_is_seen.argtypes = [Position]
     lib.seen_is_seen.restype = ctypes.c_bool
-    return lib
 
 STATE, VIEW, MAP = C.STATE_JSON_STATE, C.STATE_JSON_VIEW, C.STATE_JSON_MAP
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
@@ -53,16 +48,17 @@ def turnbased(lib):
     mode.value = VANILLA
 
 
-def load(lib, gdat, data, tmp_path):  # noqa: F811
+def load(lib, gdat, data, tmp_path):
     """A save ready to play, as build/dm2 --save starts it (dm2test.input.session); returns the game record."""
     path = tmp_path / "SKSAVE0.DAT"
     path.write_bytes(data)
     assert lib.save_load(str(path).encode(), gdat) == 0
     assert lib.zone_load(gdat) and lib.pal_load_color_ramps(gdat) and lib.text_init(gdat)
     lib.draw_init(gdat)
-    game = GameWithChampions.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     party = Party.in_dll(lib, "g_party")
-    party.cur_map, party.new_map, party.move_steps, party.push_pending_group = -1, -1, 0, 0xFFFF
+    CurrentMap.in_dll(lib, "g_current_map").map = -1
+    party.new_map, party.move_steps, party.push_pending_group = -1, 0, 0xFFFF
     lib.view_enter_map(game.party_map)
     lib.ui_reset()
     lib.money_init_coin_table()
@@ -74,7 +70,7 @@ def load(lib, gdat, data, tmp_path):  # noqa: F811
 
 
 @pytest.fixture
-def game(lib, gdat, start, tmp_path):  # noqa: F811
+def game(lib, gdat, start, tmp_path):
     return load(lib, gdat, start, tmp_path)
 
 
@@ -135,7 +131,7 @@ def test_hand_menus_do_not_change_the_open_menu(lib, game):
     assert len(state["action_menu"]["actions"]) == count.value > 0
 
 
-def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
+def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):
     """weather and day_time are present only while outdoor is true (outside.DAT)."""
     state = part(lib, STATE)
     assert state["outdoor"] is False and "weather" not in state and "day_time" not in state
@@ -151,12 +147,6 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):  # noqa: F811
 
 class SeenSquare(ctypes.Structure):
     _fields_ = [(name, ctypes.c_int16) for name in ("depth", "side", "x", "y")]
-
-
-class ViewSquare(ctypes.Structure):
-    """aspect.h ViewSquare: what the view shows of one square (18 bytes)."""
-    _fields_ = [("x", ctypes.c_int8), ("y", ctypes.c_int8), ("aspect", ctypes.c_uint16), ("square", ctypes.c_uint16),
-                ("first_thing", ctypes.c_uint16), ("side", ctypes.c_uint16 * 4), ("text", ctypes.c_uint16)]
 
 
 SEEN_VISIBLE_MAX = C.SEEN_VISIBLE_MAX

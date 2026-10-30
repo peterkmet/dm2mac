@@ -1,25 +1,21 @@
-"""The push arrow under the mouse (src/ui/input.c): it stays pressed in the arrow panel while the mouse selects it."""
+"""The push arrow under the mouse (src/ui/input_feedback.c): it stays pressed in the arrow panel while the mouse selects it."""
 
 import ctypes
 
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.lib import load_lib
-from dm2test.view import Bitmap
+from dm2test.input import run_ticks
+from dm2test.structs import Bitmap, Party
 
 KEY_FORWARD, KEY_TURN_LEFT, KEY_TURN_RIGHT = C.KEYPAD_FORWARD, C.KEYPAD_TURN_LEFT, C.KEYPAD_TURN_RIGHT
 LEFT_ARROW_ZONE = C.ZONE_ARROW_FIRST  # the zone of PUSH_ARROW_LEFT
 MOUSE_LEFT, MOUSE_MIDDLE = (20, 101), (112, 101)  # left of the viewport middle, and the middle without an arrow
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.input_key_down.argtypes = [ctypes.c_uint16]
-    return lib
 
 
 def keys(lib, *keys):
@@ -44,7 +40,7 @@ def arrow_pixels(lib, mouse):
     return [ctypes.string_at(base + (rect[1] + y) * screen.width + rect[0], rect[2]) for y in range(rect[3])]
 
 
-def test_the_push_arrow_under_the_mouse_stays_pressed(lib, session):  # noqa: F811
+def test_the_push_arrow_under_the_mouse_stays_pressed(lib, session):
     # The party climbs the ladder to the first room (map 22), walks to the table (1, 6), and grabs it.
     game, _ = session
     keys(lib, KEY_TURN_RIGHT, KEY_TURN_RIGHT)

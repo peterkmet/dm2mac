@@ -1,5 +1,4 @@
-"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (Step 16,
-ai_move.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
+"""Differential tests of the creature perception, the AI command tests, the item filters, and the path search (ai_move.c, ai_path.c) against the original code: start.DAT in both, the same AI context, the same calls, then the results, the
 AI context, the dungeon, and the random seed must be equal."""
 
 import ctypes
@@ -10,14 +9,9 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.oracle import G_RANDOM_SEED
-from dm2test.creature import creatures  # noqa: F401 (fixture)
-from dm2test.scenario import Location, Position, gdat, start  # noqa: F401 (fixtures)
-from dm2test.lib import load_lib
+from dm2test.scenario import Position
+from dm2test.structs import Location
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88
 DUN_SET_CURRENT_MAP = 0x1C724
@@ -41,7 +35,7 @@ SCAN_C, SCAN_ORIGINAL = struct.Struct("<2B5h3B4Bx"), struct.Struct("<14B")
 SCAN_UNUSED = 7
 # Functions of later parts that both sides stub: (address, stack arguments).
 
-# Original functions of ai_move.c.
+# Original functions of ai_move.c and ai_path.c.
 F = {
     "ai_square_is_obstacle": 0x2B96A, "ai_square_blocks_line": 0x2B9FC,
     "ai_blocks_line_to_target": 0x2BB78, "ai_trace_line": 0x2BBAD,
@@ -151,7 +145,7 @@ class Ai:
         for addr in (0x3BCA5, 0x3F406, 0x3F3C2):
             if addr in sc.view.no_ops:
                 emu.uc.hook_del(sc.view.no_ops.pop(addr))
-        if F["ai_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of Step 14
+        if F["ai_refresh_party_maps"] in sc.stubs:  # dm2test.scenario.STUBS: the hook of the party map refresh
             emu.uc.hook_del(sc.stubs.pop(F["ai_refresh_party_maps"]))
         emu.write_u32(G_MEM_FREE_BYTES, 0x7FFFFFFF)
         self.fix_cell_mask()
@@ -164,7 +158,7 @@ class Ai:
         lib.ai_begin.argtypes = [ctypes.c_uint16, Location, ctypes.c_int, ctypes.c_void_p]
         lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
         lib.ai_scratch_push.restype = ctypes.c_void_p
-        lib.dun_set_current_map.argtypes = [ctypes.c_int16]
+        lib.dungeon_set_current_map.argtypes = [ctypes.c_int16]
         lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
         lib.ai_trace_line.restype = ctypes.c_int16
         for name in LOCATION_ARGS:
@@ -245,7 +239,7 @@ class Ai:
         return out
 
     def set_map(self, map_):
-        self.lib.dun_set_current_map(map_)
+        self.lib.dungeon_set_current_map(map_)
         self.emu.call(DUN_SET_CURRENT_MAP, map_)
 
     def begin(self, group, x, y, map_):
@@ -295,7 +289,7 @@ class Ai:
         assert mine_party == (x, y, m, d), (where, "party")
         assert ctypes.c_uint16.in_dll(self.lib, "g_search_direction_bits").value == \
             struct.unpack("<H", self.emu.read(G_DIRECTION_BITS, 2))[0], (where, "direction bits")
-        assert ctypes.c_int16.in_dll(self.lib, "g_party").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
+        assert ctypes.c_int16.in_dll(self.lib, "g_current_map").value == s16(struct.unpack("<H", self.emu.read(0x72244, 2))[0]), \
             (where, "current map")
         mine, theirs = self.sc.active_groups()
         for i in range(0, len(mine), C.ACTIVE_GROUP_SIZE):
@@ -546,7 +540,7 @@ def test_try_attack(ai):
                 tx, ty, d = x + dx * k, y + dy * k, rng.choice((-1, -1, rng.randrange(4)))
             if rng.random() < 0.3:
                 # the party square as the target
-                tx, ty = ai.sc.party.square_x, ai.sc.party.square_y
+                tx, ty = ai.sc.current_map.square_x, ai.sc.current_map.square_y
             mine, theirs = ai.call("ai_try_attack", mode, x, y, tx, ty, d)
             assert mine == theirs, (g, n, mode, tx, ty, d)
             attacked += mine
@@ -960,7 +954,7 @@ def add_thing(ai, type_, words, map_, x, y, cell):
         lib.thing_set_word(mine, 2 + 2 * i, w)
         emu.write(record + 2 + 2 * i, struct.pack("<H", w))
     thing = mine | cell << C.THING_CELL_SHIFT
-    saved = ai.sc.party.cur_map
+    saved = ai.sc.current_map.map
     ai.set_map(map_)
     assert lib.dungeon_link_thing_to_square(thing, map_, x, y) == 1
     emu.call(DUN_LINK_THING_TO_SQUARE, thing, 0, x, y)
@@ -970,10 +964,10 @@ def add_thing(ai, type_, words, map_, x, y, cell):
 
 def add_projectile(ai, payload, direction, map_, x, y, cell):
     """A projectile with its move event (the direction in data byte 3) in both."""
-    from dm2test.save import Event
+    from dm2test.structs import TimelineEvent
     lib, emu = ai.lib, ai.emu
     thing = add_thing(ai, C.THING_PROJECTILE, (payload, 0x40, 0), map_, x, y, cell)
-    event = Event((ai.sc.time() + 50) | map_ << C.EVENT_MAP_SHIFT, C.EVENT_PROJECTILE_MOVE, 0,
+    event = TimelineEvent((ai.sc.time() + 50) | map_ << C.EVENT_MAP_SHIFT, C.EVENT_PROJECTILE_MOVE, 0,
                   (ctypes.c_uint8 * 6)(*struct.pack("<HBB2x", thing, 0, direction << 2)))
     buf = ai.sc.view.alloc(12)
     emu.write(buf, bytes(event))
@@ -1113,7 +1107,7 @@ def test_merchant_commands(ai):
             set_word(ai, t, 0, ENDOFLIST if nxt is None else nxt & C.THING_ID_MASK | cell << C.THING_CELL_SHIFT)
         set_word(ai, counter, 2, first & C.THING_ID_MASK | 1 << C.THING_CELL_SHIFT)
         # the change coins of the last round are freed: the records do not run out (no discarded item is reused,
-        # dun_get_discarded_thing)
+        # discard_find_thing)
         t = lib.thing_word(g, 2)
         while t != ENDOFLIST:
             nxt = lib.dungeon_next_thing(t)

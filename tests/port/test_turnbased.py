@@ -14,16 +14,9 @@ import pytest
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.control_client import request
-from dm2test.control import PALETTE_COLORS, RGB, GameWithChampions
-from dm2test.dialog import Session
-from dm2test.input import session  # noqa: F401 (a fixture)
-from dm2test.scenario import Location, gdat, start  # noqa: F401 (gdat and start are fixtures)
-from dm2test.lib import load_lib
+from dm2test.control import PALETTE_COLORS, RGB
+from dm2test.structs import Game, Location, Session
 
-
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
 TURN_WAIT_MAX_TICKS = 5000
@@ -39,7 +32,7 @@ NORTH = C.DIR_NORTH
 
 
 @pytest.fixture
-def tb(lib, gdat, session):  # noqa: F811
+def tb(lib, gdat, session):
     """start.DAT in the turn-based mode with the control socket open and a thread that runs control_frame as the turn
     loop of main.c does; yields the socket path, the game record, the main loop."""
     poll, frame, pending = lib.transport_poll, lib.control_frame, lib.control_is_turn_pending
@@ -69,7 +62,7 @@ def tb(lib, gdat, session):  # noqa: F811
     game, loop = session
     loop.end = 0  # a game over of another test ends with the test
     try:
-        yield path, GameWithChampions.from_address(ctypes.addressof(game)), loop
+        yield path, Game.from_address(ctypes.addressof(game)), loop
     finally:
         stop.set()
         thread.join()
@@ -238,7 +231,7 @@ def test_act_many_stops_on_a_new_creature(tb, lib):
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
     lib.creature_create_group.restype = ctypes.c_uint16
     lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.dun_set_current_map(game.party_map)
+    lib.dungeon_set_current_map(game.party_map)
     assert lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - GROUP_DISTANCE)) != 0xFFFF
     r = request({"cmd": "act_many", "actions": ["move_forward"] * 5}, path, timeout=30)
     assert r["ok"] and r["ran"] == 2 and r["stopped"] == "creature" and "error" not in r
@@ -357,7 +350,7 @@ def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
     lib.creature_create_group.restype = ctypes.c_uint16
     lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.dun_set_current_map(game.party_map)
+    lib.dungeon_set_current_map(game.party_map)
     group = lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - 1))
     assert group != 0xFFFF
     lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)

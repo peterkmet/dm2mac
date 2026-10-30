@@ -19,6 +19,33 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 | `bestiary.md` | Each creature type (its number in the view): where you met it, how strong it is, what works against it. |
 | `bugs.md` | What looks wrong in the game (this port is under test). |
 
+## Start and end of a session
+
+### Start of a session
+
+1. Read this file.
+2. Read your files in `playthroughs/current/player/`: `progress.md`, `lessons.md`, the map of the current level, `party.md`, `spells.md`.
+3. Run `uv run dm2-play --brief get_state`. If the position or the time does not match `progress.md`, run `uv run dm2-play load` and check again.
+4. If the coordinator gives you a goal, it replaces the goal in `progress.md`. Write it into `progress.md` first.
+5. Count the run's calls: `wc -l < playthroughs/current/coordinator/calls.log`. Note the number. The coordinator's call limit counts from it.
+
+### Rules
+
+- Play only through `uv run dm2-play`, in the repository root. Do not read or change source code, game data files, or the decompiled code. Do not search the internet for tips, maps, or walkthroughs.
+- Your general knowledge of Dungeon Master II is allowed.
+- Do not start or stop the game program. The coordinator runs it. Do not send `quit` or `new_game`.
+- The user watches the window. Before each `dm2-play` call, write one short line of text: what you do next and why.
+- Each call costs tokens. Use `--brief` for each call. Plan several steps per call: a whole route or a whole fight in one `act_many`, a long rest in one `wait`. Keep your text and your thinking per call short: do not repeat the state, decide the next steps.
+- `act_many` stops early when something happens (see [Batches](#batches)). Check why it stopped before you continue.
+- A script may compute a route or an action list from `get_map` and send it as one `act_many`.
+- A script must not loop over `get_state`, `get_view`, `wait`, or `act`: each turn is your decision.
+- Ask for `get_map` only when you plan a route: one `get_map` per route plan, not one per step. The `act`, `act_many`, and `wait` responses already contain the state and the view.
+- The view gives wall texts (`text`), locks (`lock`), and shops (`shop`). Use screenshots to read the minion map, a shop display, or a dialog, and to check a suspected bug.
+
+### End of a session
+
+Stop when the coordinator's limit is reached, when the game stops answering, or when a bug blocks progress. Count the calls with `wc -l < playthroughs/current/coordinator/calls.log` from time to time. 20 calls before the limit, save the game and update your files, then stop. The report: where the party is, party status, what you achieved, the current goal, bugs found, and a request for an earlier checkpoint if the save is bad.
+
 ## The party
 
 - A new game starts with one champion, Torham. The party has up to 4 champions.
@@ -161,28 +188,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 This port is under test. If something looks wrong, write it in `bugs.md` with the steps and the state. If the game stops answering or a bug blocks progress, stop and report.
 
-## How to play
-
-### Start of a session
-
-1. Read this file.
-2. Read your files in `playthroughs/current/player/`: `progress.md`, `lessons.md`, the map of the current level, `party.md`, `spells.md`.
-3. Run `uv run dm2-play --brief get_state`. If the position or the time does not match `progress.md`, run `uv run dm2-play load` and check again.
-4. If the coordinator gives you a goal, it replaces the goal in `progress.md`. Write it into `progress.md` first.
-5. Count the run's calls: `wc -l < playthroughs/current/coordinator/calls.log`. Note the number. The coordinator's call limit counts from it.
-
-### Rules
-
-- Play only through `uv run dm2-play`, in the repository root. Do not read or change source code, game data files, or the decompiled code. Do not search the internet for tips, maps, or walkthroughs.
-- Your general knowledge of Dungeon Master II is allowed.
-- Do not start or stop the game program. The coordinator runs it. Do not send `quit` or `new_game`.
-- The user watches the window. Before each `dm2-play` call, write one short line of text: what you do next and why.
-- Each call costs tokens. Use `--brief` for each call. Plan several steps per call: a whole route or a whole fight in one `act_many`, a long rest in one `wait`. Keep your text and your thinking per call short: do not repeat the state, decide the next steps.
-- `act_many` stops early when something happens (see [Batches](#batches)). Check why it stopped before you continue.
-- A script may compute a route or an action list from `get_map` and send it as one `act_many`.
-- A script must not loop over `get_state`, `get_view`, `wait`, or `act`: each turn is your decision.
-- Ask for `get_map` only when you plan a route: one `get_map` per route plan, not one per step. The `act`, `act_many`, and `wait` responses already contain the state and the view.
-- The view gives wall texts (`text`), locks (`lock`), and shops (`shop`). Use screenshots to read the minion map, a shop display, or a dialog, and to check a suspected bug.
+## Commands
 
 ### Commands you use most
 
@@ -360,8 +366,9 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 | 10 | `neck` |
 | 11 | `ready_quiver_1` |
 | 12 | `action_quiver_1` |
-| 13 | `backpack_1` |
-| 14-29 | `backpack_2` to `backpack_17` |
+| 13 | `backpack_1` (left of the second row) |
+| 14-21 | `backpack_2` to `backpack_9` (the first row) |
+| 22-29 | `backpack_10` to `backpack_17` (the rest of the second row) |
 | 30-37 | the slots of the open chest |
 
 The ready hand loads ammunition from `ready_quiver_1`, then `ready_quiver_2`. The action hand loads from `action_quiver_1`, then `action_quiver_2` to `action_quiver_4`.
@@ -405,16 +412,16 @@ The response of `look` has `look: {name, lines}`: the texts of the eye panel. `n
 - `messages`: the rows of the message area that hold text.
 - `outdoor`; outdoors also `weather` (`clouds`, `rain`, `wind`) and `day_time`.
 
-An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `container`, or `misc`. A scroll also has `text`.
+An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `container`, or `misc`. A scroll also has `text`. A potion name keeps the rune glyph letters of the game font (for example `` ` `` to `e` for the power runes).
 
 ### View fields
 
 - `facing`, `darkness`.
 - `squares[]`: the visible squares. `depth` is 0 (the party row) to 4. `side` is a number from -3 (outer left) to 3 (outer right); 0 is the lane of the party. Each square has `x`, `y`, and `element` (`wall`, `floor`, `door`, `pit`, `stairs_up`, `stairs_down`, `teleporter`).
 - A square that is not a wall has `creatures[]` (`type`, `count`), `objects[]` (`cell`, `name`), and `flying[]`. A door square has `door` (`open`, `closed`, `partly_open`, `broken`) and `button` (`true` if it has a door button). A floor square can have `floor_ornament`: the number of its picture (for example a pressure pad). Record what each number means.
-- `creatures[].type` is the number of the creature type: the game data has no creature names. Give each number a name in `bestiary.md`. A merchant is a creature too.
+- `creatures[].type` is the number of the creature type: the game data has no creature names. Each creature group on a square is one entry with `count` 1. Give each number a name in `bestiary.md`. A merchant is a creature too.
 - A `flying` entry has `kind` and `name`. A projectile has `kind` `projectile` and, as `name`, the object name, or `spell` for a spell. An explosion has `kind` `explosion`, `type` (the number), and `name`: `fireball`, `slime`, `lightning`, `harm_non_material`, `door_toggle`, `poison_bolt`, `poison_cloud`, `push`, `pull`, `door_set`, `missile_wall`, `death_cloud`, `storm_lightning`, `storm_blast`, or `smoke`. Any other type has its number as `name`.
-- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of any other picture). `facing` is the direction that the face points to.
+- A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of any other picture). `shop` is the name of the item on the display, or `true` before the display has chosen an item. `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists the pile from top (`objects[0]`, also in `top`) to bottom; `take_object` takes `objects[0]`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
 - `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
@@ -449,8 +456,4 @@ The view shows what a player sees. It shows no creature health.
  2 ####D#####
 ```
 
-The map shows the squares that the party has seen, as they are now, even if they changed after you saw them. It does not show wall features: a wall is `#`. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map.
-
-### End of a session
-
-Stop when the coordinator's limit is reached, when the game stops answering, or when a bug blocks progress. Count the calls with `wc -l < playthroughs/current/coordinator/calls.log` from time to time. 20 calls before the limit, save the game and update your files, then stop. The report: where the party is, party status, what you achieved, the current goal, bugs found, and a request for an earlier checkpoint if the save is bad.
+The map shows the squares that the party has seen, as they are now, even if they changed after you saw them. It does not show wall features: a wall is `#`. It does not show a floor sensor without an ornament. What is on a wall (switches, locks, alcoves, fountains, shops, texts) is in the view; keep it in your own map.

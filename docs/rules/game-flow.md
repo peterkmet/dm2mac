@@ -26,7 +26,7 @@ The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, an
 - A load restores the timed effects of the save (`restore_timed_effects`, [champions.md](champions.md#the-leader-hand)). The start of the loaded game (`play_start_session`) puts the saved object back into the leader hand (`champ_init_party_state`) with the leader index -1, so the object adds no item effects; its name shows in the message area.
 - The load relinks the damage display event of each champion (`relink_events`): `0xffff`, or the index of the queued hide damage event (`0x0c`) of that champion.
 - If the slot file is missing, a load takes the `.BAK` file and renames it back. If `.BAK` is also missing and no game is in memory, a new game starts from `DUNGEON.FTL` if that file exists. A damaged file shows "THE GAME IS DAMAGED!" and ends the program if no game is in memory. After a load, "LOADING GAME..." stays until the session starts, and `play_start_session` shows "GAME LOADED, READY TO PLAY".
-- If the records of a thing type run out, `dun_get_discarded_thing` frees one:
+- If the records of a thing type run out, `discard_find_thing` frees one:
   - It searches the maps from the map after the last search, with the party map last. The party map gets a second search, in which a shop display near the party keeps one item of its kind and lets the other things of its square go.
   - It takes a thing of the type without the "do not discard" bit, not within 5 squares of the party on its map, and not on a square with a protecting sensor or text ornament subtype 4.
   - It removes the thing from its square (or from the possessions of a static creature).
@@ -68,7 +68,7 @@ The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, an
 - Fixes:
   - A failed load of the last slot after the party's death shows the error dialog (the original asks for the game disk).
   - The link pass marks no square if no map lies below a pit (the original writes into map -1).
-  - The projectile that `dun_get_discarded_thing` frees is unlinked from its own map (the original unlinks from the current map).
+  - The projectile that `discard_find_thing` frees is unlinked from its own map (the original unlinks from the current map).
   - The name editor does not read before an empty field, and slot names are bounded to 31 characters.
   - A dungeon with a map of level 63 does not load (the original writes past its level tables).
   - The level digit scan stops at the end of the start text (the original reads past it).
@@ -78,7 +78,7 @@ The code is in `src/ui/session.c`, `src/ui/dialog.c`, `src/engine/dungeon.c`, an
   - The load of `DUNGEON.DAT` stops for a thing type with more records than its cap or with records of a type without a record size, and the free records of a new game stay inside the cap (the original reads and writes past its record buffers).
   - A dialog with more than 10 button texts draws only the texts that have a zone in the zone table (the original reads past the table).
 - Kept quirks:
-  - `dun_get_discarded_thing` returns a door, teleporter, scroll, or container record without taking it from its square.
+  - `discard_find_thing` returns a door, teleporter, scroll, or container record without taking it from its square.
   - A RESTART that the question of dialog `0x0c` cancels stays set for the next quit.
   - A cancelled load leaves slot 0.
   - The link pass of two linked teleporters drops the movable things after the first movable thing of the target square (`merge_object_lists`).

@@ -10,6 +10,7 @@
 #include "game.h"
 #include "game_text.h"
 #include "ids.h"
+#include "interface_state.h"
 #include "minion.h"
 #include "music.h"
 #include "optmenu.h"

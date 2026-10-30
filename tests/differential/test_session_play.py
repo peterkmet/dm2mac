@@ -1,4 +1,4 @@
-"""Step 20 scenarios with the emulator oracle (dm2test.scenario.Scenario on start.DAT): a save through the save dialogs and its
+"""Session scenarios with the emulator oracle (dm2test.scenario.Scenario on start.DAT): a save through the save dialogs and its
 load through the load dialog, the end of the game by the end sensor, and the end after the death of the party."""
 
 import ctypes
@@ -7,23 +7,20 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.dialog import DialogState, InputMatch, Session, find_point, main_loop_quit, program_start_after  # noqa: F401 (an autouse fixture)
-from dm2test.scenario import Scenario, WALL_END_GAME, gdat, square_event, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.dialog import DialogState, InputMatch, find_point, main_loop_quit
+from dm2test.scenario import Scenario, WALL_END_GAME, square_event
 from dm2tools.emu import EmuError
 from dm2test.save import original_load, original_save
+from dm2test.structs import Game, Session
 from dm2test.view import ScreenPoint
-from dm2test.lib import load_lib
 
+pytestmark = pytest.mark.usefixtures("program_start_after")
 
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 GAME_QUIT, IOP_SET_VIDEO_STATE, GAME_END, COMMAND_EXECUTE = 0x2005B, 0x138C7, 0x1FEF6, 0x21D6C
 UI_DIALOG_DRAW, UI_DIALOG_RUN, SAVE_CHECK_DISK, WAIT_VBLANKS, GFX_FILL_ZONE_SCREEN = 0x1A37D, 0x1A0A4, 0x346D1, 0x1C660, 0x13B4D
 G_GAME_COMPLETED, G_QUIT_EXIT_CODE, G_NEW_GAME, G_USE_DUNGENB, G_END_OFFER_RESTORE = 0x7F23C, 0x7F434, 0x7F280, 0x803F8, 0x803F0
 INPUT_MODE_DIALOG = C.INPUT_MODE_DIALOG
-GAME_SIZE = 252 + 4 * 263 + 2 + 6  # sizeof(Game) in save.h
 WALK = [C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD, C.CMD_TURN_RIGHT, C.CMD_MOVE_FORWARD,
         C.CMD_MOVE_FORWARD, C.CMD_TURN_LEFT, C.CMD_TURN_LEFT, C.CMD_MOVE_LEFT, C.CMD_MOVE_BACK, C.CMD_MOVE_BACK,
         C.CMD_MOVE_RIGHT, C.CMD_MOVE_FORWARD, C.CMD_MOVE_FORWARD]
@@ -151,7 +148,7 @@ def test_load_dialog_cancel_and_empty_slot(play, lib):
 def test_hide_game_view_cancels_the_champion_drag(lib):
     # The original game_hide_view cancels a champion drag inside its guard (SKULL.c:54260).
     drag = ctypes.c_int.in_dll(lib, "g_input_drag_state")
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     hidden = ctypes.c_bool.from_address(ctypes.addressof(MainLoop.in_dll(lib, "g_main_loop")) + MainLoop.view_hidden.offset)
     DialogState.in_dll(lib, "g_dialog").screen_mode, hidden.value, drag.value = 0, 0, 1
     lib.play_hide_view()
@@ -216,8 +213,7 @@ def test_party_death_restores_the_last_save(play, lib, gdat, tmp_path):
     # After a save, the end dialog's RESTART GAME loads the last slot again without the load dialog.
     with Player(lib, [click_choice(1), click_slot(4), click_choice(2)]):
         lib.session_save()
-    from dm2test.scenario import GameRecord
-    game = GameRecord.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     saved_state = (game.game_time, game.party_x, game.party_y, game.party_dir, game.party_map)
     for _ in range(20):
         play.step()
@@ -381,7 +377,6 @@ def click_command(mode, command):
 def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     # The start of a run in the C port: the menu, NEW GAME: DUNGEON.DAT with the party on its start square; then the
     # menu again, LOAD, slot 0 (start.DAT), LOAD, and OK of "GAME LOADED": the game of start.DAT.
-    from dm2test.scenario import GameRecord
     from dm2test.markers import ROOT
     data = tmp_path / "game"
     (data / "DATA").mkdir(parents=True)
@@ -394,16 +389,18 @@ def test_start_menu_new_game_and_load(lib, gdat, start, tmp_path):
     session.data_dir = str(data).encode()
     session.slot, session.loaded, session.new_game, session.restart, session.completed = -1, 0, 0, 0, 0
     main_loop_quit(lib).value = 0
-    game = GameRecord.in_dll(lib, "g_game")
+    game = Game.in_dll(lib, "g_game")
     # the state of the program start (the tests before leave theirs): no game, the start values
-    from dm2test.scenario import Party, WorldGame
-    ctypes.memset(ctypes.addressof(game), 0, GAME_SIZE)
-    world = WorldGame.in_dll(lib, "g_game")
+    from dm2test.structs import CurrentMap, Party
+    ctypes.memset(ctypes.addressof(game), 0, ctypes.sizeof(Game))
+    world = Game.in_dll(lib, "g_game")
     world.leader, world.sound_volume, world.music_volume = C.LEADER_NONE, C.VOLUME_SETTING_START, C.VOLUME_SETTING_START
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = 0
     party = Party.in_dll(lib, "g_party")
     ctypes.memset(ctypes.addressof(party), 0, ctypes.sizeof(party))
-    party.cur_map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
+    current_map = CurrentMap.in_dll(lib, "g_current_map")
+    ctypes.memset(ctypes.addressof(current_map), 0, ctypes.sizeof(current_map))
+    current_map.map, party.new_map, party.push_pending_group = -1, -1, 0xFFFF
     with Player(lib, [click_command(C.INPUT_MODE_MENU, C.CMD_NEW_GAME)]):
         assert lib.session_init() == 1
     assert (session.new_game, session.loaded) == (1, 0)
@@ -434,9 +431,10 @@ def test_new_game_champion_joins_like_original(lib, gdat, start, tmp_path):
     # champ_init_party_state of a new game: the champion of the mirror (sensor 0x7e) on square (0, 0) of map 0 joins at
     # once with the objects on that square, faces the party, and leads; no inventory, no mouth, no message. start.DAT
     # is the game after this join: both take the champion out of the party and put its objects back on the square.
-    from dm2test.interface import LeaderHand
+    from dm2test.structs import LeaderHand, UiState
     from dm2test.input import Loop
-    from dm2test.interface import CHAMPION_SIZE, G_CHAMPIONS, champion_records, UiState
+    from dm2test.addresses import G_CHAMPIONS
+    from dm2test.scenario import CHAMPION_SIZE, champion_records
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     loop = Loop(lib, gdat, start, tmp_path)
     emu, game = loop.emu, loop.game
@@ -484,7 +482,7 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
     # call it: the scream of the dead champion, the end dialog, QUIT GAME: the exit code of a dead party.
     sc = play
     emu = sc.emu
-    from dm2test.input import MainLoop
+    from dm2test.structs import MainLoop
     loop = MainLoop.in_dll(lib, "g_main_loop")
     request.addfinalizer(lambda: setattr(loop, "end", 0))  # the next tests start with a running loop
     assert sc.game.champion_count == 1 and not loop.end
@@ -523,16 +521,16 @@ def test_dead_party_ends_the_game_like_original(play, lib, request):
 
 
 G_LEADER_HAND, G_LEADER_HAND_WEIGHT, G_MAGIC_LIGHT = 0x7FBB4, 0x7FBCE, 0x7FFEC
-HAND_OFFSET, MAGIC_LIGHT_OFFSET = 252 + 4 * 263, 252 + 4 * 263 + 2  # offsetof(Game, ...) in save.h
+HAND_OFFSET, MAGIC_LIGHT_OFFSET = Game.leader_hand.offset, Game.magic_light.offset
 
 
 def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tmp_path):
     # A save with an object in the leader hand and timed effects (magic light, invisibility, aura, poison, an eaten
     # item): the load and the start of its session in both (save_load and play_start_session, as session_load and
     # session_init run them) give the same light, champions, and leader hand (object, weight, icon).
-    from dm2test.interface import LeaderHand
+    from dm2test.structs import LeaderHand
     from dm2test.input import Loop
-    from dm2test.save import Event, Game
+    from dm2test.structs import TimelineEvent
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     path, bak = tmp_path / "SKSAVE0.DAT", tmp_path / "SKSAVE0.BAK"
     path.write_bytes(start)
@@ -546,7 +544,7 @@ def test_load_restores_hand_and_timed_effects_like_original(lib, gdat, start, tm
               (C.EVENT_INVISIBILITY, 0, b""), (C.EVENT_AURA, 1, struct.pack("<h", 7)),
               (C.EVENT_POISON, 0, struct.pack("<h", 30)), (C.EVENT_ITEM_EFFECT, 0, bytes([10, 0, 34]))]
     for n, (type_, priority, data) in enumerate(events):
-        event = Event(game.game_time + 50 + n | game.party_map << 24, type_, priority,
+        event = TimelineEvent(game.game_time + 50 + n | game.party_map << 24, type_, priority,
                       (ctypes.c_uint8 * 6)(*data.ljust(6, b"\0")))
         lib.timeline_add_event(ctypes.byref(event))
     assert lib.save_write(str(path).encode(), str(bak).encode(), b"GAME 0", gdat) == 0
@@ -573,7 +571,7 @@ def test_save_menu_restores_the_game_screen(lib, gdat, start, tmp_path, actions)
     # game screen outside the viewport is as before the menu (no dialog parts, the status boxes), and the forward key
     # moves the party.
     from dm2test.input import KEY_FORWARD, run_ticks, session
-    from dm2test.view import Bitmap
+    from dm2test.structs import Bitmap
     game, _ = session.__wrapped__(lib, gdat, start, tmp_path)
     (tmp_path / "DATA").mkdir()
     Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
@@ -608,7 +606,7 @@ def test_session_commands_wait_for_the_eye_and_the_mouth(lib, gdat, start, tmp_p
     # The original runs sleep (0x8e) and the save menu (0x8c, Alt+S) only while neither the eye (0x7f224) nor the
     # mouth (0x7f21c) is held.
     from dm2test.input import run_ticks, session
-    from dm2test.interface import UiState
+    from dm2test.structs import UiState
     from dm2test.scenario import Command
     session.__wrapped__(lib, gdat, start, tmp_path)
     lib.input_key_down.argtypes = [ctypes.c_uint16]

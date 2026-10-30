@@ -1,4 +1,4 @@
-"""Step 20: the start of a new game, the load and save dialogs, the dialogs, the start menu, and the end of the game
+"""Differential tests of the start of a new game, the load and save dialogs, the dialogs, the start menu, and the end of the game
 against the original code in dm2tools.emu."""
 
 import ctypes
@@ -10,15 +10,11 @@ from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
-from dm2test.dialog import program_start_after  # noqa: F401 (an autouse fixture)
 from dm2test.save import GDAT_VALUE_TYPES, GRAPHICS
 from dm2test.scenario import square_things
-from dm2test.lib import load_lib
 
+pytestmark = pytest.mark.usefixtures("program_start_after")
 
-@pytest.fixture(scope="module")
-def lib():
-    return load_lib()
 
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
 DUNGEON_LOAD, MEM_ALLOC, GDAT_ENTRY_INDEX, WEATHER_INIT = 0x36909, 0x3BBBA, 0x3C5D3, 0x59F38
@@ -146,7 +142,7 @@ def test_level_digits_match_original(lib, new_game):
 def test_timer_sensors_start_like_original(lib, new_game):
     # sensor_start_timers of a new game. DUNGEON.DAT has 18 timer sensors, all off: every second one is turned on
     # (state bit) and busy in both, at a game time that is not 0; then the timer events and the busy bits match.
-    from dm2test.save import Timeline
+    from dm2test.structs import Timeline
     emu = new_game.emu
     lib.dungeon_thing_record.restype = ctypes.c_void_p
     base = emu.read_u32(G_THING_DATA + 12)

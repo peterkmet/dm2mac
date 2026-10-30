@@ -4,14 +4,21 @@ import ctypes
 import struct
 
 import pytest
+from unicorn import UC_HOOK_CODE, UC_PROT_ALL
+from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EIP, UC_X86_REG_ESP
 
 from dm2test import constants as C
-from dm2test.gdat import ImageInfo, image_info
-from dm2test.markers import ROOT
+from dm2test.addresses import G_CHAMPIONS, G_FONT_BITMAP, G_SKY_OBJECTS, G_UI_COLORS, SKY_OBJECTS_SIZE, VGA, WEATHER
+from dm2test.gamefiles import require
+from dm2test.gdat import image_info
+from dm2test.markers import GAME
 from dm2test.oracle import CreatureOracle
-from dm2test.save import GRAPHICS, START, Event, Timeline, original_save
+from dm2test.save import GRAPHICS, START, original_save
+from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
 from dm2tools.emu import SCRATCH
-from dm2test.view import OriginalView
+from dm2test.view import (
+    G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS, G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_SKY_STATE, G_VIEW_CLEAR, OriginalView,
+)
 
 
 def original_view_of(lib, gdat, start):
@@ -30,7 +37,7 @@ def original_view_of(lib, gdat, start):
 
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
 
-# Original functions of Step 14.
+# Original functions of the move and timeline code.
 COMMAND_EXECUTE, MOVE_PARTY, MOVE_PARTY_TURN, MOVE_THING = 0x21D6C, 0x235BF, 0x2339D, 0x4B108
 TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390, 0x1C82D
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
@@ -45,16 +52,19 @@ STUBS = {
     0x14C7B: (0, 0), 0x14C87: (0, 0), 0x1483A: (0, 0), 0x14846: (0, 0),     # IBMIOP input lock, mouse capture, cursor
     0x1482E: (0, 0), 0x14743: (5, 0),                                       # mouse capture, cursor image
 }
-# Globals of the movement state: name -> (address, struct format).
-GLOBALS = {
-    "cur_map": (0x72244, "<h"), "square_x": (0x7F27C, "<h"), "square_y": (0x7F27A, "<h"), "square_map": (0x7F27E, "<h"),
-    "ref_dir": (0x7F260, "<h"), "move_steps": (0x7F258, "<h"), "move_command": (0x7F252, "<H"),
-    "view_x": (0x7F266, "<h"), "view_y": (0x7F264, "<h"), "view_dir": (0x7F274, "<h"),
-    "alt_view_active": (0x7F230, "<i"), "alt_view_x": (0x7F25C, "<h"), "alt_view_y": (0x7F25E, "<h"),
-    "alt_view_dir": (0x7F272, "<h"), "alt_view_map": (0x7F278, "<h"), "new_map": (0x717F4, "<h"),
+# Globals of the movement state: name -> (address, struct format); the CurrentMap fields, then the Party fields.
+CURRENT_MAP_GLOBALS = {
+    "map": (0x72244, "<h"), "square_x": (0x7F27C, "<h"), "square_y": (0x7F27A, "<h"), "square_map": (0x7F27E, "<h"),
+    "ref_dir": (0x7F260, "<h"), "alt_view_active": (0x7F230, "<i"), "alt_view_x": (0x7F25C, "<h"),
+    "alt_view_y": (0x7F25E, "<h"), "alt_view_dir": (0x7F272, "<h"), "alt_view_map": (0x7F278, "<h"),
+}
+PARTY_GLOBALS = {
+    "move_steps": (0x7F258, "<h"), "move_command": (0x7F252, "<H"),
+    "view_x": (0x7F266, "<h"), "view_y": (0x7F264, "<h"), "view_dir": (0x7F274, "<h"), "new_map": (0x717F4, "<h"),
     "dest_x": (0x80026, "<h"), "dest_y": (0x80024, "<h"), "dest_map": (0x80028, "<h"), "dest_cell": (0x80022, "<h"),
     "redraw": (0x7F38C, "<I"),
 }
+GLOBALS = CURRENT_MAP_GLOBALS | PARTY_GLOBALS
 G_MAP_LIGHT, G_MAP_WALL_COST = 0x7F3F4, 0x7F3FC  # the light radius and wall cost of the party map graphics
 G_DISTANCE_MAPS = (0x7F8C8, 0x7F8C4)  # the party distance maps of ai_refresh_party_maps
 G_GAME_TIME, G_MOVE_COOLDOWN, G_THROW_COOLDOWN, G_PUSH_PENDING = 0x7F22C, 0x7F26A, 0x7F25A, 0x72FFC
@@ -63,29 +73,18 @@ COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
 EXPLOSION_CREATE = 0x16746
-# The wall sensor that creates an item (kind 0x3c) in wall_square_event: Step 15.
+# The wall sensor that creates an item (kind 0x3c) in wall_square_event.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
-# The wall sensor of the end of the game (kind 0x12): Step 20.
+# The wall sensor of the end of the game (kind 0x12).
 WALL_END_GAME = 0x58A12
 # The drawing part of ui_draw_movement_arrows (the screen is not mapped); it then sets the input mode.
 ARROWS_DRAWING = (0x42B00, 0x42B6D)
 # forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
-# Step 17: the weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
+# The weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
 MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
-# Weather globals of the original: name -> (address, struct format); the C values come from World.
-WEATHER = {
-    "weather_visible": (0x8047B, "<B"), "heavy_rain": (0x8047C, "<B"), "wind_dir": (0x8047F, "<B"),
-    "rain_intensity": (0x8047E, "<B"), "sky_darkness": (0x8047A, "<B"), "cloud_cover": (0x80479, "<B"),
-    "storm_multiplier": (0x80480, "<B"), "storm_step": (0x80477, "<B"), "storm_curve": (0x80474, "<B"),
-    "storm_intensity": (0x80470, "<H"), "next_hour_time": (0x80430, "<I"),
-    "strike_threshold": (0x8046C, "<h"), "storm_previous": (0x8046A, "<H"), "hour_light": (0x80472, "<h"),
-    "day_time_offset": (0x80434, "<I"), "first_init": (0x76184, "<i"), "thunder_toggle": (0x76188, "<i"),
-    "lightning_flash": (0x7F248, "<i"), "light_level": (0x7F282, "<h"), "g_light_source_sum": (0x7F970, "<h"),
-    "g_explosion_light_sum": (0x7F974, "<h"),
-}
-G_SKY_OBJECTS, SKY_OBJECTS_SIZE, G_VIEW_CLEAR_RECT, G_UI_COLORS = 0x80438, 50, 0x8002C, 0x7F210
+G_VIEW_CLEAR_RECT = 0x8002C
 # The sound requests: the original sound table (the sounds that the map graphics load) is a stub, every sound of
 # GRAPHICS.DAT counts as loaded, as in the C port; the original sound_play_requests runs with stubs for its two HMI
 # driver calls. The tests compare the requests that reach sound_play_requests and the order, loudness, and pan of the
@@ -96,23 +95,24 @@ G_DIGI_ENABLED, G_DIGI_VOLUME, G_SAMPLE_HANDLES = 0x704BE, 0x7EF84, 0x7EDA0
 G_SOS_SAMPLE_DATA, G_SOS_VOLUME, G_SOS_PAN = 0x703F8, 0x7040C, 0x70438
 
 
+@mirror("sound_request.h")
 class SoundStart(ctypes.Structure):
     _fields_ = [("data", ctypes.c_void_p), ("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
 G_DELAYED_SOUNDS, G_SOUND_TABLE, G_SOUND_DEFERRED, G_SAMPLE_DESCS, G_SOUND_REQUESTS = 0x7F188, 0x7F18C, 0x7F190, 0x7F194, 0x7F198
 G_SOUND_REQUEST_COUNT, G_SOUND_DEFERRED_COUNT, SOUND_TABLE_MAX = 0x71690, 0x71692, 512
 
 
+@mirror("sound_request.h")
 class SoundRequest(ctypes.Structure):
     _fields_ = [(n, ctypes.c_uint8) for n in ("category", "index", "entry", "priority", "volume")] + [
         ("lateral", ctypes.c_int8), ("forward", ctypes.c_int8)]
 
 
-class Sound(ctypes.Structure):
-    _fields_ = [("data", ctypes.c_void_p), ("length", ctypes.c_uint32)]
 G_GFX_HAS_CLOUDS, G_GFX_HAS_RAIN, G_GFX_HAS_LIGHTNING = 0x80475, 0x80476, 0x8047D
 
 
-class WeatherState(ctypes.Structure):
+@mirror("weather.h")
+class Weather(ctypes.Structure):
     """The C weather.h Weather."""
     _fields_ = [("strike_threshold", ctypes.c_int16), ("storm_previous", ctypes.c_uint16), ("hour_light", ctypes.c_int16),
                 ("day_time_offset", ctypes.c_uint32), ("first_init", ctypes.c_bool), ("thunder_toggle", ctypes.c_bool),
@@ -121,7 +121,7 @@ class WeatherState(ctypes.Structure):
 
 def c_weather(lib):
     """The weather globals of the C port, by the names of WEATHER."""
-    game, weather = WorldGame.in_dll(lib, "g_game"), WeatherState.in_dll(lib, "g_weather")
+    game, weather = Game.in_dll(lib, "g_game"), Weather.in_dll(lib, "g_weather")
     out = {name: getattr(game, name) for name in list(WEATHER)[:11]}
     out |= {name: getattr(weather, name) for name in list(WEATHER)[11:18]}
     out["light_level"] = ctypes.c_int.in_dll(lib, "g_view_light_level").value
@@ -150,62 +150,50 @@ def ignore_stale(state):
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
 
 
-class Location(ctypes.Structure):
-    """A square of the current map (dungeon.h, Location)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("x", "y")]
-
-
+@mirror("dungeon.h")
 class Position(ctypes.Structure):
     """A square with its map (dungeon.h, Position)."""
     _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
 
 
-class Party(ctypes.Structure):
-    _fields_ = [(name, ctypes.c_int16) for name in ("cur_map", "square_x", "square_y", "square_map", "ref_dir",
-                                                     "move_steps")] + [
-        ("move_command", ctypes.c_uint16), ("view_x", ctypes.c_int16), ("view_y", ctypes.c_int16),
-        ("view_dir", ctypes.c_int16), ("alt_view_active", ctypes.c_int), ("alt_view_x", ctypes.c_int16),
-        ("alt_view_y", ctypes.c_int16), ("alt_view_dir", ctypes.c_int16), ("alt_view_map", ctypes.c_int16),
-        ("new_map", ctypes.c_int16), ("fell", ctypes.c_int16), ("dest_x", ctypes.c_int16), ("dest_y", ctypes.c_int16),
-        ("dest_map", ctypes.c_int16), ("dest_cell", ctypes.c_int16), ("dest_dir", ctypes.c_int16),
-        ("teleporter_flag", ctypes.c_int), ("redraw", ctypes.c_uint32), ("push_pending_group", ctypes.c_uint16),
-        ("push_mode", ctypes.c_bool), ("push_arrow", ctypes.c_int16)]
+def port_globals(party, current_map):
+    """The movement globals of the C port by the names of GLOBALS."""
+    return ({name: getattr(current_map, name) for name in CURRENT_MAP_GLOBALS}
+            | {name: getattr(party, name) for name in PARTY_GLOBALS})
 
 
-class GameRecord(ctypes.Structure):
-    _fields_ = [("game_time", ctypes.c_uint32), ("champion_count", ctypes.c_uint16), ("party_x", ctypes.c_uint16),
-                ("party_y", ctypes.c_uint16), ("party_dir", ctypes.c_uint16), ("party_map", ctypes.c_uint16),
-                ("leader", ctypes.c_uint16), ("party_move_cooldown", ctypes.c_uint16), ("time_a", ctypes.c_uint32),
-                ("time_b", ctypes.c_uint32), ("throw_cooldown", ctypes.c_uint16), ("throw_dir", ctypes.c_uint16)]
-
-
-G_PENDING_WOUNDS, G_PENDING_DAMAGE, G_CHAMPIONS, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, 0x7FBD0, C.CHAMPION_SIZE
+G_PENDING_WOUNDS, G_PENDING_DAMAGE, CHAMPION_SIZE = 0x7FBA4, 0x7FBAC, C.CHAMPION_SIZE
 CHAMPION_REDRAW = 0x32  # the redraw flags: the original status box drawing does not run in these tests
 
 
-class WorldGame(ctypes.Structure):
-    """The weather fields of the C save.h Game."""
-    _fields_ = GameRecord._fields_ + [
-        ("sound_volume", ctypes.c_uint8), ("music_volume", ctypes.c_uint8), ("weather_visible", ctypes.c_uint8),
-        ("heavy_rain", ctypes.c_uint8), ("wind_dir", ctypes.c_uint8), ("rain_intensity", ctypes.c_uint8),
-        ("sky_darkness", ctypes.c_uint8), ("cloud_cover", ctypes.c_uint8), ("storm_multiplier", ctypes.c_uint8),
-        ("storm_step", ctypes.c_uint8), ("storm_curve", ctypes.c_uint8), ("storm_intensity", ctypes.c_uint16),
-        ("next_hour_time", ctypes.c_uint32)]
+def champion_records(lib):
+    """The 4 champion records of the C game state."""
+    return (ctypes.c_uint8 * (4 * CHAMPION_SIZE)).from_address(ctypes.addressof(Game.in_dll(lib, "g_game")) + Game.champions.offset)
 
+
+def champion_bytes(lib, champ, offset, data):
+    """Writes data into champion champ of the C game state."""
+    records = champion_records(lib)
+    for i, b in enumerate(data):
+        records[champ * CHAMPION_SIZE + offset + i] = b
+
+
+def sync_champions(lib, original):
+    original.emu.write(G_CHAMPIONS, bytes(champion_records(lib)))
 
 
 def int16(value):
     return ctypes.c_int16(value).value
 
 
+@mirror("input.h")
 class Command(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("command", ctypes.c_uint16), ("rect", ctypes.c_int16 * 4)]
+    _fields_ = [("x", ctypes.c_int16), ("y", ctypes.c_int16), ("command", ctypes.c_uint16), ("rect", ctypes.c_int16 * C.RECT_SIZE)]
 
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GRAPHICS)
     g = ctypes.c_void_p()
     lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
@@ -215,10 +203,8 @@ def gdat(lib):
 
 @pytest.fixture(scope="module")
 def start():
-    if not START.exists():
-        pytest.skip("tests/saves/start.DAT missing")
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(START)
+    require(GAME / "SKULL.EXE")
     return START.read_bytes()
 
 
@@ -234,14 +220,13 @@ class Scenario(CreatureOracle):
         path.write_bytes(start)
         assert lib.save_load(str(path).encode(), gdat) == 0
         lib.draw_init(gdat)
-        self.game = GameRecord.in_dll(lib, "g_game")
+        self.game = Game.in_dll(lib, "g_game")
         self.party = Party.in_dll(lib, "g_party")
+        self.current_map = CurrentMap.in_dll(lib, "g_current_map")
         assert lib.zone_load(gdat) == 1 and lib.pal_load_color_ramps(gdat) == 1
         assert lib.text_init(gdat)  # the messages of the leader hand
         view = original_view_of(lib, gdat, start)
         self.emu = emu = view.emu
-        from dm2test.interface import G_FONT_BITMAP, G_UI_COLORS, VGA
-        from unicorn import UC_PROT_ALL
         emu.uc.mem_map(VGA, 0x10000, UC_PROT_ALL)  # the screen of the pressed buttons, messages, and panels
         emu.write_u32(G_UI_COLORS, view.entry_data(1, 0, 0x0D, 0xFE))
         font = view.item_bytes(lib.gdat_find(gdat, 1, 0, 7, 0))[:0x300]
@@ -260,17 +245,15 @@ class Scenario(CreatureOracle):
         self.skip(*ARROWS_DRAWING)  # ui_draw_movement_arrows: only its input mode
         self.clear_uninitialized_event_bytes()
         self.set_local(FORWARD_REVERSE_HOLD, 0, 3)
-        emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
+        emu.write(GLOBALS["map"][0], struct.pack("<h", -1))
         emu.write(G_PUSH_PENDING, struct.pack("<H", NONE))
         # the C port starts from the movement state of the program start (move.c), like the original before its load
         ctypes.memset(ctypes.addressof(self.party), 0, ctypes.sizeof(self.party))
-        self.party.cur_map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
+        ctypes.memset(ctypes.addressof(self.current_map), 0, ctypes.sizeof(self.current_map))
+        self.current_map.map, self.party.new_map, self.party.push_pending_group = -1, -1, NONE
         # ... and from the interface state of the program start: an earlier test can leave a recruit open
-        from dm2test.interface import UiState
         ctypes.memset(ctypes.addressof(UiState.in_dll(lib, "g_ui")), 0, ctypes.sizeof(UiState))
         # ... and from a running game: the end-game sensor of an earlier test (session_complete) stops all damage
-        from dm2test.dialog import Session
-        from dm2test.input import MainLoop
         session = Session.in_dll(lib, "g_session")
         session.completed = session.exit_code = 0
         MainLoop.in_dll(lib, "g_main_loop").quit = 0
@@ -281,8 +264,6 @@ class Scenario(CreatureOracle):
     def map_graphics_tail(self):
         """gdat_load_map_graphics runs load_map_graphics, then the original world_update_day_night(0) like the C
         callers of view_enter_map."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EIP
         call = WORLD_UPDATE_DAY_NIGHT - (MAP_GRAPHICS_TAIL + 7)
         self.emu.write(MAP_GRAPHICS_TAIL, b"\x31\xc0\xe8" + struct.pack("<i", call) + b"\xc3")
 
@@ -298,8 +279,6 @@ class Scenario(CreatureOracle):
     def record_explosions(self):
         """Records the arguments of the explosion_create calls of the original (type, attack, x, y, cell); the
         explosions themselves run in both."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_ESP
         self.explosions = []
 
         def hook(uc, *_):
@@ -329,11 +308,10 @@ class Scenario(CreatureOracle):
                 n = len(self.sound_keys)
                 self.sound_keys.append(key)
                 emu.write(emu.read_u32(G_SOUND_TABLE) + 7 * n, struct.pack("<HBBBH", n, *key, 0xFFFF))
-                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", s.data & 0xFFFFFFFF, s.length & 0xFFFF))
+                emu.write(emu.read_u32(G_SAMPLE_DESCS) + 16 * n, struct.pack("<IH", ctypes.cast(s.data, ctypes.c_void_p).value & 0xFFFFFFFF, s.length & 0xFFFF))
             return self.sound_keys.index(key) + 1
 
         def play(uc, *_):
-            from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EDX
             count, requests = uc.reg_read(UC_X86_REG_EAX) & 0xFFFF, uc.reg_read(UC_X86_REG_EDX)
             descs = emu.read_u32(G_SAMPLE_DESCS)
             for i in range(count):
@@ -345,7 +323,6 @@ class Scenario(CreatureOracle):
             self.started.append((emu.read_u32(G_SOS_SAMPLE_DATA), volume >> 7, emu.read_u32(G_SOS_PAN)))
             return channel + 1  # a handle; the voice is free again at once (sample done)
 
-        from unicorn import UC_HOOK_CODE
         self.started = []  # the sounds that the original starts: (sample data, loudness, pan)
         emu.stub(SOUND_FIND_LOADED, find_loaded)
         emu.uc.hook_add(UC_HOOK_CODE, play, begin=SOUND_PLAY_REQUESTS, end=SOUND_PLAY_REQUESTS)
@@ -422,22 +399,21 @@ class Scenario(CreatureOracle):
 
     def load_map_graphics(self):
         """The view globals of the party map, as the C view_enter_map sets them."""
-        from dm2test import view as tv
         lib, emu, view = self.lib, self.emu, self.view
         map_ = struct.unpack("<h", emu.read(0x7F262, 2))[0]
         graphics, flags = lib.dungeon_map_graphics(map_), lib.dungeon_map_flags(map_)
         gfx_set = graphics >> 4 & 0xF
-        emu.write(tv.G_MAP_GFX_SET, bytes([gfx_set]))
-        emu.write(tv.G_CUR_MAP_DOOR_TYPES, bytes([graphics >> 8 & 0xF if flags & 0x80 else 0xFF,
-                                                  graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
-        emu.write(tv.G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
-        emu.write(tv.G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
+        emu.write(G_MAP_GFX_SET, bytes([gfx_set]))
+        emu.write(G_CUR_MAP_DOOR_TYPES, bytes([graphics >> 8 & 0xF if flags & 0x80 else 0xFF,
+                                               graphics >> 12 & 0xF if flags & 0x100 else 0xFF]))
+        emu.write(G_MAP_WALL_COLOR_KEY, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x64)))
+        emu.write(G_MAP_FLIP_FLAGS, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x65)))
         emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
         emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
-        emu.write(tv.G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
+        emu.write(G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
         lib.weather_sky_objects.restype = ctypes.c_void_p
-        emu.write(tv.G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
-        emu.write(tv.G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
+        emu.write(G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
+        emu.write(G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
             emu.write(addr, bytes([lib.gdat_exists(self.gdat, 0x17, gfx_set, 1, entry)]))
         emu.write(G_SOUND_REQUEST_COUNT, bytes(2))  # sound_wait_and_clear_requests
@@ -446,8 +422,6 @@ class Scenario(CreatureOracle):
     def clear_uninitialized_event_bytes(self):
         """The original leaves some event bytes uninitialized (stack garbage); the C port clears them. This clears
         them in each event that the original queues: (data byte, mask of the bytes to keep) by event type."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX
         keep = {0x02: (0xFF, 0xFF, 0, 0, 0, 0), 0x0D: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x56: (0xFF, 0xFF, 0xFF, 0x01, 0, 0),
                 0x59: (0, 0, 0xFF, 0xFF, 0, 0), 0x5A: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x5B: (0xFF, 0xFF, 0, 0, 0, 0),
                 0x5D: (0xFF, 0x0F, 0xFF, 0, 0, 0), 0x5E: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0), 0x04: (0xFF, 0xFF, 0xFF, 0xFF, 0, 0),
@@ -473,15 +447,11 @@ class Scenario(CreatureOracle):
 
     def set_local(self, at, offset, value):
         """Sets the dword at ESP + offset when the original reaches at: a local that it leaves uninitialized."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_ESP
         self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: self.emu.write_u32(uc.reg_read(UC_X86_REG_ESP) + offset, value),
                              begin=at, end=at)
 
     def skip(self, begin, end):
         """Runs the original from end when it reaches begin: a code part of a later step."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EIP
         self.skips = getattr(self, "skips", {})
         self.skips[begin] = self.emu.uc.hook_add(UC_HOOK_CODE, lambda uc, *_: uc.reg_write(UC_X86_REG_EIP, end),
                                                  begin=begin, end=begin)
@@ -489,9 +459,6 @@ class Scenario(CreatureOracle):
     def fix_square_events(self):
         """The original sensor_schedule_square_event leaves 2 data bytes (and the priority of a hold) uninitialized;
         this runs it with them cleared, like the C port, and then the original timeline_add_event."""
-        from unicorn import UC_HOOK_CODE
-        from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EIP, \
-            UC_X86_REG_ESP
         emu = self.emu
 
         def hook(uc, *_):
@@ -505,7 +472,7 @@ class Scenario(CreatureOracle):
                                                                   UC_X86_REG_ECX))
             sp = uc.reg_read(UC_X86_REG_ESP)
             ret, time = emu.read_u32(sp), emu.read_u32(sp + 4)
-            cur_map = struct.unpack("<h", emu.read(GLOBALS["cur_map"][0], 2))[0]
+            cur_map = struct.unpack("<h", emu.read(GLOBALS["map"][0], 2))[0]
             event = struct.pack("<IBB6B", (time | (cur_map & 0xFF) << 24) & 0xFFFFFFFF, 4, (1, 3, 2, 3)[effect & 3],
                                 x, y, cell, effect, 0, 0)
             emu.write(SCHEDULED_EVENT, event)
@@ -520,9 +487,9 @@ class Scenario(CreatureOracle):
         """Puts the party on (x, y) of map_ in both, like a load."""
         self.game.party_dir = direction
         self.emu.write(0x7F254, struct.pack("<h", direction))
-        self.party.cur_map = -1
-        self.emu.write(GLOBALS["cur_map"][0], struct.pack("<h", -1))
-        self.lib.dun_set_party_position(Position(map_, x, y))
+        self.current_map.map = -1
+        self.emu.write(GLOBALS["map"][0], struct.pack("<h", -1))
+        self.lib.dungeon_set_party_position(Position(map_, x, y))
         self.emu.call(DUN_SET_PARTY_LOCATION, x, y, map_)
         self.load_map_graphics()
 
@@ -570,7 +537,7 @@ class Scenario(CreatureOracle):
         name = self.start[2:0x12].split(b"\0")[0]
         assert self.lib.save_write(str(path).encode(), str(bak).encode(), name, self.gdat) == 0
         mine = path.read_bytes()
-        mine_globals = {name: getattr(self.party, name) for name in GLOBALS}
+        mine_globals = port_globals(self.party, self.current_map)
         their_globals = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                          for name, (addr, fmt) in GLOBALS.items()}
         return (mine, mine_globals), (theirs, their_globals)
@@ -618,7 +585,6 @@ class Scenario(CreatureOracle):
     @property
     def damage(self):
         """True when a champion has pending damage or lost health since the last read (the coverage of a test)."""
-        from dm2test.interface import champion_records
         records = bytes(champion_records(self.lib))
         health = tuple(struct.unpack_from("<h", records, i * CHAMPION_SIZE + 0x36)[0] for i in range(4))
         last, self._health = getattr(self, "_health", health), health
@@ -626,7 +592,6 @@ class Scenario(CreatureOracle):
 
     def champion_records(self):
         """(C, original) champion records without the redraw flags."""
-        from dm2test.interface import champion_records
         mine, theirs = bytearray(champion_records(self.lib)), bytearray(self.emu.read(G_CHAMPIONS, 4 * CHAMPION_SIZE))
         for record in (mine, theirs):
             for i in range(4):
@@ -647,7 +612,7 @@ class Scenario(CreatureOracle):
         """The quick check: creatures, movement globals, damage calls, and the dungeon records and events."""
         self.check_creatures(where)
         self.assert_same_damage(where)
-        mine = {name: getattr(self.party, name) for name in GLOBALS}
+        mine = port_globals(self.party, self.current_map)
         theirs = {name: struct.unpack(fmt, self.emu.read(addr, struct.calcsize(fmt)))[0]
                   for name, (addr, fmt) in GLOBALS.items()}
         assert ignore_stale(mine) == ignore_stale(theirs), where
@@ -675,7 +640,7 @@ def scenario(lib, gdat, start, tmp_path):
 
 def square_event(scenario, map_, x, y, cell, effect, delay):
     """Queues the same square event (type 4) in both."""
-    e = Event((scenario.time() + delay) | map_ << 24, 4, {0: 1, 1: 3, 2: 2, 3: 3}[effect],
+    e = TimelineEvent((scenario.time() + delay) | map_ << 24, 4, {0: 1, 1: 3, 2: 2, 3: 3}[effect],
               (ctypes.c_uint8 * 6)(x, y, cell, effect, 0, 0))
     scenario.emu.write(COMMAND_RECORD, bytes(e))
     scenario.lib.timeline_add_event(ctypes.byref(e))

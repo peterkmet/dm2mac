@@ -2,19 +2,13 @@
 
 Reference map of `SKULL.EXE` for the C port: program structure, subsystems, key data structures, and open questions.
 
-Related files:
-
-- `docs/reference/skull-symbols.csv`: name, C signature, and subsystem of every function and of the main globals.
-- `docs/formats/`: file formats, sound, music, the SVGA option, and the PIT rate.
-- `docs/rules/`: the port's game rules.
-- `docs/reference/symbols/`: per-range analysis notes (layout, data structures, open questions).
-- `docs/reference/reference-crosscheck.md`: comparison of these names and formats with the reDM2 project.
-- `reference/decomp/SKULL.c`: the local Ghidra output of `tools/decompile-skull.sh`, with the names from `docs/reference/skull-symbols.csv`. Git ignores it.
+The other research pages are in [docs/README.md](../README.md#research-of-the-original). `reference/decomp/SKULL.c` is the local Ghidra output of `tools/decompile-skull.sh`, with the names of `skull-symbols.csv`. Git ignores it.
 
 Conventions:
 
 - Addresses are linear addresses in the flat image from `uv run dm2-le game/SKULL.EXE skull.bin` (code base `0x10000`, data base `0x70000`): code object `0x10000`-`0x695ac`, data object `0x70000`-`0x828f0`. An address in the code object is a function; an address in the data object is a global. `FUN_xxxxxxxx` is the function at that address; `docs/reference/skull-symbols.csv` gives its name.
 - A file offset is written as `file+0x...`.
+- A name is the name of [skull-symbols.csv](skull-symbols.csv): the port's name where the port has the function, otherwise a role name of the analysis.
 - Signatures use the Watcom register order: EAX, EDX, EBX, ECX, then the stack.
 - Thing: 16-bit reference. Bits 0-9 index, bits 10-13 type, bits 14-15 cell. `0xffff` = none, `0xfffe` = end of list.
 - GDAT key: `(category, index, type, entry)` in `GRAPHICS.DAT`, the tuple that the lookup function `gdat_find_entry` (`FUN_0003c4f2`) uses.
@@ -40,6 +34,8 @@ Conventions:
 | `0x49ef8`-`0x5a87c` | 164 | Thing movement, sensors (Skullkeep machines), dungeon and outdoor view, game init, message area, timeline, weather, day and night |
 | `0x5a87c`-`0x62272` | 114 | IOP glue, GDAT decompressors, HMI SOS (timer, digital, detection, MIDI), clib `malloc` and `free` |
 | `0x62272`-`0x695ac` | 211 | Watcom clib, HMI PIT and IRQ code, DPMI helpers, HMI driver loaders, static HMI MIDI drivers |
+
+Watcom links object files in order, and libraries after them. The game code (`0x10000`-`0x5a87c`, 1037 functions) calls only about 50 library functions. Module boundaries inside the game block are not visible in the binary (no padding, no alignment). All 1195 direct call targets in the code are function starts in `reference/decomp/SKULL.c`; the one exception is `0x68c0f`, inside clib. Functions that are reached only through function pointers may be missing.
 
 The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gdat_lzw_decode`, `gdat_lzss12_decode`, `gdat_lzss13_decode`).
 
@@ -69,7 +65,7 @@ The port replaces all code from `0x5a87c` on, except the GDAT decompressors (`gd
 7. Map change through `g_new_map_index` (`0x717f4`) and `game_enter_map`; `music_update_for_map`.
 8. On the game end flag: `input_reset_states`, then return.
 
-Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: [runtime.md](../formats/runtime.md#pit-divisor-and-tick-rates).
+Game tick: `timer_isr` (`0x10cc2`, `INT 0x2d` from `IBMIOP.EXE`) adds `g_timer_step` (`0x7efac`) to `g_timer_ticks` (`0x7f228`) and `g_tick_accumulator` (`0x7f256`). At `g_tick_threshold` it sets `g_tick_elapsed`. Rates: [runtime.md](runtime.md#pit-divisor-and-tick-rates).
 
 ## IBMIOP INT 0xFC service table
 
@@ -112,7 +108,55 @@ Other hardware access: `gfx_fill_rect` writes to `0xa0000` (pitch 320), and `vga
 
 ## Hub functions
 
-Functions with the most callers: `dun_get_thing_data` 161, `dun_get_next_thing` 86, `gdat_entry_index` 66, `mem_copy` 59, `creature_get_group_at` 47, `rand_below` 46, `dun_get_thing_gdat_index` 44, `math_max16` 42, `dun_get_square_first_thing` 42, `dun_set_current_map` 40, `mem_alloc` 39, `timeline_add_event` 37, `zone_get_rect` 35, `dun_get_square` 35, `move_thing` 31.
+Functions with the most callers (the first 15 rows are the top of the list):
+
+| Address | Callers | Name |
+|---|---|---|
+| `0x1d2da` | 161 | `dun_get_thing_data` |
+| `0x1d30b` | 86 | `dun_get_next_thing` |
+| `0x3c5d3` | 66 | `gdat_entry_index` |
+| `0x10f43` | 59 | `mem_copy` |
+| `0x2fba9` | 47 | `creature_get_group_at` |
+| `0x1c6b7` | 46 | `rand_below` |
+| `0x1efa8` | 44 | `dun_get_thing_gdat_index` (thing to item database type and index) |
+| `0x1c687` | 42 | `math_max16` |
+| `0x1d391` | 42 | `dun_get_square_first_thing` |
+| `0x1c724` | 40 | `dungeon_set_current_map` |
+| `0x3bbba` | 39 | `mem_alloc` |
+| `0x1c6f6` | 39 | `rand_2bits` |
+| `0x56390` | 37 | `timeline_add_event` |
+| `0x1c67e` | 36 | `math_min16` |
+| `0x19cfc` | 35 | `zone_get_rect` |
+| `0x1ca96` | 35 | `dungeon_square_at` |
+| `0x1c6a1` | 32 | `rand_next` |
+| `0x1f8d9` | 31 | `creature_get_info` |
+| `0x4b108` | 31 | `move_thing` (central movement function) |
+| `0x14c68` | 29 | `mouse_show` |
+| `0x14c55` | 29 | `mouse_hide` |
+| `0x1f12f` | 28 | `item_get_attr` (item attribute word from GRAPHICS.DAT, type 0x0b) |
+| `0x15baa` | 27 | `sndreq_request_with_fallback` (play sound at position; decompile failed) |
+| `0x1f9a3` | 27 | `creature_get_flags` (creature attribute word for group) |
+| `0x1c6dc` | 27 | `rand_bit` |
+| `0x3f337` | 27 | `image_cache_get` |
+| `0x10f51` | 26 | `mem_zero` |
+| `0x1c690` | 25 | `math_clamp16` |
+| `0x1f274` | 24 | `dun_get_thing_gdat_category` (GRAPHICS.DAT category of a thing) |
+| `0x3ec2b` | 24 | `gdat_get_image` |
+| `0x3a921` | 23 | `gdat_get_text` |
+| `0x1d542` | 23 | `dun_unlink_thing_from_square` |
+| `0x3c92e` | 21 | `gdat_entry_exists` |
+| `0x3bca5` | 20 | `mem_free_size` |
+| `0x1d3db` | 20 | `dun_link_thing_to_square` |
+| `0x1d2cc` | 19 | `dun_get_square_first_thing_data` |
+| `0x12ad2` | 18 | `gfx_blit` |
+| `0x458f4` | 18 | `champ_get_index_in_cell` |
+| `0x1936f` | 18 | `zone_compute_rect` (layout zone computation) |
+| `0x3ee1d` | 18 | `gdat_get_image_palette` (GRAPHICS.DAT image lookup) |
+| `0x1be6a` | 18 | `gfx_offscreen_draw_gdat_image` (draw item or creature picture) |
+| `0x1863d` | 16 | `dungeon_direction_to` (direction from one square to another) |
+| `0x1d113` | 16 | `dungeon_linked_teleporter_dest` (stairs or teleport destination) |
+| `0x2f636` | 16 | `ai_thing_matches_filter` (creature or object flag test) |
+| `0x4e616` | 16 | `flush_picture` (flush view picture, draw context 0x8018a) |
 
 ## Key data structures
 
@@ -188,7 +232,7 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 - Creature info (`0x24` bytes, `g_creature_info` `0x71968`): `+0` flags, `+3` regeneration, `+4` maximum health, `+6` attack, `+8` projectile power, `+9` flags (`0x10` self damage on shot, `0x20` attack two champions, `0x40` closes pits), `+0x16` aggression and think speed nibbles, `+0x1d` push resistance (`0xff` immovable), `+0x1e` possession slot count, `+0x23` death explosion size.
 - Active group (`0x22` bytes, `g_active_groups` `0x7f898`): `+0` group thing index (`0xffff` free), `+2` timeline event, `+4` last action time, `+6` regeneration time, `+7` animation bits, `+0x0c`-`+0x10` counters and plan variables (merchant offer and payment sums), `+0x12` plan table index, `+0x13` plan step, `+0x14` accumulated damage, `+0x16` behavior entry, `+0x17` next action, `+0x18` destination (x bits 0-4, y bits 5-9, map bits 10-15), `+0x1a` action code, `+0x1b` direction, `+0x1c` cell or side, `+0x1d` facing, `+0x1e` sub-command, `+0x1f` phase, `+0x20` mode, `+0x21` interrupt. Count `g_active_group_count` (`0x7301c`), maximum `g_active_group_max` (`0x7f89c`).
 - AI context (`0x350` bytes at `0x7f548`, saved and restored by `ai_begin` and `ai_end`): `g_ai_group_thing` `0x7f548`, `g_ai_group` `0x7f54a`, `g_ai_creature_info` `0x7f54e`, `g_ai_active_group` `0x7f552`, animation pointers `0x7f556`/`0x7f55a`, event copy `0x7f55e`, position `g_ai_group_x`/`_y`/`_map` (`0x7f564`, `0x7f565`, `0x7f56d`), `g_ai_command_result` `0x7f56b` (`0xfc` issued, `0xfd` failed, `0xfe` no move), permission masks `0x7f572`-`0x7f57a`, `g_ai_class` `0x7f580` (into `g_creature_class_flags` `0x7507a`), candidates `0x7f670`/`0x7f674`, item filter cache `g_item_filter_bitmaps` `0x7f7ea`, scratch `g_ai_scratch` `0x7f894`.
-- AI action codes (`+0x1a`, dispatcher `execute_action` `0x2b75e`): 1, 2, 9 move; 6, 7 turn; 8, `0x26` melee; `0x0a` steal; `0x0e`, `0x0f` throw; `0x13` vanish; `0x17`, `0x18` give and take items; `0x27`, `0x28` shoot; `0x2f`-`0x31` use wall actuator; `0x35`-`0x3a` stairs or teleporter; `0x3b`-`0x40` transform, explode, spawn; `0x55` cloud explosion. Plan tables at `0x74f7e` (7-byte steps).
+- AI action codes (`+0x1a`, dispatcher `ai_execute_action` `0x2b75e`): 1, 2, 9 move; 6, 7 turn; 8, `0x26` melee; `0x0a` steal; `0x0e`, `0x0f` throw; `0x13` vanish; `0x17`, `0x18` give and take items; `0x27`, `0x28` shoot; `0x2f`-`0x31` use wall actuator; `0x35`-`0x3a` stairs or teleporter; `0x3b`-`0x40` transform, explode, spawn; `0x55` cloud explosion. Plan tables at `0x74f7e` (7-byte steps).
 - Path search: `ai_search_area` (`0x3188a`) is a breadth-first search on a 32 × 32 map. It also fills `g_party_distance_map` (`0x7f8c8`), which `sndreq_request` uses for sound propagation.
 
 ### Timeline
@@ -292,8 +336,8 @@ Party globals: `g_champion_count` (`0x7f276`), `g_leader_index` (`0x759a4`), `g_
 221 function names have low confidence: the role is known from the code, but the game meaning or the exact arguments are not confirmed.
 
 - `0x10000`-`0x18e7f`: `disk_query_drive_info`, `disk_get_drive_path`, `disk_prompt_stub`, `input_stub_return_zero`, `mouse_capture_begin`, `mouse_capture_end`, `iop_input_lock`, `iop_input_unlock`, `game_global_var`, `game_modify_global_var`, `item_get_image_kind`, `creature_get_cell_mask`, `money_get_coin_type_for_slot`, `melee_attack_group`, `fill_rect_dithered`, `system_init_stub`.
-- `0x18e7f`-`0x1fef6`: `aspect_cell_to_xy`, `zone_id_for_view_cell`, `element_zone`, `gfx_offscreen_fill_rect_alt`, `gfx_offscreen_draw_text_in_zone_alt`, `dun_find_adjacent_level_link`, `dun_get_teleporter_link_side`, `dun_get_linked_teleporter_dest`, `dun_find_open_teleporter_link`, `system_debug_hook`, `item_get_attr_3`, `creature_get_info_for_group`, `creature_get_info_word_1e`, `creature_get_info_word_20`, `creature_get_info_byte_1d`, `creature_get_gdat_attr4`, `item_is_minion_map`, `minion_map_set_location`, `item_find_link_projectile`, `dun_get_wall_ornament_attr_0a`, `sensor_is_alcove_shown`, `dun_get_wall_thing_ornament_attr_13`, `dun_get_thing_ornament_attr_0b`, `dun_get_thing_ornament_attr_0c`, `dun_get_door_attr_0d`, `dun_get_door_attr_10`, `dun_get_door_attr_0e`, `dun_get_door_attr_0f`, `dun_get_door_attr_11`.
-- `0x1fef6`-`0x2b96a`: `input_cond_flag_7f0b4`, `input_cond_value_757b8`, `input_cond_dialog_kind`, `input_cond_action_panel_kind`, `input_cond_action_champion_mask`, `input_cond_action_panel_variant`, `input_cond_no_action_champion_in_cell`, `click_front_wall`, `view_click_drop_done`, `is_side_blocked`, `creature_alert`, `schedule_loop_start`, `schedule_loop_end`, `creature_ai_scan_idle`, `creature_ai_scan_kind0`, `creature_ai_scan_items_seen_2`, `creature_ai_scan_items_seen_4`, `creature_ai_scan_item_counts_1`, `creature_ai_scan_item_counts_3`, `creature_ai_scan_carried_items_2`, `creature_ai_scan_carried_items_4`, `creature_ai_scan_path_kind13`, `creature_ai_scan_path_kind5`, `creature_ai_scan_carried_kind_f`, `creature_ai_scan_carried_kind_10`, `creature_ai_scan_by_condition_15`, `creature_ai_cmd_follow_candidate_path`, `creature_ai_cmd_shoot_random`, `creature_ai_cmd_seek_item`, `ai_cmd_seek_with_carried`, `ai_cmd_front_group_carries`, `creature_ai_cmd_place_item_on_sensor`, `creature_ai_cmd_drop_then_seek`, `creature_ai_cmd_set_mood_flag`, `creature_ai_cmd_seek_kind11_targets`, `creature_ai_cmd_consume_carried_item`, `creature_ai_cmd_check_transform_marker`, `creature_ai_cmd_set_special_action`, `creature_ai_cmd_path_to_target_alt`, `creature_ai_act_trigger_square`, `creature_ai_act_explode_or_spawn`, `creature_ai_act_cloud_explosion`, `shop_cmd_wait_for_offer`, `shop_cmd_count_payment`, `dun_set_pit_teleporter_state`.
+- `0x18e7f`-`0x1fef6`: `aspect_cell_to_xy`, `zone_id_for_view_cell`, `element_zone`, `gfx_offscreen_fill_rect_alt`, `gfx_offscreen_draw_text_in_zone_alt`, `dungeon_find_level_link`, `dun_get_teleporter_link_side`, `dungeon_linked_teleporter_dest`, `dun_find_open_teleporter_link`, `system_debug_hook`, `item_get_attr_3`, `creature_get_info_for_group`, `creature_get_info_word_1e`, `creature_get_info_word_20`, `creature_get_info_byte_1d`, `creature_get_gdat_attr4`, `item_is_minion_map`, `minion_map_set_location`, `item_find_link_projectile`, `dun_get_wall_ornament_attr_0a`, `sensor_is_alcove_shown`, `dun_get_wall_thing_ornament_attr_13`, `dun_get_thing_ornament_attr_0b`, `dun_get_thing_ornament_attr_0c`, `dun_get_door_attr_0d`, `dun_get_door_attr_10`, `dun_get_door_attr_0e`, `dun_get_door_attr_0f`, `dun_get_door_attr_11`.
+- `0x1fef6`-`0x2b96a`: `input_cond_flag_7f0b4`, `input_cond_value_757b8`, `input_cond_dialog_kind`, `input_cond_action_panel_kind`, `input_cond_action_champion_mask`, `input_cond_action_panel_variant`, `input_cond_no_action_champion_in_cell`, `click_front_wall`, `view_click_drop_done`, `is_side_blocked`, `creature_alert`, `schedule_loop_start`, `schedule_loop_end`, `creature_ai_scan_idle`, `creature_ai_scan_kind0`, `creature_ai_scan_items_seen_2`, `creature_ai_scan_items_seen_4`, `creature_ai_scan_item_counts_1`, `creature_ai_scan_item_counts_3`, `creature_ai_scan_carried_items_2`, `creature_ai_scan_carried_items_4`, `creature_ai_scan_path_kind13`, `creature_ai_scan_path_kind5`, `creature_ai_scan_carried_kind_f`, `creature_ai_scan_carried_kind_10`, `creature_ai_scan_by_condition_15`, `creature_ai_cmd_follow_candidate_path`, `creature_ai_cmd_shoot_random`, `creature_ai_cmd_seek_item`, `ai_cmd_seek_with_carried`, `ai_cmd_front_group_carries`, `creature_ai_cmd_place_item_on_sensor`, `creature_ai_cmd_drop_then_seek`, `creature_ai_cmd_set_mood_flag`, `creature_ai_cmd_seek_kind11_targets`, `creature_ai_cmd_consume_carried_item`, `creature_ai_cmd_check_transform_marker`, `creature_ai_cmd_set_special_action`, `creature_ai_cmd_path_to_target_alt`, `creature_ai_act_trigger_square`, `creature_ai_act_explode_or_spawn`, `creature_ai_act_cloud_explosion`, `shop_cmd_wait_for_offer`, `shop_cmd_count_payment`, `move_set_pit_teleporter_state`.
 - `0x2b96a`-`0x3ba23`: `creature_thing_matches_filter9`, `creature_group_in_state5`, `creature_group_check_pass_flag`, `creature_group_current_frame_flag`, `creature_group_check_field8`, `creature_roll_armor_factor`, `ai_find_marker`, `ai_find_marker_by_id`, `ai_find_target_in_lines`, `ai_projectile_incoming`, `ai_wall_actuator_accepts`, `ai_find_wall_actuator`, `is_near_party_front`, `dun_mark_square_bit1`, `dun_merge_object_lists`, `dungeon_read_level_table`, `inv_draw_mouth_picture`, `inv_leader_hand_removed_stub`, `input_hold_right_button`, `zone_compute_icon_rect`, `zone_get_icon_rect`.
 - `0x3ba23`-`0x49ef8`: `champ_find_hand_source_slot`, `throw_fatigue`, `gdat_index_last_type`, `gdat_get_image_offset`, `image_decode_8bpp`.
 - `0x49ef8`-`0x5a87c`: `update_carried_missiles`, `projectile_check_missiles_hit_party`, `aspect_creature_cell`, `dun_map_gfx_flag20_clear`, `copy_mirrored`, `view_draw_wet_image`, `show_sparkle_field`, `view_offset_toward_party`, `view_mark_hidden_squares`, `view_unhide_linked_squares`, `show_stairs_side`, `show_stairs_front`, `show_ceiling_pit`, `show_floor_pit`, `mem_parse_config_entry`, `mem_test_all_maps`, `timeline_event_apply_item_effect`, `timeline_event_door_button_release`, `schedule_timer`, `run_activation`, `sensor_process_map_entry`, `move_party_warp_to_marker`.
@@ -304,7 +348,7 @@ For library functions (clib, DPMI, HMI), only the names are firm, not the signat
 
 ## Open questions
 
-1. Game tick rate: the actual rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](../formats/runtime.md#unknown-values)).
+1. Game tick rate: the actual rate of the `INT 0x2d` callback under DOS/4GW ([runtime.md](runtime.md#unknown-values)).
 2. Thing types 11-13 and square type 7 in DM2.
 3. `0x7f278` with `0x7f25c`, `0x7f25e`, `0x7f272`: alternate view position or arrival position after a map link. Also the difference between `g_party_square_*` (`0x7f27a`-`0x7f27e`) and `g_party_x`/`g_party_y`.
 4. Creature AI plan tables (`0x74f7e`) and scanner kinds: a table dump is necessary to give each plan command and scanner a game meaning.

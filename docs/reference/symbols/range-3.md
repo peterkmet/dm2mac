@@ -1,5 +1,7 @@
 # Range 3 notes (0x1fef6-0x2b96a)
 
+Analysis notes of the address range 0x1fef6-0x2b96a; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
 181 functions. All have names in `range-3.csv`. 77 new globals are in `range-3-globals.csv`.
 
 ## Module layout
@@ -73,7 +75,7 @@ Other AI globals: target square 0x7f8a2 (x), 0x7f8a0 (y); party position seen by
 
 +2 timeline event index, +4 last action time (byte), +6 regeneration time (byte), +0x0c/+0x0e/+0x10 counters (merchant uses them for offer and payment sums), +0x0e/+0x10 also plan variables (set by plan step -10), +0x12 plan table index (0xff none), +0x13 plan step, +0x14 accumulated damage (uint16), +0x16 behavior entry, +0x17 next action, +0x18 target square (x bits 0-4, y bits 5-9, map bits 10-15), +0x1b target direction or item flag, +0x1c target cell, +0x1d direction, +0x1e action argument, +0x1f action phase, +0x20 action argument 2, +0x21 interrupt.
 
-Correction to notes.md: the AI state starts at +0x14, not +0x17. Ghidra reads bytes +0x17 and +0x1a as `*(int *)(p + 0x14) >> 24` and `*(int *)(p + 0x17) >> 24`.
+An earlier note said otherwise; the AI state starts at +0x14, not +0x17. Ghidra reads bytes +0x17 and +0x1a as `*(int *)(p + 0x14) >> 24` and `*(int *)(p + 0x17) >> 24`.
 
 ### Group record (thing type 4), new fields
 
@@ -98,7 +100,7 @@ Correction to notes.md: the AI state starts at +0x14, not +0x17. Ghidra reads by
 
 - `command_execute`: signature is `int command_execute(int16_t *command_record)` (returns 0 when the command must wait), not `void (void)`.
 - `game_loop` calls `input_reset_states` (0x206c6) on the game end flag, then returns.
-- notes.md: `g_tick_elapsed._2_2_` (0x717f4) is `g_new_map_index`; `game_enter_map` (0x24629) handles it.
+- `g_tick_elapsed._2_2_` (0x717f4) is `g_new_map_index`; `game_enter_map` (0x24629) handles it.
 
 ## Open questions
 

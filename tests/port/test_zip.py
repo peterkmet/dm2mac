@@ -8,7 +8,6 @@ import zipfile
 import pytest
 
 from dm2test import constants as C
-from dm2test.lib import load_lib
 
 MARKER = b"DATA/GRAPHICS.DAT"
 TEXT = (b"Dungeon Master II: the legend of Skullkeep. " * 2400)[:100_000]
@@ -20,16 +19,14 @@ class ZipEntry(ctypes.Structure):
                 ("method", ctypes.c_uint16)]
 
 
-@pytest.fixture(scope="module")
-def lib():
-    lib = load_lib()
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
     lib.zip_open.argtypes = [ctypes.c_char_p]
     lib.zip_open.restype = ctypes.c_void_p
     lib.zip_close.argtypes = [ctypes.c_void_p]
     lib.zip_find_root.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t]
     lib.zip_find.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ZipEntry)]
     lib.zip_read.argtypes = [ctypes.c_void_p, ctypes.POINTER(ZipEntry), ctypes.c_char_p, ctypes.c_uint32]
-    return lib
 
 
 def write_zip(target, entries):

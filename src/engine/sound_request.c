@@ -10,7 +10,6 @@
 #include "dungeon.h"
 #include "gdat.h"
 #include "hooks.h"
-#include "move.h"
 #include "save.h"
 #include "timeline.h"
 
@@ -233,12 +232,13 @@ static void request_later(const SoundCue *cue, int16_t x, int16_t y, uint16_t ti
                                      .category = (uint8_t)cue->category,
                                      .index = (uint8_t)cue->index,
                                      .entry = (uint8_t)cue->entry,
-                                     .map = g_party.cur_map,
+                                     .map = g_current_map.map,
                                      .x = x,
                                      .y = y,
                                      .priority = cue->priority,
                                      .volume = cue->volume};
-    TimelineEvent e = {.time_map = timeline_time_map((g_game.game_time + ticks - 1) & EVENT_TIME_MASK, g_party.cur_map),
+    TimelineEvent e = {.time_map =
+                           timeline_time_map((g_game.game_time + ticks - 1) & EVENT_TIME_MASK, g_current_map.map),
                        .type = EVENT_DELAYED_SOUND,
                        .priority = (uint8_t)cue->priority};
     e.data[DELAYED_EVENT_SLOT] = (uint8_t)slot; /* fix: the original leaves data bytes 2 to 5 uninitialized */
@@ -248,7 +248,7 @@ static void request_later(const SoundCue *cue, int16_t x, int16_t y, uint16_t ti
 /* True when the party sees the current map: from its square or through a seamless passage. */
 static bool party_sees_current_map(void)
 {
-    return g_party.cur_map == g_party.square_map || g_party.cur_map == g_party.alt_view_map;
+    return g_current_map.map == g_current_map.square_map || g_current_map.map == g_current_map.alt_view_map;
 }
 
 /* Loads the sound of cue while the queue of the game step has room; a sleeping party hears half the volume. */
@@ -273,8 +273,8 @@ void sndreq_request(SoundCue cue, int16_t x, int16_t y, enum SoundWhen when)
     int map_x = x;
     int map_y = y;
     if (when == SOUND_STEP_END) { /* a sound on the other map of a seamless passage */
-        x += dungeon_map_offset_x(g_party.cur_map) - dungeon_map_offset_x(g_game.party_map);
-        y += dungeon_map_offset_y(g_party.cur_map) - dungeon_map_offset_y(g_game.party_map);
+        x += dungeon_map_offset_x(g_current_map.map) - dungeon_map_offset_x(g_game.party_map);
+        y += dungeon_map_offset_y(g_current_map.map) - dungeon_map_offset_y(g_game.party_map);
     }
     int dx = x - g_game.party_x;
     int dy = y - g_game.party_y;
@@ -330,7 +330,7 @@ void sndreq_request_after(SoundCue cue, int16_t x, int16_t y, uint16_t ticks)
 void sndreq_request_delayed(int16_t slot)
 {
     Delayed *d = &queues.delayed[slot & (DELAYED_MAX - 1)]; /* fix: a slot from the save stays in the table */
-    if (d->map == g_party.square_map || d->map == g_party.alt_view_map)
+    if (d->map == g_current_map.square_map || d->map == g_current_map.alt_view_map)
         sndreq_request((SoundCue){d->category, d->index, d->entry, d->priority, d->volume}, d->x, d->y, SOUND_STEP_END);
     d->used = false;
 }

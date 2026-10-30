@@ -1,6 +1,8 @@
 # Range 2 notes (0x18e7f-0x1fef6)
 
-166 functions, all named. 29 names are low confidence (role known, game meaning not): the `*_attr_*` getters (10), `creature_get_info_*` and `creature_get_gdat_attr4` (4), `gfx_offscreen_*_alt` (2), the teleporter link functions (3), `dun_find_adjacent_level_link`, `view_grid5_*` and `zone_id_for_view_*` (4), `system_debug_hook`, the minion functions (3), `dun_is_wall_thing_ornament_shown`.
+Analysis notes of the address range 0x18e7f-0x1fef6; the names are in [skull-symbols.csv](../skull-symbols.csv).
+
+166 functions, all named. 29 names are low confidence (role known, game meaning not): the `*_attr_*` getters (10), `creature_get_info_*` and `creature_get_gdat_attr4` (4), `gfx_offscreen_*_alt` (2), the teleporter link functions (3), `dungeon_find_level_link`, `view_grid5_*` and `zone_id_for_view_*` (4), `system_debug_hook`, the minion functions (3), `dun_is_wall_thing_ornament_shown`.
 
 ## Data structures
 
@@ -53,7 +55,7 @@ Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w,
 
 - `zone_get_rect_clipped`: parameters 3 and 4 are size scales in 1/10000, not maximum sizes.
 - `dun_get_location_on_map`: parameter 2 is a level delta; parameter 5 is a cursor into the map list (in and out). Returns the map index or -1.
-- `dun_get_square`: outside the map it returns 0xe0 (type 7) or a wall/floor value derived from the border squares.
+- `dungeon_square_at`: outside the map it returns 0xe0 (type 7) or a wall/floor value derived from the border squares.
 - Hub 0x1be6a is not specific to items or creatures: it draws any GRAPHICS.DAT image into a zone of an off-screen buffer.
 - Hub 0x1d113 is a two-way teleporter link (both ends need a sensor type 0x27), not stairs.
 
@@ -61,7 +63,7 @@ Starts with an `image_ref_t`. +6 GRAPHICS.DAT entry index of the image, +0x12 w,
 
 - Money: `money_is_moneybox` (container whose image (0x14, n, 5, 0x40) exists), `money_is_coin` (misc item with attr 0 bit 0x4000, stackable up to 64), `money_count_coins_in_box`, `money_add_coin_to_box`, `money_take_coin_from_box`. Coin item indices at 0x7f390, count 0x7f3fa. Callers 0x29598 and 0x296d5 are in the creature AI (merchants, probably shops), 0x42a35 and 0x4534f in the interface.
 - Minions: `item_is_minion_map` (container kind 1), `minion_map_set_location` (called by champion action 0x2c/0x2f in 0x414a5), `minion_find_link_projectile` (a type 14 record in a group's possessions links the minion to its map item). Assumption based on SKWin names (`GET_MISSILE_REF_OF_MINION`); confirm in range 3/5.
-- Alternative view position (0x7f230, 0x7f25c, 0x7f25e, 0x7f272, 0x7f278): `dun_set_current_map` uses it instead of the party position, and `dun_get_discarded_thing` protects that map. Probably the minion eye or remote view. Open.
+- Alternative view position (0x7f230, 0x7f25c, 0x7f25e, 0x7f272, 0x7f278): `dungeon_set_current_map` uses it instead of the party position, and `discard_find_thing` protects that map. Probably the minion eye or remote view. Open.
 - Not in this range: weather, outdoor view, shops UI, Skullkeep machines.
 
 ## Open questions
