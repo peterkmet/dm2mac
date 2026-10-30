@@ -5,8 +5,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.scenario import Party, gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.input import run_ticks
+from dm2test.scenario import Party
 from dm2test.lib import load_lib
 from dm2test.view import Bitmap
 
@@ -44,7 +44,7 @@ def arrow_pixels(lib, mouse):
     return [ctypes.string_at(base + (rect[1] + y) * screen.width + rect[0], rect[2]) for y in range(rect[3])]
 
 
-def test_the_push_arrow_under_the_mouse_stays_pressed(lib, session):  # noqa: F811
+def test_the_push_arrow_under_the_mouse_stays_pressed(lib, session):
     # The party climbs the ladder to the first room (map 22), walks to the table (1, 6), and grabs it.
     game, _ = session
     keys(lib, KEY_TURN_RIGHT, KEY_TURN_RIGHT)

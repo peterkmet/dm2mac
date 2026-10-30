@@ -1,4 +1,4 @@
-"""Step 16 magic and minions against the original code in dm2tools.emu: runes, spells, magic light, auras, and the
+"""Differential tests of magic and minions against the original code in dm2tools.emu: runes, spells, magic light, auras, and the
 minion map panel."""
 
 import ctypes
@@ -14,10 +14,8 @@ from dm2tools.le import load_image
 from dm2test.creature import CreatureScenario
 from dm2test.interface import (CHAMPION_SIZE, GAME_LEADER_HAND, ActionArea, c_screen, champion_bytes, champion_records,
                                diff, draw_game_screen, open_hand, set_action, sync_champions, update_action_area)
-from dm2test.interface import gdat, original, port  # noqa: F401 (fixtures)
 from dm2test.input import click_feedback
 from dm2test.save import Game
-from dm2test.scenario import start  # noqa: F401 (fixture)
 from dm2test.lib import load_lib
 
 
@@ -100,12 +98,12 @@ def clear_magic_event_bytes(emu):
 class MagicScenario(CreatureScenario):
     """start.DAT with four champions."""
 
-    def __init__(self, lib, gdat, start, tmp_path):
-        super().__init__(lib, gdat, start, tmp_path)
+    def __init__(self, lib, ui_gdat, start, tmp_path):
+        super().__init__(lib, ui_gdat, start, tmp_path)
         emu = self.emu
         clear_magic_event_bytes(emu)
         self.game_record = Game.in_dll(lib, "g_game")
-        sync_champions(lib, self)  # the loads differ in the redraw flags, the skill bonuses, and the load (Step 14)
+        sync_champions(lib, self)  # the loads differ in the redraw flags, the skill bonuses, and the load
 
     def magic(self):
         mine = bytes((ctypes.c_uint8 * 6).from_address(ctypes.addressof(self.game_record) + GAME_MAGIC))
@@ -130,9 +128,9 @@ class MagicScenario(CreatureScenario):
 
 
 @pytest.fixture
-def magic(lib, gdat, start, tmp_path):
+def magic(lib, ui_gdat, start, tmp_path):
     lib.timeline_add_event.argtypes = [ctypes.c_void_p]
-    return MagicScenario(lib, gdat, start, tmp_path)
+    return MagicScenario(lib, ui_gdat, start, tmp_path)
 
 
 def make_party(scenario, rng):
@@ -539,7 +537,7 @@ MAP_SQUARE_READS = ((0x44805, 0x44873), (0x448CB, 0x4493A))
 
 @pytest.fixture(scope="module")
 def map_ui(spell_ui, lib):
-    """The spell interface with a level digit table of zeros (the C port before Step 20), and without the reads of
+    """The spell interface with a level digit table of zeros (the C port before the spell interface was ported), and without the reads of
     square bytes outside a map."""
     from unicorn import UC_HOOK_CODE
     from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBP, UC_X86_REG_EDI, UC_X86_REG_EIP
@@ -677,7 +675,7 @@ class Pool:
             set_word(self.lib, emu, record, 0, C.THING_NONE)
 
 
-def test_minion_maps_match_original(port, map_ui, gdat):
+def test_minion_maps_match_original(port, map_ui, ui_gdat):
     # The minion maps of the dungeon in the hand of the first champion, of each kind (no location, minion,
     # location, without options), with a minion (a link projectile in the possessions of a creature group) and a
     # marker at random squares, at random party places and directions, with the option buttons, over game ticks that
@@ -740,7 +738,7 @@ def test_minion_maps_match_original(port, map_ui, gdat):
             set_word(lib, emu, group, 2, free_projectile)
             set_word(lib, emu, thing, 2, group)
             size = ctypes.c_uint32()
-            lib.gdat_item(gdat, lib.gdat_find(gdat, C.CAT_CREATURE, word(lib, group, 4) & 0xFF, C.GDAT_TYPE_CREATURE_DATA, 0xFD), ctypes.byref(size))
+            lib.gdat_item(ui_gdat, lib.gdat_find(ui_gdat, C.CAT_CREATURE, word(lib, group, 4) & 0xFF, C.GDAT_TYPE_CREATURE_DATA, 0xFD), ctypes.byref(size))
             sequence = rng.randrange(max(1, size.value // 8))  # another animation frame: another cell of the minion
             if lib.creature_group_info(group)[0] & 1:
                 set_word(lib, emu, group, 8, sequence)

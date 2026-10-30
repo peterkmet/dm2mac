@@ -5,11 +5,10 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
+from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.lib import load_lib
 from dm2test.save import Game
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 ACTION_HAND = 1  # the slot of the action hand
 STEP_TICKS = 40  # timer ticks that run a click to its end
@@ -29,7 +28,7 @@ def lib():
     return lib
 
 
-def test_an_open_money_box_shows_the_leader_hand_object_as_the_cursor(lib, session):  # noqa: F811
+def test_an_open_money_box_shows_the_leader_hand_object_as_the_cursor(lib, session):
     # regression: the action area did not mark the input zones of a panel it opened, so the cursor over an open
     # money box was the arrow until the next input mode change
     box = things_of(lib, C.THING_CONTAINER, 1, lib.item_is_moneybox)
@@ -57,7 +56,7 @@ def action_area_pixels(lib):
     return b"".join(screen[(rect[1] + y) * SCREEN_W + rect[0]:][:rect[2]] for y in range(rect[3]))
 
 
-def test_a_short_icon_remap_item_is_not_read(lib, gdat, session):  # noqa: F811
+def test_a_short_icon_remap_item_is_not_read(lib, gdat, session):
     # regression: the hand icons of the action area read the 256 colors of the icon remap item past the end of a
     # shorter item (a damaged GRAPHICS.DAT); the port then draws the icons without the remap
     from dm2test.gdat import item_sizes

@@ -5,10 +5,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import session  # noqa: F401 (session is a fixture)
 from dm2test.interface import GAME_CHAMPIONS
 from dm2test.lib import load_lib
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 KALAN_GAUNTLET_SKILL = 186  # the third action of the Kalan Gauntlet: "SK18SK6" reads as skill 186
 TAIL = 1024  # bytes after the champion records: the rest of g_game and the globals behind it

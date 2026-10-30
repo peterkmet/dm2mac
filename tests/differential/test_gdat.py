@@ -4,7 +4,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, gd, image_info  # noqa: F401 (gd is a fixture)
+from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, image_info
 from dm2test.markers import ROOT
 from dm2tools.emu import Emu
 from dm2tools.le import load_image

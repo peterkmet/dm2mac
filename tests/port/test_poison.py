@@ -5,12 +5,10 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import session  # noqa: F401 (session is a fixture)
 from dm2test.interface import GAME_CHAMPIONS
 from dm2test.lib import load_lib
 from dm2test.modes import ADVANCED, VANILLA, set_mode
 from dm2test.save import Event, Timeline
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 
 FILLER = 40  # events before the poison event; their deletion leaves the poison event past the event count
 POISON = 6

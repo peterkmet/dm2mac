@@ -30,7 +30,7 @@ def original_view_of(lib, gdat, start):
 
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
 
-# Original functions of Step 14.
+# Original functions of the move and timeline code.
 COMMAND_EXECUTE, MOVE_PARTY, MOVE_PARTY_TURN, MOVE_THING = 0x21D6C, 0x235BF, 0x2339D, 0x4B108
 TIMELINE_PROCESS, TIMELINE_ADD_EVENT, DUN_SET_PARTY_LOCATION = 0x59A5C, 0x56390, 0x1C82D
 SENSOR_PROCESS_FLOOR, GAME_ENTER_MAP = 0x4CDCC, 0x24629
@@ -63,15 +63,15 @@ COMMAND_RECORD = SCRATCH + 0xF8000
 SCHEDULED_EVENT = SCRATCH + 0xF8100
 SENSOR_SCHEDULE_SQUARE_EVENT, GDAT_LOAD_MAP_GRAPHICS = 0x4BBE4, 0x3AB31
 EXPLOSION_CREATE = 0x16746
-# The wall sensor that creates an item (kind 0x3c) in wall_square_event: Step 15.
+# The wall sensor that creates an item (kind 0x3c) in wall_square_event.
 WALL_CREATE_ITEM, WALL_NEXT_THING = 0x58B04, 0x58C56
-# The wall sensor of the end of the game (kind 0x12): Step 20.
+# The wall sensor of the end of the game (kind 0x12).
 WALL_END_GAME = 0x58A12
 # The drawing part of ui_draw_movement_arrows (the screen is not mapped); it then sets the input mode.
 ARROWS_DRAWING = (0x42B00, 0x42B6D)
 # forward_effect: the reverse effect of a hold stays uninitialized (C port: a hold).
 FORWARD_REVERSE_HOLD = 0x5723C
-# Step 17: the weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
+# The weather update, and transfer_object with its charge change that mode 3 leaves uninitialized.
 WORLD_UPDATE_DAY_NIGHT, TRANSFER_OBJECT_FRAME, LIGHT_UPDATE_PARTY_LIGHT = 0x5A073, 0x57D54, 0x389C2
 MAP_GRAPHICS_TAIL = SCRATCH + 0xF8200  # the end of gdat_load_map_graphics: world_update_day_night(0), then return
 # Weather globals of the original: name -> (address, struct format); the C values come from World.

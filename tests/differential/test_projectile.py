@@ -1,4 +1,4 @@
-"""Scenario tests of Step 16 with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
+"""Scenario tests with the emulator oracle: projectiles, explosions, missile launcher sensors, and the
 creature attacks on champions run in the C port and in the original code from start.DAT; the game state must stay
 equal."""
 
@@ -12,7 +12,7 @@ from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.scenario import COMMAND_RECORD, ENDOFLIST, sensor_squares, square_event, squares
 from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
-from dm2test.scenario import Location, gdat, start  # noqa: F401 (fixtures)
+from dm2test.scenario import Location
 from dm2test.lib import load_lib
 
 

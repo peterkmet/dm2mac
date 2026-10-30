@@ -1,4 +1,4 @@
-"""Scenario tests of Step 14 with the emulator oracle: start.DAT goes into the C port and into the memory of the
+"""Scenario tests with the emulator oracle: start.DAT goes into the C port and into the memory of the
 original code; both run the same commands and timeline events; then the game state must be equal."""
 
 import ctypes
@@ -8,9 +8,9 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.lib import load_lib
-from dm2test.scenario import (  # noqa: F401 (gdat, start and scenario are fixtures)
+from dm2test.scenario import (
     CHAMPION_CELL, COMMAND_EXECUTE, COMMAND_RECORD, DIRS, ENDOFLIST, G_CHAMPION_COUNT, NONE, SKY_OBJECTS_SIZE,
-    Command, Location, approaches, gdat, scenario, sensor_squares, square_event, square_things, squares, start,
+    Command, Location, approaches, sensor_squares, square_event, square_things, squares,
 )
 
 

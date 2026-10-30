@@ -16,12 +16,10 @@ import pytest
 
 from dm2tools.control_client import request
 from dm2test import constants as C
-from dm2test.control import (  # noqa: F401 (control is a fixture)
-    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, GameWithChampions, control, pumped,
+from dm2test.control import (
+    NAME_SIZE, PALETTE_COLORS, RGB, SCAN_QUOTE, SCREEN_H, SCREEN_W, GameWithChampions, pumped,
 )
-from dm2test.input import session  # noqa: F401 (a fixture)
 from dm2test.markers import ROOT
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
 from dm2test.interface import UiState, things_of
 from dm2test.view import ScreenPoint
 from dm2test.lib import load_lib
@@ -294,7 +292,7 @@ def test_bad_requests_get_errors(control, lib):
             assert request(payload, path) == {"ok": False, "error": error}
 
 
-def test_program_with_control_answers_and_quits(start, tmp_path):  # noqa: F811
+def test_program_with_control_answers_and_quits(start, tmp_path):
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")
     path = os.path.join(folder, "control.sock")
     env = dict(os.environ, SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy")

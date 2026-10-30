@@ -272,7 +272,7 @@ def test_door_states_match_original(lib, loaded, original_view):
     lib.view_enter_map(game.party_map)
 
 
-# ---- Things in the view (Step 12b) ----
+# ---- Things in the view ----
 
 VIEW_GRID5_CELL_TO_XY, VIEW_ROTATE_GRID5_CELL, VIEW_OFFSET_CREATURE = 0x18E7F, 0x19B0B, 0x52A88
 OUT_X, OUT_Y = SCRATCH, SCRATCH + 4

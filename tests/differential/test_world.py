@@ -1,4 +1,4 @@
-"""Step 17 tests with the emulator oracle: weather, day and night, the party light, and the object transfer sensors
+"""Tests with the emulator oracle: weather, day and night, the party light, and the object transfer sensors
 (Skullkeep machines). start.DAT goes into the C port and into the original code (dm2test.scenario.Scenario); both run the
 same calls; then the weather, the light, the sky objects, the dungeon, and the timeline must be equal."""
 
@@ -12,9 +12,9 @@ from dm2test import constants as C
 from dm2test.audio import SoundCue
 from dm2test.gdat import GdatKey
 from dm2test.interface import CHAMPION_SIZE, GAME_CHAMPIONS, GAME_LEADER_HAND, GAME_MAGIC, G_LEADER_HAND, champion_bytes, sync_champions
-from dm2test.scenario import (  # noqa: F401 (gdat and start are fixtures)
-    COMMAND_RECORD, G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
-    Location, Scenario, WeatherState, WorldGame, gdat, sky_list, square_event, squares, start,
+from dm2test.scenario import (
+    G_SKY_OBJECTS, LIGHT_UPDATE_PARTY_LIGHT, NONE, SKY_OBJECTS_SIZE, WEATHER, WORLD_UPDATE_DAY_NIGHT,
+    Location, Scenario, WeatherState, WorldGame, sky_list, square_event, squares,
 )
 from dm2test.save import Game, Timeline
 from dm2test.view import MOVE_THING, VIEW_SEED_ADDR, ScreenPoint, draw_both
@@ -343,7 +343,7 @@ def test_object_transfer_sensors_match_original(world, lib):
     # Every object transfer sensor of the dungeon on walls and floors, in its own kind and as each of the kinds 0x3b,
     # 0x40, 0x47, 0x48, 0x49, wanting its item or any object, with each charge change, inverted or not, sometimes
     # aimed at its own square: objects of its map go on its source cell, then square events with each effect; the
-    # objects move to the target (or back), with the charge changes; bones bring back a champion (Step 15 hook).
+    # objects move to the target (or back), with the charge changes; bones bring back a champion (the champion hook).
     rng = random.Random(176)
     sc = world
     moved = recharged = 0
@@ -565,7 +565,7 @@ def test_pit_falls_match_original(lib, gdat, start, tmp_path):
     for n, (map_, x, y, d) in enumerate(approaches(lib, 2, lambda s: s & 8, limit=40)):
         sc.place(map_, x, y, d)
         set_weather(sc, **random_weather(rng))
-        for c in range(sc.game.champion_count):  # the falls hurt (Step 15): the party must not die (Step 20)
+        for c in range(sc.game.champion_count):  # the falls hurt: the party must not die
             champion_bytes(lib, c, 0x36, struct.pack("<h", 900))
         sync_champions(lib, sc)
         for i in range(48):

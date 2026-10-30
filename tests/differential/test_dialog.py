@@ -1,4 +1,4 @@
-"""Step 20: the dialogs, the slot dialogs, the start menu picture, and the name editor against the original drawing in
+"""Differential tests of the dialogs, the slot dialogs, the start menu picture, and the name editor against the original drawing in
 dm2tools.emu (the harness of dm2test.interface)."""
 
 import ctypes
@@ -8,15 +8,17 @@ import pytest
 from unicorn import UC_PROT_ALL
 
 from dm2test import constants as C
-from dm2test.dialog import (  # noqa: F401 (program_start_after is an autouse fixture)
+from dm2test.dialog import (
     G_DATA_PATH, G_DIALOG_SCREEN_MODE, G_DISK_PATH_KIND, G_SAVE_PATH, G_SCREEN_BITMAP, DialogState, InputMatch, Session,
-    main_loop_quit, program_start_after,
+    main_loop_quit,
 )
 from dm2test.gdat import GdatKey
-from dm2test.interface import (  # noqa: F401 (gdat, original, and port are fixtures)
-    SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff, gdat, original, port,
+from dm2test.interface import (
+    SCREEN_H, SCREEN_W, VGA, VIEW_W, c_screen, c_view, diff,
 )
 from dm2test.lib import load_lib
+
+pytestmark = pytest.mark.usefixtures("program_start_after")
 
 
 @pytest.fixture(scope="module")
@@ -377,14 +379,14 @@ def test_dialog_button_scripts_match_original(port, original):
     assert seen == {1, 0xDC, 0xE3}
 
 
-def dialog_button_count(lib, gdat, dialog):
+def dialog_button_count(lib, ui_gdat, dialog):
     """The buttons of dialog: its text entries, as dialog_run counts them."""
     text = ctypes.create_string_buffer(128)
     lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
-    return sum(1 for e in range(C.DIALOG_TEXT_COUNT) if lib.gdat_text(gdat, GdatKey(C.CAT_DIALOG, dialog, e), text, 128) and text.value)
+    return sum(1 for e in range(C.DIALOG_TEXT_COUNT) if lib.gdat_text(ui_gdat, GdatKey(C.CAT_DIALOG, dialog, e), text, 128) and text.value)
 
 
-def test_pressed_button_feedback_matches_original(ui, original, gdat):
+def test_pressed_button_feedback_matches_original(ui, original, ui_gdat):
     # A click on each button of each dialog with buttons: the click feedback script of the button count and the
     # command draws the pressed button picture; the screens are equal after each tick of the script.
     from dm2test.input import click_feedback, find_click
@@ -395,7 +397,7 @@ def test_pressed_button_feedback_matches_original(ui, original, gdat):
     counts = {}
     try:
         for dialog in dict.fromkeys(d for d, _ in DIALOGS):
-            count = counts[dialog] = dialog_button_count(lib, gdat, dialog)
+            count = counts[dialog] = dialog_button_count(lib, ui_gdat, dialog)
             for command in range(C.CMD_DIALOG_BUTTON_FIRST, C.CMD_DIALOG_BUTTON_FIRST + count):
                 set_screen_mode(lib, emu, 1)
                 lib.dialog_draw(dialog, 0)

@@ -6,11 +6,9 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
+from dm2test.input import run_ticks
 from dm2test.interface import champion_records
-from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, advanced,  # noqa: F401 (fixture)
-                           key_command, press, set_mode)
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, key_command, press, set_mode)
 from dm2test.lib import load_lib
 
 SPELL_COUNT, SPELLS_PER_PAGE = 34, 8
@@ -54,7 +52,7 @@ def lib():
 
 
 @pytest.fixture
-def screen(lib, advanced):  # noqa: F811
+def screen(lib, advanced):
     """The open cheat screen in the advanced mode; closed and all cheats off after the test."""
     lib.game_set_cheats(0)
     yield advanced

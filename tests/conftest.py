@@ -3,17 +3,32 @@ from pathlib import Path
 
 import pytest
 
-from dm2test.markers import GAME, ROOT
+pytest.register_assert_rewrite("dm2test")
+
+pytest_plugins = [
+    "dm2test.control",
+    "dm2test.creature",
+    "dm2test.dialog",
+    "dm2test.gdat",
+    "dm2test.input",
+    "dm2test.interface",
+    "dm2test.modes",
+    "dm2test.scenario",
+]
 
 
 @pytest.fixture
 def game_dir():
+    from dm2test.markers import GAME
+
     if not (GAME / "SKULL.EXE").exists():
         pytest.skip("game/SKULL.EXE missing")
     return GAME
 
 
 def pytest_configure(config):
+    from dm2test.markers import ROOT
+
     # builds once in the main process, before the xdist workers start
     if not hasattr(config, "workerinput"):
         sdl = subprocess.run(["brew", "--prefix", "sdl3"], capture_output=True, text=True)
@@ -24,6 +39,8 @@ def pytest_configure(config):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    from dm2test.markers import ROOT
+
     # records the git tree of a green full run of a clean checkout; tools/test-suite skips a rerun of that tree
     if hasattr(session.config, "workerinput") or exitstatus != 0 or session.config.args != ["tests"]:
         return

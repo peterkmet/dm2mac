@@ -6,10 +6,8 @@ import ctypes
 import pytest
 
 from dm2test import constants as C
-from dm2test.input import run_ticks, session  # noqa: F401 (session is a fixture)
-from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, advanced,  # noqa: F401 (fixture)
-                           key_command, press, set_mode)
-from dm2test.scenario import gdat, start  # noqa: F401 (gdat and start are fixtures)
+from dm2test.input import run_ticks
+from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANILLA, key_command, press, set_mode)
 from dm2test.lib import load_lib
 
 NONE, SCALE2X, SCALE3X = C.SETTINGS_FILTER_NONE, C.SETTINGS_FILTER_SCALE2X, C.SETTINGS_FILTER_SCALE3X
@@ -28,7 +26,7 @@ def lib():
 
 
 @pytest.fixture
-def menu(lib, advanced):  # noqa: F811
+def menu(lib, advanced):
     """The advanced mode with the filter none and the menu open; everything closed after the test."""
     lib.optmenu_start(NONE)
     lib.optmenu_open()
@@ -113,7 +111,7 @@ def test_start_takes_the_file_unless_a_filter_is_given(lib, menu, given, file, e
     assert lib.optmenu_get_filter() == NONE, "the vanilla mode reads no file"
 
 
-def test_escape_opens_the_menu_in_the_advanced_mode_and_pauses_in_vanilla(lib, advanced):  # noqa: F811
+def test_escape_opens_the_menu_in_the_advanced_mode_and_pauses_in_vanilla(lib, advanced):
     game, _ = advanced
     screen = ctypes.c_int.in_dll(lib, "g_advanced_screen")
     assert key_command(lib, INPUT_MODE_MOVE, SCAN_ESCAPE) == C.CMD_OPTIONS
