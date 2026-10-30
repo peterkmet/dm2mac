@@ -57,8 +57,6 @@ All renames are in `docs/reference/skull-symbols.csv`. The function address set 
 
 `reference/decomp/SKULL.c` (`tools/decompile-skull.sh`), [skull-map.md](skull-map.md), and `docs/reference/symbols/` use the new names.
 
-Rejected rename: `0x1f347` `is_coin` → `item_is_stackable` (reDM2 `object_is_stackable`). The body only tests "thing type 10 and attribute 0 bit `0x4000`". But `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`. Thus the bit marks coins, and `is_coin` is correct.
-
 ## Conflicts left open
 
 The port keeps its name in each case. The reason is in the last column.
@@ -67,7 +65,7 @@ The port keeps its name in each case. The reason is in the last column.
 
 | Address | Port | reDM2 | Why the port name stays |
 |---|---|---|---|
-| `0x1f347` | `is_coin` | `object_is_stackable` | `money_init_coin_table` builds the coin table from the same `0x4000` bit. See "Rejected rename". |
+| `0x1f347` | `is_coin` | `object_is_stackable` | The rename to `item_is_stackable` was rejected. The body only tests "thing type 10 and attribute 0 bit `0x4000`". But `money_init_coin_table` (`0x154e0`) builds `g_coin_item_types` from the same attribute bit of the same GDAT entries `(0x15, i, 0x0b, 0)`, so the bit marks coins. |
 | `0x104ea` | `sound_prepare_sample` | `hilite_node_add` | The only caller passes `g_sample_descs`. The XOR of bit 7 converts signed PCM to unsigned. reDM2 marks its role "not confirmed". |
 | `0x13898` | `pal_set_palette` | `mouse_shape_upload` | Both are inferences. Payload is GDAT `(1,0,9,254)`, 1024 bytes, `IBMIOP` function `0x10a` in the video group (`0x103`-`0x10a`). Needs the `IBMIOP.EXE` handler body. |
 | `0x159c3` | `position_to_cell` | `obj_type_remap` | Maps 6, 8, `0x12`, `0x10` to 0-3. reDM2 gives no role. |
