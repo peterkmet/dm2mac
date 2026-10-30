@@ -10,17 +10,17 @@ Read first and follow: `docs/llm/control-socket.md` ("Play from the shell: dm2-p
 
 You own the game process. The player does not send `quit` or `new_game`.
 
-Start of a new run: create `playthroughs/run<N>/` with `player/`, `coordinator/`, `game/`, and `saves/` (the call log is written only when `coordinator/` exists), copy the files of `playthroughs/template/` to `player/`, and run `ln -sfn run<N> playthroughs/current`. Start the game in the background: `SDL_AUDIO_DRIVER=dummy build/dm2 --mode turnbased --saves playthroughs/current/game`. The game needs some seconds to open its control socket: send `DM2_PLAY_LOG_DIR=none uv run dm2-play get_state` again until it answers (before that it gives `cannot reach the game`). Then send `DM2_PLAY_LOG_DIR=none uv run dm2-play new_game`, then `DM2_PLAY_LOG_DIR=none uv run dm2-play save`. A new game starts with one champion.
+Start of a new run: follow "To start a new run" of `docs/llm/llm-runs.md` ("Runs and checkpoints"), with the start command of `docs/llm/control-socket.md` ("Turn-based mode") in the background. Then wait for the socket: send `DM2_PLAY_LOG_DIR=none uv run dm2-play get_state` again until it answers (before that it gives `cannot reach the game`).
 
 Resume of a run: check the game with `DM2_PLAY_LOG_DIR=none uv run dm2-play --brief get_state`; it must match `player/progress.md`. When it does not answer, start the game as above and repeat `get_state` until it answers, then send `DM2_PLAY_LOG_DIR=none uv run dm2-play load`. Never touch another dm2 process (the user's own game).
 
 The task message gives the first session number of the batch and any notes from the main session. The batch has at most 5 sessions. For each session:
 
 1. Start a new `dm2-player` subagent. The task message: the session number, the goal (the goal from `player/progress.md` plus a short general direction from you, and the answer to a bug report of the last session), and the call limit 300. Wait for its report.
-2. Make the checkpoint `saves/s<session>-level<level>/`: `QUICK.DAT` from `game/` and the `*.md` of `player/` in `files/`.
+2. Make the checkpoint `saves/s<session>-level<level>/` as `llm-runs.md` says (To make a checkpoint): `QUICK.DAT` from `game/` and the `*.md` of `player/` in `files/`.
 3. Add a row to `coordinator/session_costs.md`: scope, tokens, tool calls, minutes from the usage of the player, the dm2-play calls from `calls.log`, and the tokens per dm2-play call. Update `coordinator/level_stats.md` on a real arrival on a new level.
 4. Check a suspected bug as far as the coordinator role allows: the state, the saves, read-only `dm2-play` commands, or the C library loaded as `tests/` do. Answer "Bug N checked: not a port bug." in the next goal, or stop the batch and report a real bug.
-5. When the player asks for an earlier checkpoint, restore it (copy `QUICK.DAT` to `game/` and the files to `player/`, then `load`) before the next session.
+5. When the player asks for an earlier checkpoint, restore it as `llm-runs.md` says (To resume) before the next session.
 6. You may change the player instructions between sessions: general rules only, in small steps, when sessions show a general weakness. Log each change in `coordinator/instruction_changes.md`. Commit only the changed doc files by path (`git commit -m "..." -- docs/llm/llm-playbook.md`), Conventional Commits, no author email, no co-author, no push. Never use `git commit -a`, `git add -A`, `git checkout`, `git stash`, or `git reset`.
 
 Stop the batch early when: the game does not answer after a restart, a real port bug blocks play, the party completes the game, or a player cannot be started. When you cannot start a subagent, return at once with the task message for the next player.

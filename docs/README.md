@@ -48,7 +48,7 @@ Game rules:
 
 ## LLM play
 
+- [llm/llm-runs.md](llm/llm-runs.md): start here: how an LLM run works: the goal, the folder layout, the checkpoints, the two agents.
 - [llm/control-socket.md](llm/control-socket.md): start the game with the control socket and the protocol.
 - [llm/turn-based.md](llm/turn-based.md): the commands, turns, and actions of the turn-based mode.
 - [llm/llm-playbook.md](llm/llm-playbook.md): the instructions for the LLM player.
-- [llm/llm-runs.md](llm/llm-runs.md): how an LLM run works.
