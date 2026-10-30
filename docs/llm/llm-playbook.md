@@ -1,6 +1,6 @@
 # LLM playbook
 
-You play Dungeon Master II (PC DOS `SKULL.EXE`) in the turn-based mode of this C port. Your goal: the party completes the game. When the game is complete, the turn response has `"game_over": true` and `state.party.dead` is `false`.
+You play Dungeon Master II (PC DOS `SKULL.EXE`) in the turn-based mode of this C port. Your goal: the party completes the game ([Game over](#game-over)).
 
 This page is all you need to play. A rule that starts with "Hint:" has not been checked in play: test it and write the result in `lessons.md`.
 
@@ -39,14 +39,14 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 
 ## Food, water, sleep
 
-- `food` and `water` go down all the time; their maximum is 2048. While a value is 0 or above, the champion regains stamina. Between -512 and -1, stamina stays the same. Below -512, the champion loses stamina. A champion whose stamina goes down to 0 loses health.
+- `food` and `water` go down all the time; their maximum is 2048. While a value is 0 or above, the champion regains stamina. Between -512 and -1, stamina stays the same. Below -512, the champion loses stamina.
 - Sleep makes the champions use food and water four times as fast: the champion clock runs every 16 game steps instead of 64.
 - Carry a food reserve in the packs. Take every food item that you find. Eat only when a champion is below half, and keep the rest. Hint: some creatures drop food when they die; note where they live.
 - Before you go to a new level, make sure each champion has food above a quarter (512), or carry food in the packs for each champion below that.
 - Food is limited, and the champions eat as game time passes. Save game time: sleep only for low health, stamina, or mana; do not wait long for one creature; go back to an earlier level only for a clear reason.
 - To eat or drink: put the food or drink in the leader hand (`take_from_slot`), send `open_inventory` for the champion who eats, then send `eat` or `drink`.
 - A fountain (wall face `fountain`): `click_wall_ahead` with an empty leader hand refills the water of all living champions. With an empty flask or a water container in the leader hand, the click fills it.
-- Sleep restores health, stamina, and mana, but time continues: food and water go down and creatures move. `sleep` opens the leader's inventory first. Damage or `wake` wakes the party. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
+- While the party sleeps, time continues: food and water go down and creatures move. `sleep` opens the leader's inventory first. Damage or `wake` wakes the party. After `wake`, check `state.inventory`, and send `close_inventory` before you move.
 
 ## Light and load
 
@@ -110,7 +110,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - To open a money box: hold it in a champion's hand and send `choose_action` with that `champion` and `hand` (give `index` 0). `state.money_box` lists each coin slot: `slot` (0-5), `coin` (the coin name), and `count`.
 - `take_coin` with `slot` moves one coin from that slot to the leader hand. The leader hand must be empty. `pass` closes the money box.
 - `look` on a money box gives the coin counts and the `total`.
-- Hint: put a coin back into the money box with the coin in the leader hand and the money box open. Test it and write the result in `lessons.md`.
+- Hint: put a coin back into the money box with the coin in the leader hand and the money box open.
 - Write the coin names and their values (once you learn them) in `items.md`.
 
 ## Merchants
@@ -119,7 +119,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - Trade: the merchant shows its goods on its side of the counter. Put your offer (coins, or goods to sell) on your side of the counter: `drop_object` with cell 2 or 3 (the near cells of the square ahead). The merchant compares the value of the offer with the price of the goods. It accepts, refuses, or haggles, and gives change in coins. If `drop_object` gives `no floor to drop on ahead`, the square ahead does not take objects: write it in `lessons.md`.
 - Hint: take the bought goods and the change with `take_object` on cells 2 and 3. If `take_object` gives `no object at this cell` for an object that you see, note it in `bugs.md`.
 - A merchant needs time to answer: send `wait` with some ticks after the offer, then look at the counter again.
-- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display has chosen an item). A click above the center of the display shows the next item, a click below the center shows the previous item. Hint: `click_wall_ahead` clicks the center; to page, use `act click` with `x` and `y`. Check in a screenshot where the display is.
+- A wall face with `shop` is the display of a shop. `shop` gives the name of the item on display (`true` before the display has chosen an item). A click above the center of the display shows the next item, a click below the center shows the previous item. `click_wall_ahead` clicks the center; to page, use `act click` with `x` and `y`. Check in a screenshot where the display is.
 - Write each merchant and shop, its goods, and its prices in the map of the level and in `items.md`.
 
 ## Minions
@@ -129,7 +129,7 @@ Your files in `playthroughs/current/player/` are your memory. Keep each file sho
 - `minion_map_option` with `option` 0-3 turns an option on or off. `pass` closes the map.
 - The minion map takes 1 mana of the champion when it opens; a champion without mana opens it unpowered. While it is open and powered, it takes 1 mana every 25 game steps. Each option that is on costs mana when you turn it on (`creatures` 2, `details` 3, `items` 1, `hold` 1) and makes the map take mana faster: the interval is 25 game steps divided by (1 plus the mana of the options that are on). When the champion has no mana left, the map loses its power. Close it when you do not use it.
 - A click on the map grid sends the minion there. Use `act click` with `x` and `y`; check the grid in a screenshot first.
-- Hint: the action menu of a minion item (`hands`) gives the minion commands. Test each command and write it in `lessons.md`.
+- Hint: the action menu of a minion item (`hands`) gives the minion commands.
 
 ## Outside and weather
 
@@ -195,7 +195,7 @@ This port is under test. If something looks wrong, write it in `bugs.md` with th
 | Pass time | `uv run dm2-play --brief wait '{"ticks": 50}'` |
 | Save, load | `uv run dm2-play save`, `uv run dm2-play load` |
 | Sleep | `uv run dm2-play --brief act sleep`, then `wait`, then `uv run dm2-play --brief act wake`, then `uv run dm2-play --brief act close_inventory` |
-| See the screen | `uv run dm2-play screenshot '{"path": "playthroughs/current/coordinator/shot.png"}'`, then read the PNG |
+| See the screen | See [View a screenshot](#view-a-screenshot) |
 
 ### View a screenshot
 
@@ -319,7 +319,7 @@ A champion index is the `index` of `champions[]`; the champion must be alive. Wh
 |---|---|---|
 | `move_forward`, `move_back`, `move_left`, `move_right` | none | Left and right step to the side. The inventory must be closed. |
 | `turn_left`, `turn_right` | none | The inventory must be closed. |
-| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, or alcove ahead (Hint: also a shop display); otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
+| `click_wall_ahead` | none | Clicks the switch, lock, mirror, door button, alcove, or shop display ahead; otherwise touches the plain wall. With an object in the leader hand, the click uses the object (a key in a lock). The inventory must be closed. |
 | `take_object` | `cell` 0-3 | The leader takes the top object of the cell. The leader hand must be empty. See `view.piles`. |
 | `drop_object` | `cell` 0-4 | The leader drops the object in the hand: 0-1 own square, 2-3 square ahead, 4 the alcove ahead. |
 | `open_inventory` | `champion` | |
@@ -417,7 +417,7 @@ An object is `{name, kind}`. `kind` is `weapon`, `armour`, `scroll`, `potion`, `
 - A wall has `front_face` (the side that faces the party) and `side_face` (the side that faces the lane of the party) when the face shows something. A face is `{facing, ...}` with one of: `text` (a wall text; `null` where the view does not draw the text), `mirror`, `alcove`, `shop`, `fountain`, `switch`, `lock` (the number of the lock picture), or `ornament` (the number of any other picture). `facing` is the direction that the face points to.
 - `piles[]`: `{cell, top, objects}` for each pile that `take_object` can reach now. `objects` lists the pile from top (`objects[0]`, also in `top`) to bottom; `take_object` takes `objects[0]`.
 - `alcove`: `{cell, top, objects}` of the alcove ahead, or `null`.
-- `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror; Hint: also a shop display), a door button, or an alcove.
+- `wall_ahead_clickable`: `click_wall_ahead` reaches a wall ornament (a switch, a lock, a mirror, a shop display), a door button, or an alcove.
 - While the inventory is open, `piles` is empty, `alcove` is `null`, and `wall_ahead_clickable` is `false`.
 
 Visibility rule: the party square is in the view. A square is in the view when the square beside it toward the center is in the view and open, or when the square in front of it (one row nearer) is in the view and open. The rows end at the first center square that blocks sight (a wall, a closed fake wall, or a closed door). Nothing behind it is in the view. A square outside the map is a wall.
