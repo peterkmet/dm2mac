@@ -1,6 +1,6 @@
 # Main loop, input, and movement
 
-The rules of the main loop, the input, and the movement: the timing and the game step, the input tree, the click feedback, the click zones of the view, the movement of the party, and the sensors and square events. The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/ui/play.c`, `src/ui/input.c`, `src/engine/move.c`, `src/engine/sensor.c`, and `src/engine/timeline.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Timing and the game step
 
@@ -18,7 +18,13 @@ The rules of the main loop, the input, and the movement: the timing and the game
   - The zones (7 bytes): layout zone with bit 15 for the inventory panel and bit 14 for the action area, command list, key list, cursor zone.
   - The command lists at `0x72388` (6 bytes): command with bit 15 to start a list, zone, mouse buttons, flags.
   - The key lists at `0x729b8` (4 bytes): command with bit 15 to start a list, key code.
-- A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. The arrow keys give the numpad codes: up `0x4c` (forward), left `0x4b` (turn left), right `0x4d` (turn right), down `0x50` (backward), shift and left `0x4f` (sidestep left), shift and right `0x51` (sidestep right). Esc (`0x01`) pauses.
+- A key code is the PC scan code, plus `0x200` for shift, `0x400` for control, `0x800` for alt. Esc (`0x01`) pauses. The arrow keys give the numpad codes:
+  - up: `0x4c` (forward)
+  - left: `0x4b` (turn left)
+  - right: `0x4d` (turn right)
+  - down: `0x50` (backward)
+  - shift and left: `0x4f` (sidestep left)
+  - shift and right: `0x51` (sidestep right)
 - A click goes down the tree from the root node of the input mode. The first command whose zone holds the click and whose buttons match wins. The matched zone rectangle and the click position stay for the click feedback.
 - The event ring holds 11 events. A new event goes in when fewer than 7 events wait (9 for a released left button and for the area events, the enter and leave events of the cursor zones). A key goes into the ring only when the main loop reads it. `input_flush` keeps only the area events and the released left buttons.
 
@@ -31,11 +37,13 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - Opcode `0xe` (map option commands `0x56` to `0x59`) has 1 argument byte: the option bits that show pressed (`mmap_draw_option_buttons`). The script draws the pressed button, executes the command, waits 4 timer ticks, and draws the buttons with argument 0.
 - After opcodes `8`, `9`, `0xb`, `0xc`, and `0xe`, the script copies the action area bitmap to the screen and closes it.
 - The movement arrows show pressed (`show_move_arrow`) until the move is done (`input_release_move_arrow`).
-- Before the script lookup, `input_refine_champion_click` makes the command of a champion click. A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions; otherwise it gives no command. A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center; otherwise it keeps the command when the spell action of that champion has no delay, or gives no command when it has one.
+- Before the script lookup, `input_refine_champion_click` makes the command of a champion click:
+  - A hand in a status box (commands `0x74` to `0x7b`, cell = party direction + (command - `0x74`) / 2) gives `0x74` + 2 × champion + hand when the champion lives, the hand is ready, and the hand has actions. Otherwise it gives no command.
+  - A champion icon of the party icons (`0x5f` to `0x62`) gives the leader command (`0x10` to `0x13`) when the click is nearer to the icon edges that face the party center. Otherwise it keeps the command when the spell action of that champion has no delay, or gives no command when it has one.
 
 ## Click zones of the view
 
-- The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, pos, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature is on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones. Their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
+- The view drawing records up to 32 click zones (`g_view_click_zones`, 12 bytes: rectangle, thing, pos, kind). The first 9 are fixed: the objects of the 4 cells (the party square, and the 2 near cells of the front square, when no walking creature is on them), the creature possessions of 4 cells, and the alcove in front. `view_draw_dungeon` clears the thing and the kind of the fixed zones; their rectangle and cell keep the values of an older view. The wall ornaments and the door buttons add zones after the fixed ones.
 - A fixed zone of an object grows to hold all the objects of its cell, and is at least 14 × 11 pixels.
 - `click_in_viewport` tests the zones in order: an object or alcove zone takes or places an object ([champions.md](champions.md#the-leader-hand)), a wall ornament goes to `sensor_process_wall_click`, a door button toggles the door. A click on no zone goes to the front wall or to a creature ([creatures.md](creatures.md)).
 - `g_view_hit_offset` (`0x802d4`) is the place of the last click in a view picture: the vertical and the horizontal distance from the picture center, in percent of half the picture size. The port keeps the vertical value in `g_view_hit_offset_y`.
@@ -45,7 +53,10 @@ The rules of the main loop, the input, and the movement: the timing and the game
 - `g_party.cur_map` is the map of the dungeon reads (`dun_get_square`, `dun_move_relative`). The party map and the current map differ while things move on other maps.
 - A slow party (`champ_get_move_delay`) walks: `g_party.move_steps` holds the view one square back for the steps of the walk.
 - `move_follow_square_transitions` takes a thing through teleporters, open pits, and stairs until it stays on a square. A pit can lead to the map below or to a marker of the map.
-- When the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the step times of the champions, plus a random part up to half of that quarter. The step time of a champion (`get_step_time` in `src/engine/move.c`) is 0 for a dead champion, 50 when the load / 10 plus the redraw bit `0x10` is not 0, and 40 otherwise. No code of `SKULL.EXE` sets the redraw bit `0x10` (`REDRAW_SLOW_STEP`); the port keeps the test.
+- When the party arrives on a square with a creature that moves aside, the creature gets a loud alert. Its value is a quarter of the sum of the step times of the champions, plus a random part up to half of that quarter. The step time of a champion (`get_step_time` in `src/engine/move.c`):
+  - 0 for a dead champion
+  - 50 when the load / 10 plus the redraw bit `0x10` is not 0; no code of `SKULL.EXE` sets the redraw bit `0x10` (`REDRAW_SLOW_STEP`), and the port keeps the test
+  - 40 otherwise
 - A move into a wall, a closed door, or a creature gives bump damage (`move_party_bump_damage`) to the champions on the front cells.
 
 ## Sensors and square events

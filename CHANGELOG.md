@@ -6,7 +6,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Added
 
-- Advanced mode, mode screen: without `--mode`, the program first shows a screen with the items VANILLA and ADVANCED.
+- Mode screen: without `--mode`, the program first shows a screen with the items VANILLA and ADVANCED.
 - Smooth window scaling with a live resize redraw, and the window title DM2Mac.
 - Cheat screen (`C`) with six cheats: full light, immortal, food and water, one-hit kill, walk through walls, and reveal map. It also casts spells. The save slots and `QUICK.DAT` keep the cheats in a CHTS block.
 - Quick save and quick load (`F5`, `F9`) and spells on the cheat screen.
@@ -34,8 +34,8 @@ All notable changes to this project are in this file. The format follows [Keep a
 - LLM control socket: `build/dm2 --control PATH` takes keys, clicks, commands, waits, and screenshots as JSON lines; the CLI `dm2-play` sends them. Details: [llm-mode.md](docs/llm/llm-mode.md).
 - Parallel test runs: `tools/test-suite` runs the tests with pytest-xdist, loads one copy of the library per test module, and skips a git tree that already passed.
 - `tools/dosbox-nointro.sh` starts DOSBox without the intro movies.
-- Game modes: `--mode vanilla|advanced`, default `advanced`. The advanced mode adds W A S D Q E for movement and F5 and F9 for a quick save and quick load in `DATA/QUICK.DAT`. The control state gives the mode in `game_mode`. Details: [manual.md](docs/manual.md#modes).
-- Automap in the advanced mode: Tab or M opens a map of the seen squares of the party level in the viewport, with the minion map icons and a readout of the position and the cheats. The game time stops while it is open; a mouse drag scrolls it. Slot saves and `QUICK.DAT` keep the seen squares in an AMAP block after the original save data.
+- Game modes: `--mode vanilla|advanced`, default `advanced`. The advanced mode adds `W` `A` `S` `D` `Q` `E` for movement and `F5` and `F9` for a quick save and quick load in `DATA/QUICK.DAT`. The control state gives the mode in `game_mode`. Details: [manual.md](docs/manual.md#modes).
+- Automap in the advanced mode: `Tab` or `M` opens a map of the seen squares of the party level in the viewport, with the minion map icons and a readout of the position and the cheats. The game time stops while it is open; a mouse drag scrolls it. Slot saves and `QUICK.DAT` keep the seen squares in an AMAP block after the original save data.
 - The control state gives `automap` and the `cheat_*` flags.
 - Movies of the PC version, in the order of the DOS launcher: the splash picture `INTRPLAY.PCX`, then the SVGA movies `FTL` and `INTRO` before the start menu; `END` and `CREDITS` after a completed game; `CREDITS` after QUIT GAME of a dead party. A start with `--save` and a restart play no start movies. A click skips a movie; in the vanilla mode a click does not stop the splash and `FTL`. The movies show on a 4:3 screen with black borders. A missing or damaged movie is skipped. The control state gives `"mode": "movie"` while a movie plays. Details: [movies.md](docs/formats/movies.md).
 - Turn-based mode: `--mode turnbased` plays through the control socket with the commands `get_state`, `get_view`, `get_map`, `act`, `act_many`, `wait`, `save`, `load`, and `new_game`. The game time stands still between requests; a turn runs until the party can act again. Details: [llm-mode.md](docs/llm/llm-mode.md#the-turn-based-mode).
@@ -64,7 +64,6 @@ All notable changes to this project are in this file. The format follows [Keep a
 - The first word of the AI enabled-byte table matches `SKULL.EXE`; the name editor cancel restores the whole name and title; a trap fall without a leader reads no champion out of bounds; a dungeon without maps loads; the Windows log closes on restart; the control socket retries a call that a signal stopped; color ramps past their item are rejected; the Ghidra test skips without a JDK.
 - Advanced mode: a held key no longer fills the input queue; the party stops when the key goes up.
 - A damaged save with a poison event for a missing champion no longer writes outside the champions; guards for inactive creature groups; a melee attack with bit 15 pierces as in the original; the item description breaks lines at the line start; the price table reads its prices byte-order safe; an unknown `--` option ends with a usage line; the image cache, the timeline, and the seen squares are freed at shutdown; the color ramps are checked against their bounds.
-
 - `test_sleep_and_wake_match_original` failed on some parallel runs: the cursor test left a dragged champion in the shared test library.
 - `tests/differential/test_ai_move.py` reads the `AiContext` fields at named offsets, so the struct needs no padding field.
 - The inventory and the candidate panel of a recruit reach the screen.

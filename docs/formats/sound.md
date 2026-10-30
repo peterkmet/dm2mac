@@ -1,6 +1,6 @@
 # Digital sound effects
 
-The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md](graphics.md)), their playback through the digital driver of the Human Machine Interfaces Sound Operating System (HMI SOS), and the volume and stereo position of a sound. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The sound effects are sample items in `GRAPHICS.DAT` ([graphics.md](graphics.md)). The game plays them through the digital driver of the Human Machine Interfaces Sound Operating System (HMI SOS) and sets the volume and the stereo position of each sound. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Sound items
 
@@ -9,7 +9,6 @@ The sound effects of the game: the sample items in `GRAPHICS.DAT` ([graphics.md]
 - Header: u16 LE sample rate `0x2b77` (11127 Hz), then the bytes `08 01 00 00` (8 bits, 1 channel; unverified, because no code reads these bytes). All 292 items have the same header.
 - Data: 8-bit signed PCM, mono, not compressed. Length = item size - 6 (245 to 61713 bytes).
 - The SOS digital driver mixes at 11025 Hz. The game stores the 11127 Hz rate but does not pass it to the driver. The samples play at 11025 Hz (0.9 % slower).
-
 - GDAT flag item `(0, 0, 0x0b, 0)` = `0x7b`. `FUN_0003d1c8` (`gdat_load_index`) stores `0x7b & 0x20` in `DAT_00071698`.
 - `FUN_0001623b` (sound cache): for each key `(cat, idx, 2, entry)` it sets the 16-byte descriptor at `DAT_0007f194 + n*16`:
   - `+0` data pointer = item + 6 (item + 2 if the `0x20` flag is clear),

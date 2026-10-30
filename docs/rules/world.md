@@ -1,6 +1,6 @@
 # Weather, day and night, light, and Skullkeep machines
 
-The rules of the world: day and night, the weather, the party light, the object transfer sensors of the Skullkeep machines, and the sound requests. The code is in `src/engine/weather.c`, `src/engine/sensor.c`, and `src/engine/sound_request.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
+The code is in `src/engine/weather.c`, `src/engine/sensor.c`, and `src/engine/sound_request.c`. The addresses and the notation follow the conventions of [skull-map.md](../reference/skull-map.md).
 
 ## Day and night
 
@@ -36,7 +36,12 @@ The rules of the world: day and night, the weather, the party light, the object 
 
 ## Sound requests
 
-- `sndreq_request` (`src/engine/sound_request.c`; in the original one delay word: 0, 1, negative, or a longer delay): `SOUND_NOW` plays immediately; `SOUND_STEP_END` goes to the queue of the game step (20 requests), which `sndreq_flush_requests(false)` plays at the end of the step; `SOUND_DEFERRED` goes to the deferred queue (6 requests, `sndreq_flush_requests(true)`). `sndreq_request_after(ticks)` with ticks 0 or 1 is `SOUND_NOW` or `SOUND_STEP_END`; a longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + ticks - 1. A sound at the end of the step or after a delay plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
+- `sndreq_request` (`src/engine/sound_request.c`) takes a timing; in the original it is one delay word: 0, 1, negative, or a longer delay. The timings:
+  - `SOUND_NOW` plays immediately.
+  - `SOUND_STEP_END` goes to the queue of the game step (20 requests), which `sndreq_flush_requests(false)` plays at the end of the step.
+  - `SOUND_DEFERRED` goes to the deferred queue (6 requests, `sndreq_flush_requests(true)`).
+- `sndreq_request_after(ticks)` with ticks 0 or 1 is `SOUND_NOW` or `SOUND_STEP_END`. A longer delay keeps the sound in one of 8 slots and queues event `0x15` (priority = sound priority, data word = slot) at game time + ticks - 1.
+- A sound at the end of the step or after a delay plays only on the party map or the map of the other side of a seamless passage. A sleeping party hears half the volume.
 - The place of a sound seen by the party (lateral, forward) and the push away by the walking distance are `sndreq_party_offset` of `src/engine/sound_request.c` ([sound.md](../formats/sound.md#playback-volume-and-stereo-position)). A sound that is already in the queue at the same place is not added again. A map change (`gdat_load_map_graphics`, `sound_wait_and_clear_requests`) drops the queue of the step.
 - `start_requests` (`sound_play_requests` in the original) sorts the requests by priority and then loudness (a bubble sort, the port follows it) and starts them in that order while voices are free. Only its calls to the HMI SOS digital driver ([sound.md](../formats/sound.md)) (`hmi_digi_sample_done`, `hmi_digi_start_sample`) are the DOS layer: `src/ui/sound.c` plays the voices. `sndreq_request_with_fallback` uses the sound of index fallback when index has none.
 - The ambient sound of an animated ornament (`start_ambient_sound`) plays immediately only when the animation cycle starts now; a wall sound comes from the square in front of the wall.

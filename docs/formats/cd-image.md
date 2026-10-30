@@ -1,6 +1,6 @@
 # CD images
 
-`src/data/iso.c` reads an ISO 9660 CD image (ECMA-119) with the game files. It opens the image with `"rb"` and writes nothing. The use of the reader is in [game-files.md](game-files.md).
+`src/data/iso.c` reads an ISO 9660 CD image (ECMA-119) with the game files. It opens the image with `"rb"` and writes nothing. The install uses the reader as a source ([game-files.md](game-files.md#sources)).
 
 ## Sector layouts
 
@@ -11,7 +11,7 @@
 
 The reader picks the layout by the sync pattern at the start of the image: a zero byte, ten bytes `0xff`, a zero byte (12 bytes). Without the pattern, the sectors are 2048 bytes. The sector count is the image size divided by the sector size.
 
-In a raw image, the mode byte (offset 15) of sector 16 must be `0x01` (MODE1). A raw image with mode `0x02` is a MODE2 image (an XA image) and fails with its own message. Any other mode value is a damaged image.
+In a raw image, the mode byte (offset 15) of sector 16 must be `0x01` (MODE1). A raw image with mode `0x02` is a MODE2 image (an XA image); it fails as in [What fails](#what-fails). Any other mode value is a damaged image.
 
 ## Volume descriptor
 
