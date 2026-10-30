@@ -12,6 +12,23 @@ from dm2test.oracle import G_RANDOM_SEED
 from dm2test.structs import Location, Position
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]  # function pointer parameter
+    lib.ai_trace_line.restype = ctypes.c_int16  # function pointer parameter
+    lib.ai_find_target_in_lines.argtypes = [ctypes.c_int16, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]  # AiLineTarget is a mirror of this module
+    lib.ai_find_target_in_lines.restype = AiLineTarget  # AiLineTarget is a mirror of this module
+    lib.ai_turn_toward.restype = AiCommand  # AiCommand is a mirror of this module
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.dungeon_map_creature_types.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.ai_find_matching_item_inside.restype = AiInsideItem  # AiInsideItem is a mirror of this module
+    for name in SQUARE_ARGS:
+        test = AiMoveTest if name == "ai_try_move" else AiTest
+        getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int16] * (  # AiCommand is a mirror of this module
+            1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
+        getattr(lib, name).restype = AiCommand  # AiCommand is a mirror of this module
+
+
 AI_BEGIN, AI_PREPARE, AI_END = 0x24A88, 0x24BFC, 0x24D88
 DUN_SET_CURRENT_MAP = 0x1C724
 G_AI = 0x7F548
@@ -154,28 +171,6 @@ class Ai:
         self.scan = ctypes.addressof(ctypes.c_uint8.in_dll(lib, "g_ai_square_scan"))
         self.saved = ctypes.create_string_buffer(AI_SIZE)
         self.scratch = sc.view.alloc(0x2A * 0x40)
-        lib.ai_begin.argtypes = [ctypes.c_uint16, Location, ctypes.c_int, ctypes.c_void_p]
-        lib.ai_end.argtypes = [ctypes.c_int, ctypes.c_void_p]
-        lib.ai_scratch_push.restype = ctypes.c_void_p
-        lib.dungeon_set_current_map.argtypes = [ctypes.c_int16]
-        lib.ai_trace_line.argtypes = [Location, Location, ctypes.c_void_p]
-        lib.ai_trace_line.restype = ctypes.c_int16
-        for name in LOCATION_ARGS:
-            getattr(lib, name).argtypes = [Location]
-        lib.ai_find_target_in_lines.argtypes = [ctypes.c_int16, ctypes.c_void_p, Location, ctypes.c_int16, ctypes.c_bool]
-        lib.ai_find_target_in_lines.restype = AiLineTarget
-        lib.ai_search_area.argtypes = [Location] + [ctypes.c_int] * 2 + [ctypes.c_void_p] * 2
-        for name in SQUARE_ARGS:
-            test = AiMoveTest if name == "ai_try_move" else AiTest
-            getattr(lib, name).argtypes = [test, Location, Location, ctypes.c_int16] + [ctypes.c_int16] * (
-                1 if name in ("ai_try_take_item", "ai_try_use_wall_actuator") else 0)
-            getattr(lib, name).restype = AiCommand
-        lib.ai_turn_toward.restype = AiCommand
-        lib.ai_thing_matches_filter.restype = ctypes.c_bool
-        for name in ("ai_find_marker", "ai_find_marker_by_id"):
-            getattr(lib, name).restype = ctypes.c_int16
-        lib.ai_remove_matching_items.argtypes = [ctypes.c_void_p, ctypes.c_int16, ctypes.c_int16]
-        lib.ai_count_matching_items.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16] + [ctypes.c_bool] * 2
         self.begun = None
         emu.write(G_AI_CONTEXT_ACTIVE, b"\0")
         ctypes.c_uint8.from_address(self.ai + AI_ACTIVE_FLAG_C).value = 0
@@ -214,8 +209,6 @@ class Ai:
     def sync_map_values(self):
         """The values of the party map graphics that the original reads at the map load: light radius, wall cost."""
         lib = self.lib
-        lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-        lib.gdat_entry_index.restype = ctypes.c_uint16
         gfx_set = lib.dungeon_map_graphics(self.sc.game.party_map) >> C.MAP_WALLSET_SHIFT & C.MAP_NIBBLE_MASK
         light = lib.gdat_entry_index(self.sc.gdat, C.CAT_WALLSET, gfx_set, C.GDAT_TYPE_VALUE, 0x6D)
         cost = lib.gdat_entry_index(self.sc.gdat, C.CAT_WALLSET, gfx_set, C.GDAT_TYPE_VALUE, 0x72) or 1
@@ -352,8 +345,6 @@ def test_square_and_line_tests(ai):
 def test_square_cache(ai):
     # The square cache of the AI: the first object and the first group of squares around the groups.
     lib = ai.lib
-    for f in ("ai_cached_first_object", "ai_cached_first_group"):
-        getattr(lib, f).restype = ctypes.c_uint16
     for g, x, y, m in ai.groups():
         ai.begin(g, x, y, m)
         for sx, sy in squares_near(lib, m, x, y, 2):
@@ -415,20 +406,16 @@ G_THINGS, GROUP_SIZE, GROUP_CREATURE = 0x7F288, 16, C.GROUP_CREATURE
 def set_creature_type(ai, group, kind):
     """Sets the creature type of group in both."""
     lib = ai.lib
-    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
     lib.dungeon_thing_record(group)[GROUP_CREATURE] = kind
     ai.emu.write(ai.emu.read_u32(G_THINGS + 4 * 4) + (group & C.THING_INDEX_MASK) * GROUP_SIZE + GROUP_CREATURE, bytes([kind]))
 
 
 def native_type(lib, m, x, y, delta):
     """A creature type of the map above (delta -1) or below (1) the square, or None."""
-    lib.dungeon_location_on_map.argtypes = [Position, ctypes.c_int]
-    lib.dungeon_location_on_map.restype = Position
     target = lib.dungeon_location_on_map(Position(m, x, y), delta).map
     if target < 0:
         return None
     count = lib.dungeon_map_object_counts(target) >> C.MAP_CREATURE_TYPES_SHIFT & C.MAP_NIBBLE_MASK
-    lib.dungeon_map_creature_types.restype = ctypes.POINTER(ctypes.c_uint8)
     return lib.dungeon_map_creature_types(target)[0] if count else None
 
 
@@ -438,7 +425,6 @@ def test_try_move_changes_level(ai):
     # the move on the other map, and the result there.
     rng = random.Random(19)
     lib = ai.lib
-    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
     tried = changed = 0
     seen = set()
     for g, x, y, m in ai.groups():
@@ -495,9 +481,8 @@ def places_near(ai, rng, kinds, things=None, per_group=4):
 
 def filters(ai, g):
     """The item filters that stay inside the filter table of the original for group g."""
-    record = ai.lib.dungeon_thing_record
-    record.restype = ctypes.c_void_p
-    variant = s16(struct.unpack("<H", ctypes.string_at(record(g) + 8, 2))[0])
+    record = ctypes.cast(ai.lib.dungeon_thing_record(g), ctypes.c_void_p).value
+    variant = s16(struct.unpack("<H", ctypes.string_at(record + 8, 2))[0])
     out = []
     for f in range(0x40):
         base = 0x10 if f == 0x28 else f
@@ -614,9 +599,6 @@ def test_projectile_incoming(ai):
 
 def all_things(lib):
     """Every thing of the dungeon on a square, with the contents of containers and the possessions of groups."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     out = []
 
     def walk(t):
@@ -643,9 +625,8 @@ def test_item_filters(ai):
     matched = 0
     types = set()
     for g, x, y, m in rng.sample(groups, 12):
-        record = lib.dungeon_thing_record
-        record.restype = ctypes.c_void_p
-        kind = ctypes.string_at(record(g) + 4, 1)[0]
+        record = ctypes.cast(lib.dungeon_thing_record(g), ctypes.c_void_p).value
+        kind = ctypes.string_at(record + 4, 1)[0]
         if kind in types:
             continue
         types.add(kind)
@@ -666,8 +647,6 @@ def test_item_lists(ai):
     # The item searches, counts, and removals in the thing lists of the squares, chests, and groups.
     rng = random.Random(25)
     lib = ai.lib
-    lib.ai_find_matching_item.restype = ctypes.c_uint16
-    lib.ai_find_matching_item_inside.restype = AiInsideItem
     things = all_things(lib)
     containers = [t for t in things if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK in (C.THING_GROUP, C.THING_CONTAINER)]
     for g, x, y, m in rng.sample(ai.groups(), 10):
@@ -689,7 +668,7 @@ def test_item_lists(ai):
         for c in rng.sample(containers, 6):
             f = rng.choice(fs) | rng.choice((0, 0x80))
             cell = rng.choice((C.CELL_ANY, rng.randrange(4)))
-            mine = lib.dungeon_thing_record(c) + 2
+            mine = ctypes.cast(lib.dungeon_thing_record(c), ctypes.c_void_p).value + 2
             theirs = ai.emu.read_u32(0x7F288 + 4 * (c >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK)) + (c & C.THING_INDEX_MASK) * THING_SIZES[c >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK] + 2
             lib.ai_remove_matching_items(mine, f, cell)
             ai.emu.call(F["ai_remove_matching_items"], theirs, f, cell)
@@ -809,7 +788,6 @@ def test_search_area(ai):
     # bonus values, filters, markers), the move commands of the plans; the found index, the candidates, the path.
     rng = random.Random(28)
     lib = ai.lib
-    lib.ai_search_area.restype = ctypes.c_int
     found = paths = 0
     for g, x, y, m in places(ai, rng, 2):
         ai.begin(g, x, y, m)
@@ -838,7 +816,6 @@ def test_search_area(ai):
 def store_path(ai, g, data):
     """The stored path of group g in both (C ai_store_path, original image cache key 0x30000000 | group)."""
     lib, sc = ai.lib, ai.sc
-    lib.ai_store_path.restype = ctypes.c_void_p
     ctypes.memmove(lib.ai_store_path(len(data)), data, len(data))
     index = sc.view.new_index()
     sc.ai_cache[0x30000000 | g & C.THING_INDEX_MASK] = index
@@ -859,7 +836,6 @@ def test_plan_path_and_next_step(ai):
     # the path check of the plan and the next step of the path, also after random changes of the plan state.
     rng = random.Random(29)
     lib = ai.lib
-    lib.ai_search_area.restype = ctypes.c_int
     held = steps = 0
     for g, x, y, m in places(ai, rng, 2):
         ai.begin(g, x, y, m)
@@ -943,8 +919,6 @@ DUN_GET_UNUSED_THING, DUN_LINK_THING_TO_SQUARE, TIMELINE_ADD_EVENT = 0x1DDD7, 0x
 def add_thing(ai, type_, words, map_, x, y, cell):
     """Adds the same new thing (record words from +2) on (x, y) of map_ in both; returns it."""
     lib, emu = ai.lib, ai.emu
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     mine = lib.dungeon_unused_thing(type_)
     theirs = emu.call(DUN_GET_UNUSED_THING, type_) & 0xFFFF
     assert mine == theirs
@@ -1062,10 +1036,6 @@ def test_merchant_commands(ai):
     # results, the AI context, the active groups (counters, action), the dungeon (coins of the change), and the seed.
     rng = random.Random(15)
     lib = ai.lib
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.item_create_by_index.restype = ctypes.c_uint16
-    lib.money_coin_item.restype = ctypes.c_uint16
     lib.money_init_coin_table()
     ai.emu.call(0x154E0)  # money_init_coin_table
     g, x, y, m = MERCHANT

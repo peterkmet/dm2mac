@@ -210,8 +210,6 @@ def run_name_editor(lib, original, keys, fields=None):
     from dm2test.structs import UiState
     emu = original.emu
     lib.input_init()
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
-    lib.input_key_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
     commands = [lib.input_key_command(C.INPUT_MODE_NAME, k, rect) for k in keys]
     assert all(commands), commands
@@ -245,7 +243,6 @@ def run_name_editor(lib, original, keys, fields=None):
     ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = ctypes.cast(hook, ctypes.c_void_p).value
     try:
         before = bytes(champion_records(lib))[:NAME_FIELDS_SIZE]
-        lib.session_edit_champion_name.argtypes = [ctypes.c_int16]
         lib.session_edit_champion_name(0)
     finally:
         ctypes.c_void_p.in_dll(lib, "g_play_frame_hook").value = None
@@ -321,7 +318,6 @@ def test_pressed_buttons_match_original(ui, original):
     from dm2test.dialog import find_point
     lib, emu = ui, original.emu
     lib.input_init()
-    lib.dialog_draw_button.argtypes = [ctypes.c_bool, GdatKey]
     match = InputMatch.in_dll(lib, "g_input_match")
     state = DialogState.in_dll(lib, "g_dialog")
     for dialog, buttons in ((C.DIALOG_SAVE_MENU, 4), (C.DIALOG_THE_END, 2)):
@@ -347,11 +343,9 @@ INPUT_GET_CLICK_FEEDBACK_SCRIPT, COMMAND_RECORD_SIZE = 0x20EE0, 14
 def feedback_scripts(lib, original, command):
     """The click feedback script of command in both: the port pointer and the offset of the original in its table."""
     from dm2test.scenario import Command
-    lib.input_click_feedback_script.restype = ctypes.c_void_p
-    lib.input_click_feedback_script.argtypes = [ctypes.POINTER(Command)]
     record = original.alloc(COMMAND_RECORD_SIZE)
     original.emu.write(record, bytes(Command(0, 0, command)))
-    return lib.input_click_feedback_script(Command(0, 0, command)), original.emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, record) - G_CLICK_FEEDBACK_SCRIPTS
+    return lib.input_click_feedback_script(ctypes.byref(Command(0, 0, command))), original.emu.call(INPUT_GET_CLICK_FEEDBACK_SCRIPT, record) - G_CLICK_FEEDBACK_SCRIPTS
 
 
 def test_dialog_button_scripts_match_original(port, original):
@@ -379,7 +373,6 @@ def test_dialog_button_scripts_match_original(port, original):
 def dialog_button_count(lib, ui_gdat, dialog):
     """The buttons of dialog: its text entries, as dialog_run counts them."""
     text = ctypes.create_string_buffer(128)
-    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     return sum(1 for e in range(C.DIALOG_TEXT_COUNT) if lib.gdat_text(ui_gdat, GdatKey(C.CAT_DIALOG, dialog, e), text, 128) and text.value)
 
 
@@ -430,7 +423,6 @@ def test_enter_presses_first_button_like_original(ui, original):
     assert clicks == [C.CMD_DIALOG_BUTTON_FIRST]
 
     lib.input_init()
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     frames = []
 
     def frame():

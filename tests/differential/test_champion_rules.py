@@ -15,6 +15,14 @@ from dm2test.structs import Game
 from dm2test.lib import load_lib
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.champ_use_action_charge.argtypes = [ctypes.c_int16, ChampionAction]  # ChampionAction is a mirror of this module
+    lib.champ_use_action_charge.restype = ctypes.c_bool  # ChampionAction is a mirror of this module
+    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8)]  # MoneySplit is a mirror of this module
+    lib.money_split_amount.restype = MoneySplit  # MoneySplit is a mirror of this module
+
+
 G_RANDOM_SEED, G_PARTY_SLEEPING, G_REGEN_COUNTER, G_CHAMPION_COUNT = 0x70518, 0x7F234, 0x7FFF4, 0x7F276
 G_THING_DATA = 0x7F288
 THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
@@ -34,8 +42,6 @@ class Rules:
 
     def __init__(self, scenario, lib, rng):
         self.s, self.lib, self.rng, self.emu = scenario, lib, rng, scenario.emu
-        lib.dungeon_unused_thing.restype = ctypes.c_uint16
-        lib.dungeon_thing_record.restype = ctypes.c_void_p
         self.first = bytes(champion_records(lib)[:CHAMPION_SIZE])
         self.pool = [lib.dungeon_unused_thing(t) for t in (WEAPON,) * 4 + (CLOTHING,) * 4]
         for t in self.pool:
@@ -43,8 +49,6 @@ class Rules:
             self.sync_record(t)
         scenario.game.champion_count = C.CHAMPION_MAX
         self.emu.write(G_CHAMPION_COUNT, struct.pack("<H", C.CHAMPION_MAX))
-        lib.champ_test_luck.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        lib.champ_get_strength.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int16]
 
     def record(self, thing):
         """(C address, original address) of a thing record."""
@@ -99,8 +103,6 @@ class Rules:
     def pick_up_pool(self):
         """Takes the pool items that dead champions dropped off the party square in both."""
         lib, game = self.lib, self.s.game
-        lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-        lib.dungeon_next_thing.restype = ctypes.c_uint16
         on_square = []
         t = lib.dungeon_square_first_thing(game.party_map, game.party_x, game.party_y)
         while t != C.THING_ENDOFLIST:
@@ -125,7 +127,6 @@ class Rules:
 
 @pytest.fixture
 def rules(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Rules(Scenario(lib, gdat, start, tmp_path), lib, random.Random(151))
 
 
@@ -298,11 +299,6 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
     # every action of every weapon kind.
     from dm2test.scenario import squares
     rng, emu, scenario = rules.rng, rules.emu, rules.s
-    lib.champ_list_actions.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
-    lib.champ_perform_action.argtypes = [ctypes.c_int16, ctypes.c_int, ctypes.c_bool]
-    lib.champ_perform_action.restype = ctypes.c_bool
-    lib.champ_use_action_charge.argtypes = [ctypes.c_int16, ChampionAction]
-    lib.champ_use_action_charge.restype = ctypes.c_bool
     actions = (ChampionAction * C.CHAMPION_ACTION_MAX).in_dll(lib, "g_champ_actions")
     potions = [lib.dungeon_unused_thing(POTION) for _ in range(4)]
     misc = [lib.dungeon_unused_thing(MISC) for _ in range(4)]
@@ -311,8 +307,6 @@ def test_eating_drinking_and_actions_match_original(rules, lib):
         rules.sync_record(t)
     places = squares(lib, (C.SQUARE_FLOOR,))
     # places that face a creature group, for the melee actions and their repeats
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
     facing = []
     for map_, x, y, _ in places:
         for d, (dx, dy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0))):
@@ -454,17 +448,7 @@ def test_money_and_prices_match_original(rules, lib):
     rng, emu, scenario = rules.rng, rules.emu, rules.s
     lib.money_init_coin_table()
     emu.call(MONEY_INIT_COIN_TABLE)
-    lib.money_coin_item.restype = ctypes.c_uint16
     coins = [lib.money_coin_item(i) for i in range(lib.money_coin_type_count())]
-    lib.item_create_by_index.restype = ctypes.c_uint16
-    lib.money_take_coin_from_box.restype = ctypes.c_uint16
-    lib.money_add_coin_to_box.argtypes = [ctypes.c_uint16, ctypes.c_uint16]
-    lib.money_get_item_value.argtypes = [ctypes.c_uint16, ctypes.POINTER(PriceTerms), ctypes.c_int16]
-    lib.money_get_item_value.restype = ctypes.c_uint16
-    lib.money_split_amount.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.POINTER(ctypes.c_uint8)]
-    lib.money_split_amount.restype = MoneySplit
-    lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_bool]
-    lib.money_parse_item_class_set.restype = ctypes.c_bool
     buffer, out = SCRATCH + 0xF9000, SCRATCH + 0xF9100
     creatures = [t for t in range(0x100) if lib.gdat_exists(rules.s.gdat, C.CAT_CREATURE, t, 5, 0x10)]
     action_state = ActionState.in_dll(lib, "g_action")
@@ -555,14 +539,9 @@ def test_coins_of_value_0_end_the_exchange(gdat, tmp_path):
     path.write_bytes(coin_values_changed({COIN_OF_1: 0, COIN_OF_4: 3}))
     damaged = ctypes.c_void_p()
     assert lib.gdat_load(str(path).encode(), ctypes.byref(damaged)) == 0
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
     lib.gdat_select(damaged)
     assert lib.dungeon_load(str(ROOT / "game" / "DATA" / "DUNGEON.DAT").encode()) == 1
     lib.money_init_coin_table()
-    lib.money_coin_item.restype = ctypes.c_uint16
-    lib.item_create_by_index.restype = ctypes.c_uint16
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     assert [lib.money_coin_value(i) for i in range(3)] == [0, 3, 16]
     box = lib.dungeon_unused_thing(C.THING_CONTAINER)
     head = C.THING_ENDOFLIST
@@ -584,9 +563,6 @@ def test_item_value_matches_original(rules, lib):
     rng, emu = rules.rng, rules.emu
     lib.money_init_coin_table()
     emu.call(MONEY_INIT_COIN_TABLE)
-    lib.money_coin_item.restype = ctypes.c_uint16
-    lib.item_get_value.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     coins = [lib.money_coin_item(i) & 0x7F for i in range(lib.money_coin_type_count())]
     box_word = lib.thing_word(MONEY_BOX, 4)
     potions, misc = ([lib.dungeon_unused_thing(kind) for _ in range(4)] for kind in (POTION, MISC))
@@ -676,7 +652,6 @@ def load_or_start_new_game(lib, gdat, start, game_dir, tmp_path, new_game):
         state = Session.in_dll(lib, "g_session")
         state.data_dir = str(tmp_path).encode()
         state.slot, state.loaded, state.new_game = -1, 0, 1
-        lib.session_load.restype = ctypes.c_bool
         try:
             assert lib.session_load()
         finally:
