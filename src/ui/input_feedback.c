@@ -615,11 +615,10 @@ void input_update_viewport_arrow(void)
         arrow = abs(dy) < ARROW_CENTER_Y ? PUSH_ARROW_RIGHT : dy >= 0 ? PUSH_ARROW_DOWN_RIGHT : PUSH_ARROW_UP;
     }
     int step = dir_turn(push_arrows[arrow].step_turn, g_game.party_dir);
-    if (dungeon_square_blocks_movement(dungeon_square_at(
-            (Location){(int16_t)(g_game.party_x + g_dir_dx[step]), (int16_t)(g_game.party_y + g_dir_dy[step])})))
+    if (dungeon_square_blocks_movement(
+            dungeon_square_at(dungeon_step((Location){g_game.party_x, g_game.party_y}, step))))
         return;
-    Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                      (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir])};
+    Location front = dungeon_step((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
     if (!creature_can_be_pushed(front, dir_turn(push_arrows[arrow].push_turn, g_game.party_dir), false, NULL))
         return;
     show_move_arrow(push_arrows[arrow].entry, push_arrows[arrow].zone, true);

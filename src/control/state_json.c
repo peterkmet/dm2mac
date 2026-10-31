@@ -1084,8 +1084,7 @@ static ZoneTop top_of_zone(const ViewClickZone *z)
     Viewer v = viewer_place();
     ZoneTop found = {v.at, THING_NONE};
     if (z->pos == POS_FRONT) {
-        found.at.x += g_dir_dx[v.dir];
-        found.at.y += g_dir_dy[v.dir];
+        found.at = dungeon_step(found.at, v.dir);
     }
     if (z->thing == THING_NONE || (z->pos != POS_PARTY && z->pos != POS_FRONT) || !on_party_map(found.at))
         return found;
