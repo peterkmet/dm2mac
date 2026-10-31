@@ -21,18 +21,20 @@ languages) do not work.
    `DM2Mac-windows-x64.zip`. Extract it.
 2. Copy your game (the folder, the ZIP archive, or the CD image) into the extracted `DM2Mac` folder.
 3. Start the game:
-   - **macOS:** Remove the quarantine attribute and launch `Dungeon Master II.command`:
+   - **macOS:** In Terminal, remove the quarantine attribute in the `DM2Mac` folder:
 
      ```sh
-     xattr -d com.apple.quarantine dm2 "Dungeon Master II.command" libSDL3.0.dylib
-     open "Dungeon Master II.command"
+     xattr -dr com.apple.quarantine DM2Mac.app
      ```
+
+     Then double-click `DM2Mac.app` in the Finder.
 
    - **Windows:** Run `dm2.exe`. If SmartScreen warns about an unknown publisher, select "More info", then
      "Run anyway".
 
-On first startup the game checks your files and copies the 10 files it needs into `game/`. If a file is missing
-or wrong, a message names it. Your saved games go to `game/DATA`.
+On first startup the game checks your files and copies the 10 files it needs into `game/` in the `DM2Mac` folder. If
+a file is missing or wrong, a message names it. The game keeps all its files in `game/`: the game files, your saved
+games in `game/DATA`, the settings, and the messages in `dm2.log`. To remove the game, delete the `DM2Mac` folder.
 
 ## Modes
 

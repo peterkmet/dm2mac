@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "install.h"
+#include <ctype.h>
 #include <dirent.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -22,6 +23,11 @@
 
 /* The folder of the data files below the game folder. */
 #define DATA_FOLDER "DATA"
+
+/* The folders below a macOS bundle that SDL_GetBasePath can give, and the suffix of the bundle folder. */
+#define BUNDLE_RESOURCES  "/Contents/Resources"
+#define BUNDLE_EXECUTABLE "/Contents/MacOS"
+#define BUNDLE_SUFFIX     ".app"
 
 /* The suffix of the temporary name of a game file. */
 #define TEMPORARY_SUFFIX ".TMP"
@@ -68,6 +74,9 @@ static const SourceExtension source_extensions[] = {
     {SOURCE_CD,  ".bin"},
 };
 
+/* The folders below a macOS bundle that SDL_GetBasePath can give. */
+static const char *const bundle_inside[] = {BUNDLE_RESOURCES, BUNDLE_EXECUTABLE};
+
 /* Appends a formatted part; a part that does not fit cuts the text and ends it with CUT_MARK. */
 static void append_text(Text *text, const char *format, ...)
 {
@@ -107,6 +116,71 @@ bool install_make_folder(const char *path)
 #else
     return mkdir(path, FOLDER_MODE) == 0;
 #endif
+}
+
+/* Queries */
+
+const char *install_start_folder(const char *folder, const char *base)
+{
+    char game[OS_PATH_SIZE];
+    snprintf(game, sizeof game, "%s/%s", folder, INSTALL_GAME_FOLDER);
+    struct stat info;
+#ifdef _WIN32
+    bool present = stat(game, &info) == 0;
+#else
+    bool present = lstat(game, &info) == 0; /* a link counts, also when its target is missing */
+#endif
+    return present ? NULL : base;
+}
+
+/* The length of the folder that holds <name>.app when base (without its last slashes) is a folder of
+   bundle_inside in <name>.app; 0 when it is not. */
+static size_t bundle_parent(const char *base, size_t length)
+{
+    size_t suffix = strlen(BUNDLE_SUFFIX);
+    for (size_t i = 0; i < sizeof bundle_inside / sizeof *bundle_inside; i++) {
+        size_t inside = strlen(bundle_inside[i]);
+        size_t name = length >= inside ? length - inside : 0; /* the end of <name>.app */
+        if (length < inside || strncmp(base + name, bundle_inside[i], inside) || name <= suffix ||
+            base[name - suffix - 1] == '/' || strncmp(base + name - suffix, BUNDLE_SUFFIX, suffix))
+            continue;
+        while (name > 0 && base[name - 1] != '/')
+            name--;  /* the start of <name>.app: the folder that holds it ends here */
+        return name; /* 0 for a relative base without a folder part */
+    }
+    return 0;
+}
+
+bool install_program_folder(const char *base, char *folder, size_t size)
+{
+    size_t length = strlen(base);
+    while (length > 0 && base[length - 1] == '/')
+        length--;
+    size_t kept = bundle_parent(base, length);
+    kept = kept ? kept : strlen(base);
+    if (kept >= size)
+        return false;
+    memcpy(folder, base, kept);
+    folder[kept] = '\0';
+    return true;
+}
+
+/* True for a path that does not depend on the working folder. */
+static bool is_absolute(const char *path)
+{
+#ifdef _WIN32
+    if (isalpha((unsigned char)path[0]) && path[1] == ':')
+        return true; /* a drive letter */
+    if (path[0] == '\\')
+        return true;
+#endif
+    return path[0] == '/';
+}
+
+bool install_absolute_path(const char *start, const char *path, char *full, size_t size)
+{
+    int written = is_absolute(path) ? snprintf(full, size, "%s", path) : snprintf(full, size, "%s/%s", start, path);
+    return written >= 0 && (size_t)written < size;
 }
 
 /* Commands */

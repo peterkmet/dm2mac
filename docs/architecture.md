@@ -281,7 +281,8 @@ The other hooks:
 | `g_upscale_filter_hook` | `ui/filter.h` | `platform/main.c` (`plat_set_filter`) | `ui/filter.c` | no window: the filter is not shown |
 
 On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the data folder, because the Windows build has
-no console.
+no console. In a macOS bundle `platform/main.c` sends the error output to `dm2.log` in the data folder, because a
+bundle started from the Finder has no terminal.
 
 ## The test library
 

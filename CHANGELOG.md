@@ -47,6 +47,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Changed
 
+- macOS release: the application `DM2Mac.app` replaces `dm2`, `libSDL3.0.dylib`, and `Dungeon Master II.command`. A double click starts the game without Terminal. The game files, the saves, the settings, and `dm2.log` go to `game/` in the folder that holds `DM2Mac.app`. A start from a folder without a `game` entry changes to the folder of the program (the folder that holds a bundle); a relative path option keeps its meaning.
 - Control replies have no size limit; the error `reply too long` is gone.
 - The test of the way out of the first room takes the real path: the solid key comes from the cabinet of the first room.
 - `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/standard/test_standard.py` checks the rules. `tests/standard/allowlist.txt` lists the open violations.

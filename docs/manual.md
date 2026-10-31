@@ -9,8 +9,15 @@ manual. Item values are in [items.md](items.md).
 Install the game as the [README](../README.md#play) says, or [build it](development.md) and start `build/dm2`
 (`build/dm2.exe` on Windows) from the folder that holds your copy of the game.
 
+The game uses the folder `game/` in the folder where you start it. If that folder has no `game` entry, the game uses
+the folder of the program instead: the folder that holds `DM2Mac.app` on macOS, the folder that holds `dm2.exe` on
+Windows. A double click on `DM2Mac.app` in the Finder thus uses `game/` in the `DM2Mac` folder
+([Startup](formats/install.md#startup)). A `game` file or folder in the folder where you start the game keeps that
+folder.
+
 On first startup the game copies the 10 files it needs from your folder, ZIP archive, or CD image into `game/`
-([Game files and install](formats/install.md)). On Windows, the game's messages go to `game/dm2.log`.
+([Game files and install](formats/install.md)). In `DM2Mac.app` and on Windows, the game's messages go to
+`game/dm2.log`.
 
 ## Options
 
@@ -30,7 +37,8 @@ build/dm2 --mode vanilla
 build/dm2 --save game/DATA/SKSAVE0.DAT
 ```
 
-An invalid option prints a message that says what is wrong. You can resize the window to any size.
+A relative path in an option is relative to the folder where you start the game, even when the game changes to the
+folder of the program. An invalid option prints a message that says what is wrong. You can resize the window to any size.
 
 ## Start screens
 
