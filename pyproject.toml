@@ -36,6 +36,8 @@ select = ["E4", "E9", "F"]
 
 [tool.pytest.ini_options]
 timeout = 120
+# a timer thread ends a test that hangs inside a ctypes call, where a signal cannot reach it
+timeout_method = "thread"
 testpaths = ["tests"]
 addopts = "-m 'not network' --dist loadfile --import-mode=importlib"
 pythonpath = ["tests"]
