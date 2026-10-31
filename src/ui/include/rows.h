@@ -4,7 +4,7 @@
 /* Prefixes: rows_ */
 
 /* The rows of text of the viewport screens of the advanced mode (not in the original game), such as the cheat
-   screen. It draws a title and the rows in the viewport with the game font and the interface colors, and maps a
+   screen. It draws a title line and the rows in the viewport with the game font and the interface colors, and maps a
    mouse position to a row. It holds no screen state. */
 
 #include <stdint.h>
@@ -13,9 +13,19 @@
 #define ROWS_MAX_COUNT 11
 #define ROWS_COLUMNS   36
 
-/* Draws the title in cyan and the rows in white on black in the viewport, the selected row in yellow. */
-void rows_draw(const char *title, const char *const *rows, int16_t row_count, int16_t selected);
-/* The row of row_count rows at the screen position (x, y), or -1 outside the rows. */
-int16_t rows_find_row(int16_t x, int16_t y, int16_t row_count);
+/* A screen of rows. The title item is selectable and comes after the last row: its index is row_count. */
+typedef struct {
+    const char *title;       /* cyan, at the left of the title line */
+    const char *title_item;  /* right-aligned on the title line; NULL for none */
+    const char *const *rows; /* row_count rows below the title line */
+    int16_t row_count;
+    uint16_t subtitles; /* bit i: row i is a cyan subtitle that cannot be selected */
+} RowsScreen;
+
+/* Draws the screen in the viewport: the title and the subtitles in cyan at the left margin, the rows in white one
+   character further right, all on black; the selected row or title item in yellow. */
+void rows_draw(const RowsScreen *screen, int16_t selected);
+/* The row at the screen position (x, y), row_count for the title item, or -1 outside them and on a subtitle. */
+int16_t rows_find_row(const RowsScreen *screen, int16_t x, int16_t y);
 
 #endif /* DM2_UI_ROWS_H */

@@ -152,6 +152,8 @@ def test_click_on_a_row_runs_it(lib, screen):
     assert lib.cheats_process_click(x, y) == STAY and lib.game_has_cheat(C.CHEAT_FOOD)
     assert cursor(lib) == (C.CHEATS_PAGE, ROW_FOOD)
     assert lib.cheats_process_click(x, rect[1] + 2) == STAY and lib.game_has_cheat(C.CHEAT_FOOD), "the title"
+    assert lib.cheats_process_click(rect[0] + rect[2] - 10, rect[1] + 8) == CLOSE, "CLOSE at the right of the title"
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_CLOSE)
 
 
 def experience_and_mana(lib, champ):

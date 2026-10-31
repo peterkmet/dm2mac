@@ -42,7 +42,7 @@ static void show_menu(void)
     for (char *c = filter_row + LABEL_COLUMNS; *c; c++)
         *c = (char)toupper((unsigned char)*c);
     const char *rows[OPTMENU_ROW_COUNT] = {[OPTMENU_ROW_FILTER] = filter_row, [OPTMENU_ROW_CONTINUE] = "CONTINUE"};
-    rows_draw("OPTIONS", rows, OPTMENU_ROW_COUNT, menu.row);
+    rows_draw(&(RowsScreen){"OPTIONS", NULL, rows, OPTMENU_ROW_COUNT, 0}, menu.row);
 }
 
 /* Setup */
@@ -150,7 +150,7 @@ bool optmenu_process_key(uint16_t key)
 
 bool optmenu_process_click(int16_t x, int16_t y)
 {
-    int row = rows_find_row(x, y, OPTMENU_ROW_COUNT);
+    int row = rows_find_row(&(RowsScreen){.row_count = OPTMENU_ROW_COUNT}, x, y);
     if (row < 0)
         return false;
     menu.row = row;

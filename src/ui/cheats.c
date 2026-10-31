@@ -11,7 +11,7 @@
 #include "save.h"
 #include "text.h"
 
-/* The rows of the cheat page: the six cheats, then the items. */
+/* The rows of the cheat page: the six cheats, then the items; CLOSE is the title item after the last row. */
 #define ROW_LIGHT         0
 #define ROW_IMMORTAL      1
 #define ROW_FOOD          2
@@ -21,8 +21,8 @@
 #define ROW_QUICK_SAVE    6
 #define ROW_QUICK_LOAD    7
 #define ROW_SPELLS        8
-#define ROW_CLOSE         9
-#define PAGE_ROW_COUNT    10
+#define PAGE_ROW_COUNT    9
+#define ROW_CLOSE         PAGE_ROW_COUNT
 #define CHEAT_COUNT       6 /* the cheat rows, ROW_LIGHT to ROW_MAP */
 _Static_assert(CHEAT_COUNT == ROW_QUICK_SAVE, "the cheat rows come first on the cheat page");
 
@@ -69,10 +69,19 @@ static int16_t count_page_spells(void)
     return left < SPELLS_PER_PAGE ? left : SPELLS_PER_PAGE;
 }
 
-/* The rows of the shown page. */
-static int16_t count_rows(void)
+/* The rows and the title item of the shown page, without their texts. */
+static RowsScreen find_layout(void)
 {
-    return screen.page == CHEATS_PAGE ? PAGE_ROW_COUNT : (int16_t)(count_page_spells() + SPELL_ITEM_COUNT);
+    if (screen.page == CHEATS_PAGE)
+        return (RowsScreen){.title_item = "CLOSE", .row_count = PAGE_ROW_COUNT};
+    return (RowsScreen){.row_count = (int16_t)(count_page_spells() + SPELL_ITEM_COUNT)};
+}
+
+/* The selectable items of the shown page: the rows, then the title item. */
+static int16_t count_items(void)
+{
+    RowsScreen layout = find_layout();
+    return (int16_t)(layout.row_count + (layout.title_item != NULL));
 }
 
 /* Appends text to the line of size bytes in upper case; a full line keeps its start. */
@@ -128,16 +137,17 @@ CheatsCursor cheats_get_cursor(void)
 static void show_cheat_page(void)
 {
     char texts[CHEAT_COUNT][ROW_TEXT_SIZE];
-    const char *rows[PAGE_ROW_COUNT] = {[ROW_QUICK_SAVE] = "QUICK SAVE F5",
-                                        [ROW_QUICK_LOAD] = "QUICK LOAD F9",
-                                        [ROW_SPELLS] = "SPELLS",
-                                        [ROW_CLOSE] = "CLOSE"};
+    const char *rows[PAGE_ROW_COUNT] = {
+        [ROW_QUICK_SAVE] = "QUICK SAVE F5", [ROW_QUICK_LOAD] = "QUICK LOAD F9", [ROW_SPELLS] = "SPELLS"};
     for (int16_t i = ROW_LIGHT; i < CHEAT_COUNT; i++) {
         snprintf(texts[i], ROW_TEXT_SIZE, "%-*s%s", CHEAT_LABEL_COLUMNS, cheat_labels[i],
                  game_has_cheat(cheat_bits[i]) ? "ON" : "OFF");
         rows[i] = texts[i];
     }
-    rows_draw("CHEATS", rows, PAGE_ROW_COUNT, screen.row);
+    RowsScreen page = find_layout();
+    page.title = "CHEATS";
+    page.rows = rows;
+    rows_draw(&page, screen.row);
 }
 
 /* Draws the shown spell page: its spells, then NEXT, BACK, and CLOSE. */
@@ -155,7 +165,10 @@ static void show_spell_page(void)
     for (int16_t i = 0; i < SPELL_ITEM_COUNT; i++)
         rows[count + i] = spell_items[i];
     snprintf(title, sizeof title, "SPELLS %d/%d", screen.page, count_spell_pages());
-    rows_draw(title, rows, (int16_t)(count + SPELL_ITEM_COUNT), screen.row);
+    RowsScreen page = find_layout();
+    page.title = title;
+    page.rows = rows;
+    rows_draw(&page, screen.row);
 }
 
 /* Draws the shown page. */
@@ -183,7 +196,7 @@ void cheats_open(void)
 void cheats_move_selection(int16_t step)
 {
     int16_t row = (int16_t)(screen.row + step);
-    if (row >= 0 && row < count_rows())
+    if (row >= 0 && row < count_items())
         screen.row = row;
     show_page();
 }
@@ -255,7 +268,8 @@ enum CheatsResult cheats_run_selected_row(void)
 
 enum CheatsResult cheats_process_click(int16_t x, int16_t y)
 {
-    int16_t row = rows_find_row(x, y, count_rows());
+    RowsScreen layout = find_layout();
+    int16_t row = rows_find_row(&layout, x, y);
     if (row < 0)
         return CHEATS_STAY;
     screen.row = row;
