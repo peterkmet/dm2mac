@@ -8,10 +8,10 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 - Mode screen: without `--mode`, the program first shows a screen with the items VANILLA and ADVANCED.
 - Smooth window scaling with a live resize redraw, and the window title DM2Mac.
-- Cheat screen (`C`) with six cheats: full light, immortal, food and water, one-hit kill, walk through walls, and reveal map. It also casts spells. The save slots and `QUICK.DAT` keep the cheats in a CHTS block.
+- Cheat screen (`C`) with six cheats: full light, immortal, endless food and water, one-hit kill, walk through walls, and reveal map. It also casts spells. The save slots and `QUICK.DAT` keep the cheats in a CHTS block.
 - Quick save and quick load (`F5`, `F9`) and spells on the cheat screen.
 - Automap: a frame, a checkerboard for imaginary walls, and a mark for the pressure pads that the dungeon view draws. The cheat keys of the automap are gone; use the cheat screen.
-- Options menu on `Esc` with the upscale filter (a change shows immediately), saved in `SETTINGS.TXT`.
+- SCREEN FILTER on the cheat screen with the upscale filter (a change shows immediately), saved in `SETTINGS.TXT`. `Esc` pauses in advanced mode as in vanilla mode.
 - `Tab` closes the open inventory.
 - The damage star of a hit stays one more game step in the action area.
 - Projectiles fly smoothly between game steps.

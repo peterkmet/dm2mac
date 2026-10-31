@@ -58,7 +58,7 @@ The mouse, arrow keys, and numeric keypad work as in the original game. Keys tha
 | `1` to `4` | Open a champion's inventory |
 | Shift+Left, Shift+Right | Step sideways |
 | Alt+S (Option+S on a Mac) | Save menu |
-| `Esc` | Pause (in advanced mode: the options menu) |
+| `Esc` | Pause |
 
 ## Saved games
 
@@ -67,7 +67,7 @@ Save in a slot with Alt+S and load a slot from the start menu, as in the origina
 
 ## Advanced mode
 
-Advanced mode adds the advanced keys, the quick save, the automap, the cheats, and the options menu. It also
+Advanced mode adds the advanced keys, the quick save, the automap, the cheats, and the screen filter. It also
 changes a few things:
 
 - When you release a held key, the party stops. In vanilla mode the party keeps walking, as in the original.
@@ -78,7 +78,7 @@ changes a few things:
 - Projectiles fly smoothly from square to square in the dungeon view.
 - A save keeps the automap and the cheats.
 
-The automap, the cheat screen, and the options menu stop game time while they are open. The exact rules are in
+The automap and the cheat screen stop game time while they are open. The exact rules are in
 [Advanced mode rules](rules/advanced-mode.md).
 
 ### Advanced keys
@@ -90,11 +90,10 @@ The automap, the cheat screen, and the options menu stop game time while they ar
 | `F5`, `F9` | Quick save, quick load |
 | `Tab` or `M` | Automap |
 | `C` | Cheat screen |
-| `Esc` | Options menu |
 | `Tab` | Close the inventory |
 
 The keys work only in the dungeon view. In the inventory, a dialog, or a menu they do nothing, except `Tab`, which
-closes the inventory. `Esc` and a right click close the automap, the cheat screen, and the options menu.
+closes the inventory. `Esc` and a right click close the automap and the cheat screen.
 
 ### Quick save and quick load
 
@@ -128,22 +127,38 @@ The cheat screen (`C`) switches six cheats on and off. A save keeps them, and a 
 
 ### Cheat screen
 
-Click a row, or choose it with the arrow keys (or `W`, `S`) and Return. `C` or `Esc` closes the screen.
+```
+CHEATS                         CLOSE
+ FULL LIGHT              OFF
+ IMMORTAL                ON
+ ENDLESS FOOD AND WATER  ON
+ ONE-HIT KILL            OFF
+ WALK THROUGH WALLS      OFF
+ REVEAL MAP              OFF
+OPTIONS
+ SCREEN FILTER           NONE
+ QUICK SAVE F5
+ QUICK LOAD F9
+ SPELLS
+```
+
+Click a row, or choose it with the arrow keys (or `W`, `S`) and Return. CLOSE, `C`, `Esc`, or a right click closes
+the screen.
 
 - The six cheat rows show `ON` or `OFF`.
+- SCREEN FILTER switches the pixel-art filter (`NONE`, `SCALE2X`, `SCALE3X`), and the change shows immediately.
 - QUICK SAVE F5 and QUICK LOAD F9 do the same as the keys.
 - SPELLS lists all the game's spells with their runes, for example `FUL IR (X,4,4) FIREBALL`. A number is the
   rune's position in its row; `X` is any power. The spell names come from this port because the game has no names
-  for them.
+  for them. A right click on a spell page goes back to the cheat page.
 
 Click a spell to cast it at full power, with no mana cost and no chance of failure. The champion with the open spell
 panel casts it, otherwise the leader. A potion spell still needs an empty flask in a hand.
 
-### Options menu
+Sound and music volume stay in the original game's volume dialog (the speaker button in the inventory).
 
-`Esc` opens the options menu. FILTER switches the pixel-art filter (`NONE`, `SCALE2X`, `SCALE3X`), and the change
-shows immediately. CONTINUE closes the menu. Sound and music volume stay in the original game's volume dialog (the
-speaker button in the inventory).
+### Screen filter
 
-The game remembers the filter in `game/DATA/SETTINGS.TXT` and uses it on the next startup. `--filter` overrides it.
-If the file cannot be written, the message area shows `UNABLE TO SAVE OPTIONS`. The file is described in [Save files](formats/save.md#settingstxt).
+The game remembers the filter of SCREEN FILTER in `game/DATA/SETTINGS.TXT` and uses it on the next startup.
+`--filter` overrides it. If the file cannot be written, the message area shows `UNABLE TO SAVE OPTIONS`. The file is
+described in [Save files](formats/save.md#settingstxt).

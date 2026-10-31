@@ -100,11 +100,12 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | Header | Prefixes | Purpose |
 |---|---|---|
 | `ui/action_area.h` | `area_` | The action area: the party's hands and spell icons, and the panels that open in it. |
-| `ui/advanced.h` | `advanced_` | The advanced mode: quick save and load, the viewport screens (the automap, the cheat screen, and the options menu) and their keys, and the movement letter keys. |
+| `ui/advanced.h` | `advanced_` | The advanced mode: quick save and load, the viewport screens (the automap and the cheat screen) and their keys, and the movement letter keys. |
 | `ui/automap.h` | `automap_` | The advanced-mode automap: a map picture of the squares that the dungeon view has shown. |
-| `ui/cheats.h` | `cheats_` | The advanced-mode cheat screen (not in the original game): turns the cheats on and off, offers quick save and quick load, and lists the spells with their runes. |
+| `ui/cheats.h` | `cheats_` | The advanced-mode cheat screen (not in the original game): turns the cheats and the screen filter on and off, offers quick save and quick load, and lists the spells with their runes. |
 | `ui/dialog.h` | `dialog_` | Dialogs: message, question, and progress pictures with buttons, and the volume settings. |
 | `ui/draw.h` | `draw_` | Drawing GDAT images into the frame buffer: blits, transparency, and the interface colors. |
+| `ui/filter.h` | `upscale_` | The advanced-mode screen filter (not in the original game): the filter at the start, the filter in use, and its change with the write of SETTINGS.TXT. |
 | `ui/fm.h` | `fm_` | The OPL2 FM music driver from HMIMDRV.386, on an emulated OPL3 chip. |
 | `ui/icon.h` | `icon_` | The window icon, built from a creature graphic. |
 | `ui/input.h` | `input_` `command_` `kbd_` `rect_` | Mouse and keyboard input: key codes, rectangles, and the command queue. |
@@ -112,9 +113,8 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 | `ui/mode_screen.h` | `mode_screen_` | The mode screen on program start: the cursor on VANILLA or ADVANCED, its keys, clicks, and picture. |
 | `ui/movie.h` | `movie_` | The movie script from the DOS launcher IBMIOP.EXE. |
 | `ui/music.h` | `music_` | Game music: the song of each map from SONGLIST.DAT, played by the HMP player on the FM driver. |
-| `ui/optmenu.h` | `optmenu_` | The advanced-mode options menu (not in the original game): the FILTER row and CONTINUE. |
 | `ui/play.h` | `play_` | The main loop: timer ticks, game steps, the party's view, and sleep. |
-| `ui/rows.h` | `rows_` | Text rows for the advanced-mode viewport screens (not in the original game). |
+| `ui/rows.h` | `rows_` | Text rows for the advanced-mode viewport screens (not in the original game): a title line with an optional item at the right, rows, and subtitle rows. |
 | `ui/session.h` | `session_` `args_` `menu_` | The start menu, new games, loads and saves through the slot dialogs, and the end of the game. |
 | `ui/sound.h` | `sound_` | Sound output: the sample mixer, the voices, and the volume settings. |
 | `ui/text.h` | `text_` | Text: the font, message wrapping, and printing to the screen. |
@@ -153,7 +153,7 @@ paragraph. A module with several `.c` files has one `<module>_internal.h` for it
 
 1. It reads the options and selects the game mode (`--mode`; otherwise the advanced mode).
 2. It checks the game files and installs them from a source if needed ([install.md](formats/install.md#startup)). It loads GRAPHICS.DAT and the `--save` file, and opens the window, the `--control` socket, and the
-   music. It sets the platform hooks: `g_os_full_path_hook`, `g_optmenu_filter_hook`, and
+   music. It sets the platform hooks: `g_os_full_path_hook`, `g_upscale_filter_hook`, and
    `g_play_frame_hook`.
 3. Without `--mode` and `--save`, it shows the mode screen.
 4. Without `--save`, it plays the start movies and starts the game: the start menu, or a new game in the
@@ -204,7 +204,7 @@ the command queue (`command_process_queue`, `ui/input.c`). The command queue fir
   the pending sounds and damage, the party clocks (`game_run_party_clocks`, `engine/game.c`), the champions'
   status boxes, and the game time (`game_advance_time`, `engine/game.c`).
 
-An advanced-mode viewport screen (the automap, the cheat screen, the options menu) and the pause stop the
+An advanced-mode viewport screen (the automap, the cheat screen) and the pause stop the
 game step. The split of the original `game_loop` into these two parts is in
 [movement.md](rules/movement.md#timing-and-the-game-step).
 
@@ -278,7 +278,7 @@ The other hooks:
 | `g_os_fatal_hook` | `data/os.h` | `platform/main.c` (Windows only) | `os_fatal` (`data/os.c`) | the message goes to stderr |
 | `g_os_full_path_hook` | `data/os.h` | `platform/main.c`, `load_lib` (`tests/dm2test/lib.py`) | `os_get_full_path` (`data/os.c`) | no full path; the call returns false |
 | `g_play_frame_hook` | `ui/play.h` | `platform/main.c`, the tests | `play_wait_frames` (`ui/play.c`) | a modal loop counts the timer ticks and shows no frame |
-| `g_optmenu_filter_hook` | `ui/optmenu.h` | `platform/main.c` (`plat_set_filter`) | `ui/optmenu.c` | no window: the filter is not shown |
+| `g_upscale_filter_hook` | `ui/filter.h` | `platform/main.c` (`plat_set_filter`) | `ui/filter.c` | no window: the filter is not shown |
 
 On Windows `g_os_log_hook` and `g_os_fatal_hook` write `dm2.log` in the data folder, because the Windows build has
 no console.
