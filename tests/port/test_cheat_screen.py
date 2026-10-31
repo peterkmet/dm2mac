@@ -12,7 +12,8 @@ from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, VANI
 
 SPELL_COUNT, SPELLS_PER_PAGE = 34, 8
 PAGE_COUNT = (SPELL_COUNT + SPELLS_PER_PAGE - 1) // SPELLS_PER_PAGE
-ROW_LIGHT, ROW_FOOD, ROW_QUICK_SAVE, ROW_QUICK_LOAD, ROW_SPELLS, ROW_CLOSE = 0, 2, 6, 7, 8, 9
+ROW_LIGHT, ROW_FOOD, ROW_MAP, ROW_OPTIONS, ROW_FILTER = 0, 2, 5, 6, 7
+ROW_QUICK_SAVE, ROW_QUICK_LOAD, ROW_SPELLS, ROW_CLOSE = 8, 9, 10, 11  # CLOSE: the title item
 STAY, CLOSE, QUICK_SAVE, QUICK_LOAD = C.CHEATS_STAY, C.CHEATS_CLOSE, C.CHEATS_QUICK_SAVE, C.CHEATS_QUICK_LOAD
 SCAN_ESCAPE, SCAN_RETURN, SCAN_S = 0x01, 0x1C, 0x1F
 FIREBALL_EFFECT = 0x5402  # a missile spell of type 0 (fireball)
@@ -58,9 +59,9 @@ def cursor(lib):
 
 def select(lib, row):
     """Selects row of the shown page from its first row."""
-    for _ in range(C.ROWS_MAX_COUNT):
+    for _ in range(C.ROWS_MAX_COUNT + 1):
         lib.cheats_move_selection(-1)
-    for _ in range(row):
+    while cursor(lib)[1] < row:
         lib.cheats_move_selection(1)
 
 
@@ -86,8 +87,19 @@ def test_rows_and_pages(lib, screen):
     assert cursor(lib) == (C.CHEATS_PAGE, ROW_LIGHT)
     lib.cheats_move_selection(-1)
     assert cursor(lib) == (C.CHEATS_PAGE, ROW_LIGHT), "the selection stops at the first row"
-    select(lib, ROW_CLOSE + 1)
-    assert cursor(lib) == (C.CHEATS_PAGE, ROW_CLOSE), "the selection stops at the last row"
+    order = []
+    for _ in range(ROW_CLOSE):
+        order.append(cursor(lib)[1])
+        lib.cheats_move_selection(1)
+    assert order == [r for r in range(ROW_CLOSE + 1) if r != ROW_OPTIONS], "the selection skips the subtitle"
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_CLOSE), "the selection stops at the last row, CLOSE"
+    lib.cheats_move_selection(-1)
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_SPELLS)
+    select(lib, ROW_MAP)
+    lib.cheats_move_selection(1)
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_FILTER)
+    lib.cheats_move_selection(-1)
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_MAP)
     for row, result in ((ROW_QUICK_SAVE, QUICK_SAVE), (ROW_QUICK_LOAD, QUICK_LOAD), (ROW_CLOSE, CLOSE)):
         select(lib, row)
         assert lib.cheats_run_selected_row() == result
@@ -148,10 +160,12 @@ def test_click_on_a_row_runs_it(lib, screen):
     lib.cheats_open()
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
-    x, y = rect[0] + rect[2] // 2, rect[1] + 22 + ROW_FOOD * 10 + 5  # the middle of the FOOD AND WATER row
+    x, y = rect[0] + rect[2] // 2, rect[1] + 16 + ROW_FOOD * 10 + 5  # the middle of the ENDLESS FOOD AND WATER row
     assert lib.cheats_process_click(x, y) == STAY and lib.game_has_cheat(C.CHEAT_FOOD)
     assert cursor(lib) == (C.CHEATS_PAGE, ROW_FOOD)
     assert lib.cheats_process_click(x, rect[1] + 2) == STAY and lib.game_has_cheat(C.CHEAT_FOOD), "the title"
+    assert lib.cheats_process_click(rect[0] + rect[2] - 10, rect[1] + 8) == CLOSE, "CLOSE at the right of the title"
+    assert cursor(lib) == (C.CHEATS_PAGE, ROW_CLOSE)
 
 
 def experience_and_mana(lib, champ):
@@ -214,3 +228,16 @@ def test_quick_load_from_the_screen_restores_the_saved_game_and_closes_the_scree
     press(lib, C.KEY_QUICK_LOAD)
     assert mode.value == C.ADVANCED_SCREEN_NONE
     assert not lib.game_has_cheat(C.CHEAT_FOOD), "the saved game without the cheat is back"
+
+
+def test_right_click_on_a_spell_page_goes_back_to_the_cheat_page(lib, screen):
+    mode = ctypes.c_int.in_dll(lib, "g_advanced_screen")
+    lib.advanced_open_cheats()
+    select(lib, ROW_SPELLS)
+    lib.cheats_run_selected_row()
+    lib.cheats_run_selected_row()
+    assert cursor(lib)[0] == 2
+    lib.advanced_screen_event(C.INPUT_BUTTON_RIGHT, 0, 0)
+    assert mode.value == C.ADVANCED_SCREEN_CHEATS and cursor(lib) == (C.CHEATS_PAGE, ROW_SPELLS)
+    lib.advanced_screen_event(C.INPUT_BUTTON_RIGHT, 0, 0)
+    assert mode.value == C.ADVANCED_SCREEN_NONE

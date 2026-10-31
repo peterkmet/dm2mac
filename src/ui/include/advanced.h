@@ -3,7 +3,7 @@
 #define DM2_UI_ADVANCED_H
 /* Prefixes: advanced_ */
 
-/* The advanced mode: quick save and load, the viewport screens (the automap, the cheat screen, and the options menu) and their keys,
+/* The advanced mode: quick save and load, the viewport screens (the automap and the cheat screen) and their keys,
    and the movement letter keys. */
 
 #include <stdbool.h>
@@ -14,11 +14,10 @@
 #define KEY_QUICK_SAVE 0x3f /* F5 */
 #define KEY_QUICK_LOAD 0x43 /* F9 */
 
-/* PC scan codes of the keys that open the automap, the cheat screen, and the options menu. */
+/* PC scan codes of the keys that open the automap and the cheat screen. */
 #define KEY_AUTOMAP   KEY_TAB
-#define KEY_AUTOMAP_M 0x32        /* M */
-#define KEY_CHEATS    0x2e        /* C */
-#define KEY_OPTIONS   SCAN_ESCAPE /* in the movement mode of the advanced mode */
+#define KEY_AUTOMAP_M 0x32 /* M */
+#define KEY_CHEATS    0x2e /* C */
 
 /* PC scan codes of the numeric keypad keys that move and turn the party. */
 #define KEYPAD_TURN_LEFT  0x4b
@@ -41,7 +40,7 @@
 enum QuickLoadResult { QUICK_LOADED, QUICK_MISSING, QUICK_DAMAGED, QUICK_BLOCKED, QUICK_LOST };
 
 /* The screens that cover the viewport, one at a time; the game time stops while one is open. */
-enum AdvancedScreen { ADVANCED_SCREEN_NONE, ADVANCED_SCREEN_AUTOMAP, ADVANCED_SCREEN_CHEATS, ADVANCED_SCREEN_OPTIONS };
+enum AdvancedScreen { ADVANCED_SCREEN_NONE, ADVANCED_SCREEN_AUTOMAP, ADVANCED_SCREEN_CHEATS };
 
 extern enum AdvancedScreen g_advanced_screen; /* the open viewport screen */
 
@@ -72,13 +71,11 @@ void advanced_automap_drag(int16_t x, int16_t y);
 /* Viewport screens */
 /* Opens the cheat screen in the viewport. */
 void advanced_open_cheats(void);
-/* Opens the options menu in the viewport. */
-void advanced_open_options(void);
 /* An input event while a viewport screen is open (type INPUT_KEY with the key in x, a mouse button,
    INPUT_LEFT_RELEASED). On the automap Tab, M, and Esc close it, a left drag on the viewport scrolls the map. On the
    cheat screen C and Esc close it, Up, Down, W, and S select a row, Return and a left click run a row, F5 and F9
-   quick save and quick load (a quick load closes the screen, then runs as the F9 key of the game). On the options menu
-   Esc closes it, the rest is optmenu.h. Other keys do nothing. */
+   quick save and quick load (a quick load closes the screen, then runs as the F9 key of the game); a right click
+   on a spell page goes back to the cheat page. Elsewhere a right click closes the screen. Other keys do nothing. */
 void advanced_screen_event(int type, int16_t x, int16_t y);
 /* The key that a closed screen leaves for the game (F9 of QUICK LOAD), 0 for none; clears it. */
 uint16_t advanced_take_pending_key(void);

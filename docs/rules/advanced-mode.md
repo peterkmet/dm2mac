@@ -18,20 +18,18 @@ The advanced mode adds these keys:
 | `Tab`, `M`, or `Esc` | Close the automap | Open automap |
 | `C` | Open the cheat screen | Dungeon view only |
 | `C` or `Esc` | Close the cheat screen | Open cheat screen |
-| `Esc` | Open the options menu (instead of the pause) | Dungeon view only |
 | `Tab` | Close the inventory | Open inventory; not in the name editor or the recruit dialog |
-| `Esc` | Close the options menu | Open options menu |
 
-A right click closes the automap, the cheat screen, and the options menu. In the save menu a right click is RESUME, in the save menu's slot list CANCEL, and in the question before a quit CANCEL. The other dialogs keep the original right click.
+A right click closes the automap and the cheat screen; on a spell page of the cheat screen it shows the cheat page. In the save menu a right click is RESUME, in the save menu's slot list CANCEL, and in the question before a quit CANCEL. The other dialogs keep the original right click.
 
 A letter key moves the party only if the letter has no command of its own. In the slot name of the save dialog and in the name editor, the letters type text.
 
 The dungeon view is the screen where the party moves, with at least one champion and no inventory, dialog, menu, pause, sleep, or recruit.
 
-- In the dungeon view the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing, and `Esc` does not pause either.
-- In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing, and `Esc` keeps its original use: it closes the inventory, and it pauses or resumes the game.
-- In the vanilla mode `Esc` pauses.
-- Only one of the automap, the cheat screen, and the options menu is open at a time.
+- In the dungeon view the advanced keys work only without a recruit candidate and with an idle party: no held eye or mouth, no champion drag, and no push mode. Otherwise they do nothing.
+- In other places `F5`, `F9`, `Tab`, `M`, and `C` do nothing.
+- `Esc` keeps its original use in both modes: it closes the inventory, and it pauses or resumes the game. Only on the open automap and the open cheat screen it closes the screen.
+- Only one of the automap and the cheat screen is open at a time.
 
 ## Quick save and quick load
 
@@ -58,7 +56,7 @@ A quick save is not a saved game for the save menu. The QUIT question and RESTAR
 - An antidote always cures the poison. In the vanilla mode it can miss the poison, as in the original ([champions.md](champions.md#deviations-from-the-original)).
 - A slot save and the quick save keep the seen squares and the cheats.
 
-The automap, the cheat screen, and the options menu open in the viewport and stop the game time. The titles of the cheat screen and the options menu are cyan, their rows are white, and the selected row is yellow.
+The automap and the cheat screen open in the viewport and stop the game time. The title and the subtitles of the cheat screen are cyan, its rows are white, and the selected row or title item is yellow.
 
 ## Automap
 
@@ -86,19 +84,21 @@ The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on 
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
-- Food and water: food and water do not go down over time. Eating and drinking still raise them.
+- Endless food and water: food and water do not go down over time. Eating and drinking still raise them.
 - One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt, or that others cannot hit, survives. Health that a creature loses by itself (over time, or by its own missile attack) does not become a kill. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
 - Reveal map: the automap shows every square of the level. The seen squares do not change.
 
 ## Cheat screen
 
-`C` in the dungeon view opens the cheat screen in the viewport. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen.
+`C` in the dungeon view opens the cheat screen in the viewport. The cheat page has the title CHEATS with CLOSE at the right of the title line, then 11 rows: the six cheat rows, the subtitle OPTIONS, SCREEN FILTER, QUICK SAVE F5, QUICK LOAD F9, and SPELLS. Click a row, or select it with Up and Down (`W`, `S`) and press Return. The selection skips the subtitle, stops at the first and the last item, and CLOSE is the last item. `C`, `Esc`, and a right click close the screen.
 
-- FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
+- FULL LIGHT, IMMORTAL, ENDLESS FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
+- OPTIONS: a subtitle; a click on it does nothing.
+- SCREEN FILTER: shows the window's upscale filter, `NONE`, `SCALE2X`, or `SCALE3X`, and changes to the next filter (after SCALE3X comes NONE). The change shows immediately and goes to [SETTINGS.TXT](#settingstxt). If the window cannot show the filter, the filter stays. The volume stays in the volume dialog of the original game.
 - QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
 - QUICK LOAD F9: closes the screen, then loads `QUICK.DAT` as `F9` in the dungeon view does. `F9` on the screen does the same.
-- SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page shows the cheat page.
+- SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page and a right click on a spell page show the cheat page with SPELLS selected.
 - CLOSE: closes the screen.
 
 A spell line shows the runes, their numbers, and the spell name, for example `FUL IR (X,4,4) FIREBALL`. A number is the place of the rune in its row (1 to 6); `X` means any power. A line wider than the viewport shows only the numbers and the name. The spell names are names of the port, because the game files have none.
@@ -115,30 +115,14 @@ A projectile moves one cell (half a square) per game step, as in the original ga
 
 - A new projectile, or one not in the view at the last game step, shows at its current place.
 - The flight shows only if the party view is the same as at the step before: the same map, square, and direction. It does not show while the party walks or after a turn.
-- It does not show in the inventory, during sleep or pause, while the automap, the cheat screen, or the options menu is open, or in the vanilla and turn-based modes.
+- It does not show in the inventory, during sleep or pause, while the automap or the cheat screen is open, or in the vanilla and turn-based modes.
 - The flight changes no game state ([view.md](view.md#deviations-from-the-original)).
-
-## Options menu
-
-`Esc` in the dungeon view opens the options menu in the viewport. The volume stays in the volume dialog of the original game.
-
-- FILTER: the window's upscale filter, `NONE`, `SCALE2X`, or `SCALE3X`. A change shows immediately.
-- CONTINUE: closes the menu.
-
-| Input | Action |
-| --- | --- |
-| `Esc` | Close the menu |
-| Up, Down, `W`, `S` | Select a row |
-| Left, Right, `A`, `D` | Set the previous or next filter (after SCALE3X comes NONE) |
-| Return | On FILTER: the next filter. On CONTINUE: close the menu |
-| Left click on FILTER | The next filter |
-| Left click on CONTINUE | Close the menu |
 
 ## SETTINGS.TXT
 
-The menu keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--saves DIR`, otherwise `<data>/DATA`). The file format is in [save.md](../formats/save.md#settingstxt).
+The SCREEN FILTER row of the cheat screen keeps the filter in `SETTINGS.TXT` in the folder of `QUICK.DAT` (`--saves DIR`, otherwise `<data>/DATA`). The file format is in [save.md](../formats/save.md#settingstxt).
 
-The advanced mode reads the file once on startup and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The menu can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
+The advanced mode reads the file once on startup and applies the filter. `--filter` and `DM2_FILTER` have priority on startup. The SCREEN FILTER row can still change the filter, and the change writes the file. The vanilla and turn-based modes do not read the file.
 
 The game writes the file only when the filter changes. If the write fails, the filter stays changed and the message area shows `UNABLE TO SAVE OPTIONS` once. It shows again only after a write works and a later write fails.
 

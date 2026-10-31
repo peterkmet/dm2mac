@@ -82,8 +82,7 @@
 #define CMD_QUICK_SAVE           0xf3
 #define CMD_QUICK_LOAD           0xf4
 #define CMD_AUTOMAP              0xf5
-#define CMD_CHEATS               0xf6
-#define CMD_OPTIONS              0xf7 /* the advanced mode: no original command has these numbers */
+#define CMD_CHEATS               0xf6 /* the advanced mode: no original command has these numbers */
 
 /* The cursor images of input_cursor_at. */
 enum CursorKind { CURSOR_ARROW, CURSOR_HAND, CURSOR_OBJECT, CURSOR_CHAMPION };
@@ -140,8 +139,8 @@ bool input_is_idle(void);
    exported for the tests. */
 uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int buttons, int16_t *rect);
 /* The command of key in mode, and the rectangle of its zone; 0 for none. In the advanced mode, F5 and F9 in the
-   movement mode give the quick save and the quick load, Tab and M there open the automap, C the cheat screen, Esc
-   the options menu (instead of the pause), Tab in the inventory closes it, and a letter key W S A D Q E without a
+   movement mode give the quick save and the quick load, Tab and M there open the automap, C the cheat screen,
+   Tab in the inventory closes it, and a letter key W S A D Q E without a
    command gives the command of its keypad key. */
 uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect); /* exported for the tests */
 /* Selects the input tree of mode (move, inventory, sleep, pause, ...); a new mode clears the pending input. */

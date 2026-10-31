@@ -123,7 +123,7 @@ In advanced and turn-based modes, the quick save `QUICK.DAT` is in the `--saves`
 
 ## SETTINGS.TXT
 
-The settings file of advanced mode keeps the upscale filter of the options menu ([manual.md](../manual.md#options-menu)). It is in the same folder as `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
+The settings file of advanced mode keeps the upscale filter of the SCREEN FILTER row of the cheat screen ([manual.md](../manual.md#screen-filter)). The SCREEN FILTER row writes it. It is in the same folder as `QUICK.DAT`. The file is a text file of `key=value` lines (`src/data/settings.c`). It has one line:
 
 ```
 filter=scale2x
