@@ -101,3 +101,12 @@ void json_key_int(Json *j, const char *key, int64_t value)
     json_key(j, key);
     json_int(j, value);
 }
+
+void json_key_pair(Json *j, const char *key, int64_t a, int64_t b)
+{
+    json_key(j, key);
+    json_open(j, '[');
+    json_int(j, a);
+    json_int(j, b);
+    json_close(j, ']');
+}

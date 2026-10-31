@@ -202,16 +202,6 @@ static void trimmed(Json *j, const char *text, size_t n)
     json_strn(j, text, n);
 }
 
-/* Appends "key": [a, b]. */
-static void pair(Json *j, const char *key, int64_t a, int64_t b)
-{
-    json_key(j, key);
-    json_open(j, '[');
-    json_int(j, a);
-    json_int(j, b);
-    json_close(j, ']');
-}
-
 /* A weight in tenths of a kilogram as a decimal number, as the load line shows it. */
 static void tenths(Json *j, int64_t value)
 {
@@ -312,8 +302,8 @@ static void statistics_json(Json *j, Champion *c)
 {
     json_open(j, '{');
     for (int s = STAT_STRENGTH; s < STAT_COUNT; s++)
-        pair(j, statistic_names[s], (int16_t)champ_get_stat(c, s, STAT_CURRENT),
-             (uint16_t)champ_get_stat(c, s, STAT_MAXIMUM));
+        json_key_pair(j, statistic_names[s], (int16_t)champ_get_stat(c, s, STAT_CURRENT),
+                      (uint16_t)champ_get_stat(c, s, STAT_MAXIMUM));
     json_close(j, '}');
 }
 
@@ -384,9 +374,9 @@ static void put_champion_values(Json *j, int16_t champion_index)
 {
     Champion *c = champion(champion_index);
     key_bool(j, "alive", c->health > 0);
-    pair(j, "health", c->health, c->max_health);
-    pair(j, "stamina", c->stamina / STAMINA_DISPLAY_UNIT, c->max_stamina / STAMINA_DISPLAY_UNIT);
-    pair(j, "mana", c->mana, c->max_mana);
+    json_key_pair(j, "health", c->health, c->max_health);
+    json_key_pair(j, "stamina", c->stamina / STAMINA_DISPLAY_UNIT, c->max_stamina / STAMINA_DISPLAY_UNIT);
+    json_key_pair(j, "mana", c->mana, c->max_mana);
     json_key_int(j, "food", c->food);
     json_key_int(j, "water", c->water);
     json_key(j, "load_kg");
@@ -473,7 +463,7 @@ static void party_json(Json *j, enum InputMode mode)
 }
 
 /* The leader, the leader hand, the shown candidate (the last champion record), and the members of the party. */
-static void put_champions(Json *j)
+static void put_party(Json *j)
 {
     int members = g_game.champion_count;
     int candidate = -1;
@@ -679,7 +669,7 @@ void state_json_state(Json *j)
     put_dialog(j, mode);
     json_key(j, "party");
     party_json(j, mode);
-    put_champions(j);
+    put_party(j);
     json_key(j, "action_menu");
     put_action_menu(j);
     json_key(j, "spell");
@@ -1237,7 +1227,7 @@ void state_json_map(Json *j)
     json_key_int(j, "level", dungeon_map_level(g_game.party_map));
     json_key_int(j, "width", dungeon_map_width(g_game.party_map));
     json_key_int(j, "height", dungeon_map_height(g_game.party_map));
-    pair(j, "party", g_game.party_x, g_game.party_y);
+    json_key_pair(j, "party", g_game.party_x, g_game.party_y);
     key_str(j, "facing", direction_names[g_game.party_dir & DIR_MASK]);
     key_str(j, "legend",
             "row index = y (north at the top), column = x; @ party, # wall, . floor, D closed door, "
