@@ -564,8 +564,7 @@ static bool cond_party_at_pit(int16_t x, int16_t y)
     if (ai_manhattan((Location){x, y}, (Location){g_ai_party.x, g_ai_party.y}) > 1)
         return false;
     int16_t d = dungeon_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    uint8_t square =
-        dungeon_square_at((Location){(int16_t)(g_ai_party.x + g_dir_dx[d]), (int16_t)(g_ai_party.y + g_dir_dy[d])});
+    uint8_t square = dungeon_square_at(dungeon_step((Location){g_ai_party.x, g_ai_party.y}, d));
     return square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0);
 }
 
@@ -575,8 +574,7 @@ static bool cond_door_behind(int16_t x, int16_t y)
     int16_t d = dir_opposite(group_dir(g_ai.group_thing));
     if (!(g_ai.door_flags & DOOR_SKILL_CLOSE_BEHIND))
         return false;
-    if (square_type(dungeon_square_at((Location){(int16_t)(x + g_dir_dx[d]), (int16_t)(y + g_dir_dy[d])})) !=
-        SQUARE_DOOR)
+    if (square_type(dungeon_square_at(dungeon_step((Location){x, y}, d))) != SQUARE_DOOR)
         return false;
     return ai_try_door_action((AiTest){DOOR_MODE_CLOSE, false}, ai_location(x, y), AI_SQUARE_IN_DIR, d).passed;
 }
@@ -587,7 +585,7 @@ static bool cond_static_ahead(int16_t x, int16_t y)
     if (g_ai.map != g_ai_party.map)
         return false;
     int16_t d = group_dir(g_ai.group_thing);
-    uint16_t g = creature_get_group_at((Location){(x + g_dir_dx[d]), (y + g_dir_dy[d])});
+    uint16_t g = creature_get_group_at(dungeon_step((Location){x, y}, d));
     return g != THING_NONE && creature_group_info(g)->flags & CREATURE_STATIC && party_beside_special_wall();
 }
 
