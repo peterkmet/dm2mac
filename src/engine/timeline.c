@@ -273,7 +273,7 @@ void timeline_event_altar_rebirth(TimelineEvent *e)
         timeline_delay_event(e, SMOKE_TIME);
         break;
     case REBIRTH_BONES: {
-        uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y);
+        uint16_t t = dungeon_first_thing_at((Location){x, y});
         for (; t != THING_ENDOFLIST; t = dungeon_next_thing(t))
             if (thing_cell(t) == cell && item_gdat_category(t) == CAT_MISC && item_gdat_index(t) == ITEM_BONES &&
                 (int16_t)item_add_charges(t, 0) == champion_index)

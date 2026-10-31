@@ -636,8 +636,7 @@ static void run_invisibility(int16_t power)
     if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
         champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + power, g_game.party_map),
-                       .type = EVENT_INVISIBILITY};
+    TimelineEvent e = timeline_event_at(g_game.game_time + power, g_game.party_map, EVENT_INVISIBILITY, 0);
     timeline_add_event(&e);
 }
 
@@ -672,12 +671,10 @@ static bool run_melee(ActionRun *a)
         sensor_door_try_destroy(a->front, champ_get_strength(a->champion_index, a->hand, a->skill), false,
                                 DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
-        sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR,
-                       dungeon_door_type(g_current_map.map,
-                                         dungeon_square_first_thing(g_current_map.map, a->front.x, a->front.y)),
-                       SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
+        sndreq_request_with_fallback((SoundCue){CAT_DOOR,
+                                                dungeon_door_type(g_current_map.map, dungeon_first_thing_at(a->front)),
+                                                SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
+                                     SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
         return true;
     }
     bool done = true;

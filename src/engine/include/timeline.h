@@ -73,6 +73,12 @@ static inline uint32_t timeline_time_map(uint32_t time, int16_t map)
     return time | (uint32_t)(uint8_t)map << EVENT_MAP_SHIFT;
 }
 
+/* An event of type at time on map with priority; its data bytes are 0. */
+static inline TimelineEvent timeline_event_at(uint32_t time, int16_t map, uint8_t type, uint8_t priority)
+{
+    return (TimelineEvent){.time_map = timeline_time_map(time, map), .type = type, .priority = priority};
+}
+
 /* The map of an event; time_map stores map -1 as 0xff. */
 static inline int16_t timeline_event_map(const TimelineEvent *e)
 {

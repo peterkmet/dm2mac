@@ -398,9 +398,7 @@ bool ai_begin(uint16_t group, Location at, int type, AiContext *saved)
     g_ai.info = creature_group_info(group);
     g_ai.anim = creature_anim_words(group);
     g_ai.map = (uint8_t)map;
-    g_ai.event = (TimelineEvent){.time_map = timeline_time_map(g_game.game_time, map)};
-    g_ai.event.priority = group_creature(g_ai.group_thing);
-    g_ai.event.type = (uint8_t)type;
+    g_ai.event = timeline_event_at(g_game.game_time, map, (uint8_t)type, group_creature(g_ai.group_thing));
     g_ai.event.data[EVENT_X] = (uint8_t)at.x;
     g_ai.event.data[EVENT_Y] = (uint8_t)at.y;
     g_ai.anim_step = NULL;
@@ -508,13 +506,11 @@ uint8_t ai_action_flag(int action)
 static bool party_beside_special_wall(void)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int16_t x = (int16_t)(g_ai_party.x + g_dir_dx[d]);
-        int16_t y = (int16_t)(g_ai_party.y + g_dir_dy[d]);
-        uint8_t square = dungeon_square_at((Location){x, y});
+        Location next = dungeon_step((Location){g_ai_party.x, g_ai_party.y}, (int16_t)d);
+        uint8_t square = dungeon_square_at(next);
         if (square_type(square) || !(square & SQUARE_HAS_THINGS))
             continue;
-        for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y); t != THING_ENDOFLIST;
-             t = dungeon_next_thing(t)) {
+        for (uint16_t t = dungeon_first_thing_at(next); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type == THING_SENSOR && sensor_type(t) == WALL_CLICK_RESET)
                 return true;
