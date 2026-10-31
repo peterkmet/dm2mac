@@ -174,7 +174,7 @@ const uint8_t *input_click_feedback_script(Command *c)
     input_refine_champion_click(c);
     uint16_t command = c->command;
     int offset;
-    if (!command || command > CMD_OPTIONS)
+    if (!command || command > CMD_CHEATS)
         return NULL;
     if ((command >= CMD_SLOT_FIRST && command <= CMD_SLOT_LAST) || command == CMD_VOLUME ||
         (command >= CMD_DRAG_FIRST && command <= CMD_DRAG_CANCEL) ||

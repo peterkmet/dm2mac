@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, the cheat screen, and the options menu. */
+/* The advanced mode: the movement letter keys, the quick save and quick load, the automap, and the cheat screen. */
 #include "advanced.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,7 +13,6 @@
 #include "interface_state.h"
 #include "minion.h"
 #include "music.h"
-#include "optmenu.h"
 #include "os.h"
 #include "save.h"
 #include "session.h"
@@ -286,24 +285,6 @@ static void cheat_event(int type, int16_t x, int16_t y)
     }
 }
 
-void advanced_open_options(void)
-{
-    g_advanced_screen = ADVANCED_SCREEN_OPTIONS;
-    optmenu_open();
-}
-
-/* An input event on the open options menu: a key or a left click. */
-static void options_event(int type, int16_t x, int16_t y)
-{
-    bool closes = false;
-    if (type == INPUT_KEY)
-        closes = optmenu_process_key(x);
-    else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
-        closes = optmenu_process_click(x, y);
-    if (closes)
-        close_screen();
-}
-
 void advanced_screen_event(int type, int16_t x, int16_t y)
 {
     if (type == INPUT_BUTTON_RIGHT)
@@ -312,8 +293,6 @@ void advanced_screen_event(int type, int16_t x, int16_t y)
         map_event(type, x, y);
     else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
         cheat_event(type, x, y);
-    else if (g_advanced_screen == ADVANCED_SCREEN_OPTIONS)
-        options_event(type, x, y);
 }
 
 uint16_t advanced_take_pending_key(void)

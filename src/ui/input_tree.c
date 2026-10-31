@@ -931,8 +931,6 @@ uint16_t input_click_command(enum InputMode mode, int16_t x, int16_t y, int butt
 
 uint16_t input_key_command(enum InputMode mode, uint16_t key, int16_t *rect)
 {
-    if (g_game_mode == GAME_MODE_ADVANCED && mode == INPUT_MODE_MOVE && key == KEY_OPTIONS)
-        return CMD_OPTIONS;
     uint16_t command = find_key_command(&g_input_mode_roots[mode], key, rect);
     if (command || g_game_mode != GAME_MODE_ADVANCED)
         return command;

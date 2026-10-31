@@ -16,6 +16,7 @@
 #include "advanced.h"
 #include "control.h"
 #include "draw.h"
+#include "filter.h"
 #include "game.h"
 #include "gamefile.h"
 #include "gdat.h"
@@ -26,7 +27,6 @@
 #include "mode_screen.h"
 #include "movie.h"
 #include "music.h"
-#include "optmenu.h"
 #include "os.h"
 #include "platform.h"
 #include "play.h"
@@ -722,11 +722,11 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     if (!open_game(&options, filter))
         return EXIT_FAILURE;
-    g_optmenu_filter_hook = plat_set_filter;
+    g_upscale_filter_hook = plat_set_filter;
     g_play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!mode_given && !options.save && !getenv(RESTART_ENV))
         choose_mode();
-    optmenu_start(options.filter ? filter : SETTINGS_FILTER_UNSET); /* --filter and DM2_FILTER go before SETTINGS.TXT */
+    upscale_start(options.filter ? filter : SETTINGS_FILTER_UNSET); /* --filter and DM2_FILTER go before SETTINGS.TXT */
     /* fix: a closed mode screen starts no movie (port only). */
     if (!options.save && !getenv(RESTART_ENV) && !g_main_loop.quit)
         run_movies(MOVIE_SCRIPT_START);

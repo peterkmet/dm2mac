@@ -744,7 +744,7 @@ static bool execute_champion_command(int command, bool idle)
             champ_drag_click(command - CMD_DRAG_FIRST);
         input_refresh_mode();
         area_update(false);
-    } else if (command >= CMD_QUICK_SAVE && command <= CMD_OPTIONS) {
+    } else if (command >= CMD_QUICK_SAVE && command <= CMD_CHEATS) {
         if (g_game.champion_count && !g_ui.candidate && idle) {
             if (command == CMD_QUICK_SAVE)
                 advanced_quick_save();
@@ -752,8 +752,6 @@ static bool execute_champion_command(int command, bool idle)
                 advanced_quick_load();
             else if (command == CMD_AUTOMAP)
                 advanced_open_automap();
-            else if (command == CMD_OPTIONS)
-                advanced_open_options();
             else
                 advanced_open_cheats();
         }
