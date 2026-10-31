@@ -2,7 +2,7 @@
 
 Analysis notes of the address range 0x1fef6-0x2b96a; the names are in [skull-symbols.csv](../skull-symbols.csv).
 
-181 functions. All have names in `range-3.csv`. 77 new globals are in `range-3-globals.csv`.
+181 functions, all named. 77 new globals.
 
 ## Module layout
 

@@ -2,7 +2,7 @@
 
 Analysis notes of the address range 0x3ba23-0x49ef8; the names are in [skull-symbols.csv](../skull-symbols.csv).
 
-208 functions. Names are in `range-5.csv`, new globals in `range-5-globals.csv`.
+208 functions, all named.
 
 ## Anchor corrections
 
@@ -84,4 +84,4 @@ Analysis notes of the address range 0x3ba23-0x49ef8; the names are in [skull-sym
 - Exact meaning of `g_party_action_effect` (0x7ffef, action 0x0b) and of several text fields.
 - `champ_find_hand_source_slot` (0x3fc6d) and `item_get_throw_fatigue` (0x4663a) are low-confidence names.
 - `gdat_index_last_type` (0x3cf67), `gdat_get_image_offset` (0x3eed3) and `image_decode_8bpp` (0x3f71c) need confirmation in Step 8.
-- Other ranges name 0x7f284, 0x7f390, 0x7f958, 0x7faca, 0x7fad0, 0x7fad2, 0x7fb70, 0x7fb72, 0x7ffec; they are left out of `range-5-globals.csv`. 0x7fad2 is the count of type-2 (sound) entries and 0x7fad0 the largest song size (from `gdat_count_sound_entries`, `gdat_find_max_song_size`).
+- Other ranges name 0x7f284, 0x7f390, 0x7f958, 0x7faca, 0x7fad0, 0x7fad2, 0x7fb70, 0x7fb72, 0x7ffec; they are not range 5 globals. 0x7fad2 is the count of type-2 (sound) entries and 0x7fad0 the largest song size (from `gdat_count_sound_entries`, `gdat_find_max_song_size`).
