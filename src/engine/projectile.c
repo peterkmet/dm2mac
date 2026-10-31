@@ -229,8 +229,8 @@ void projectile_create(const ProjectileLaunch *launch)
     dungeon_link_thing_to_square(t, g_current_map.map, launch->x, launch->y);
     if (payload == SPELL_FIREBALL && g_current_map.map == g_game.party_map)
         g_party.redraw |= PARTY_REDRAW_VIEW;
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_current_map.map)};
-    e.type = launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE;
+    TimelineEvent e = timeline_event_at(g_game.game_time + 1, g_current_map.map,
+                                        launch->from_sensor ? EVENT_PROJECTILE_MOVE_2 : EVENT_PROJECTILE_MOVE, 0);
     put_le16(e.data + PROJECTILE_EVENT_THING, t);
     put_le16(e.data + PROJECTILE_EVENT_POSITION,
              (uint16_t)(event_square_dir(launch->x, launch->y, launch->dir) | position_pack_step(launch->step)));
@@ -343,8 +343,7 @@ void explosion_create(uint16_t type, int power, int16_t x, int16_t y, int16_t ce
     int16_t delay = type == EXPLOSION_SMOKE      ? SMOKE_DURATION
                     : type == SPELL_MISSILE_WALL ? (int16_t)((uint16_t)power >> 1)
                                                  : 1;
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_current_map.map),
-                       .type = EVENT_EXPLOSION};
+    TimelineEvent e = timeline_event_at(g_game.game_time + delay, g_current_map.map, EVENT_EXPLOSION, 0);
     e.data[EXPLOSION_EVENT_X] = (uint8_t)ex;
     e.data[EXPLOSION_EVENT_Y] = (uint8_t)ey;
     put_le16(e.data + EXPLOSION_EVENT_THING, t);

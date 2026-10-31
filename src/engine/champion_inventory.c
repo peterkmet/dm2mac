@@ -139,10 +139,8 @@ static void apply_stat_modifiers(Champion *c, uint16_t thing, bool equipped, enu
 static void add_effect_end_event(int16_t champion_index, uint16_t thing)
 {
     /* fix: the original leaves the last 3 data bytes uninitialized */
-    TimelineEvent e = {.time_map =
-                           timeline_time_map(g_game.game_time + item_attr(thing, ATTR_EFFECT_TIME), g_game.party_map),
-                       .type = EVENT_ITEM_EFFECT,
-                       .priority = (uint8_t)champion_index};
+    TimelineEvent e = timeline_event_at(g_game.game_time + item_attr(thing, ATTR_EFFECT_TIME), g_game.party_map,
+                                        EVENT_ITEM_EFFECT, (uint8_t)champion_index);
     e.data[EFFECT_DATA_TYPE] = (uint8_t)thing_type(thing);
     e.data[EFFECT_DATA_INDEX] = item_gdat_index(thing);
     timeline_add_event(&e);

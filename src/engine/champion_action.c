@@ -636,8 +636,7 @@ static void run_invisibility(int16_t power)
     if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
         champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
     /* fix: the original leaves the priority and the data bytes uninitialized */
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + power, g_game.party_map),
-                       .type = EVENT_INVISIBILITY};
+    TimelineEvent e = timeline_event_at(g_game.game_time + power, g_game.party_map, EVENT_INVISIBILITY, 0);
     timeline_add_event(&e);
 }
 

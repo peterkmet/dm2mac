@@ -398,9 +398,7 @@ bool ai_begin(uint16_t group, Location at, int type, AiContext *saved)
     g_ai.info = creature_group_info(group);
     g_ai.anim = creature_anim_words(group);
     g_ai.map = (uint8_t)map;
-    g_ai.event = (TimelineEvent){.time_map = timeline_time_map(g_game.game_time, map)};
-    g_ai.event.priority = group_creature(g_ai.group_thing);
-    g_ai.event.type = (uint8_t)type;
+    g_ai.event = timeline_event_at(g_game.game_time, map, (uint8_t)type, group_creature(g_ai.group_thing));
     g_ai.event.data[EVENT_X] = (uint8_t)at.x;
     g_ai.event.data[EVENT_Y] = (uint8_t)at.y;
     g_ai.anim_step = NULL;

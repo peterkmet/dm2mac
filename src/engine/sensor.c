@@ -1073,9 +1073,7 @@ static void relay_to_map(const TimelineEvent *e, uint16_t t)
     int16_t ty = sensor_target_y(t);
     if (map >= dungeon_map_count())
         return; /* fix: the original reads a map outside the dungeon */
-    TimelineEvent ev = {.time_map = timeline_time_map(g_game.game_time & EVENT_TIME_MASK, map),
-                        .type = EVENT_SQUARE,
-                        .priority = e->priority};
+    TimelineEvent ev = timeline_event_at(g_game.game_time & EVENT_TIME_MASK, map, EVENT_SQUARE, e->priority);
     ev.data[EVENT_X] = (uint8_t)tx;
     ev.data[EVENT_Y] = (uint8_t)ty;
     ev.data[EVENT_CELL] = square_type(dungeon_square(map, tx, ty)) == SQUARE_WALL ? sensor_data_cell(t) : 0;

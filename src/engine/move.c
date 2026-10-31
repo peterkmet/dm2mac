@@ -954,8 +954,8 @@ static void update_carried_missiles(uint16_t holder, Position at, bool waits)
 /* Schedules a new try of a group move that a full square stopped. */
 static void schedule_group_retry(uint16_t group, Position at, bool audible)
 {
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, at.map)};
-    e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
+    TimelineEvent e = timeline_event_at(g_game.game_time + GROUP_RETRY_DELAY, at.map,
+                                        audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP, 0);
     e.data[EVENT_X] = (uint8_t)at.x;
     e.data[EVENT_Y] = (uint8_t)at.y;
     put_le16(e.data + EVENT_GROUP_WORD, group);

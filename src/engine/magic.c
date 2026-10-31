@@ -255,15 +255,6 @@ static void add_spell_light(int delta)
     save_set_magic_light((int16_t)(save_magic_light() + delta));
 }
 
-/* An event of the party map at game time + delay. */
-static TimelineEvent party_event(int type, uint32_t delay)
-{
-    TimelineEvent e = {0};
-    e.time_map = timeline_time_map(g_game.game_time + delay, g_game.party_map);
-    e.type = (uint8_t)type;
-    return e;
-}
-
 static uint16_t read_event_word(const TimelineEvent *e)
 {
     return le16(e->data);
@@ -341,7 +332,7 @@ void magic_add_light(int kind, int power)
         ticks = (uint16_t)((level - LIGHT_STRENGTH_MIN) * LIGHT_TICKS_PER_STRENGTH + LIGHT_TICKS);
         level = (level >> 1) - 1;
     }
-    TimelineEvent e = party_event(EVENT_MAGIC_LIGHT, ticks);
+    TimelineEvent e = timeline_event_at(g_game.game_time + ticks, g_game.party_map, EVENT_MAGIC_LIGHT, 0);
     set_event_word(&e, (uint16_t)(kind == LIGHT_DARKNESS ? level : -level));
     timeline_add_event(&e);
     add_spell_light(g_light_power[level] * sign);
@@ -367,7 +358,7 @@ void magic_event_light(TimelineEvent *e)
     add_spell_light(delta);
     if (!next)
         return;
-    TimelineEvent fade = party_event(EVENT_MAGIC_LIGHT, LIGHT_EVENT_STEP);
+    TimelineEvent fade = timeline_event_at(g_game.game_time + LIGHT_EVENT_STEP, g_game.party_map, EVENT_MAGIC_LIGHT, 0);
     set_event_word(&fade, (uint16_t)next);
     timeline_add_event(&fade);
 }
@@ -408,8 +399,8 @@ void magic_add_party_aura(int champion_mask, int type, int value, uint16_t durat
         c->aura = (uint8_t)type;
         c->aura_value = (int16_t)(c->aura_value + value);
     }
-    TimelineEvent e = party_event(EVENT_AURA, duration);
-    e.priority = (uint8_t)champion_mask;
+    TimelineEvent e =
+        timeline_event_at(g_game.game_time + duration, g_game.party_map, EVENT_AURA, (uint8_t)champion_mask);
     set_event_word(&e, (uint16_t)value);
     timeline_add_event(&e);
 }
@@ -516,7 +507,8 @@ static void cast_other(Champion *c, int type, int skill, int power)
     case OTHER_INVISIBILITY: {
         if (!g_game.magic_light[MAGIC_INVISIBILITY]++ && g_ui.inventory)
             champion(g_ui.inventory - 1)->redraw |= REDRAW_STATUS_BOX;
-        TimelineEvent e = party_event(EVENT_INVISIBILITY, (uint16_t)(steps << INVISIBILITY_TICKS_SHIFT));
+        TimelineEvent e = timeline_event_at(g_game.game_time + (uint16_t)(steps << INVISIBILITY_TICKS_SHIFT),
+                                            g_game.party_map, EVENT_INVISIBILITY, 0);
         timeline_add_event(&e);
         return;
     }
