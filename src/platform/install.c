@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "install.h"
+#include <ctype.h>
 #include <dirent.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -107,6 +108,39 @@ bool install_make_folder(const char *path)
 #else
     return mkdir(path, FOLDER_MODE) == 0;
 #endif
+}
+
+/* Queries */
+
+const char *install_start_folder(const char *folder, const char *base)
+{
+    char game[OS_PATH_SIZE];
+    snprintf(game, sizeof game, "%s/%s", folder, INSTALL_GAME_FOLDER);
+    struct stat info;
+#ifdef _WIN32
+    bool present = stat(game, &info) == 0;
+#else
+    bool present = lstat(game, &info) == 0; /* a link counts, also when its target is missing */
+#endif
+    return present ? NULL : base;
+}
+
+/* True for a path that does not depend on the working folder. */
+static bool is_absolute(const char *path)
+{
+#ifdef _WIN32
+    if (isalpha((unsigned char)path[0]) && path[1] == ':')
+        return true; /* a drive letter */
+    if (path[0] == '\\')
+        return true;
+#endif
+    return path[0] == '/';
+}
+
+bool install_absolute_path(const char *start, const char *path, char *full, size_t size)
+{
+    int written = is_absolute(path) ? snprintf(full, size, "%s", path) : snprintf(full, size, "%s/%s", start, path);
+    return written >= 0 && (size_t)written < size;
 }
 
 /* Commands */

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
+#include <direct.h>
 #include <fcntl.h>
 #include <io.h>
 #include <process.h>
@@ -62,6 +63,17 @@
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
 #define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
 #define FILTER_LIST_SIZE 64         /* the filter names of the usage message */
+
+/* The arguments that can name a path: argv[0] and the values of --data, --save, --control, and --saves. */
+#define PATH_ARGS 5
+
+#ifdef _WIN32
+/* The folder separators of a path. */
+#define PATH_SEPARATORS "/\\"
+#else
+/* The folder separator of a path. */
+#define PATH_SEPARATORS "/"
+#endif
 
 /* The command line options; each takes a value. */
 enum Option { OPTION_DATA, OPTION_FILTER, OPTION_SAVE, OPTION_CONTROL, OPTION_MODE, OPTION_SAVES, OPTION_COUNT };
@@ -176,6 +188,7 @@ static struct {
     uint32_t icon[ICON_MAX_PIXELS];           /* the ARGB pixels of the window icon */
     int window_x, window_y;                   /* the last pointer position of the window; -1 before the first */
     char control_path[OS_DIR_SIZE];           /* the default control socket path; options.control points to it */
+    char path_args[PATH_ARGS][OS_PATH_SIZE];  /* the absolute path arguments after a folder change; argv uses them */
 } program = {.window_x = -1, .window_y = -1};
 
 /* Shows g_video_fb with the cursor image of input_cursor_at at the mouse pointer (the original mouse cursor). */
@@ -502,6 +515,45 @@ static bool default_control_path(const char **control)
     return true;
 }
 
+/* Changes to the folder of the program when the working folder has no game entry. First it makes the path
+   arguments absolute, so that they and the arguments of a RESTART keep their meaning; it stays with a message when
+   a path does not fit. */
+static void enter_game_folder(int argc, char **argv)
+{
+    const char *folder = install_start_folder(".", SDL_GetBasePath());
+    char start[OS_DIR_SIZE];
+#ifdef _WIN32
+    if (!folder || !_getcwd(start, sizeof start))
+        return;
+#else
+    if (!folder || !getcwd(start, sizeof start))
+        return;
+#endif
+    Options given = {0};
+    const char *unknown;
+    read_options(argc, argv, &given, &unknown);
+    const char *values[PATH_ARGS] = {argv[0], given.data, given.save, given.control, given.saves};
+    int indices[PATH_ARGS];
+    int count = 0;
+    for (int i = 0; i < argc; i++)
+        for (int v = 0; v < PATH_ARGS; v++)
+            if (argv[i] == values[v] && (i > 0 || strpbrk(argv[0], PATH_SEPARATORS)))
+                indices[count++] = i;
+    for (int k = 0; k < count; k++)
+        if (!install_absolute_path(start, argv[indices[k]], program.path_args[k], sizeof program.path_args[k])) {
+            os_log("the path %s is too long: staying in %s", argv[indices[k]], start);
+            return;
+        }
+    for (int k = 0; k < count; k++)
+        argv[indices[k]] = program.path_args[k];
+#ifdef _WIN32
+    if (_chdir(folder))
+#else
+    if (chdir(folder))
+#endif
+        os_log("cannot change to the folder %s", folder);
+}
+
 /* Starts the new game of the turn-based mode or the start menu of the other modes; false to end the program. */
 static bool start_game(const char *data)
 {
@@ -692,13 +744,13 @@ static const char *list_filter_names(char *list, size_t size)
 
 int main(int argc, char **argv)
 {
+    enter_game_folder(argc, argv); /* before the first relative path */
     Options options = {.filter = getenv(FILTER_ENV)};
     const char *unknown;
     const char *missing = read_options(argc, argv, &options, &unknown);
     bool data_given = options.data != NULL;
     bool mode_given = options.mode != NULL;
-    if (!mode_given)
-        options.mode = g_game_mode_names[GAME_MODE_ADVANCED];
+    options.mode = mode_given ? options.mode : g_game_mode_names[GAME_MODE_ADVANCED];
     g_os_full_path_hook = full_path; /* the install message has the full path */
     if (!data_given) {
         options.data = INSTALL_GAME_FOLDER;
