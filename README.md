@@ -51,12 +51,29 @@ On startup you choose how to play:
 In both modes the mouse and the arrow keys work as in the original game. The keys, the cheats, and the screen filter
 are in the [advanced mode section of the Player manual](docs/manual.md#advanced-mode).
 
+## Let an LLM play
+
+On macOS, a program such as an LLM can play the game turn by turn over a Unix socket. In the turn-based mode the game
+time stops between requests; each request is one turn, and the reply gives the state and the view as JSON. Build the
+game first (see [Development](docs/development.md)), then:
+
+```sh
+mkdir -p /tmp/dm2-saves
+build/dm2 --mode turnbased --saves /tmp/dm2-saves --control /tmp/dm2.sock &
+DM2_CONTROL=/tmp/dm2.sock uv run dm2-play --brief get_state
+DM2_CONTROL=/tmp/dm2.sock uv run dm2-play act move_forward
+```
+
+[Control socket](docs/llm/control-socket.md) has the start, `dm2-play`, and the protocol;
+[Turn-based mode](docs/llm/turn-based.md) has the turns, the actions, and the reply fields. [LLM runs](docs/llm/llm-runs.md)
+describes playthroughs with a coordinator agent and player agents, and the
+[LLM playbook](docs/llm/llm-playbook.md) is the page the player agent reads.
+
 ## For developers
 
 DM2Mac is a C11 and SDL3 reimplementation of `SKULL.EXE`, built from its own Ghidra decompilation and checked
 against the original in an emulator. Build instructions and tests are in [Development](docs/development.md); the documentation index is
-[docs/README.md](docs/README.md). On macOS, a program such as an LLM can play the game turn by turn
-([Control socket](docs/llm/control-socket.md), [Turn-based mode](docs/llm/turn-based.md)).
+[docs/README.md](docs/README.md).
 
 ## Acknowledgements
 
