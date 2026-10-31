@@ -1,7 +1,8 @@
 # DM2Mac: Dungeon Master II for macOS and Windows
 
-DM2Mac lets you play **Dungeon Master II: The Legend of Skullkeep** (PC DOS, 1995) on macOS (Apple Silicon) and
-Windows 10 or later, without DOSBox.
+DM2Mac is a native C11 and SDL3 port of **Dungeon Master II: The Legend of Skullkeep** (PC DOS, 1995) for macOS
+and Windows. It is a recompilation: Ghidra decompiled the original DOS program to C, the game was rewritten in C11
+with SDL3 from that code, and the result runs natively without DOSBox.
 
 <p align="center">
   <img src="docs/images/screenshot.png" alt="Dungeon Master II viewport with the party of four champions outside">
