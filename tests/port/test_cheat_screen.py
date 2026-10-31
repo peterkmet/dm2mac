@@ -228,3 +228,16 @@ def test_quick_load_from_the_screen_restores_the_saved_game_and_closes_the_scree
     press(lib, C.KEY_QUICK_LOAD)
     assert mode.value == C.ADVANCED_SCREEN_NONE
     assert not lib.game_has_cheat(C.CHEAT_FOOD), "the saved game without the cheat is back"
+
+
+def test_right_click_on_a_spell_page_goes_back_to_the_cheat_page(lib, screen):
+    mode = ctypes.c_int.in_dll(lib, "g_advanced_screen")
+    lib.advanced_open_cheats()
+    select(lib, ROW_SPELLS)
+    lib.cheats_run_selected_row()
+    lib.cheats_run_selected_row()
+    assert cursor(lib)[0] == 2
+    lib.advanced_screen_event(C.INPUT_BUTTON_RIGHT, 0, 0)
+    assert mode.value == C.ADVANCED_SCREEN_CHEATS and cursor(lib) == (C.CHEATS_PAGE, ROW_SPELLS)
+    lib.advanced_screen_event(C.INPUT_BUTTON_RIGHT, 0, 0)
+    assert mode.value == C.ADVANCED_SCREEN_NONE

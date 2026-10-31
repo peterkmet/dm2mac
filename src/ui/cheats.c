@@ -293,3 +293,11 @@ enum CheatsResult cheats_process_click(int16_t x, int16_t y)
     show_page();
     return cheats_run_selected_row();
 }
+
+enum CheatsResult cheats_process_right_click(void)
+{
+    if (screen.page == CHEATS_PAGE)
+        return CHEATS_CLOSE;
+    open_page(CHEATS_PAGE, ROW_SPELLS);
+    return CHEATS_STAY;
+}

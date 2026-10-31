@@ -46,5 +46,7 @@ void cheats_move_selection(int16_t step);
 enum CheatsResult cheats_run_selected_row(void);
 /* A left click at the screen position (x, y): a click on a row selects and runs it. */
 enum CheatsResult cheats_process_click(int16_t x, int16_t y);
+/* A right click: a spell page goes back to the cheat page with SPELLS selected; the cheat page closes. */
+enum CheatsResult cheats_process_right_click(void);
 
 #endif /* DM2_UI_CHEATS_H */

@@ -267,11 +267,13 @@ static enum CheatsResult process_cheat_key(int16_t key)
     return CHEATS_STAY;
 }
 
-/* An input event on the open cheat screen: a key or a left click, then what its row asks for. */
+/* An input event on the open cheat screen: a key or a click, then what its row asks for. */
 static void cheat_event(int type, int16_t x, int16_t y)
 {
     enum CheatsResult result = CHEATS_STAY;
-    if (type == INPUT_KEY)
+    if (type == INPUT_BUTTON_RIGHT)
+        result = cheats_process_right_click();
+    else if (type == INPUT_KEY)
         result = process_cheat_key(x);
     else if (type != INPUT_LEFT_RELEASED && type & INPUT_BUTTON_LEFT)
         result = cheats_process_click(x, y);
@@ -287,12 +289,12 @@ static void cheat_event(int type, int16_t x, int16_t y)
 
 void advanced_screen_event(int type, int16_t x, int16_t y)
 {
-    if (type == INPUT_BUTTON_RIGHT)
+    if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
+        cheat_event(type, x, y);
+    else if (type == INPUT_BUTTON_RIGHT)
         close_screen();
     else if (g_advanced_screen == ADVANCED_SCREEN_AUTOMAP)
         map_event(type, x, y);
-    else if (g_advanced_screen == ADVANCED_SCREEN_CHEATS)
-        cheat_event(type, x, y);
 }
 
 uint16_t advanced_take_pending_key(void)
