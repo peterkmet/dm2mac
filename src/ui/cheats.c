@@ -37,10 +37,10 @@ _Static_assert(CHEAT_COUNT == ROW_QUICK_SAVE, "the cheat rows come first on the 
 #define ROW_TEXT_SIZE       40
 #define TITLE_SIZE          24
 #define RUNE_NUMBER_SIZE    4
-#define CHEAT_LABEL_COLUMNS 20
+#define CHEAT_LABEL_COLUMNS 23 /* the longest label and a space */
 #define ANY_POWER           "X"
 
-static const char *const cheat_labels[CHEAT_COUNT] = {"FULL LIGHT",   "IMMORTAL",           "FOOD AND WATER",
+static const char *const cheat_labels[CHEAT_COUNT] = {"FULL LIGHT",   "IMMORTAL",           "ENDLESS FOOD AND WATER",
                                                       "ONE-HIT KILL", "WALK THROUGH WALLS", "REVEAL MAP"};
 static const uint8_t cheat_bits[CHEAT_COUNT] = {CHEAT_LIGHT, CHEAT_IMMORTAL, CHEAT_FOOD,
                                                 CHEAT_KILL,  CHEAT_WALLS,    CHEAT_MAP};

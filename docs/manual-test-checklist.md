@@ -214,7 +214,7 @@ Details: [Advanced mode](manual.md#advanced-mode).
 - [ ] L17e. Outdoors, stand at the edge of a map where another map of the level covers the squares beyond it only with unknown squares (level 6, map 24, the south edge), with the view showing trees ahead, and open the automap. Expected: the trees show as walls, as on the magic map.
 - [ ] L17f. Press M, then C, then Esc (the options menu) while the party walks a step. Expected: each screen fills the whole viewport.
 - [ ] L18. Press C, turn IMMORTAL on, close the screen, and let a creature hit the party until a champion has 1 health. Expected: the champion does not die.
-- [ ] L19. On the cheat screen, turn FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
+- [ ] L19. On the cheat screen, turn ENDLESS FOOD AND WATER on and wait some minutes. Expected: the food and water gauges in the inventory do not go down. Eat or drink. Expected: the gauges go up.
 - [ ] L20. In a dark place, turn FULL LIGHT on with C and close the screen. Expected: the dungeon view shows full light.
 - [ ] L21. Press F5 with all cheats off, turn cheats on with C, then press F9. Expected: the cheat screen shows all cheats OFF. On the SPELLS pages, click NEXT up to page 5, then NEXT (page 1) and BACK (the cheat page). Click FUL IR (X,4,4) FIREBALL. Expected: the screen closes, the fireball flies, the mana and the experience do not change.
 - [ ] L22. Explore, press F5, save in a slot, restart, and load the slot; then press F9. Expected: the automap shows the explored squares after each load. Load a vanilla save. Expected: an empty automap except the current view.

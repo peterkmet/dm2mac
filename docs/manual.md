@@ -120,7 +120,7 @@ The cheat screen (`C`) switches six cheats on and off. A save keeps them, and a 
 
 - **Full light:** you see the dungeon as in full light. Creatures still see the real light.
 - **Immortal:** a champion keeps at least 1 health.
-- **Food and water:** food and water do not go down.
+- **Endless food and water:** food and water do not go down.
 - **One-hit kill:** every hit kills, except creatures that cannot be hurt.
 - **Walk through walls:** the party walks through walls, fake walls, and closed doors, but not through creatures or
   off the map.

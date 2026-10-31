@@ -86,7 +86,7 @@ The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on 
 
 - Full light: the dungeon view draws in full light. The creatures and the fight rules keep the real light.
 - Immortal: damage that brings a champion to 0 health or less leaves 1 health. The champion does not die.
-- Food and water: food and water do not go down over time. Eating and drinking still raise them.
+- Endless food and water: food and water do not go down over time. Eating and drinking still raise them.
 - One-hit kill: each hit kills the creature, even a hit of a trap, a door, or another creature. A creature that cannot be hurt, or that others cannot hit, survives. Health that a creature loses by itself (over time, or by its own missile attack) does not become a kill. A boss that dies only near the party front keeps that rule.
 - Walk through walls: the party enters walls, closed fake walls, and closed doors inside the map. A square off the map and a creature still stop the party. Creatures and thrown objects do not pass. A door that closes on the party opens again without damage. The party in a wall square does not touch the sensors of that wall. In a wall, a closed fake wall, or a closed door, the party cannot drop an object on its own square: the object stays in the hand.
 - Reveal map: the automap shows every square of the level. The seen squares do not change.
@@ -95,7 +95,7 @@ The advanced mode has six cheats. The cheat screen (`C`) switches each cheat on 
 
 `C` in the dungeon view opens the cheat screen in the viewport. Click a row, or select it with Up and Down (`W`, `S`) and press Return. `C` and `Esc` close the screen.
 
-- FULL LIGHT, IMMORTAL, FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
+- FULL LIGHT, IMMORTAL, ENDLESS FOOD AND WATER, ONE-HIT KILL, WALK THROUGH WALLS, REVEAL MAP: each row shows `ON` or `OFF` and switches its cheat (see [Cheats](#cheats)).
 - QUICK SAVE F5: writes `QUICK.DAT`; the screen stays open. `F5` on the screen does the same.
 - QUICK LOAD F9: closes the screen, then loads `QUICK.DAT` as `F9` in the dungeon view does. `F9` on the screen does the same.
 - SPELLS: the spell pages, `SPELLS n/5`, with 8 spells per page, then NEXT, BACK, and CLOSE. NEXT after the last page shows the first page. BACK on the first page shows the cheat page.
