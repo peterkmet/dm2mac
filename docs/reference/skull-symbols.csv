@@ -275,7 +275,7 @@ address,name,signature,subsystem
 0x0001d2da,dun_get_thing_data,void *dun_get_thing_data(uint16_t thing),dungeon data
 0x0001d30b,dun_get_next_thing,uint16_t dun_get_next_thing(uint16_t thing),dungeon data
 0x0001d319,dun_get_square_thing_index,"int16_t dun_get_square_thing_index(int16_t x, int16_t y)",dungeon data
-0x0001d391,dun_get_square_first_thing,"uint16_t dun_get_square_first_thing(int16_t x, int16_t y)",dungeon data
+0x0001d391,dungeon_first_thing_at,"uint16_t dungeon_first_thing_at(int16_t x, int16_t y)",dungeon data
 0x0001d3b1,dun_get_square_first_object,"uint16_t dun_get_square_first_object(int16_t x, int16_t y)",dungeon data
 0x0001d3db,dun_link_thing_to_square,"void dun_link_thing_to_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data
 0x0001d542,dun_unlink_thing_from_square,"void dun_unlink_thing_from_square(uint16_t thing, uint16_t *list, int16_t x, int16_t y)",dungeon data

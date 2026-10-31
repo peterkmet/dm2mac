@@ -1111,6 +1111,11 @@ uint8_t dungeon_square_at(Location at)
     return dungeon_square_edge(g_current_map.map, at.x, at.y);
 }
 
+uint16_t dungeon_first_thing_at(Location at)
+{
+    return dungeon_square_first_thing(g_current_map.map, at.x, at.y);
+}
+
 bool dungeon_on_party_square(Location at)
 {
     return g_current_map.map == g_current_map.square_map && at.x == g_current_map.square_x &&
@@ -1154,9 +1159,7 @@ bool dungeon_linked_teleporter_dest(PassageEnd *end, Location at)
 LevelLink dungeon_find_level_link(Location at, int level_delta)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int16_t sx = (int16_t)(at.x + g_dir_dx[d]);
-        int16_t sy = (int16_t)(at.y + g_dir_dy[d]);
-        for (uint16_t t = dungeon_square_first_thing(g_current_map.map, sx, sy); t != THING_ENDOFLIST;
+        for (uint16_t t = dungeon_first_thing_at(dungeon_step(at, (int16_t)d)); t != THING_ENDOFLIST;
              t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type > THING_SENSOR)

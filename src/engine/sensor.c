@@ -164,11 +164,6 @@ static uint8_t *current_square(int16_t x, int16_t y)
     return dungeon_square_byte(g_current_map.map, x, y);
 }
 
-static uint16_t first_thing(int16_t x, int16_t y)
-{
-    return dungeon_square_first_thing(g_current_map.map, x, y);
-}
-
 static uint32_t current_map_time(uint32_t time)
 {
     return timeline_time_map(time & EVENT_TIME_MASK, g_current_map.map);
@@ -285,7 +280,7 @@ void sensor_press_door_button(Location at, uint16_t door)
 {
     sensor_schedule_square_event(at, 0, EFFECT_TOGGLE, g_game.game_time + 1);
     TimelineEvent e = {.time_map = current_map_time(g_game.game_time + 1), .type = EVENT_DOOR_BUTTON_RELEASE};
-    put_le16(e.data + SENSOR_EVENT_THING, first_thing(at.x, at.y));
+    put_le16(e.data + SENSOR_EVENT_THING, dungeon_first_thing_at(at));
     timeline_add_event(&e);
     door_set_flag(door, DOOR_BUTTON_PRESSED, true);
 }
@@ -299,7 +294,7 @@ void sensor_trigger_target(uint16_t sensor, int effect, int delay)
 
 bool sensor_door_try_destroy(Location at, int strength, bool magic, int delay)
 {
-    uint16_t door = first_thing(at.x, at.y);
+    uint16_t door = dungeon_first_thing_at(at);
     if (!door_flag(door, magic ? DOOR_BREAKABLE_BY_MAGIC : DOOR_BREAKABLE))
         return false;
     if ((int16_t)strength < (int16_t)sensor_door_value(door, DOOR_KEY_STRENGTH))
@@ -383,7 +378,7 @@ static uint16_t floor_holder(int16_t x, int16_t y, bool enter, bool possessions)
 /* Looks at what else lies on the square; the party that steps on a floor reads its visible texts. */
 static void floor_scan(FloorMove *m, int16_t x, int16_t y)
 {
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int tt = thing_type(t);
         if (m->cell == -1) {
             if (tt == THING_GROUP && !creature_is_flying(t)) {
@@ -535,7 +530,7 @@ static void process_floor(int16_t x, int16_t y, uint16_t thing, FloorMove m, boo
         else
             dungeon_link_thing_to_square(thing, g_current_map.map, x, y);
     }
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (m.cell != -1 && altar_takes_bones(t, thing)) {
             altar_schedule_rebirth(thing, x, y, m.cell);
             return;
@@ -820,7 +815,7 @@ static void update_linked_ladder(const TimelineEvent *e, uint16_t text)
         return;
     int16_t saved = g_current_map.map;
     dungeon_set_current_map(at.map);
-    for (uint16_t t = first_thing(at.x, at.y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_first_thing_at((Location){at.x, at.y}); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT || thing_cell(t) != e->data[EVENT_CELL])
             continue;
         if (textrec_kind(t) == TEXT_KIND_ORNAMENT && textrec_subtype(t) == SUBTYPE_LADDER_HIDDEN)
@@ -889,7 +884,7 @@ static void transfer_objects(ObjectTransfer tr, uint16_t first, uint16_t *posses
     if (!effect_activates(sensor, effect))
         return;
     if (first == THING_NONE) {
-        first = first_thing(from.x, from.y);
+        first = dungeon_first_thing_at((Location){from.x, from.y});
         if (square_type(*current_square(from.x, from.y)) != SQUARE_WALL)
             tr.any_cell = true;
     }
@@ -1091,7 +1086,7 @@ static void relay_to_map(const TimelineEvent *e, uint16_t t)
 /* Sets, clears, or toggles DOOR_SWITCH_ON of the door at the target. */
 static void switch_door(uint16_t t, int effect)
 {
-    uint16_t door = first_thing(sensor_target_x(t), sensor_target_y(t));
+    uint16_t door = dungeon_first_thing_at((Location){sensor_target_x(t), sensor_target_y(t)});
     if (effect == EFFECT_SET)
         door_set_flag(door, DOOR_SWITCH_ON, true);
     else if (effect == EFFECT_CLEAR)
@@ -1168,7 +1163,7 @@ static void wall_square_event(TimelineEvent *e)
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
     int effect = e->data[EVENT_EFFECT];
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_cell(t) != e->data[EVENT_CELL])
             continue;
@@ -1264,7 +1259,7 @@ static void floor_square_event(TimelineEvent *e)
     int16_t x = e->data[EVENT_X];
     int16_t y = e->data[EVENT_Y];
     int effect = e->data[EVENT_EFFECT];
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
          t = dungeon_next_thing(t)) {
         if (thing_type(t) == THING_TEXT) {
             floor_text_event(t, effect, x, y);
@@ -1306,7 +1301,7 @@ static void doorway_event(TimelineEvent *e)
     uint8_t state = *current_square(e->data[EVENT_X], e->data[EVENT_Y]) & SQUARE_DOOR_STATE;
     if (state == DOOR_STATE_BROKEN)
         return;
-    uint16_t door = first_thing(e->data[EVENT_X], e->data[EVENT_Y]);
+    uint16_t door = dungeon_first_thing_at((Location){e->data[EVENT_X], e->data[EVENT_Y]});
     int effect = e->data[EVENT_EFFECT];
     if (door_flag(door, DOOR_MOVING)) {
         bool opening = apply_effect(effect, door_flag(door, DOOR_OPENING));
@@ -1453,7 +1448,7 @@ void sensor_event_door_animation(TimelineEvent *e)
         return;
     if (g_current_map.map == g_game.party_map)
         g_party.redraw = PARTY_REDRAW_ALL;
-    uint16_t door = first_thing(x, y);
+    uint16_t door = dungeon_first_thing_at((Location){x, y});
     if (!door_flag(door, DOOR_MOVING))
         return;
     bool opening = door_flag(door, DOOR_OPENING);
@@ -1595,8 +1590,8 @@ void sensor_process_map_entry(bool entering)
     for (int16_t x = 0; x < dungeon_map_width(map); x++)
         for (int16_t y = 0; y < dungeon_map_height(map); y++) {
             bool wall = square_type(dungeon_square(map, x, y)) == SQUARE_WALL;
-            for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
-                 t = dungeon_next_thing(t)) {
+            for (uint16_t t = dungeon_first_thing_at((Location){x, y});
+                 t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
                 if (thing_type(t) == THING_SENSOR) {
                     int kind = sensor_type(t);
                     if (kind == SENSOR_MAP_ENTRY) {
@@ -1830,7 +1825,7 @@ static enum ClickResult wall_click_result(WallClick *c, uint16_t t, int ornament
         sensor_set_flag(t, SENSOR_STATE, !sensor_flag(t, SENSOR_STATE));
         return click_match(sensor_flag(t, SENSOR_INVERTED) != sensor_flag(t, SENSOR_STATE));
     case WALL_CLICK_DOOR_BUTTON:
-        if (!door_flag(first_thing(sensor_target_x(t), sensor_target_y(t)), DOOR_SWITCH_ON))
+        if (!door_flag(dungeon_first_thing_at((Location){sensor_target_x(t), sensor_target_y(t)}), DOOR_SWITCH_ON))
             return CLICK_IGNORED;
         return wall_click_button(c, t, ornament, extra);
     case WALL_CLICK_BUTTON:
@@ -1943,7 +1938,7 @@ static void wall_click_text(WallClick *c, uint16_t t)
 bool sensor_process_wall_click(Location at, int side, uint16_t actor, uint16_t held)
 {
     WallClick c = {.x = at.x, .y = at.y, .hand = held, .give = THING_NONE, .has_leader = g_game.leader != LEADER_NONE};
-    uint16_t first = first_thing(at.x, at.y);
+    uint16_t first = dungeon_first_thing_at(at);
     for (uint16_t t = first; t != THING_ENDOFLIST && !c.done; t = dungeon_next_thing(t)) {
         c.cell = thing_cell(t);
         if (c.cell != side)

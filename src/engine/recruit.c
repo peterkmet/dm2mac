@@ -104,11 +104,10 @@ static void add_to_party(int portrait, int index, int16_t dir)
     c->water = (int16_t)((rand_next() & FOOD_RANDOM_MASK) + FOOD_START);
 }
 
-/* The mirror sensor on the square (x, y) of the current map; its data is the portrait. */
-static uint16_t mirror_sensor(int16_t x, int16_t y)
+/* The mirror sensor on the square at of the current map; its data is the portrait. */
+static uint16_t mirror_sensor(Location at)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y); t != THING_ENDOFLIST;
-         t = dungeon_next_thing(t))
+    for (uint16_t t = dungeon_first_thing_at(at); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) == THING_SENSOR && sensor_type(t) == WALL_CLICK_PORTRAIT)
             return t;
     return THING_NONE;
@@ -121,9 +120,8 @@ bool recruit_start(Position at, int16_t dir)
         return false;
     int16_t saved = g_current_map.map;
     dungeon_set_current_map(at.map);
-    int16_t fx = (int16_t)(at.x + g_dir_dx[dir]);
-    int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
-    uint16_t mirror = mirror_sensor(fx, fy);
+    Location front = dungeon_step((Location){at.x, at.y}, dir);
+    uint16_t mirror = mirror_sensor(front);
     if (mirror == THING_NONE) { /* fix: the original then takes an uninitialized portrait */
         dungeon_set_current_map(saved);
         return false;
@@ -139,8 +137,7 @@ bool recruit_start(Position at, int16_t dir)
     if (!index)
         champ_set_leader(0);
     int back = dir_opposite(dir);
-    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, fx, fy); t != THING_ENDOFLIST;
-         t = dungeon_next_thing(t))
+    for (uint16_t t = dungeon_first_thing_at(front); t != THING_ENDOFLIST; t = dungeon_next_thing(t))
         if (thing_type(t) > THING_SENSOR && thing_cell(t) == back)
             inv_put_in_free_slot(index, t);
     if (!recruit_silent) {
@@ -188,12 +185,11 @@ void recruit_finish(Position at, int16_t dir, int command)
     if (hand != THING_NONE)
         inv_put_in_free_slot(champion_index, hand);
     g_ui.candidate = 0;
-    int16_t fx = (int16_t)(at.x + g_dir_dx[dir]);
-    int16_t fy = (int16_t)(at.y + g_dir_dy[dir]);
+    Location front = dungeon_step((Location){at.x, at.y}, dir);
     for (int s = 0; s < SLOT_COUNT; s++)
         if (c->slots[s] != THING_NONE)
-            dungeon_unlink_thing_from_square(c->slots[s], g_current_map.map, fx, fy);
-    uint16_t mirror = mirror_sensor(fx, fy);
+            dungeon_unlink_thing_from_square(c->slots[s], g_current_map.map, front.x, front.y);
+    uint16_t mirror = mirror_sensor(front);
     if (mirror != THING_NONE)
         sensor_set_flag(mirror, MIRROR_ACTIVE, false);
     if (g_game.champion_count == 1)

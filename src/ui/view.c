@@ -1197,7 +1197,7 @@ ObjectClickResult view_hit_test_object(const ViewObjectClick *click, uint16_t th
             return (ObjectClickResult){OBJECT_CLICK_DONE, THING_NONE};
         t = thing_word(group, GROUP_POSSESSIONS);
     } else {
-        t = dungeon_square_first_thing(g_current_map.map, click->at.x, click->at.y);
+        t = dungeon_first_thing_at(click->at);
     }
     if (t == THING_ENDOFLIST)
         return placing ? (ObjectClickResult){OBJECT_CLICK_HIT, thing}

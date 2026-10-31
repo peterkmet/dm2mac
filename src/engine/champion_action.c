@@ -672,12 +672,10 @@ static bool run_melee(ActionRun *a)
         sensor_door_try_destroy(a->front, champ_get_strength(a->champion_index, a->hand, a->skill), false,
                                 DOOR_BREAK_DELAY);
         a->delay = ACTION_DOOR_DELAY;
-        sndreq_request_with_fallback(
-            (SoundCue){CAT_DOOR,
-                       dungeon_door_type(g_current_map.map,
-                                         dungeon_square_first_thing(g_current_map.map, a->front.x, a->front.y)),
-                       SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
-            SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
+        sndreq_request_with_fallback((SoundCue){CAT_DOOR,
+                                                dungeon_door_type(g_current_map.map, dungeon_first_thing_at(a->front)),
+                                                SOUND_HIT, SOUND_HIT_PRIORITY, SOUND_VOLUME_LOUD},
+                                     SOUND_FALLBACK, a->front.x, a->front.y, SOUND_STEP_END);
         return true;
     }
     bool done = true;

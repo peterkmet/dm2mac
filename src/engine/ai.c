@@ -508,13 +508,11 @@ uint8_t ai_action_flag(int action)
 static bool party_beside_special_wall(void)
 {
     for (int d = 0; d < DIR_COUNT; d++) {
-        int16_t x = (int16_t)(g_ai_party.x + g_dir_dx[d]);
-        int16_t y = (int16_t)(g_ai_party.y + g_dir_dy[d]);
-        uint8_t square = dungeon_square_at((Location){x, y});
+        Location next = dungeon_step((Location){g_ai_party.x, g_ai_party.y}, (int16_t)d);
+        uint8_t square = dungeon_square_at(next);
         if (square_type(square) || !(square & SQUARE_HAS_THINGS))
             continue;
-        for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y); t != THING_ENDOFLIST;
-             t = dungeon_next_thing(t)) {
+        for (uint16_t t = dungeon_first_thing_at(next); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
             int type = thing_type(t);
             if (type == THING_SENSOR && sensor_type(t) == WALL_CLICK_RESET)
                 return true;
