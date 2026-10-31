@@ -14,13 +14,13 @@
 #define LABEL_COLUMNS   10
 #define FILTER_COUNT    (SETTINGS_FILTER_SCALE3X - SETTINGS_FILTER_NONE + 1)
 
-bool (*g_optmenu_filter_hook)(int filter);
+bool (*g_optmenu_filter_hook)(enum SettingsFilter filter);
 
 static struct {
-    int row;          /* the selected row */
-    int filter;       /* the filter in use */
-    int saved;        /* the filter of SETTINGS.TXT, or in use at the start when the file holds none */
-    bool save_failed; /* the last write failed and its message shows */
+    int row;                    /* the selected row */
+    enum SettingsFilter filter; /* the filter in use */
+    enum SettingsFilter saved;  /* the filter of SETTINGS.TXT, or in use at the start when the file holds none */
+    bool save_failed;           /* the last write failed and its message shows */
 } menu = {.filter = SETTINGS_FILTER_NONE, .saved = SETTINGS_FILTER_NONE};
 
 /* The folder of SETTINGS.TXT: the --saves folder, else the DATA folder of the game (as QUICK.DAT). */
@@ -47,11 +47,11 @@ static void show_menu(void)
 
 /* Setup */
 
-void optmenu_start(int filter)
+void optmenu_start(enum SettingsFilter filter)
 {
     menu.row = OPTMENU_ROW_FILTER;
     menu.save_failed = false;
-    if (filter) {
+    if (filter != SETTINGS_FILTER_UNSET) {
         menu.filter = filter;
         menu.saved = filter;
         return;
@@ -68,7 +68,7 @@ void optmenu_start(int filter)
 
 /* Queries */
 
-int optmenu_get_filter(void)
+enum SettingsFilter optmenu_get_filter(void)
 {
     return menu.filter;
 }
@@ -104,7 +104,8 @@ static void write_change(void)
 /* Moves the filter one step down (-1) or up (1) with wrap, shows it in the window, and saves it. */
 static void change_filter(int step)
 {
-    int filter = (menu.filter - SETTINGS_FILTER_NONE + step + FILTER_COUNT) % FILTER_COUNT + SETTINGS_FILTER_NONE;
+    int index = (menu.filter - SETTINGS_FILTER_NONE + step + FILTER_COUNT) % FILTER_COUNT;
+    enum SettingsFilter filter = (enum SettingsFilter)(index + SETTINGS_FILTER_NONE);
     if (g_optmenu_filter_hook && !g_optmenu_filter_hook(filter))
         return;
     menu.filter = filter;

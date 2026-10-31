@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "movie.h"
+#include "settings.h"
 
 /* Types of a platform event. */
 typedef enum { PLAT_QUIT, PLAT_KEY, PLAT_MOUSE, PLAT_MOUSE_UP } PlatEventType;
@@ -25,9 +26,9 @@ typedef void PlatMixer(int16_t *stereo, int frames);
 /* Setup */
 
 /* Opens the window at scale times the game screen; filter is a SETTINGS_FILTER_* value, which is the upscale factor. */
-bool plat_init(int scale, int filter);
+bool plat_init(int scale, enum SettingsFilter filter);
 /* Changes the upscale factor of the window at once (SETTINGS_FILTER_*). False, and no change, when the texture cannot be made. */
-bool plat_set_filter(int filter);
+bool plat_set_filter(enum SettingsFilter filter);
 /* Closes the window, the sound output and SDL. */
 void plat_quit(void);
 /* Sets the window and Dock icon from w by h ARGB pixels. */

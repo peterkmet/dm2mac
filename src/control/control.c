@@ -320,16 +320,6 @@ static void put_error(Json *reply, const char *error)
     json_close(reply, '}');
 }
 
-/* Appends "key":[value,max]. */
-static void key_pair(Json *reply, const char *key, int64_t value, int64_t max)
-{
-    json_key(reply, key);
-    json_open(reply, '[');
-    json_int(reply, value);
-    json_int(reply, max);
-    json_close(reply, ']');
-}
-
 /* The champions of the state reply: name, health, stamina, mana, load. The game texts of GRAPHICS.DAT (701 entries)
    are ASCII, so only request text can bring bytes from 0x80 into a reply. */
 static void put_champions(Json *reply)
@@ -341,9 +331,9 @@ static void put_champions(Json *reply)
         json_open(reply, '{');
         json_key(reply, "name");
         json_strn(reply, c->name, CHAMPION_NAME_SIZE);
-        key_pair(reply, "health", c->health, c->max_health);
-        key_pair(reply, "stamina", c->stamina, c->max_stamina);
-        key_pair(reply, "mana", c->mana, c->max_mana);
+        json_key_pair(reply, "health", c->health, c->max_health);
+        json_key_pair(reply, "stamina", c->stamina, c->max_stamina);
+        json_key_pair(reply, "mana", c->mana, c->max_mana);
         json_key_int(reply, "load", champ_get_load(i));
         json_close(reply, '}');
     }

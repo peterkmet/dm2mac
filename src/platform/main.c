@@ -609,7 +609,7 @@ static void restart(int argc, char **argv, bool mode_given)
 
 /* Loads the game files and the save, opens the window, the control socket, and the music; false with a message on
    an error. */
-static bool open_game(const Options *options, int factor)
+static bool open_game(const Options *options, enum SettingsFilter filter)
 {
     os_log("data folder: %s, mode %s", options->data, options->mode);
     snprintf(g_session.data_dir, sizeof g_session.data_dir, "%s", options->data);
@@ -620,7 +620,7 @@ static bool open_game(const Options *options, int factor)
         return false;
     if (options->save && !show_save(options->save))
         return false;
-    if (!plat_init(WINDOW_SCALE, factor))
+    if (!plat_init(WINDOW_SCALE, filter))
         return false;
     set_icon();
     if (options->control && !transport_open(options->control)) {
@@ -678,7 +678,7 @@ static const char *list_filter_names(char *list, size_t size)
 {
     size_t used = 0;
     list[0] = '\0';
-    for (int filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++) {
+    for (enum SettingsFilter filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++) {
         const char *separator = filter == SETTINGS_FILTER_NONE      ? ""
                                 : filter == SETTINGS_FILTER_SCALE3X ? ", or "
                                                                     : ", ";
@@ -712,21 +712,21 @@ int main(int argc, char **argv)
     int mode_status = select_runnable_mode(&options);
     if (mode_status)
         return mode_status;
-    int factor = options.filter ? settings_filter_parse(options.filter) : SETTINGS_FILTER_NONE;
-    if (!factor) {
+    enum SettingsFilter filter = options.filter ? settings_filter_parse(options.filter) : SETTINGS_FILTER_NONE;
+    if (filter == SETTINGS_FILTER_UNSET) {
         char names[FILTER_LIST_SIZE];
         os_log("unknown filter %s: use %s", options.filter, list_filter_names(names, sizeof names));
         return EXIT_USAGE;
     }
     if (!data_given && !first_start_install())
         return EXIT_FAILURE;
-    if (!open_game(&options, factor))
+    if (!open_game(&options, filter))
         return EXIT_FAILURE;
     g_optmenu_filter_hook = plat_set_filter;
     g_play_frame_hook = g_game_mode == GAME_MODE_TURNBASED ? turnbased_modal_frame : modal_frame;
     if (!mode_given && !options.save && !getenv(RESTART_ENV))
         choose_mode();
-    optmenu_start(options.filter ? factor : 0); /* --filter and DM2_FILTER go before SETTINGS.TXT */
+    optmenu_start(options.filter ? filter : SETTINGS_FILTER_UNSET); /* --filter and DM2_FILTER go before SETTINGS.TXT */
     /* fix: a closed mode screen starts no movie (port only). */
     if (!options.save && !getenv(RESTART_ENV) && !g_main_loop.quit)
         run_movies(MOVIE_SCRIPT_START);
