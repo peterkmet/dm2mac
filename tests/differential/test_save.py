@@ -23,7 +23,6 @@ def gdat(lib):
     if not GRAPHICS.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     g = ctypes.c_void_p()
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == C.GDAT_OK
     yield g
     lib.gdat_free(g)
@@ -176,8 +175,6 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     game = Game.in_dll(lib, "g_game")
     square = (game.party_map, game.party_x, game.party_y)
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
 
     projectile = lib.dungeon_unused_thing(C.THING_PROJECTILE)
     lib.thing_set_word(projectile, 2, C.SPELL_FIREBALL | 5)  # payload: a spell
@@ -198,8 +195,6 @@ def test_projectile_and_explosion_round_trip(lib, gdat, start, tmp_path):
     written_events = [bytes(timeline.events[i])[4:] for i in range(timeline.capacity)]
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     things = []
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
     thing = lib.dungeon_square_first_thing(*square)
     while thing != C.THING_ENDOFLIST:
         things.append(thing)
@@ -252,13 +247,10 @@ ENDOFLIST, NONE = C.THING_ENDOFLIST, C.THING_NONE
 
 
 def c_records(lib, type_):
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     return ctypes.string_at(lib.dungeon_thing_record(type_ << 10), lib.dungeon_thing_count(type_) * THING_SIZES[type_])
 
 
 def square_lists(lib):
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
             for y in range(lib.dungeon_map_height(map_)):
@@ -276,8 +268,6 @@ def add_event(lib, type_, time, data):
 def link_things(lib, game):
     """Puts a group into a move-group event, links a minion map to another group, adds a projectile and an
     explosion, and leaves a gap in the timeline. The group then has another bit stream position than record."""
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
     square, group = next((sq, t) for sq, things in square_lists(lib) for t in things[1:]
                          if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == GROUP and t & C.THING_INDEX_MASK)
     minion_map = next(CONTAINER << 10 | i for i in range(lib.dungeon_thing_count(CONTAINER))
@@ -362,8 +352,6 @@ def test_reserved_misc_records(lib, gdat, start, tmp_path):
     path.write_bytes(start)
     assert lib.save_load(str(path).encode(), gdat) == SAVE_OK
     lib.draw_init(gdat)  # the discard pass reads the creature info of the drawing data
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     while lib.dungeon_unused_thing(MISC) != NONE:
         pass
     count = lib.dungeon_thing_count(MISC)

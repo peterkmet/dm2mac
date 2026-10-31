@@ -135,9 +135,6 @@ SENSOR_PROCESS_WALL_CLICK = 0x4C134
 
 def mirror(lib, map_, x, y, cell):
     """True for a champion mirror (sensor kind 0x7e) on the cell of a wall."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     t = lib.dungeon_square_first_thing(map_, x, y)
     while t != ENDOFLIST:
         if t >> 10 & C.THING_TYPE_MASK == C.THING_SENSOR and t >> C.THING_CELL_SHIFT == cell \
@@ -151,7 +148,6 @@ def mirror(lib, map_, x, y, cell):
 def test_wall_clicks_on_all_wall_cells(scenario, lib, part):
     # A click with an empty hand on every wall cell with a sensor or a text: buttons, switches, counters, item
     # holders, ladders, fountains; then the timeline runs what they trigger.
-    lib.sensor_process_wall_click.argtypes = [Location, ctypes.c_int] + [ctypes.c_uint16] * 2
     cells = [c for c in sensor_squares(lib) if lib.dungeon_square(c[0], c[1], c[2]) >> C.SQUARE_TYPE_SHIFT == C.SQUARE_WALL][part::2]
     for n, (map_, x, y, cell) in enumerate(cells):
         if mirror(lib, map_, x, y, cell):  # the champion of a mirror joins the party that stands in front of it
@@ -173,7 +169,6 @@ def test_clicks_in_the_view(scenario, lib):
     # The party faces walls with sensors (and doors); both draw the view, then a click goes to the center of each
     # click zone of the view (wall ornaments, door buttons, objects) and to the front wall.
     from dm2test import view as tv
-    scenario.lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
     zones = (ctypes.c_uint8 * (C.VIEW_CLICK_ZONE_MAX * 12)).in_dll(lib, "g_view_click_zones")
     count = ctypes.c_int.in_dll(lib, "g_view_click_zone_count")
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
@@ -189,7 +184,6 @@ def test_clicks_in_the_view(scenario, lib):
     clicked = 0
     for n, (map_, x, y, d) in enumerate(places[::2]):
         scenario.place(map_, x, y, d)
-        lib.weather_sky_objects.restype = ctypes.c_void_p
         sky = ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE)  # the weather of the C port in both
         scenario.view.draw(map_, x, y, d, ctypes.c_int.in_dll(lib, "g_view_light_level").value, sky)
         seed.value = tv.VIEW_SEED
@@ -222,9 +216,6 @@ def test_clicks_in_the_view(scenario, lib):
 def test_teleporter_square_whose_first_thing_is_no_teleporter(scenario, lib):
     # A damaged dungeon (port only): a chest with the target words of the teleporter goes before the things of an
     # active party teleporter square; the party steps onto the square and stays there.
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     party_scope = (C.TELEPORTER_SCOPE_MASK & ~C.TELEPORTER_SCOPE_CREATURES) << C.TELEPORTER_SCOPE_SHIFT
     for map_, px, py, d in approaches(lib, C.SQUARE_TELEPORTER, lambda s: s & C.SQUARE_TELEPORTER_ON):
         x, y = px + DIRS[d][0], py + DIRS[d][1]
@@ -263,5 +254,4 @@ def test_discard_search_on_a_dungeon_of_one_map(tmp_path):
     path.write_bytes(header + map_desc + struct.pack("<H", 0) + b"\0")  # column 0 starts at thing 0; a wall
     assert own.dungeon_load(str(path).encode()) == 1
     assert own.dungeon_map_count() == 1
-    own.discard_find_thing.restype = ctypes.c_uint16
     assert own.discard_find_thing(C.THING_WEAPON, C.DISCARD_ANY_KIND) == C.THING_NONE

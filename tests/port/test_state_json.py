@@ -8,17 +8,14 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.markers import ROOT
-from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, ViewSquare
-from dm2test.scenario import Position
+from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, Position, ViewSquare
 
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.seen_visible.argtypes = [Position, ctypes.c_int16, ctypes.POINTER(SeenSquare)]
-    lib.seen_visible.restype = ctypes.c_int
-    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
-    lib.seen_is_seen.argtypes = [Position]
-    lib.seen_is_seen.restype = ctypes.c_bool
+    lib.state_json_string.restype = ctypes.c_void_p  # the test frees the returned pointer
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
 
 STATE, VIEW, MAP = C.STATE_JSON_STATE, C.STATE_JSON_VIEW, C.STATE_JSON_MAP
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
@@ -32,7 +29,6 @@ CH_AURA, AURA_STRENGTH, AURA_VALUE = 0x102, 3, 50  # an aura that raises the str
 
 
 def part(lib, which):
-    lib.state_json_string.restype = ctypes.c_void_p
     p = lib.state_json_string(which)
     text = ctypes.string_at(p).decode()
     ctypes.CDLL(None).free(ctypes.c_void_p(p))
@@ -116,7 +112,6 @@ def test_reading_the_state_keeps_the_random_seed(lib, game):
 
 def test_hand_menus_do_not_change_the_open_menu(lib, game):
     """Listing the action menus of both hands for the state keeps the open menu of the action area."""
-    lib.action_area_open_hand.argtypes = [ctypes.c_int16, ctypes.c_int16]
     lib.action_area_open_hand(0, SLOT_READY_HAND)
     lib.area_update(0)
     action = ActionArea.in_dll(lib, "g_action")
@@ -195,7 +190,6 @@ def test_view_square_fields(lib, game):
 
 def mark_whole_map(lib, game):
     """Marks as seen every square that the view shows from any open square of the party map, in every direction."""
-    lib.dungeon_square.restype = ctypes.c_uint8
     m = game.party_map
     for x in range(lib.dungeon_map_width(m)):
         for y in range(lib.dungeon_map_height(m)):
@@ -219,7 +213,6 @@ def expected_glyph(lib, m, x, y):
     if kind == SQUARE_TELEPORTER and square & TELEPORTER_ON and square & TELEPORTER_VISIBLE:
         return "T"
     s = ViewSquare()
-    lib.mmap_shows_floor_ornament.restype = ctypes.c_bool
     lib.aspect_get(ctypes.byref(s), m, 0, x, y)
     return "_" if lib.mmap_shows_floor_ornament(s.side[SIDE_FLOOR_ORNAMENT] & ORNAMENT_MASK) else "."
 
@@ -270,8 +263,6 @@ def test_view_lists_only_the_things_that_the_view_draws(lib, game):
     """The view draws no creature on stairs in the far row and nothing on a door seen from the front beside the
     party (door_front_shown); the same things on a floor are in the view."""
     assert game.party_dir == 0
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
     far, near = view_square(lib, 4, 0), view_square(lib, 0, 1)
     assert far["element"] == "floor" and near["element"] == "floor"
     group, item = lib.dungeon_unused_thing(THING_GROUP), lib.dungeon_unused_thing(THING_MISC)

@@ -12,9 +12,8 @@ from dm2test.markers import GAME, needs_game
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.gamefile_table.restype = ctypes.POINTER(GameFile)
-    lib.gamefile_find_bad.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    lib.gamefile_find_bad.restype = ctypes.POINTER(GameFile)
+    lib.gamefile_table.restype = ctypes.POINTER(GameFile)  # the test indexes the result
+    lib.gamefile_find_bad.restype = ctypes.POINTER(GameFile)  # the test reads .contents
 
 
 def find_bad(lib, tmp_path, files):

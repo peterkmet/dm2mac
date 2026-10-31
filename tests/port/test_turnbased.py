@@ -18,6 +18,11 @@ from dm2test.control import PALETTE_COLORS, RGB
 from dm2test.structs import Game, Location, Session
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
+
 VANILLA, TURNBASED = C.GAME_MODE_VANILLA, C.GAME_MODE_TURNBASED
 TURN_WAIT_MAX_TICKS = 5000
 POISON_AMOUNT = 200  # a poison that hurts now and again within the wait
@@ -45,8 +50,6 @@ def tb(lib, gdat, session):
     hook.value = ctypes.cast(lib.transport_poll, ctypes.c_void_p).value  # a dialog polls the socket, as main.c does
     folder = tempfile.mkdtemp(prefix="dm2t", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "control.sock")
-    lib.transport_open.argtypes = [ctypes.c_char_p]
-    lib.transport_open.restype = ctypes.c_bool
     assert lib.transport_open(path.encode())
     stop = threading.Event()
 
@@ -213,8 +216,6 @@ def act(path, action, **args):
 def command_rect(lib, command):
     """The screen rect (x, y, w, h) of the zone of command in the current input mode."""
     rect = (ctypes.c_int16 * 4)()
-    lib.input_command_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
-    lib.input_command_rect.restype = ctypes.c_bool
     assert lib.input_command_rect(command, rect), hex(command)
     return tuple(rect)
 
@@ -229,8 +230,6 @@ def test_act_many_stops_on_a_new_creature(tb, lib):
     move: ran 2, stopped creature."""
     path, game, _ = tb
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
-    lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
     lib.dungeon_set_current_map(game.party_map)
     assert lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - GROUP_DISTANCE)) != 0xFFFF
     r = request({"cmd": "act_many", "actions": ["move_forward"] * 5}, path, timeout=30)
@@ -319,8 +318,6 @@ def test_take_coin_moves_a_coin_to_the_hand(tb, lib):
     take_coin on a slot with coins -> state.leader_hand is that coin, one coin less in the box."""
     from dm2test.interface import things_of
     path, *_ = tb
-    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
     lib.champ_remove_object_from_slot(0, 0)
     lib.champ_add_object_to_slot(0, things_of(lib, 9, 1, lib.item_is_moneybox)[0], 0)
     lib.area_update(0)  # the hand icons show the box, as after a click that puts it into the hand
@@ -348,16 +345,10 @@ def test_drop_object_ahead_of_a_floor_hiding_creature_is_refused(tb, lib):
     from dm2test.interface import things_of
     path, game, _ = tb
     assert (game.party_x, game.party_y, game.party_dir) == (1, 8, NORTH)
-    lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
     lib.dungeon_set_current_map(game.party_map)
     group = lib.creature_create_group(STILL_CREATURE, 0, NORTH, Location(game.party_x, game.party_y - 1))
     assert group != 0xFFFF
-    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
     lib.dungeon_thing_record(group)[GROUP_CREATURE] = FLOOR_HIDING_CREATURE  # map 0 takes no static creature type
-    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
     lib.champ_put_in_leader_hand(thing)
     before = game.game_time

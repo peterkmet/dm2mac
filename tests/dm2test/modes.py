@@ -29,8 +29,6 @@ def advanced(lib, session, tmp_path):
     state = Session.in_dll(lib, "g_session")
     state.data_dir = str(tmp_path).encode()
     state.slot, state.loaded, state.new_game = -1, 0, 0
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
     set_mode(lib, ADVANCED)
     yield session[0], tmp_path / "DATA"
     set_mode(lib, VANILLA)
@@ -42,6 +40,5 @@ def press(lib, key):
 
 
 def key_command(lib, mode, key):
-    lib.input_key_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
     return lib.input_key_command(mode, key, rect)

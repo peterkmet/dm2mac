@@ -2,14 +2,14 @@
 magic, and minions run in the C port and in the original code from start.DAT; then the game state must be equal.
 The view tests give the original zeroed active groups because they draw without active groups."""
 
-import ctypes
 
 import pytest
 
 from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.markers import ROOT
-from dm2test.scenario import ENDOFLIST, Position, square_event
+from dm2test.scenario import ENDOFLIST, square_event
+from dm2test.structs import Position
 
 
 def test_activation_after_load(creatures):
@@ -28,9 +28,6 @@ def test_creature_updates(creatures):
 
 def creature_sensor_cells(lib, kinds):
     """(map, x, y, cell) of each sensor of the kinds."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     out = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
@@ -61,8 +58,6 @@ def test_creature_sensors(creatures, lib):
 
 def creature_fronts(lib):
     """(map, x, y, direction) of a free floor square in front of each creature group, the party looking at it."""
-    lib.creature_group_at.restype = ctypes.c_uint16
-    lib.creature_group_at.argtypes = [Position]
     fronts = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
@@ -126,7 +121,6 @@ def test_merchant_at_the_counter(lib, gdat, tmp_path):
     shop = ROOT / "tests" / "saves" / "shop.DAT"
     if not shop.exists():
         pytest.skip("tests/saves/shop.DAT missing")
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     s = CreatureScenario(lib, gdat, shop.read_bytes(), tmp_path)
     s.place(28, 8, 6, 2)
     for n in range(300):

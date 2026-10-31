@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from dm2test import constants as C
-from dm2test.audio import UPSAMPLE, SoundLevel, SoundOffset, mix
+from dm2test.audio import UPSAMPLE, SoundOffset, mix
 from dm2test.structs import Sound
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
@@ -26,13 +26,6 @@ PAN_LEFT, PAN_CENTER, PAN_RIGHT = 0x0800, C.SOUND_PAN_CENTER, 0xF800
 
 @pytest.fixture(scope="module")
 def snd(lib):
-    lib.sndreq_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
-    lib.sndreq_party_offset.argtypes = [ctypes.c_int] * 4 + [ctypes.POINTER(SoundOffset)]
-    lib.sndreq_volume_pan.argtypes = [ctypes.c_uint8, ctypes.c_int, ctypes.c_int]
-    lib.sndreq_volume_pan.restype = SoundLevel
-    lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
-    lib.sound_play.restype = ctypes.c_bool
-    lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     lib.sound_stop_all()  # the scenario tests of the game play sounds in the same library
     return lib
 
@@ -114,8 +107,6 @@ def test_sound_load_sample_count(snd):
     if not GDAT.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     g = ctypes.c_void_p()
-    snd.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    snd.gdat_free.argtypes = [ctypes.c_void_p]
     assert snd.gdat_load(str(GDAT).encode(), ctypes.byref(g)) == 0
     s = Sound()
     assert snd.sndreq_load(g, C.CAT_DUNGEON, 0, C.SOUND_EXPLODE, ctypes.byref(s)) == 0

@@ -13,18 +13,6 @@ ACTION_HAND = 1  # the slot of the action hand
 STEP_TICKS = 40  # timer ticks that run a click to its end
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.item_is_moneybox.restype = ctypes.c_bool
-    lib.champ_add_object_to_slot.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int16]
-    lib.champ_remove_object_from_slot.restype = ctypes.c_uint16
-    lib.input_command_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
-    lib.input_command_rect.restype = ctypes.c_bool
-    lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
-    lib.input_cursor_at.argtypes = [ctypes.c_int16, ctypes.c_int16]
-
-
 def test_an_open_money_box_shows_the_leader_hand_object_as_the_cursor(lib, session):
     # regression: the action area did not mark the input zones of a panel it opened, so the cursor over an open
     # money box was the arrow until the next input mode change

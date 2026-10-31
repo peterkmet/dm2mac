@@ -6,22 +6,35 @@ import pytest
 
 from dm2test import constants as C
 from dm2test.gdat import image_info
-from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, ImageInfo, Location, Party, ViewSquare
+from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, Location, Party, Position, ScreenSize, ViewSquare
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH
 from dm2test.save import GRAPHICS, START, original_load
-from dm2test.scenario import Position
 from dm2test.view import (
     DUN_SET_PARTY_LOCATION, GDAT_GET_TEXT, G_PARTY_DIR, G_PARTY_MOVE_STEPS, G_PARTY_X, G_RAIN_INTENSITY, G_RANDOM_SEED,
     G_VIEW_ARROWS_ENABLED, G_VIEW_HIT_OFFSET, G_VIEW_PARTY_DIR, G_WEATHER_VISIBLE, VIEW_H, VIEW_LOAD_SQUARE, VIEW_SEED, VIEW_W,
-    OriginalView, ScreenSize, u8_p,
+    OriginalView, u8_p,
 )
 
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.view_load_square.argtypes = [Location, ctypes.c_int, ctypes.c_int16]
-    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
+    lib.dungeon_square_byte.restype = u8_p  # the test indexes the result
+    lib.aspect_cell_to_xy.argtypes = [Location, ctypes.c_int]  # GridPoint is a mirror of this module
+    lib.aspect_cell_to_xy.restype = GridPoint  # GridPoint is a mirror of this module
+    lib.view_offset_toward_party.argtypes = [GridPoint, GridPoint, ctypes.c_int16]  # GridPoint is a mirror of this module
+    lib.view_offset_toward_party.restype = GridPoint  # GridPoint is a mirror of this module
+    lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,  # AnchoredZone is a mirror of this module
+                                               ctypes.POINTER(ScreenSize)]
+    lib.zone_compute_anchored_rect.restype = ctypes.c_void_p  # AnchoredZone is a mirror of this module
+    lib.dungeon_thing_record.restype = u8_p  # the test indexes the result
+    lib.creature_info.restype = ctypes.POINTER(CreatureInfo)  # the test reads .contents
+    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.dungeon_text_data.restype = ctypes.POINTER(ctypes.c_uint16)  # the test indexes the result
+    lib.view_hit_test_object.argtypes = [ctypes.POINTER(ViewObjectClick), ctypes.c_uint16, ctypes.c_bool]  # ObjectClickResult is a mirror of this module
+    lib.view_hit_test_object.restype = ObjectClickResult  # ObjectClickResult is a mirror of this module
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)  # the test reads .contents
+
 
 VIEW_UNHIDE_LINKED_SQUARES, VIEW_MARK_HIDDEN_SQUARES = 0x54ABD, 0x5497E
 G_VIEW_SQUARES, G_VIEW_CREATURE_GRID, G_VIEW_OBJECT_GRID = 0x80040, 0x80044, 0x8004C
@@ -35,8 +48,6 @@ def gdat(lib):
     if not GRAPHICS.exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
     g = ctypes.c_void_p()
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
     lib.gdat_free(g)
@@ -134,16 +145,6 @@ def test_view_squares_on_all_maps_match_original(lib, emu, loaded):
 
 @pytest.fixture(scope="module")
 def original_view(lib, gdat, start):
-    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    lib.gdat_item.restype = u8_p
-    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.gdat_image_colormap.restype = u8_p
-    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
-    lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
-    lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_exists.restype = ctypes.c_bool
-    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     return OriginalView(lib, gdat, start)
@@ -157,7 +158,6 @@ def c_view(lib, map_, x, y, direction, light, sky=None, walking=0):
     lib.dungeon_set_party_position(Position(map_, x, y))
     lib.view_enter_map(map_)
     if sky is not None:  # the weather sky objects that world_update_day_night builds
-        lib.weather_sky_objects.restype = ctypes.c_void_p
         ctypes.memmove(lib.weather_sky_objects(), sky, len(sky))
     ctypes.c_int.in_dll(lib, "g_view_light_level").value = light
     ctypes.c_uint32.in_dll(lib, "g_random_seed").value = VIEW_SEED
@@ -233,7 +233,6 @@ def test_door_states_match_original(lib, loaded, original_view):
     # start.DAT has no half open or broken door: set the door state of 10 doors in front of the party in both.
     game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
-    lib.dungeon_square_byte.restype = u8_p
     emu = original_view.emu
     doors = []
     for map_ in range(lib.dungeon_map_count()):
@@ -293,8 +292,6 @@ def read_xy(emu):
 
 
 def test_grid5_cell_to_xy_matches_original(lib, image_emu):
-    lib.aspect_cell_to_xy.argtypes = [Location, ctypes.c_int]
-    lib.aspect_cell_to_xy.restype = GridPoint
     rng = random.Random(21)
     for _ in range(1000):
         base_x, base_y = rng.randrange(-40, 40), rng.randrange(-40, 40)
@@ -312,8 +309,6 @@ def test_rotate_grid5_cell_matches_original(lib, image_emu):
 
 
 def test_offset_creature_toward_party_matches_original(lib, image_emu):
-    lib.view_offset_toward_party.argtypes = [GridPoint, GridPoint, ctypes.c_int16]
-    lib.view_offset_toward_party.restype = GridPoint
     rng = random.Random(22)
     cases = [(px, py, 8, 8, size) for px in range(5, 12) for py in range(5, 12) for size in range(5)]
     cases += [(rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90), rng.randrange(-30, 90),
@@ -407,15 +402,6 @@ def thing_list(lib, first):
 def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     # A floor square in front of the party with one weapon in its near left cell: the pixels that change lie in
     # the rectangle of the weapon picture, scaled for its row, at the zone of its cell.
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_entry_index.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
-    lib.gfx_scale_64.restype = ctypes.c_int16
-    lib.gfx_scale_64.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.zone_compute_anchored_rect.argtypes = [ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16), AnchoredZone,
-                                               ctypes.POINTER(ScreenSize)]
-    lib.zone_compute_anchored_rect.restype = ctypes.c_void_p
     game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     assert lib.zone_load(gdat) == 1
@@ -438,7 +424,6 @@ def test_one_object_draws_in_its_cell_rectangle(lib, gdat, loaded):
     assert view
     x, y, front_x, front_y = view
     thing = lib.dungeon_unused_thing(C.THING_WEAPON) & 0xFFFF | 3 << C.THING_CELL_SHIFT  # south west: the near left cell for a party looking north
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
     lib.thing_set_word(thing, 2, index)
     assert lib.dungeon_link_thing_to_square(thing, map_, front_x, front_y)
     with_object = c_view(lib, map_, x, y, 0, 0)
@@ -481,8 +466,6 @@ class Things:
 
     def __init__(self, lib, emu):
         self.lib, self.emu = lib, emu
-        lib.dungeon_thing_record.restype = u8_p
-        lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
         self.events = ctypes.cast(ctypes.c_void_p.in_dll(lib, "g_timeline"), u8_p)
 
     def write(self, thing, offset, data):
@@ -505,7 +488,6 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
     # random cell, payload, power, flight direction, or explosion type, or a creature of any type with or without
     # a possession (also creatures that hide it, and static creatures in other animation frames), then compare the
     # whole view picture.
-    lib.thing_word.restype = ctypes.c_uint16
     game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     things = Things(lib, original_view.emu)
@@ -517,8 +499,6 @@ def test_added_missiles_explosions_creatures_match_original(lib, loaded, origina
                     if lib.thing_word(C.THING_WEAPON << C.THING_TYPE_SHIFT | t, 0) == C.THING_NONE]
     creature_types = [t for t in range(256) if lib.gdat_exists(original_view.gdat, C.CAT_CREATURE, t, C.GDAT_TYPE_CREATURE_DATA, 0xFD)]
     assert free_groups and free_weapons and creature_types
-    lib.creature_info.restype = ctypes.POINTER(CreatureInfo)
-    lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
     size = ctypes.c_uint32()
 
     def frame_data(creature):
@@ -611,10 +591,6 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
     game = Game.in_dll(lib, "g_game")
     saved = (game.party_x, game.party_y, game.party_dir, game.party_map)
     emu = original_view.emu
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
     shops = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
@@ -650,12 +626,6 @@ def test_shop_displays_match_original(lib, gdat, loaded, original_view):
 def test_shop_with_an_empty_price_table_steps_through_the_item_indices(lib, gdat, loaded, original_view, tmp_path):
     # A damaged GRAPHICS.DAT whose price table of a shop ornament has 1 byte: the display steps through the item
     # indices as for an ornament without a table, and shows an item that the merchant sells.
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_map_wall_ornaments.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
-    lib.money_parse_item_class_set.argtypes = [ctypes.c_int, ctypes.c_int, u8_p, ctypes.c_bool]
     shop = next((m, x, y, t) for m in range(lib.dungeon_map_count()) for x in range(lib.dungeon_map_width(m))
                 for y in range(lib.dungeon_map_height(m)) for t in thing_list(lib, lib.dungeon_square_first_thing(m, x, y))
                 if t >> C.THING_TYPE_SHIFT & C.THING_TYPE_MASK == C.THING_SENSOR
@@ -709,10 +679,6 @@ def test_wet_image_matches_original(lib, loaded, original_view):
                 if lib.gdat_exists(gdat, C.CAT_SKY, lib.dungeon_map_graphics(m) >> 4 & 0xF, C.GDAT_TYPE_IMAGE, 0x71))
     x, y = next((x, y) for x in range(lib.dungeon_map_width(map_)) for y in range(lib.dungeon_map_height(map_))
                 if lib.dungeon_square(map_, x, y) >> C.SQUARE_TYPE_SHIFT)
-    lib.view_draw_wet_image.argtypes = [ctypes.POINTER(DrawCtx), ctypes.POINTER(Bitmap), ctypes.c_int]
-    lib.rand_below.restype = ctypes.c_uint16
-    lib.rand_below.argtypes = [ctypes.c_uint16]
-    lib.rand_next.restype = ctypes.c_uint32
     seed = ctypes.c_uint32.in_dll(lib, "g_random_seed")
     rng = random.Random(26)
     ctx_addr = original_view.alloc(CTX_SIZE)
@@ -836,7 +802,6 @@ def present_viewport(lib, gdat, walking):
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_load(gdat) == 1
     Party.in_dll(lib, "g_party").move_steps = 0
-    lib.zone_get_rect.restype = ctypes.c_void_p
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
     wx, wy, ww, wh = walk
     view = bytearray([1]) * (VIEW_W * VIEW_H)  # 1: outside the walk rectangle
@@ -884,9 +849,6 @@ def with_value(data, key, value):
 def test_an_ornament_frames_value_of_0x8000_shows_frame_1(lib, gdat, loaded, tmp_path):
     # regression: a damaged GRAPHICS.DAT with the frames value 0x8000 (frames from 1, a count of 0) for an animated
     # wall ornament divided by 0 in ornament_frame; the face shows frame 1, as a cycle of 1
-    lib.aspect_get.argtypes = [ctypes.c_void_p] + [ctypes.c_int16] * 4
-    lib.gdat_entry_index.restype = ctypes.c_uint16
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
     s = ViewSquare()
 
     def faces(map_, x, y, d):
@@ -925,13 +887,6 @@ def encode_text(text):
 def test_a_wall_text_line_outside_its_plate_is_not_drawn(lib, gdat, loaded):
     # regression: a wall text with more lines than its plate holds (a damaged DUNGEON.DAT) wrote its first line above
     # the plate bitmap; the port skips that line
-    lib.dungeon_square_first_thing.restype = lib.dungeon_next_thing.restype = lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_square_first_thing.argtypes = [ctypes.c_int16] * 3
-    lib.dungeon_next_thing.argtypes = [ctypes.c_uint16]
-    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    lib.dungeon_text_data.restype = ctypes.POINTER(ctypes.c_uint16)
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     game = Game.in_dll(lib, "g_game")
@@ -1011,10 +966,6 @@ OBJECT_CLICK_DONE = 1  # enum ObjectClick of view.h
 def test_a_possessions_click_without_a_group_does_nothing(lib, loaded):
     # regression: a click on the possessions of a creature that left the square read the record of THING_NONE; the
     # click does nothing
-    lib.view_hit_test_object.argtypes = [ctypes.POINTER(ViewObjectClick), ctypes.c_uint16, ctypes.c_bool]
-    lib.view_hit_test_object.restype = ObjectClickResult
-    lib.creature_group_at.argtypes = [Position]
-    lib.creature_group_at.restype = ctypes.c_uint16
     current_map = CurrentMap.in_dll(lib, "g_current_map")
     saved, current_map.map = current_map.map, loaded.party_map
     at = Location(loaded.party_x, loaded.party_y)
@@ -1032,13 +983,6 @@ def test_an_explosion_tint_of_a_narrow_picture_draws_nothing(lib, gdat, loaded):
     # regression: the tint of an explosion on the party square tiles a row of its picture minus 40 pixels; with a tint
     # picture of at most 40 pixels (a damaged GRAPHICS.DAT) the row is not longer than its start and the tiled blit
     # never ended; the port draws no tint
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.dungeon_link_thing_to_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
-    lib.dungeon_unlink_thing_from_square.argtypes = [ctypes.c_uint16] + [ctypes.c_int16] * 3
-    lib.dungeon_thing_record.restype = u8_p
-    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
-    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.zone_load(gdat) == 1
     assert lib.pal_load_color_ramps(gdat) == 1
     game = Game.in_dll(lib, "g_game")

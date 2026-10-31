@@ -27,9 +27,6 @@ def log_line(message):
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.install_game_files.argtypes = [ctypes.c_char_p, ctypes.c_void_p, ctypes.c_char_p, ctypes.c_size_t]
-    lib.install_game_files.restype = ctypes.c_int
-    lib.gamefile_table.restype = ctypes.c_void_p
     ctypes.c_void_p.in_dll(lib, "g_os_log_hook").value = ctypes.cast(log_line, ctypes.c_void_p).value
 
 

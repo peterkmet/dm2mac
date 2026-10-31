@@ -30,7 +30,6 @@ def gdat(lib):
     if not GRAPHICS.exists() or not DUNGEON.exists() or not (ROOT / "game" / "SKULL.EXE").exists():
         pytest.skip("game files missing")
     g = ctypes.c_void_p()
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == C.GDAT_OK
     lib.draw_init(g)
     assert lib.text_init(g)
@@ -98,10 +97,8 @@ def dungeon_differences(lib, emu):
             if col != mine:
                 out.append(("squares", map_, x, mine.hex(), col.hex()))
     count = lib.dungeon_square_thing_count()
-    lib.dungeon_square_things.restype = ctypes.c_void_p
     if ctypes.string_at(lib.dungeon_square_things(), 2 * count) != emu.read(emu.read_u32(G_SQUARE_FIRST_THINGS), 2 * count):
         out.append("first things")
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     for t in range(C.THING_TYPE_COUNT):
         n, size = lib.dungeon_thing_count(t), THING_SIZES[t]
         if not n:
@@ -144,7 +141,6 @@ def test_timer_sensors_start_like_original(lib, new_game):
     # (state bit) and busy in both, at a game time that is not 0; then the timer events and the busy bits match.
     from dm2test.structs import Timeline
     emu = new_game.emu
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     base = emu.read_u32(G_THING_DATA + 12)
     timers = 0
     for i in range(lib.dungeon_thing_count(C.THING_SENSOR)):
@@ -173,7 +169,6 @@ def test_shared_teleporter_list_keeps_first_movable_thing(lib, gdat):
     # A teleporter pair with numbered link sensors: square (3, 19, 3) gets two free weapons at the end of its list,
     # square (2, 19, 14) one. The shared list keeps the first weapon of the target square and drops the second, in
     # both. DUNGEON.DAT has no movable thing on such a target square.
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     weapons, links = [], []
 
     def add_weapons(emu):

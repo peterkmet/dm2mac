@@ -14,7 +14,7 @@ from dm2test.gdat import image_info
 from dm2test.markers import GAME
 from dm2test.oracle import CreatureOracle
 from dm2test.save import GRAPHICS, START, original_save
-from dm2test.structs import CurrentMap, Game, ImageInfo, MainLoop, Party, Session, Sound, Timeline, TimelineEvent, UiState, mirror
+from dm2test.structs import CurrentMap, Game, MainLoop, Party, Position, Session, Sound, Timeline, TimelineEvent, UiState, mirror
 from dm2tools.emu import SCRATCH
 from dm2test.view import (
     G_CUR_MAP_DOOR_TYPES, G_MAP_FLIP_FLAGS, G_MAP_GFX_SET, G_MAP_WALL_COLOR_KEY, G_SKY_STATE, G_VIEW_CLEAR, OriginalView,
@@ -23,16 +23,6 @@ from dm2test.view import (
 
 def original_view_of(lib, gdat, start):
     """The original code after loading start, with the GDAT data of the C port (dm2test.view.OriginalView)."""
-    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    lib.gdat_item.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.gdat_image_colormap.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
-    lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
-    lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_exists.restype = ctypes.c_bool
-    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     return OriginalView(lib, gdat, start)
 
 ENDOFLIST, NONE = 0xFFFE, 0xFFFF
@@ -132,7 +122,6 @@ def c_weather(lib):
 
 def c_sky(lib):
     """The C sky objects up to the end mark."""
-    lib.weather_sky_objects.restype = ctypes.c_void_p
     return sky_list(ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
 
 
@@ -148,12 +137,6 @@ def sky_list(raw):
 def ignore_stale(state):
     """After a removal (no destination) the original leaves a stale register in the destination map."""
     return {k: v for k, v in state.items() if not (k == "dest_map" and state["dest_x"] < 0)}
-
-
-@mirror("dungeon.h")
-class Position(ctypes.Structure):
-    """A square with its map (dungeon.h, Position)."""
-    _fields_ = [(name, ctypes.c_int16) for name in ("map", "x", "y")]
 
 
 def port_globals(party, current_map):
@@ -195,7 +178,6 @@ class Command(ctypes.Structure):
 def gdat(lib):
     require(GRAPHICS)
     g = ctypes.c_void_p()
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
     lib.gdat_free(g)
@@ -291,7 +273,6 @@ class Scenario(CreatureOracle):
     def sound_setup(self):
         """The sound buffers of the original, its sound table filled on demand, and the recorder of its driver calls."""
         emu, lib, view = self.emu, self.lib, self.view
-        lib.sndreq_load.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3 + [ctypes.POINTER(Sound)]
         for addr, size in ((G_DELAYED_SOUNDS, 0x70), (G_SOUND_DEFERRED, 0x48), (G_SOUND_REQUESTS, 0xF0),
                            (G_SOUND_TABLE, 7 * SOUND_TABLE_MAX), (G_SAMPLE_DESCS, 16 * SOUND_TABLE_MAX)):
             emu.write_u32(addr, view.put(bytes(size)))
@@ -411,7 +392,6 @@ class Scenario(CreatureOracle):
         emu.write(G_MAP_LIGHT, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x6D)))
         emu.write(G_MAP_WALL_COST, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x72) or 1))
         emu.write(G_VIEW_CLEAR, struct.pack("<H", self.clear_band(gfx_set)))
-        lib.weather_sky_objects.restype = ctypes.c_void_p
         emu.write(G_SKY_OBJECTS, ctypes.string_at(lib.weather_sky_objects(), SKY_OBJECTS_SIZE))
         emu.write(G_SKY_STATE, struct.pack("<H", view.entry_index(8, gfx_set, 0x0B, 0x66)))
         for addr, entry in ((G_GFX_HAS_CLOUDS, 0x6A), (G_GFX_HAS_RAIN, 0x67), (G_GFX_HAS_LIGHTNING, 0x64)):
@@ -555,7 +535,6 @@ class Scenario(CreatureOracle):
                 for y in range(h):
                     if col[y] != lib.dungeon_square(map_, x, y):
                         out.append(("square", map_, x, y, hex(lib.dungeon_square(map_, x, y)), hex(col[y])))
-        lib.dungeon_thing_record.restype = ctypes.c_void_p
         sizes = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
         for t in range(16):
             n = lib.dungeon_thing_count(t)
@@ -634,7 +613,6 @@ class Scenario(CreatureOracle):
 
 @pytest.fixture
 def scenario(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Scenario(lib, gdat, start, tmp_path)
 
 
@@ -664,9 +642,6 @@ G_CHAMPION_COUNT, CHAMPION_CELL = 0x7F276, 29
 
 def sensor_squares(lib):
     """(map, x, y, cell) of every square cell with a sensor or a text thing."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     out, bad = set(), set()
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):
@@ -701,8 +676,6 @@ def approaches(lib, kind, condition=lambda s: True, limit=60):
 
 
 def square_things(lib, map_, x, y):
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
     out, t = [], lib.dungeon_square_first_thing(map_, x, y)
     while t not in (0xFFFE, 0xFFFF):
         out.append(t)
