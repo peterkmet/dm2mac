@@ -5,6 +5,7 @@ import pytest
 
 from dm2tools.emu import SCRATCH, Emu
 from dm2tools.le import load_image
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.structs import Bitmap
 
@@ -105,8 +106,7 @@ def test_blit_4bpp_to_4bpp(lib):
 def emu():
     from dm2test.markers import ROOT
     exe = ROOT / "game" / "SKULL.EXE"
-    if not exe.exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(exe)
     return Emu(load_image(exe))
 
 
@@ -214,8 +214,7 @@ RAMP_DATA, RAMP_RECORDS, TABLE, COUNT, CACHE = (SCRATCH + 0x40000, SCRATCH + 0x5
 def test_dim_remap_matches_original(lib, emu):
     from dm2test.markers import ROOT
     graphics = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
-    if not graphics.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(graphics)
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(graphics).encode(), ctypes.byref(gdat)) == 0
     assert lib.pal_load_color_ramps(gdat)
@@ -254,8 +253,7 @@ def test_dim_remap_matches_original(lib, emu):
 def test_dim_remap_key_past_the_table(lib):
     # A key color of 256 or more (a damaged GRAPHICS.DAT) leaves the bytes after the remap table unchanged.
     from dm2test.gdat import GDAT
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GDAT)
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(gdat)) == 0
     assert lib.pal_load_color_ramps(gdat)
@@ -270,8 +268,7 @@ def test_dim_remap_key_past_the_table(lib):
 def test_ramp_lengths_past_the_item(lib, tmp_path):
     # A damaged GRAPHICS.DAT whose ramp lengths reach past the ramp item is rejected.
     from dm2test.gdat import GDAT
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GDAT)
     data = bytearray(GDAT.read_bytes())
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(GDAT).encode(), ctypes.byref(gdat)) == 0

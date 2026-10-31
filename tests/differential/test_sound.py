@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.audio import UPSAMPLE, SoundOffset, mix
 from dm2test.structs import Sound
@@ -32,8 +33,7 @@ def snd(lib):
 
 @pytest.fixture(scope="module")
 def emu():
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(ROOT / "game" / "SKULL.EXE")
     return Emu(load_image(ROOT / "game" / "SKULL.EXE"))
 
 
@@ -104,8 +104,7 @@ def test_party_offset_drops_sound_without_path(snd):
 
 
 def test_sound_load_sample_count(snd):
-    if not GDAT.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GDAT)
     g = ctypes.c_void_p()
     assert snd.gdat_load(str(GDAT).encode(), ctypes.byref(g)) == 0
     s = Sound()

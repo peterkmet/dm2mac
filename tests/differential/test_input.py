@@ -7,6 +7,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.save import GRAPHICS
@@ -253,8 +254,7 @@ def test_save_start_matches_a_menu_load(start, tmp_path):
 def test_save_start_prints_the_hand_object_name_once(tmp_path):
     # shell.DAT has an object in the leader hand: a menu load prints its name in one message row.
     shell = ROOT / "tests" / "saves" / "shell.DAT"
-    if not shell.exists():
-        pytest.skip("tests/saves/shell.DAT missing")
+    require(shell)
     lib = load_lib()
     gdat = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(gdat)) == 0
