@@ -13,11 +13,6 @@ chmod u+w "$out/libSDL3.0.dylib"
 install_name_tool -id @executable_path/libSDL3.0.dylib "$out/libSDL3.0.dylib"
 install_name_tool -change "$(otool -L build/dm2 | awk '/libSDL3/ {print $1}')" @executable_path/libSDL3.0.dylib "$out/dm2"
 codesign -f -s - "$out/libSDL3.0.dylib" "$out/dm2"
-cat > "$out/Dungeon Master II.command" <<'EOF'
-#!/bin/bash
-cd "$(dirname "$0")" && exec ./dm2
-EOF
-chmod +x "$out/Dungeon Master II.command"
 cat > "$out/README.txt" <<'EOF'
 DM2Mac: Dungeon Master II for macOS (Apple Silicon).
 
@@ -30,8 +25,8 @@ these 10 files and copies them into game/:
 Other versions of the game do not work: the game names the wrong file.
 
 1. Open Terminal in this folder and remove the quarantine:
-   xattr -d com.apple.quarantine dm2 "Dungeon Master II.command" libSDL3.0.dylib
-2. Double-click "Dungeon Master II.command".
+   xattr -d com.apple.quarantine dm2 libSDL3.0.dylib
+2. Double-click dm2. Terminal opens and runs the game.
 
 The saved games go to game/DATA in this folder.
 EOF

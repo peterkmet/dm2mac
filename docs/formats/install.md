@@ -25,12 +25,22 @@ A file fails if it is missing, has a different size, or has a different CRC-32.
 
 ## Startup
 
-1. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
-2. Otherwise, `main` creates `game/` if it is missing and opens the log.
-3. The port checks the 10 files in `game/`. If all pass, it does not read a source.
-4. Otherwise, it searches for a source and installs from it.
+1. If the working folder has no `game` entry (a file, a folder, or a link), the port changes the working folder to the
+   folder of the program (`SDL_GetBasePath`). Before the change, it makes `argv[0]` (when it has a folder part) and the
+   paths of `--data`, `--save`, `--saves`, and `--control` absolute against the start folder, so that they and a RESTART
+   keep their meaning. If `./game` exists, the folder of the program is unknown, or a path does not fit, the working
+   folder stays. The rule is the same on macOS and Windows and in all modes. `install_start_folder` and
+   `install_absolute_path` in `src/platform/install.c` hold the decision and the path join.
+2. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
+3. Otherwise, `main` creates `game/` if it is missing and opens the log.
+4. The port checks the 10 files in `game/`. If all pass, it does not read a source.
+5. Otherwise, it searches for a source and installs from it.
 
 The search runs in every mode, including the turn-based mode.
+
+Known limit: a `game` entry in the start folder keeps the start folder, even when it is not the game folder of the
+program. A double click on `dm2` in the Finder starts in the home folder, so a `game` entry in the home folder keeps the
+home folder.
 
 ## Sources
 

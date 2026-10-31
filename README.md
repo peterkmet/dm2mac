@@ -21,12 +21,13 @@ languages) do not work.
    `DM2Mac-windows-x64.zip`. Extract it.
 2. Copy your game (the folder, the ZIP archive, or the CD image) into the extracted `DM2Mac` folder.
 3. Start the game:
-   - **macOS:** Remove the quarantine attribute and launch `Dungeon Master II.command`:
+   - **macOS:** In Terminal, remove the quarantine attribute in the `DM2Mac` folder:
 
      ```sh
-     xattr -d com.apple.quarantine dm2 "Dungeon Master II.command" libSDL3.0.dylib
-     open "Dungeon Master II.command"
+     xattr -d com.apple.quarantine dm2 libSDL3.0.dylib
      ```
+
+     Then double-click `dm2` in the Finder. Terminal opens and runs the game.
 
    - **Windows:** Run `dm2.exe`. If SmartScreen warns about an unknown publisher, select "More info", then
      "Run anyway".

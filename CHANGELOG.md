@@ -47,6 +47,7 @@ All notable changes to this project are in this file. The format follows [Keep a
 
 ### Changed
 
+- macOS release: a double click on `dm2` in the Finder starts the game, and `Dungeon Master II.command` is gone. A start from a folder without a `game` entry changes to the folder of the program; a relative path option keeps its meaning.
 - Control replies have no size limit; the error `reply too long` is gone.
 - The test of the way out of the first room takes the real path: the solid key comes from the cabinet of the first room.
 - `docs/coding-standard.md` has rules 7 to 9 and a check list. `tests/standard/test_standard.py` checks the rules. `tests/standard/allowlist.txt` lists the open violations.
