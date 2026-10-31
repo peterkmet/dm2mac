@@ -6,6 +6,7 @@ with SDL3 from that code, and the result runs natively without DOSBox.
 
 <p align="center">
   <img src="docs/images/screenshot.png" alt="Dungeon Master II viewport with the party of four champions outside">
+  <img src="docs/images/screenshot-boss.png" alt="The party facing the main villain">
 </p>
 
 ## What you need
