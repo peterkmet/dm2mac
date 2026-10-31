@@ -971,7 +971,7 @@ bool champ_perform_action(int16_t champion_index, int index, bool repeated)
                    .c = c,
                    .item = c->slots[hand],
                    .action = action};
-    a.front = (Location){g_game.party_x + g_dir_dx[c->dir], g_game.party_y + g_dir_dy[c->dir]};
+    a.front = dungeon_step((Location){g_game.party_x, g_game.party_y}, c->dir);
     a.target = creature_group_at((Position){g_current_map.map, a.front.x, a.front.y});
     a.delay = (uint16_t)field_of(action, FIELD_DELAY);
     a.skill = field_of(action, FIELD_SKILL);
