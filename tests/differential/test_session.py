@@ -6,6 +6,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
@@ -27,8 +28,9 @@ THING_SIZES = (4, 6, 4, 8, 16, 4, 4, 4, 4, 8, 4, 0, 0, 0, 8, 4)
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists() or not DUNGEON.exists() or not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game files missing")
+    require(GRAPHICS)
+    require(DUNGEON)
+    require(ROOT / "game" / "SKULL.EXE")
     g = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == C.GDAT_OK
     lib.draw_init(g)

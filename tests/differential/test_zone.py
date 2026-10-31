@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
@@ -26,8 +27,7 @@ SCALES = [C.ZONE_SCALE_FULL, 5000, 1, 0, 2500, 7777, 12000, 65535]
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GRAPHICS)
     g = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g

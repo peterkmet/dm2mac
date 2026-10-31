@@ -3,6 +3,7 @@ import re
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test.markers import ROOT
 
 CODE_END = 0x70000  # data object starts here
@@ -37,8 +38,7 @@ def test_unique_and_sorted(rows):
 
 def test_functions_match_decomp(rows):
     decomp = ROOT / "reference/decomp/SKULL.c"
-    if not decomp.exists():
-        pytest.skip("reference/decomp/SKULL.c missing")
+    require(decomp)
     starts = {int(a, 16) for a in re.findall(r"^/\* ([0-9a-f]{8}) \*/$", decomp.read_text(), re.M)}
     functions = {int(r["address"], 16) for r in rows if int(r["address"], 16) < CODE_END}
     assert functions == starts

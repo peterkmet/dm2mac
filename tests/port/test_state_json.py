@@ -6,6 +6,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.structs import ActionArea, CurrentMap, Game, MainLoop, Party, Position, ViewSquare
@@ -130,8 +131,7 @@ def test_outdoor_fields_only_outside(lib, gdat, game, tmp_path):
     """weather and day_time are present only while outdoor is true (outside.DAT)."""
     state = part(lib, STATE)
     assert state["outdoor"] is False and "weather" not in state and "day_time" not in state
-    if not OUTSIDE.exists():
-        pytest.skip("tests/saves/outside.DAT missing")
+    require(OUTSIDE)
     load(lib, gdat, OUTSIDE.read_bytes(), tmp_path)
     state = part(lib, STATE)
     assert state["outdoor"] is True
