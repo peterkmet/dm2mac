@@ -160,7 +160,7 @@ def test_click_on_a_row_runs_it(lib, screen):
     lib.cheats_open()
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
-    x, y = rect[0] + rect[2] // 2, rect[1] + 22 + ROW_FOOD * 10 + 5  # the middle of the ENDLESS FOOD AND WATER row
+    x, y = rect[0] + rect[2] // 2, rect[1] + 16 + ROW_FOOD * 10 + 5  # the middle of the ENDLESS FOOD AND WATER row
     assert lib.cheats_process_click(x, y) == STAY and lib.game_has_cheat(C.CHEAT_FOOD)
     assert cursor(lib) == (C.CHEATS_PAGE, ROW_FOOD)
     assert lib.cheats_process_click(x, rect[1] + 2) == STAY and lib.game_has_cheat(C.CHEAT_FOOD), "the title"

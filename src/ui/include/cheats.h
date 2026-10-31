@@ -41,8 +41,8 @@ void cheats_open(void);
 /* Selects the row step rows below (step 1) or above (step -1) the selected row; the selection skips the OPTIONS
    subtitle and stops at the ends, CLOSE of the cheat page is the last. */
 void cheats_move_selection(int16_t step);
-/* Runs the selected row: a cheat row switches its cheat, SCREEN FILTER changes to the next filter, SPELLS, NEXT, and BACK change the page, a spell line casts
-   the spell for the caster of the spell area and closes the screen. */
+/* Runs the selected row: a cheat row switches its cheat, SCREEN FILTER changes to the next filter, SPELLS, NEXT, and
+   BACK change the page, a spell line casts the spell for the caster of the spell area and closes the screen. */
 enum CheatsResult cheats_run_selected_row(void);
 /* A left click at the screen position (x, y): a click on a row selects and runs it. */
 enum CheatsResult cheats_process_click(int16_t x, int16_t y);

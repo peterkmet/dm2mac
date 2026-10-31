@@ -60,7 +60,7 @@ def test_the_row_cycles_the_filter(lib, screen):
 def test_click_cycles_the_filter_and_the_subtitle_does_nothing(lib, screen):
     rect = (ctypes.c_int16 * 4)()
     assert lib.zone_get_rect(C.ZONE_VIEWPORT, rect)
-    x, y = rect[0] + rect[2] // 2, rect[1] + 22 + 5
+    x, y = rect[0] + rect[2] // 2, rect[1] + 16 + 5
     assert lib.cheats_process_click(x, y + ROW_FILTER * 10) == C.CHEATS_STAY and state(lib) == (ROW_FILTER, SCALE2X)
     assert lib.cheats_process_click(x, y + ROW_OPTIONS * 10) == C.CHEATS_STAY
     assert state(lib) == (ROW_FILTER, SCALE2X), "the subtitle"

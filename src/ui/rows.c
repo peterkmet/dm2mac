@@ -11,8 +11,8 @@
 #define TITLE_LEFT 2                           /* the first text column of the title line and the subtitles */
 #define LEFT       (TITLE_LEFT + FONT_ADVANCE) /* the first text column of a row */
 #define TITLE_TOP  6                           /* the top of the title */
-#define TOP        22                          /* the top of the first row */
 #define HEIGHT     10                          /* a row: the text line and the gap to the next row */
+#define TOP        (TITLE_TOP + HEIGHT)        /* the top of the first row: one row below the title */
 
 /* The left edge of the title item: right-aligned with the margin of the title. */
 static int16_t find_item_left(const int16_t *rect, const char *item)
