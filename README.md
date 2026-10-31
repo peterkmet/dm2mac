@@ -45,7 +45,8 @@ On startup you choose how to play:
   - WASD movement and Q/E turning;
   - an automap (Tab) of the squares you have seen;
   - quick save (F5) and quick load (F9);
-  - a cheat screen (C) with six cheats, all spells, and the screen filter (Scale2x, Scale3x).
+  - a cheat screen (C);
+  - a screen filter (Scale2x, Scale3x).
 
 In both modes the mouse and the arrow keys work as in the original game. The keys, the cheats, and the screen filter
 are in the [advanced mode section of the Player manual](docs/manual.md#advanced-mode).
