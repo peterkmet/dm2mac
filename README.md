@@ -58,10 +58,9 @@ time stops between requests; each request is one turn, and the reply gives the s
 game first (see [Development](docs/development.md)), then:
 
 ```sh
-mkdir -p /tmp/dm2-saves
-build/dm2 --mode turnbased --saves /tmp/dm2-saves --control /tmp/dm2.sock &
-DM2_CONTROL=/tmp/dm2.sock uv run dm2-play --brief get_state
-DM2_CONTROL=/tmp/dm2.sock uv run dm2-play act move_forward
+build/dm2 --mode turnbased &
+uv run dm2-play --brief get_state
+uv run dm2-play act move_forward
 ```
 
 [Control socket](docs/llm/control-socket.md) has the start, `dm2-play`, and the protocol;
