@@ -10,11 +10,14 @@ Install the game as the [README](../README.md#play) says, or [build it](developm
 (`build/dm2.exe` on Windows) from the folder that holds your copy of the game.
 
 The game uses the folder `game/` in the folder where you start it. If that folder has no `game` entry, the game uses
-the folder of the program instead, so a double click on `dm2` in the Finder works ([Startup](formats/install.md#startup)).
-A `game` file or folder in the folder where you start the game, for example in your home folder, keeps that folder.
+the folder of the program instead: the folder that holds `DM2Mac.app` on macOS, the folder that holds `dm2.exe` on
+Windows. A double click on `DM2Mac.app` in the Finder thus uses `game/` in the `DM2Mac` folder
+([Startup](formats/install.md#startup)). A `game` file or folder in the folder where you start the game keeps that
+folder.
 
 On first startup the game copies the 10 files it needs from your folder, ZIP archive, or CD image into `game/`
-([Game files and install](formats/install.md)). On Windows, the game's messages go to `game/dm2.log`.
+([Game files and install](formats/install.md)). In `DM2Mac.app` and on Windows, the game's messages go to
+`game/dm2.log`.
 
 ## Options
 

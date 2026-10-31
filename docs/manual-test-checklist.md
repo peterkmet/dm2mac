@@ -45,7 +45,7 @@ An item with "Covered by" has no box: automated tests check it against the origi
 - [ ] A5. Run `build/dm2 --data /tmp`. Expected: the message `cannot read /tmp/DATA/GRAPHICS.DAT` and exit code 1.
 - [ ] A6. Start with `--data` on a copy of `game/` without `MELODIC.BNK`. Expected: the log says the port plays without music; the game runs with sound effects.
 - [ ] A7. Close the window during the game. Expected: the program ends without a crash.
-- [ ] A8. Run `make dist`, extract `build/DM2Mac-macos-arm64.zip` into a new folder, copy your game into `DM2Mac`, remove the quarantine as `README.txt` says, and double-click `dm2` in the Finder. Expected: Terminal opens and the game starts; `game/` is in the `DM2Mac` folder, not in the home folder.
+- [ ] A8. Run `make dist`, extract `build/DM2Mac-macos-arm64.zip` into a new folder, copy your game into `DM2Mac`, remove the quarantine as `README.txt` says, and double-click `DM2Mac.app` in the Finder. Expected: the game starts and no Terminal opens; `game/` with the game files and `dm2.log` is in the `DM2Mac` folder; nothing new is in the home folder.
 
 ## B. Image
 

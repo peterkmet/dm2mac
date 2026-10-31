@@ -26,21 +26,31 @@ A file fails if it is missing, has a different size, or has a different CRC-32.
 ## Startup
 
 1. If the working folder has no `game` entry (a file, a folder, or a link), the port changes the working folder to the
-   folder of the program (`SDL_GetBasePath`). Before the change, it makes `argv[0]` (when it has a folder part) and the
-   paths of `--data`, `--save`, `--saves`, and `--control` absolute against the start folder, so that they and a RESTART
-   keep their meaning. If `./game` exists, the folder of the program is unknown, or a path does not fit, the working
-   folder stays. The rule is the same on macOS and Windows and in all modes. `install_start_folder` and
-   `install_absolute_path` in `src/platform/install.c` hold the decision and the path join.
+   folder of the program. That is the folder that `SDL_GetBasePath` gives, or the folder that holds `<name>.app` when
+   `SDL_GetBasePath` gives `<name>.app/Contents/Resources/` or `<name>.app/Contents/MacOS/` of a macOS bundle. Before
+   the change, it makes `argv[0]` (when it has a folder part) and the paths of `--data`, `--save`, `--saves`, and
+   `--control` absolute against the start folder, so that they and a RESTART keep their meaning. If `./game` exists, the folder of the program is unknown, or a path does not fit, the working
+   folder stays. The rule is the same on macOS and Windows and in all modes. `install_program_folder`,
+   `install_start_folder`, and `install_absolute_path` in `src/platform/install.c` hold the bundle rule, the decision,
+   and the path join.
 2. With `--data DIR`, the port uses `DIR` as the data folder. It does not check, search, or install.
-3. Otherwise, `main` creates `game/` if it is missing and opens the log.
-4. The port checks the 10 files in `game/`. If all pass, it does not read a source.
-5. Otherwise, it searches for a source and installs from it.
+3. Otherwise, `main` creates `game/` if it is missing.
+4. `main` opens the log: `dm2.log` in the data folder on Windows and in a macOS bundle. Otherwise, the log is the error
+   output.
+5. Without `--data`, the port checks the 10 files in `game/`. If all pass, it does not read a source.
+6. Otherwise, it searches for a source and installs from it.
 
 The search runs in every mode, including the turn-based mode.
 
-Known limit: a `game` entry in the start folder keeps the start folder, even when it is not the game folder of the
-program. A double click on `dm2` in the Finder starts in the home folder, so a `game` entry in the home folder keeps the
-home folder.
+Known limits:
+
+- A `game` entry in the start folder keeps the start folder, even when it is not the game folder of the program. A
+  double click on `DM2Mac.app` in the Finder starts in `/`, so a `/game` entry keeps `/`.
+- macOS starts a bundle with the quarantine attribute from a random read-only copy (App Translocation). The folder of
+  that copy has no game source and no write access, so the install fails (unverified: no test with a quarantined
+  bundle). `xattr -dr com.apple.quarantine DM2Mac.app` prevents this.
+- The messages before the log opens (a path that does not fit, a failed folder change) go to the error output. A
+  bundle started from the Finder has no visible error output.
 
 ## Sources
 
@@ -76,7 +86,8 @@ The message has at most 4095 characters; a longer message ends with `...`. If th
 
 ## Log
 
-Progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in the data folder (`game/` by default) on Windows, and the error output on macOS.
+Progress goes to the log only: the source path, the failed sources with their first bad file, and `installed N game files`. The log is `os_log`: `dm2.log` in the data folder (`game/` by default) on Windows and in a macOS bundle, otherwise the
+error output.
 
 ## Invariants
 
