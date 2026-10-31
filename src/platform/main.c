@@ -11,6 +11,7 @@
 #include <process.h>
 #include <sys/stat.h>
 #else
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 #include <SDL3/SDL.h>
@@ -61,7 +62,8 @@
 /* The environment variables and the files of the program. */
 #define FILTER_ENV  "DM2_FILTER"    /* the filter when --filter is not given */
 #define RESTART_ENV "DM2_RESTARTED" /* set for the program that a RESTART starts: the launcher plays no start movies */
-#define LOG_FILE    "dm2.log"       /* the messages of the Windows build, in the game folder */
+#define LOG_FILE    "dm2.log"       /* the messages of the Windows build and of a macOS bundle, in the game folder */
+#define LOG_FILE_MODE    0644       /* the permissions of dm2.log of a macOS bundle */
 #define FILTER_LIST_SIZE 64         /* the filter names of the usage message */
 
 /* The arguments that can name a path: argv[0] and the values of --data, --save, --control, and --saves. */
@@ -183,6 +185,7 @@ static struct {
 #ifdef _WIN32
     FILE *log_file; /* dm2.log; NULL when it cannot open */
 #endif
+    bool bundle; /* the program is in a macOS bundle, which has no terminal: the messages go to dm2.log */
     uint8_t saved_screen[SCREEN_H][SCREEN_W]; /* the screen without the cursor while the cursor is shown */
     Gdat *gdat;                               /* GRAPHICS.DAT, loaded for the whole run */
     uint32_t icon[ICON_MAX_PIXELS];           /* the ARGB pixels of the window icon */
@@ -515,12 +518,17 @@ static bool default_control_path(const char **control)
     return true;
 }
 
-/* Changes to the folder of the program when the working folder has no game entry. First it makes the path
-   arguments absolute, so that they and the arguments of a RESTART keep their meaning; it stays with a message when
-   a path does not fit. */
+/* Notes a macOS bundle. Changes to the folder of the program (the folder that holds a bundle) when the working
+   folder has no game entry. First it makes the path arguments absolute, so that they and the arguments of a RESTART
+   keep their meaning; it stays with a message when a path does not fit. */
 static void enter_game_folder(int argc, char **argv)
 {
-    const char *folder = install_start_folder(".", SDL_GetBasePath());
+    const char *base = SDL_GetBasePath();
+    char program_folder[OS_DIR_SIZE];
+    if (!base || !install_program_folder(base, program_folder, sizeof program_folder))
+        return;
+    program.bundle = strcmp(program_folder, base) != 0;
+    const char *folder = install_start_folder(".", program_folder);
     char start[OS_DIR_SIZE];
 #ifdef _WIN32
     if (!folder || !_getcwd(start, sizeof start))
@@ -616,6 +624,21 @@ static void close_log(void)
     g_os_fatal_hook = NULL;
     fclose(program.log_file);
     program.log_file = NULL;
+}
+#else
+/* Sends the messages of a program in a macOS bundle to dm2.log in the game folder; the program that a RESTART starts
+   opens the file again. */
+static void open_log(const char *data)
+{
+    if (!program.bundle)
+        return;
+    char path[OS_PATH_SIZE];
+    snprintf(path, sizeof path, "%s/%s", data, LOG_FILE);
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, LOG_FILE_MODE);
+    if (fd < 0)
+        return; /* the messages stay on the error output */
+    dup2(fd, STDERR_FILENO);
+    close(fd);
 }
 #endif
 
@@ -756,9 +779,7 @@ int main(int argc, char **argv)
         options.data = INSTALL_GAME_FOLDER;
         install_make_folder(INSTALL_GAME_FOLDER);
     }
-#ifdef _WIN32
-    open_log(options.data); /* before the first message: the Windows build has no console */
-#endif
+    open_log(options.data); /* before the first message: the Windows build and a macOS bundle have no console */
     if (!options_are_valid(missing, unknown))
         return EXIT_USAGE;
     int mode_status = select_runnable_mode(&options);

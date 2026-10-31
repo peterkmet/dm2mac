@@ -27,6 +27,10 @@ bool install_make_folder(const char *path);
 /* The folder to change to at the start: base when folder has no game entry (a file, a folder, or a link) and base is
    not NULL; NULL to stay in folder. */
 const char *install_start_folder(const char *folder, const char *base);
+/* Writes the folder of the program into folder: the folder that holds <name>.app when base (SDL_GetBasePath) is
+   <name>.app/Contents/Resources/ or <name>.app/Contents/MacOS/ of a macOS bundle, else base. False when it does not
+   fit. */
+bool install_program_folder(const char *base, char *folder, size_t size);
 /* Writes path into full: as it is when it is absolute, else joined to the folder start. False when it does not fit. */
 bool install_absolute_path(const char *start, const char *path, char *full, size_t size);
 

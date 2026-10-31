@@ -36,6 +36,30 @@ def test_no_program_folder_keeps_the_start_folder(lib, tmp_path):
     assert start_folder(lib, tmp_path, None) is None
 
 
+@pytest.mark.parametrize("base, expected", [
+    ("/home/me/DM2Mac/DM2Mac.app/Contents/Resources/", "/home/me/DM2Mac/"),
+    ("/home/me/DM2Mac/DM2Mac.app/Contents/MacOS/", "/home/me/DM2Mac/"),
+    ("/home/me/DM2Mac/DM2Mac.app/Contents/MacOS", "/home/me/DM2Mac/"),
+    ("/DM2Mac.app/Contents/MacOS/", "/"),
+    ("/home/me/DM2Mac/", "/home/me/DM2Mac/"),
+    ("/home/me/Contents/MacOS/", "/home/me/Contents/MacOS/"),
+    ("/home/me/.app/Contents/MacOS/", "/home/me/.app/Contents/MacOS/"),
+    ("/home/me/DM2Mac.app/Contents/", "/home/me/DM2Mac.app/Contents/"),
+], ids=["bundle resources", "bundle executable", "bundle without the last slash", "bundle in the root", "plain folder", "no .app", "no app name",
+        "not MacOS"])
+def test_a_bundle_gives_the_folder_that_holds_it(lib, base, expected):
+    folder = ctypes.create_string_buffer(C.OS_DIR_SIZE)
+    assert lib.install_program_folder(base.encode(), folder, C.OS_DIR_SIZE)
+    assert folder.value.decode() == expected
+
+
+def test_a_program_folder_that_does_not_fit_fails(lib):
+    base = b"/home/me/DM2Mac/DM2Mac.app/Contents/MacOS/"
+    size = len("/home/me/DM2Mac/")  # one byte short for the end of the string
+    folder = ctypes.create_string_buffer(size)
+    assert not lib.install_program_folder(base, folder, size)
+
+
 @pytest.mark.parametrize("path, expected", [
     ("game", f"{START}/game"),
     ("saves/SKSAVE0.DAT", f"{START}/saves/SKSAVE0.DAT"),
