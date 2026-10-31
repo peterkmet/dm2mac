@@ -26,8 +26,6 @@ def control(lib, gdat, session):
         assert lib.gdat_palette_color(gdat, c, ctypes.byref(palette, RGB * c)) == 0
     folder = tempfile.mkdtemp(prefix="dm2c", dir="/tmp")  # sun_path holds about 100 bytes
     path = os.path.join(folder, "sub", "control.sock")
-    lib.transport_open.argtypes = [ctypes.c_char_p]
-    lib.transport_open.restype = ctypes.c_bool
     assert lib.transport_open(path.encode())
     yield (path, *session)
     lib.transport_close()

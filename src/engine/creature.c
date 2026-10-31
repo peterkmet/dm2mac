@@ -1331,8 +1331,7 @@ SummonedGroup creature_summon_group(CreatureSummon summon)
                 break;
         }
         if (tries) {
-            at = (Location){(int16_t)(summon.at.x + g_dir_dx[search_dir]),
-                            (int16_t)(summon.at.y + g_dir_dy[search_dir])};
+            at = dungeon_step((Location){summon.at.x, summon.at.y}, search_dir);
             search_dir = (int8_t)dir_turn(search_dir, turn);
         }
         if (--tries == -1)
@@ -1406,14 +1405,14 @@ bool creature_can_be_pushed(Location at, int16_t dir, bool target_must_be_free, 
             return false;
         int16_t saved = g_current_map.map;
         dungeon_set_current_map(end.map);
-        Location beyond = {(int16_t)(end.x + g_dir_dx[end.target_side]), (int16_t)(end.y + g_dir_dy[end.target_side])};
+        Location beyond = dungeon_step((Location){end.x, end.y}, end.target_side);
         bool blocked = dungeon_square_blocks_movement(dungeon_square_at((Location){end.x, end.y})) ||
                        (target_must_be_free && creature_get_group_at(beyond) != THING_NONE);
         dungeon_set_current_map(saved);
         if (blocked)
             return false;
     }
-    Location next = {(int16_t)(at.x + g_dir_dx[dir]), (int16_t)(at.y + g_dir_dy[dir])};
+    Location next = dungeon_step(at, dir);
     uint8_t square = dungeon_square_at(next);
     if (dungeon_square_blocks_movement(square) || square_type(square) == SQUARE_STAIRS)
         return false;
@@ -1435,7 +1434,7 @@ void creature_push_group(Location at, int16_t dir, int16_t strength)
         if (strength < PUSH_IMMOVABLE && strength < resistance)
             stop = rand_below((uint16_t)(((resistance - strength) >> PUSH_STOP_SHIFT) + 1)) != 0;
         if (!stop) {
-            Location next = {(int16_t)(at.x + g_dir_dx[dir]), (int16_t)(at.y + g_dir_dy[dir])};
+            Location next = dungeon_step(at, dir);
             uint16_t flags = creature_group_info(g)->flags;
             if (g_current_map.map == g_current_map.square_map && next.x == g_current_map.square_x &&
                 next.y == g_current_map.square_y && !(flags & CREATURE_NOT_SOLID)) {
@@ -1489,8 +1488,7 @@ void creature_push_creature(int arrow)
     if (arrow < 0 || arrow >= PUSH_ARROW_COUNT)
         return;
     int16_t dir = (int16_t)dir_turn(g_game.party_dir, dirs[arrow]);
-    Location front = {(int16_t)(g_game.party_x + g_dir_dx[g_game.party_dir]),
-                      (int16_t)(g_game.party_y + g_dir_dy[g_game.party_dir])};
+    Location front = dungeon_step((Location){g_game.party_x, g_game.party_y}, g_game.party_dir);
     uint16_t g;
     if (!creature_can_be_pushed(front, dir, true, &g))
         return;

@@ -24,7 +24,6 @@ DOOR_STATE, DOOR_OPEN, DOOR_CLOSED = C.SQUARE_DOOR_STATE, C.DOOR_STATE_OPEN, C.D
 
 @pytest.fixture
 def loop(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     return Loop(lib, gdat, start, tmp_path)
 
 
@@ -75,7 +74,6 @@ def climb_ladder(loop):
 def test_coin_from_the_table(loop, lib):
     # The party takes the gold coin from the table into the leader hand; the keyhole beside the door does not take
     # it; the party puts it back onto the table. Both run the same keys and clicks tick by tick.
-    lib.item_get_index.restype = ctypes.c_uint16
     climb_ladder(loop)
     run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD), "table")
     run(loop, [("c", 77, 101), ("t", 16)], "take")
@@ -106,7 +104,6 @@ def test_door_out_of_the_first_room(loop, lib):
     # the crest and takes the items of the cabinet until the solid key. The party puts the key into the keyhole
     # (4, 5) cell 3 and presses the door button (4, 4): the door (3, 4) opens. Both run the same keys and clicks tick
     # by tick; the test sets the push arrow under the mouse in both (the harness stubs the original arrow update).
-    lib.item_get_index.restype = ctypes.c_uint16
     climb_ladder(loop)
     run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD), "table")
     assert (loop.game.party_x, loop.game.party_y) == (2, 6)
@@ -158,8 +155,6 @@ def write_word(loop, thing, offset, value):
 def test_money_box_flags_in_the_view(loop, lib):
     # A money box flag clears when the party takes the box from the floor, and when the party drops an object onto
     # the possession cell of the table where another money box lies.
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
     floor_box, table_box = MONEY_BOXES
     lib.dungeon_unlink_thing_from_square(floor_box, 0, 3, 2)
     loop.emu.call(DUN_UNLINK_THING_FROM_SQUARE, floor_box, 0, 3, 2)
@@ -194,8 +189,6 @@ def test_floor_sensor_sees_the_leader_hand(loop, lib):
     # Two floor sensors under the party that test for a gold coin in the party possessions (new sensor records in
     # both), with the door of the room as target: one toggles the door when the leader takes the coin from the
     # table, the inverted one toggles it when the leader puts the coin back.
-    lib.dungeon_unused_thing.restype = ctypes.c_uint16
-    lib.item_get_index.restype = ctypes.c_uint16
     climb_ladder(loop)
     run(loop, walk(KEY_TURN_RIGHT, KEY_TURN_RIGHT, KEY_FORWARD, KEY_FORWARD, KEY_TURN_LEFT, KEY_FORWARD), "table")
     door_x, door_y = 3, 4
@@ -232,7 +225,6 @@ CHAMPION_WATER = 0x46
 
 def find_click(lib, mode, command):
     """A screen point whose left click gives command in mode, with the C port state."""
-    lib.input_click_command.restype = ctypes.c_uint16
     rect = (ctypes.c_int16 * 4)()
     return next((x, y) for y in range(0, C.SCREEN_H, 2) for x in range(0, C.SCREEN_W, 2)
                 if lib.input_click_command(mode, x, y, LEFT, rect) == command)
@@ -334,9 +326,6 @@ def test_sensors_create_items(scenario, lib):
     # Every item creation sensor (kind 0x3c) of the dungeon gets a set and a clear square event, plain and inverted:
     # the new item (its record, gdat index, charges, the do-not-discard bit) goes to the target cell, or to a random
     # cell of an open target square.
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
     sensors = []
     for map_ in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(map_)):

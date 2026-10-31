@@ -10,18 +10,8 @@ UPSAMPLE = 4
 
 
 @mirror("sound_request.h")
-class SoundCue(ctypes.Structure):
-    _fields_ = [(name, ctypes.c_int) for name in ("category", "index", "entry", "priority", "volume")]
-
-
-@mirror("sound_request.h")
 class SoundOffset(ctypes.Structure):
     _fields_ = [("lateral", ctypes.c_int), ("forward", ctypes.c_int)]
-
-
-@mirror("sound_request.h")
-class SoundLevel(ctypes.Structure):
-    _fields_ = [("loudness", ctypes.c_int), ("pan", ctypes.c_int)]
 
 
 @mirror("music.h")

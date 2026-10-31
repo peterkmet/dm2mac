@@ -21,7 +21,6 @@ from dm2test.control import (
 from dm2test.structs import Game, UiState
 from dm2test.markers import ROOT
 from dm2test.interface import things_of
-from dm2test.view import ScreenPoint
 
 
 KEY_SHIFTED, KEY_ALT = C.KEY_SHIFTED, C.KEY_ALT
@@ -63,8 +62,6 @@ def read_png(path):
 
 
 def screen_rgb(lib):
-    lib.video_argb.restype = ctypes.c_uint32
-    lib.video_argb.argtypes = [ctypes.c_uint8]
     colors = [lib.video_argb(c) for c in range(PALETTE_COLORS)]
     fb = (ctypes.c_uint8 * (SCREEN_W * SCREEN_H)).in_dll(lib, "g_video_fb")
     return [[((a := colors[fb[y * SCREEN_W + x]]) >> 16 & 255, a >> 8 & 255, a & 255) for x in range(SCREEN_W)]
@@ -104,7 +101,6 @@ def test_state_tells_the_party_and_the_champions(control, lib):
 
 def test_keys_by_name_and_code(control, lib):
     path, *_ = control
-    lib.input_read_key.restype = ctypes.c_uint16
     with pumped(lib, ticks=False):
         for key in ("alt+a", "A", "shift+right", "enter", SCAN_ENTER, '"'):
             assert request({"cmd": "key", "key": key}, path) == {"ok": True}
@@ -115,7 +111,6 @@ def test_keys_by_name_and_code(control, lib):
 def test_key_click_and_command_move_the_party(control, lib):
     path, game, _ = control
     direction, x, y = game.party_dir, game.party_x, game.party_y
-    lib.input_click_command.restype = ctypes.c_uint16
     turn_right = lib.input_click_command(INPUT_MODE_MOVE, *arrow_center(lib, ZONE_TURN_RIGHT), LEFT, (ctypes.c_int16 * 4)())
     with pumped(lib):
         assert request({"cmd": "key", "key": "up"}, path)["ok"]
@@ -139,8 +134,6 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     # with an empty leader hand, else the leader hand object.
     path, *_ = control
     ui = UiState.in_dll(lib, "g_ui")
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
-    lib.input_click_command.restype = ctypes.c_uint16
 
     def hold_and_release(x, y, mode):
         assert request({"cmd": "press", "x": x, "y": y}, path)["ok"]
@@ -156,7 +149,6 @@ def test_eye_and_mouth_hold_while_the_left_button_is_down(control, lib, tmp_path
     with pumped(lib):
         assert request({"cmd": "key", "key": "1"}, path)["ok"]
         assert request({"cmd": "wait", "ticks": 20}, path)["ok"]
-        lib.zone_get_position.restype = ScreenPoint
         origin = lib.zone_get_position(ZONE_VIEWPORT)
         x, y = arrow_center(lib, ZONE_EYE_CLICK)
         x, y = x + origin.x, y + origin.y
@@ -216,8 +208,6 @@ def test_open_keeps_a_file_that_is_not_a_socket(lib):
     path = os.path.join(folder, "start.DAT")
     with open(path, "wb") as f:
         f.write(b"save")
-    lib.transport_open.argtypes = [ctypes.c_char_p]
-    lib.transport_open.restype = ctypes.c_bool
     assert not lib.transport_open(path.encode())
     assert open(path, "rb").read() == b"save"
     shutil.rmtree(folder)

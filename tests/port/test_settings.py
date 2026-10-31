@@ -15,11 +15,10 @@ class Settings(ctypes.Structure):
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.settings_parse.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
-    lib.settings_parse.restype = Settings
-    lib.settings_load.argtypes = [ctypes.c_char_p]
-    lib.settings_load.restype = Settings
-    lib.settings_save.argtypes = [ctypes.c_char_p, ctypes.POINTER(Settings)]
+    lib.settings_parse.argtypes = [ctypes.c_char_p, ctypes.c_size_t]  # Settings is a mirror of this module
+    lib.settings_parse.restype = Settings  # Settings is a mirror of this module
+    lib.settings_load.argtypes = [ctypes.c_char_p]  # Settings is a mirror of this module
+    lib.settings_load.restype = Settings  # Settings is a mirror of this module
 
 
 def parse(lib, text):

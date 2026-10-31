@@ -6,6 +6,12 @@ import pytest
 from dm2test.gdat import OK
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.icon_build.restype = IconSize  # IconSize is a mirror of this module
+    lib.icon_build.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int]  # IconSize is a mirror of this module
+
+
 ICON_W, ICON_H = 77, 81
 ITEM_KEY = (0x0F, 0x26, 1, 9)
 TRANSPARENT = 47
@@ -19,8 +25,6 @@ class IconSize(ctypes.Structure):
 
 @pytest.fixture(scope="module")
 def icon(lib, gd):
-    lib.icon_build.restype = IconSize
-    lib.icon_build.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_int]
     argb = (ctypes.c_uint32 * (ICON_W * ICON_H))()
     size = lib.icon_build(gd, argb, len(argb))
     return size.width, size.height, argb

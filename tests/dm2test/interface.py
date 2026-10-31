@@ -15,7 +15,7 @@ from dm2test.gamefiles import require
 from dm2test.markers import GAME
 from dm2test.save import GRAPHICS, START
 from dm2test.scenario import champion_records
-from dm2test.structs import ActionArea, Game, GdatKey, ImageInfo
+from dm2test.structs import ActionArea, Game, GdatKey
 from dm2test.view import OriginalView, u8_p
 
 
@@ -106,18 +106,6 @@ def ui_gdat(lib):
     require(START)
     require(GAME / "SKULL.EXE")
     g = ctypes.c_void_p()
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_text.argtypes = [ctypes.c_void_p, GdatKey, ctypes.c_char_p, ctypes.c_size_t]
-    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    lib.gdat_item.restype = u8_p
-    lib.gdat_image_colormap.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.gdat_image_colormap.restype = u8_p
-    lib.gdat_decode_image.argtypes = [ctypes.c_void_p, ctypes.c_int, u8_p, ctypes.c_size_t]
-    lib.gdat_image_info.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ImageInfo)]
-    lib.gdat_image_offset.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 3
-    lib.gdat_exists.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_exists.restype = ctypes.c_bool
-    lib.gdat_text_int_field.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
     lib.gdat_free(g)
@@ -193,7 +181,6 @@ def set_leader_hand(lib, original, thing):
 
 def things_of(lib, kind, limit, test=None):
     """Up to limit things of thing type kind (that pass test) in the loaded dungeon."""
-    lib.dungeon_thing_valid.argtypes = [ctypes.c_uint16]
     out = []
     for index in range(lib.dungeon_thing_count(kind)):
         thing = kind << 10 | index

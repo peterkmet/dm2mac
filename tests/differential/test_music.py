@@ -14,6 +14,12 @@ from dm2test.audio import Music
 from dm2test.markers import ROOT
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.fm_set_write_hook.argtypes = [ctypes.c_void_p]  # function pointer parameter
+    lib.hmp_start.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p]  # function pointer parameter
+
+
 GAME = ROOT / "game"
 SONG_COUNT = 29
 SONG_TEST_HMP = 10  # game/TEST.HMP is song 10
@@ -47,19 +53,6 @@ WRITE_HOOK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int)
 def gd(lib):
     if not (GAME / "DATA" / "GRAPHICS.DAT").exists():
         pytest.skip("game/DATA/GRAPHICS.DAT missing")
-    lib.gdat_load.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
-    lib.gdat_free.argtypes = [ctypes.c_void_p]
-    lib.gdat_find.argtypes = [ctypes.c_void_p] + [ctypes.c_int] * 4
-    lib.gdat_item.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_uint32)]
-    lib.gdat_item.restype = u8_p
-    lib.fm_set_bank.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_size_t]
-    lib.fm_set_bank.restype = ctypes.c_bool
-    lib.fm_send.argtypes = [ctypes.c_char_p]
-    lib.fm_set_write_hook.argtypes = [ctypes.c_void_p]
-    lib.hmp_start.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_void_p]
-    lib.music_init.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-    lib.music_init.restype = ctypes.c_bool
-    lib.music_render.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     handle = ctypes.c_void_p()
     assert lib.gdat_load(str(GAME / "DATA" / "GRAPHICS.DAT").encode(), ctypes.byref(handle)) == C.GDAT_OK
     yield handle

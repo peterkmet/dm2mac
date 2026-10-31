@@ -9,8 +9,7 @@ from dm2test import constants as C
 from dm2test.input import run_ticks
 from dm2test.interface import GAME_LEADER_HAND, things_of
 from dm2test.modes import ADVANCED, VANILLA, set_mode
-from dm2test.structs import CurrentMap, Location, Party, Timeline, TimelineEvent
-from dm2test.scenario import Position
+from dm2test.structs import CurrentMap, Location, Party, Position, Timeline, TimelineEvent
 
 DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))
 CHEATS = (C.CHEAT_LIGHT, C.CHEAT_IMMORTAL, C.CHEAT_FOOD, C.CHEAT_KILL, C.CHEAT_WALLS, C.CHEAT_MAP)
@@ -21,21 +20,8 @@ UNPUSHABLE = 0xFE  # push resistance 0xfe and 0xff: the party cannot push the cr
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.game_get_cheats.restype = ctypes.c_uint8
-    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
-    lib.game_toggle_cheat.argtypes = [ctypes.c_uint8]
-    lib.game_has_cheat.argtypes = [ctypes.c_uint8]
-    lib.game_has_cheat.restype = ctypes.c_bool
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    lib.dungeon_square.restype = ctypes.c_uint8
-    lib.creature_get_group_at.restype = ctypes.c_uint16
-    lib.creature_get_group_at.argtypes = [Location]
-    lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.creature_info.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    lib.creature_alert.argtypes = [ctypes.c_uint16, Location, ctypes.c_uint, ctypes.c_int, ctypes.c_int]
-    lib.creature_process_event.argtypes = [Location, ctypes.c_int]
-    lib.move_party.restype = ctypes.c_bool
+    lib.creature_info.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
 
 
 @pytest.fixture
@@ -80,7 +66,6 @@ def enter(lib, game, m, x, y, d):
     party = Party.in_dll(lib, "g_party")
     game.party_dir = d
     party.move_steps, CurrentMap.in_dll(lib, "g_current_map").map = 0, -1  # the party square follows on the map change
-    lib.game_enter_map.argtypes = [Position, ctypes.c_bool]
     lib.game_enter_map(Position(m, x, y), False)
 
 
@@ -256,8 +241,6 @@ def test_a_closing_door_hurts_the_party_only_without_the_cheat(lib, game, cheat)
     place = find_place(lib, game, lambda m, x, y: is_closed_door(lib, m, x, y))
     m, x, y = place[0], *walk(lib, game, place, True)
     lib.game_set_cheats(C.CHEAT_WALLS if cheat else 0)
-    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     square = lib.dungeon_square_byte(m, x, y)
     square[0] = square[0] & ~C.SQUARE_DOOR_STATE | 1  # nearly open
     door = lib.dungeon_square_first_thing(m, x, y)
@@ -284,8 +267,6 @@ def test_no_drop_inside_a_wall(lib, game, wanted):
     else:
         enter(lib, game, *find_place(lib, game, lambda m, x, y: is_wall(lib, m, x, y)))
     lib.game_set_cheats(C.CHEAT_WALLS)
-    lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
-    lib.champ_put_in_leader_hand.argtypes = [ctypes.c_uint16]
     lib.champ_take_from_leader_hand()
     thing = things_of(lib, 9, 1, lib.item_is_moneybox)[0]
     lib.champ_put_in_leader_hand(thing)

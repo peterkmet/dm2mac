@@ -901,8 +901,7 @@ AiCommand ai_try_door_action(AiTest test, Location from, Location to, int16_t di
     if (!a.flags)
         return fail_command(execute);
     if (a.to.x == -1) {
-        a.to.x = (int16_t)(from.x + g_dir_dx[step_dir(a.d)]);
-        a.to.y = (int16_t)(from.y + g_dir_dy[step_dir(a.d)]);
+        a.to = dungeon_step(from, step_dir(a.d));
     } else if (a.d == -1) {
         a.d = dungeon_direction_to(from.x, from.y, a.to.x, a.to.y);
     } else if (a.to.x == from.x && from.y == a.to.y) {

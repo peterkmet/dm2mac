@@ -14,7 +14,7 @@
 #define SETTINGS_FILE     "SETTINGS.TXT"
 #define SETTINGS_MAX_SIZE 1024 /* a larger file gives the defaults */
 
-/* The upscale filters, the same numbers as the upscale factors of the window. */
+/* The upscale filters; the value of each filter is its upscale factor of the window. */
 enum SettingsFilter { SETTINGS_FILTER_NONE = 1, SETTINGS_FILTER_SCALE2X = 2, SETTINGS_FILTER_SCALE3X = 3 };
 
 /* The values of the settings file. */
@@ -23,6 +23,10 @@ typedef struct {
 } Settings;
 
 /* Queries */
+/* The lower-case name of filter in SETTINGS.TXT, NULL for a value that is not a filter. */
+const char *settings_filter_name(enum SettingsFilter filter);
+/* The filter of a lower-case name, or 0 for an unknown name; 0 is not a filter. */
+int settings_filter_parse(const char *name);
 /* The values of the settings text: a missing line or a bad value gives the default (no filter), an unknown key and a
    line of 64 characters or more are skipped, a text above SETTINGS_MAX_SIZE gives all defaults;
    exported for the tests. */

@@ -10,6 +10,11 @@ from dm2tools.le import load_image
 from dm2test.structs import CurrentMap
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
+
 DUNGEON = ROOT / "game" / "DATA" / "DUNGEON.DAT"
 
 DUNGEON_LOAD = 0x36909
@@ -82,13 +87,6 @@ def original():
 
 @pytest.fixture(scope="module")
 def dungeon(lib):
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
-    lib.dungeon_text_data.restype = ctypes.c_void_p
-    lib.dungeon_square_things.restype = ctypes.c_void_p
-    lib.dungeon_level_maps.restype = ctypes.c_void_p
-    lib.dungeon_party_start.restype = ctypes.c_uint16
-    lib.dungeon_square.restype = ctypes.c_uint8
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
     if not DUNGEON.exists():
         pytest.skip("game/DATA/DUNGEON.DAT missing")
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
@@ -158,7 +156,6 @@ def test_thing_count_cap(lib, tmp_path):
     path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 1000] + [0] * 11))
     assert lib.dungeon_load(str(path).encode()) == 1
     assert lib.dungeon_thing_count(4) == 0x400
-    lib.dungeon_thing_record.restype = ctypes.c_void_p
     assert ctypes.string_at(lib.dungeon_thing_record(C.THING_GROUP << C.THING_TYPE_SHIFT | C.THING_INDEX_MASK), 2) == b"\xff\xff"
     path.write_bytes(synthetic_dungeon([0, 0, 0, 0, 0x401] + [0] * 11))
     assert lib.dungeon_load(str(path).encode()) == 0
@@ -176,12 +173,6 @@ def test_level_table_of_a_dungeon_without_maps(lib, tmp_path):
 
 def things_on_squares(lib):
     """(map, x, y, thing) of each thing on a square of the loaded dungeon, in the order of the link pass."""
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
-    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.gdat_select.argtypes = [ctypes.c_void_p]
     out = []
     for m in range(lib.dungeon_map_count()):
         for x in range(lib.dungeon_map_width(m)):

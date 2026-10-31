@@ -10,16 +10,16 @@ from dm2test.interface import VIEW_H, VIEW_W, c_view
 from dm2test.modes import (ADVANCED, INPUT_MODE_INVENTORY, INPUT_MODE_MOVE, KEY_F5, KEY_F9, KEY_PAUSE, SCAN_W, SCREEN_W,
                            VANILLA, key_command, press, set_mode)
 from dm2test.input import run_ticks
-from dm2test.scenario import Position
-from dm2test.structs import Bitmap, Game, Location
+from dm2test.structs import Bitmap, Game, Location, Position
 
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
-    lib.seen_is_seen.argtypes = [Position]
-    lib.view_draw_dungeon.argtypes = [Location, ctypes.c_int16]
-    lib.seen_is_seen.restype = ctypes.c_bool
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)  # the test indexes the result
+    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)  # the test reads .contents
+    lib.draw_gdat_image_palette.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
 
 NORTH, EAST, SOUTH, WEST = C.DIR_NORTH, C.DIR_EAST, C.DIR_SOUTH, C.DIR_WEST
 STEP = {NORTH: (0, -1), EAST: (1, 0), SOUTH: (0, 1), WEST: (-1, 0)}
@@ -38,9 +38,6 @@ SAVE_OK = C.SAVE_OK
 @pytest.fixture
 def automap(lib, advanced):
     """The advanced game with the bright light and the cheats off."""
-    lib.dungeon_square.restype = ctypes.c_uint8
-    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
-    lib.game_get_cheats.restype = ctypes.c_uint8
     flag(lib, "g_view_light_level").value = 0
     lib.game_set_cheats(0)
     game, _ = advanced
@@ -116,7 +113,6 @@ def test_vanilla_marks_no_square(lib, session):
     # Only the advanced mode marks the view of the party (game.c): a vanilla walk and turn mark nothing.
     game, _ = session
     set_mode(lib, VANILLA)
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     lib.seen_reset()
     x, y = game.party_x, game.party_y
     run_ticks(lib, 20)
@@ -345,7 +341,6 @@ def test_automap_opens_only_in_the_dungeon_view_of_the_advanced_mode(lib, automa
     press(lib, KEY_M)
     press(lib, KEY_PAUSE)
     assert not flag(lib, "g_advanced_screen").value
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     for key in (KEY_TAB, KEY_M):
         for close in (KEY_TAB, KEY_M, KEY_ESC):
             press(lib, key)
@@ -365,7 +360,6 @@ def viewport_pixels(lib):
 def test_close_key_drops_the_click_of_the_same_tick(lib, automap):
     # A click on the viewport and Esc in one tick: the automap closes and the click does not reach the game.
     game, _ = automap
-    lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)
     x, y, w, h = viewport(lib)
     lib.input_mouse_click(x + w // 2, y + h // 2, INPUT_BUTTON_LEFT)
@@ -421,7 +415,6 @@ def test_screen_fills_the_whole_viewport_while_the_party_walks(lib, automap, dra
 
 
 def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
-    lib.input_mouse_click.argtypes = [ctypes.c_int16, ctypes.c_int16, ctypes.c_int]
     press(lib, KEY_TAB)
     x, y, w, h = viewport(lib)
     mouse_x, mouse_y = ctypes.c_int16.in_dll(lib, "g_input_mouse_x"), ctypes.c_int16.in_dll(lib, "g_input_mouse_y")
@@ -456,7 +449,6 @@ def test_drag_scrolls_the_map_in_whole_squares(lib, automap):
 def test_readout_shows_position_and_direction(lib, automap):
     # Drawing each expected line again at its place changes no pixel; a wrong text changes some.
     game, _ = automap
-    lib.text_draw_on_screen.argtypes = [ctypes.c_int] * 4 + [ctypes.c_char_p]
     colors = ctypes.POINTER(ctypes.c_uint8).in_dll(lib, "g_ui_colors")
     press(lib, KEY_TAB)
     x, y, _, _ = viewport(lib)
@@ -556,12 +548,6 @@ def test_automap_draws_the_static_creatures_as_a_minion_map_without_options(lib,
     # A static creature (a tree) on a seen square shows; a moving creature does not. The map draws without a game
     # step: the AI never runs the tree that was a moving group.
     game, _ = automap
-    lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint16)
-    lib.creature_group_info.argtypes = [ctypes.c_uint16]
-    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
     m, d = game.party_map, game.party_dir
     squares = [ahead(game.party_x, game.party_y, d, depth) for depth in (1, 2)]
     assert all(lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m) for x, y in squares)
@@ -592,8 +578,6 @@ ICON_SIZE, ICON_GAP = 7, 1
 
 def icon_pixels(lib, category, index, entry, icon):
     """The 7 x 7 pixels of icon of the GDAT image, as the map draws them: None where the icon is transparent."""
-    lib.draw_gdat_image.restype = ctypes.POINTER(Bitmap)
-    lib.draw_gdat_image_palette.restype = ctypes.POINTER(ctypes.c_uint8)
     image = lib.draw_gdat_image(category, index, entry).contents
     colors = lib.draw_gdat_image_palette(category, index, entry)
     row_bytes = (image.width + 1) // 2 if image.bpp == 4 else image.width
@@ -612,10 +596,6 @@ def test_automap_draws_a_creature_without_map_icons_with_the_map_item_icon(lib, 
     # A moving creature without its own map icons (a minion) takes the creature icon of the map item, as on the minion
     # map; the automap has no map item thing, so it takes the image of the party icons, not the missing image.
     game, _ = automap
-    lib.creature_create_group.restype = ctypes.c_uint16
-    lib.creature_create_group.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int16, Location]
-    lib.dungeon_thing_record.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.dungeon_thing_record.argtypes = [ctypes.c_uint16]
     m, d = game.party_map, game.party_dir
     x, y = ahead(game.party_x, game.party_y, d, 1)
     assert lib.dungeon_square(m, x, y) >> 5 == 1 and (x, y) in seen_squares(lib, m)

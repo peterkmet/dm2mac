@@ -376,8 +376,7 @@ static void click_take_object(int16_t x, int16_t y, int index)
     if (z->pos) {
         if (z->pos != POS_FRONT)
             return;
-        at.x += g_dir_dx[g_game.party_dir];
-        at.y += g_dir_dy[g_game.party_dir];
+        at = dungeon_step(at, g_game.party_dir);
     }
     ViewObjectClick click = {x, y, z->pos, at, z->kind};
     ObjectClickResult hit = view_hit_test_object(&click, z->thing, false);
@@ -467,8 +466,7 @@ static void click_door_button_zone(const ViewSquares *v, const ViewClickZone *z,
     if (!door_flag(door, DOOR_BUTTON)) {
         int16_t side = dir_turn(v->dir, TURN_RIGHT);
         game_set_command_stop(
-            sensor_process_wall_click((Location){(int16_t)(at.x + g_dir_dx[side]), (int16_t)(at.y + g_dir_dy[side])},
-                                      dir_turn(v->dir, TURN_LEFT), THING_NONE, hand));
+            sensor_process_wall_click(dungeon_step(at, side), dir_turn(v->dir, TURN_LEFT), THING_NONE, hand));
     } else if (hand == THING_NONE) {
         click_door_button(at, door);
     }
@@ -564,7 +562,7 @@ static void click_in_viewport(int16_t x, int16_t y)
     }
     int16_t dir = (int16_t)g_game.party_dir;
     Location party = {(int16_t)g_game.party_x, (int16_t)g_game.party_y};
-    Location ahead = {(int16_t)(party.x + g_dir_dx[dir]), (int16_t)(party.y + g_dir_dy[dir])};
+    Location ahead = dungeon_step(party, dir);
     ViewSquares v = {dir, party, ahead};
     uint8_t front = dungeon_square_at(v.front);
     uint16_t hand = g_game.leader_hand;

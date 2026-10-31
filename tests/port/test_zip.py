@@ -19,16 +19,6 @@ class ZipEntry(ctypes.Structure):
                 ("method", ctypes.c_uint16)]
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.zip_open.argtypes = [ctypes.c_char_p]
-    lib.zip_open.restype = ctypes.c_void_p
-    lib.zip_close.argtypes = [ctypes.c_void_p]
-    lib.zip_find_root.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_size_t]
-    lib.zip_find.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ZipEntry)]
-    lib.zip_read.argtypes = [ctypes.c_void_p, ctypes.POINTER(ZipEntry), ctypes.c_char_p, ctypes.c_uint32]
-
-
 def write_zip(target, entries):
     """Writes (name, data, compression) entries with zipfile into a path or a stream."""
     with zipfile.ZipFile(target, "w") as archive:

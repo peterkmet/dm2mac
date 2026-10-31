@@ -15,13 +15,6 @@ SCAN_ESCAPE, SCAN_RETURN, SCAN_W, SCAN_A, SCAN_S, SCAN_D = 0x01, 0x1C, 0x11, 0x1
 HOOK = ctypes.CFUNCTYPE(ctypes.c_bool, ctypes.c_int)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.optmenu_process_key.argtypes = [ctypes.c_uint16]
-    lib.optmenu_process_click.argtypes = [ctypes.c_int16, ctypes.c_int16]
-    lib.optmenu_start.argtypes = [ctypes.c_int]
-
-
 @pytest.fixture
 def menu(lib, advanced):
     """The advanced mode with the filter none and the menu open; everything closed after the test."""

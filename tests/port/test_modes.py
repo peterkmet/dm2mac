@@ -21,13 +21,8 @@ from dm2test.modes import (
 )
 from dm2test.dialog import DialogState
 from dm2test.input import run_ticks
-from dm2test.scenario import Position
-from dm2test.structs import Session
+from dm2test.structs import Position, Session
 
-
-@pytest.fixture(scope="module", autouse=True)
-def lib_prototypes(lib):
-    lib.seen_mark.argtypes = [Position, ctypes.c_int16]
 
 # the keypad key of each letter: turn left, forward, turn right, strafe left, back, strafe right
 LETTER_KEYPAD = {SCAN_Q: C.KEYPAD_TURN_LEFT, SCAN_W: C.KEYPAD_FORWARD, SCAN_E: C.KEYPAD_TURN_RIGHT, SCAN_A: C.KEYPAD_LEFT,
@@ -55,7 +50,6 @@ def test_vanilla_letter_keys_and_quick_keys_do_nothing(lib, session, tmp_path):
     game, _ = session
     (tmp_path / "DATA").mkdir()
     Session.in_dll(lib, "g_session").data_dir = str(tmp_path).encode()
-    lib.input_key_down.argtypes = [ctypes.c_uint16]
     assert ctypes.c_int.in_dll(lib, "g_game_mode").value == VANILLA
     position = (game.party_x, game.party_y, game.party_dir)
     for key in (SCAN_W, SCAN_Q, KEY_F5, KEY_F9):
@@ -139,9 +133,6 @@ def sound_level(lib):
     """The mixed level of a sample of 100 at full volume: the master volume of the sounds."""
     from dm2test.audio import UPSAMPLE, mix
     from dm2test.structs import Sound
-    lib.sound_play.argtypes = [ctypes.POINTER(Sound), ctypes.c_uint8, ctypes.c_int8, ctypes.c_int8]
-    lib.sound_play.restype = ctypes.c_bool
-    lib.sound_mix.argtypes = [ctypes.POINTER(ctypes.c_int16), ctypes.c_int]
     lib.sound_stop_all()
     pcm = (ctypes.c_int8 * 1)(100)
     assert lib.sound_play(ctypes.byref(Sound(ctypes.cast(pcm, ctypes.POINTER(ctypes.c_int8)), 1)), 255, 0, 0)
@@ -256,7 +247,6 @@ def test_state_tells_the_game_mode(control, lib):
 
 def test_state_tells_the_automap_and_the_cheats(control, lib):
     path, *_ = control
-    lib.game_set_cheats.argtypes = [ctypes.c_uint8]
     cheats = {"cheat_light": C.CHEAT_LIGHT, "cheat_immortal": C.CHEAT_IMMORTAL, "cheat_food": C.CHEAT_FOOD,
               "cheat_kill": C.CHEAT_KILL, "cheat_walls": C.CHEAT_WALLS, "cheat_map": C.CHEAT_MAP}
     automap = ctypes.c_int.in_dll(lib, "g_advanced_screen")
@@ -434,7 +424,6 @@ def test_damage_of_a_hit_stays_one_extra_step_in_the_advanced_mode(lib, advanced
     action = ActionArea.in_dll(lib, "g_action")
     rect = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_ACTION_AREA, rect)
-    lib.area_end_damage_hold.argtypes = [ctypes.c_int16, ctypes.c_int16]
 
     def hit(mode):
         set_mode(lib, mode)
@@ -463,7 +452,6 @@ def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advance
     # inventory of the champion, or with an empty leader hand opens the inventory; the hands keep their commands, and a
     # right click gives the same command as in vanilla.
     from dm2test.interface import GAME_LEADER_HAND
-    lib.input_click_command.restype = ctypes.c_uint16
     hand = ctypes.c_uint16.from_address(ctypes.addressof(session[0]) + GAME_LEADER_HAND)
     rect, box = (ctypes.c_int16 * 4)(), (ctypes.c_int16 * 4)()
     hands = range(C.CMD_SLOT_FIRST, C.CMD_SLOT_FIRST + C.CHAMPION_MAX * C.SLOT_HAND_COUNT)
@@ -488,8 +476,6 @@ def test_left_click_on_a_status_box_stores_or_opens_the_inventory_in_the_advance
 
 def test_key_repeat_waits_for_idle_input(lib, session):
     # The advanced mode takes an autorepeat of a held key only when no input waits: the party stops at the release.
-    lib.input_key_down.argtypes = lib.input_key_repeat.argtypes = [ctypes.c_uint16]
-    lib.input_read_key.restype = ctypes.c_uint16
     lib.input_flush()
     lib.input_key_repeat(SCAN_W)
     lib.input_key_repeat(SCAN_W)

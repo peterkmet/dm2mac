@@ -17,7 +17,6 @@ def decode(lib, data, max_w=WIDTH, max_h=HEIGHT):
         _fields_ = [("pixels", ctypes.c_void_p), ("max_width", ctypes.c_int), ("max_height", ctypes.c_int),
                     ("width", ctypes.c_int), ("height", ctypes.c_int), ("palette", ctypes.c_uint8 * (COLORS * RGB))]
 
-    lib.pcx_decode.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(PcxImage)]
     pixels = (ctypes.c_uint8 * (max_w * max_h))()
     image = PcxImage(ctypes.cast(pixels, ctypes.c_void_p), max_w, max_h)
     result = lib.pcx_decode(data, len(data), ctypes.byref(image))

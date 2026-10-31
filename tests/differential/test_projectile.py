@@ -15,6 +15,12 @@ from dm2test.input import CHAMPION_UNCOMPARED  # redraw flags
 from dm2test.structs import Location, ProjectileLaunch
 
 
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+    lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)  # the test indexes the result
+
+
 PROJECTILE_CREATE, EXPLOSION_CREATE, MOVE_CHECK_MISSILES = 0x16457, 0x16746, 0x4A0FE
 SENSOR_LAUNCH_MISSILE, CHAMP_LAUNCH_PROJECTILE, CREATURE_ATTACK_CHAMPION = 0x57A63, 0x47773, 0x18758
 CREATURE_GET_ORDERED_ATTACK_CELLS, DUN_UNLINK_THING, DUN_LINK_THING = 0x1869A, 0x1D542, 0x1D3DB
@@ -33,15 +39,10 @@ EXPLOSIONS = SPELLS + (C.EXPLOSION_DEATH_CLOUD, C.EXPLOSION_STORM_LIGHTNING, C.E
 
 @pytest.fixture
 def pj(lib, gdat, start, tmp_path):
-    lib.timeline_add_event.argtypes = [ctypes.c_void_p]
     s = CreatureScenario(lib, gdat, start, tmp_path)
     emu = s.emu
     s.woken = 0
     emu.stub(CHAMP_WAKE_PARTY, lambda *_: wake(s))
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.dungeon_square_first_thing.restype = ctypes.c_uint16
-    lib.dungeon_next_thing.restype = ctypes.c_uint16
-    lib.creature_get_group_at.restype = ctypes.c_uint16
     return s
 
 
@@ -52,10 +53,9 @@ def wake(s):
 
 
 def both(s, c_fn, addr, *args):
-    """Calls the C function and the original with the same arguments; returns both results as int16."""
-    mine = c_fn(*args)
-    theirs = s.emu.call(addr, *args)
-    return ctypes.c_int16(mine).value, ctypes.c_int16(theirs).value
+    """Calls the C function and the original with the same arguments."""
+    c_fn(*args)
+    s.emu.call(addr, *args)
 
 
 def flying(s):
@@ -82,7 +82,6 @@ def assert_saves(s, where):
 def check(s, where):
     """The quick check of the creature scenario and the first-thing table of the squares."""
     lib = s.lib
-    lib.dungeon_square_things.restype = ctypes.POINTER(ctypes.c_uint16)
     n = lib.dungeon_square_thing_count()
     mine = ctypes.string_at(lib.dungeon_square_things(), 2 * n)
     assert mine == s.emu.read(s.emu.read_u32(G_SQUARE_FIRST_THINGS), 2 * n), where
@@ -357,7 +356,6 @@ def test_missile_launchers(pj, lib):
 
 def test_champions_throw(pj, lib):
     # projectile_launch_from_champion: champions throw objects and cast spells from the party square.
-    lib.projectile_launch_from_champion.argtypes = [ctypes.c_int16, ctypes.c_uint16, ctypes.c_int, ctypes.c_int, ctypes.c_int]
     rng = random.Random(165)
     things = objects(lib)
     rng.shuffle(things)
@@ -381,7 +379,6 @@ def test_creature_attacks_champions(pj, lib):
     # projectile_attack_champion for every creature group of the dungeon on random champions, awake and asleep,
     # visible and invisible, in light and darkness: the damage hook arguments and the random numbers.
     from dm2test.interface import set_magic
-    lib.projectile_attack_champion.argtypes = [ctypes.c_uint16, ctypes.c_int16]
     rng = random.Random(166)
     light = ctypes.c_int.in_dll(lib, "g_view_light_level")
     sleeping = ctypes.c_bool.in_dll(lib, "g_party_sleeping")
@@ -493,8 +490,6 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
     # start.DAT has one such group (creature type 84).
     rng = random.Random(170)
     four_champions(pj, rng)
-    lib.creature_group_info.restype = ctypes.POINTER(ctypes.c_uint8)
-    lib.creature_group_info.argtypes = [ctypes.c_uint16]
     targets = [t for t in groups(lib) if lib.creature_group_info(t[3])[INFO_DOOR_FLAGS] & RESISTS_NON_FIRE]
     assert targets
     hits = [0]
@@ -532,7 +527,6 @@ def test_attacks_on_creatures_that_resist_non_fire(pj, lib):
 
 def set_square(s, map_, x, y, value):
     """Sets a square byte in both."""
-    s.lib.dungeon_square_byte.restype = ctypes.POINTER(ctypes.c_uint8)
     s.lib.dungeon_square_byte(map_, x, y)[0] = value
     emu = s.emu
     table = emu.read_u32(emu.read_u32(0x7F3C8) + 4 * map_)

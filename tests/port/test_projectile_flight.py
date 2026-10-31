@@ -12,8 +12,8 @@ from dm2test.structs import Bitmap, MainLoop, ProjectileLaunch
 
 @pytest.fixture(scope="module", autouse=True)
 def lib_prototypes(lib):
-    lib.view_flight_shift.restype = ViewPoint
-    lib.view_flight_shift.argtypes = [ViewPoint, ViewPoint, ctypes.c_int, ctypes.c_int]
+    lib.view_flight_shift.restype = ViewPoint  # ViewPoint is a mirror of this module
+    lib.view_flight_shift.argtypes = [ViewPoint, ViewPoint, ctypes.c_int, ctypes.c_int]  # ViewPoint is a mirror of this module
 
 
 class ViewPoint(ctypes.Structure):

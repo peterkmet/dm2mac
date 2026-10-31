@@ -3,6 +3,7 @@ import ctypes
 import random
 import struct
 
+import pytest
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EIP
 
@@ -17,7 +18,13 @@ from dm2test.interface import (
 from dm2test.addresses import VGA
 from dm2test.scenario import CHAMPION_SIZE, champion_bytes, champion_records, sync_champions
 from dm2test.structs import ActionArea, Bitmap, Game, LeaderHand, UiState
-from dm2test.view import ScreenPoint, ScreenSize, u8_p
+from dm2test.view import u8_p
+
+
+@pytest.fixture(scope="module", autouse=True)
+def lib_prototypes(lib):
+    lib.input_cursor_image.restype = CursorImage  # CursorImage is a mirror of this module
+    lib.text_draw.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, ctypes.c_int16, TextColors, ctypes.c_char_p]  # TextColors is a mirror of this module
 
 
 def test_game_screen_matches_original(port, original):
@@ -58,7 +65,6 @@ def test_inventory_panels_match_original(port, original):
     original.emu.call(INV_TOGGLE, 0)
     port.ui_toggle_inventory(0)
     lib = port
-    lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     samples = [C.THING_NONE]
     for kind in (C.THING_WEAPON, C.THING_ARMOUR, C.THING_SCROLL, C.THING_POTION, C.THING_MISC):
         samples += things_of(lib, kind, 6)
@@ -122,7 +128,6 @@ def test_cursor_images_match_original(port, original):
     # champ_drag_click: the arguments that the original passes to mouse_set_cursor_image (bpp, size, hot spot, clear
     # color, pixels, palette colors).
     lib, emu = port, original.emu
-    lib.input_cursor_image.restype = CursorImage
     images = {}
 
     def capture(kind, bits, hot_x, hot_y, w, h, bpp, palette, key):
@@ -183,7 +188,6 @@ def test_cursor_images_match_original(port, original):
 def test_draw_cursor_puts_the_image_at_the_hot_spot(port):
     # input_draw_cursor: the image pixels except the clear color, in palette colors, clipped at the screen edges.
     lib = port
-    lib.input_cursor_image.restype = CursorImage
     thing = things_of(lib, 5, 1)[0]
     lib.input_init()
     Game.in_dll(lib, "g_game").leader = 0
@@ -223,7 +227,6 @@ class BlitSource(ctypes.Structure):
 def test_blit_of_a_missing_picture_draws_nothing(port):
     # A picture missing from GRAPHICS.DAT comes as a NULL bitmap; the blit leaves the target as it was.
     lib = port
-    lib.ui_blit_bitmap.argtypes = [ctypes.POINTER(BlitSource), ctypes.POINTER(Bitmap), ctypes.POINTER(ctypes.c_int16)]
     pixels = (ctypes.c_uint8 * 64).from_buffer_copy(bytes(range(64)))
     dst = Bitmap(ctypes.cast(pixels, u8_p), 8, 8, 8)
     lib.ui_blit_bitmap(ctypes.byref(BlitSource()), ctypes.byref(dst), (ctypes.c_int16 * 4)(0, 0, 8, 8))
@@ -302,7 +305,6 @@ def test_action_results_match_original(port, original):
 def test_containers_in_hand_match_original(port, original):
     # A money box and a chest in the ready hand open their panels in the action area.
     lib = port
-    lib.item_is_chest.argtypes = lib.item_is_moneybox.argtypes = [ctypes.c_uint16]
     boxes = things_of(lib, C.THING_CONTAINER, 2, lib.item_is_moneybox) + things_of(lib, C.THING_CONTAINER, 2, lib.item_is_chest)
     assert len(boxes) == 4
     draw_game_screen(lib, original)
@@ -378,7 +380,6 @@ def test_draw_text_matches_original(port, original):
     # Random texts in 8 bpp and 4 bpp bitmaps, with and without background, at random positions.
     lib = port
     emu = original.emu
-    lib.text_draw.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, ctypes.c_int16, TextColors, ctypes.c_char_p]
     rng = random.Random(13)
     width, height = 96, 40
     src, text = original.alloc(width * height), original.alloc(64)
@@ -403,10 +404,6 @@ def test_draw_text_matches_original(port, original):
 def test_measure_and_wrap_match_original(port, original):
     lib = port
     emu = original.emu
-    lib.text_wrap_line.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_int16), ctypes.c_int16]
-    lib.text_wrap_line.restype = ctypes.c_int16
-    lib.text_measure.argtypes = [ctypes.c_char_p]
-    lib.text_measure.restype = ScreenSize
     rng = random.Random(14)
     text, line, out = original.alloc(256), original.alloc(256), original.alloc(16)
     for case in range(300):
@@ -447,7 +444,6 @@ def test_text_format_matches_original(port, original):
         _fields_ = [("champion", ctypes.c_int16), ("number", ctypes.c_int16 * 5), ("entry", ctypes.c_uint8)]
 
     args = Args.in_dll(lib, "g_text_args")
-    lib.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     rng = random.Random(15)
     number_addresses = (0x7F996, 0x7F98A, 0x7F994, 0x7F992, 0x7F986)
     src, dst = original.alloc(256), original.alloc(512)
@@ -475,7 +471,6 @@ def test_text_format_matches_original(port, original):
 
 def test_text_format_stops_at_a_cut_code(port):
     # A damaged text that ends in ".Z" and 1 digit: the code takes no byte after the end of the text.
-    port.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     mine = ctypes.create_string_buffer(512)
     port.gtext_format(ctypes.create_string_buffer(b"AB.Z1\0CDE"), mine)
     assert mine.value == b"AB"
@@ -483,7 +478,6 @@ def test_text_format_stops_at_a_cut_code(port):
 
 def test_text_format_stops_at_a_cut_byte_code(port):
     # A damaged text that ends in the format code byte 1: the code takes no byte after the end of the text.
-    port.gtext_format.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     mine = ctypes.create_string_buffer(512)
     port.gtext_format(ctypes.create_string_buffer(b"AB\x01\0CDE"), mine)
     assert mine.value == b"AB"
@@ -493,7 +487,6 @@ def test_message_area_matches_original(port, original):
     # Messages in the 3 rows of the message area: colors, wrapped lines, new lines, then the rows that expire.
     lib = port
     emu = original.emu
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
     text = original.alloc(256)
     emu.call(TEXT_SET_MESSAGE_CURSOR, 0, 0)
     lib.text_set_message_cursor(0, 0)
@@ -521,8 +514,6 @@ def test_message_area_scrolls(port):
     # A fourth row moves the area up by one row; the new row appears at the bottom (IBMIOP service 0x105 is not
     # in SKULL.EXE: the port moves the rows).
     lib = port
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.zone_get_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
     r = (ctypes.c_int16 * 4)()
     lib.zone_get_rect(C.ZONE_MESSAGE_AREA, r)
     x, y, w, h = r
@@ -542,8 +533,6 @@ MESSAGE_SHOW_TIME = C.MESSAGE_SHOW_TIME
 def test_message_rows_follow_print_scroll_and_expiry(port):
     """Four printed lines: the first scrolls out; each row clears at its expiry time."""
     lib = port
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.text_message_row.restype = ctypes.c_char_p
     game = Game.in_dll(lib, "g_game")
     start = 1000
     for step, message in enumerate([b"\nONE", b"\nTWO", b"\nTHREE", b"\nFOUR"]):
@@ -583,8 +572,6 @@ def test_text_init_refuses_a_short_font_or_color_item(port, ui_gdat):
 def test_message_area_without_its_zone_draws_nothing(port, ui_gdat):
     # regression: the message area functions used an unset rectangle when the layout has no message area zone
     lib = port
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
-    lib.text_message_row.restype = ctypes.c_char_p
     game = Game.in_dll(lib, "g_game")
     lib.text_set_message_cursor(0, 0)
     lib.text_print_message(15, b"ONE\nTWO\nTHREE")
@@ -607,7 +594,6 @@ def test_face_icon_without_a_palette_gives_black_colors(port, ui_gdat):
     # damaged GRAPHICS.DAT); the callers read them
     from dm2test.gdat import item_sizes
     lib = port
-    lib.ui_draw_champion_face_icon.argtypes = [ctypes.POINTER(Bitmap), ctypes.c_int16, u8_p]
     pixels = (ctypes.c_uint8 * ((C.FACE_SIZE + 1) // 2 * C.FACE_SIZE))()
     face = Bitmap(pixels, C.FACE_SIZE, C.FACE_SIZE, C.IMAGE_4BPP)
     colors = (ctypes.c_uint8 * C.FACE_ICON_COLORS)()
@@ -629,10 +615,6 @@ def test_layout_zone_helpers_match_original(port, original):
     # The icon rectangle and the position of every zone of the screen layout.
     lib = port
     emu = original.emu
-    lib.zone_get_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_icon_rect.argtypes = [ctypes.c_uint16, ctypes.POINTER(ctypes.c_int16)]
-    lib.zone_get_position.argtypes = [ctypes.c_uint16]
-    lib.zone_get_position.restype = ScreenPoint
     out = original.alloc(16)
     zones = 0
     for zone in range(1, 0x300):
@@ -697,7 +679,6 @@ def test_message_area_pending_rows_match_original(port, original):
         uc.reg_write(UC_X86_REG_EIP, IOP_SCROLL_NEXT)
 
     hook = emu.uc.hook_add(UC_HOOK_CODE, iop_scroll, begin=IOP_SCROLL_CALL, end=IOP_SCROLL_CALL)
-    lib.text_print_message.argtypes = [ctypes.c_int, ctypes.c_char_p]
     text = original.alloc(256)
     messages = [(4, b"\nFIRST"), (7, b"\nSECOND MESSAGE"), (15, b"\nTHIRD"), (9, b"\nFOURTH ROW SCROLLS THE AREA"),
                 (11, b"\nA LONG FIFTH MESSAGE THAT WRAPS INTO A SECOND ROW AND SCROLLS TWICE"), (4, b" MORE")]
@@ -715,7 +696,6 @@ def test_message_area_pending_rows_match_original(port, original):
 def test_print_number_matches_original(port, original):
     lib = port
     emu = original.emu
-    lib.text_print_number.argtypes = [ctypes.c_int, ctypes.c_int32]
     emu.call(TEXT_SET_MESSAGE_CURSOR, 0, 0)
     lib.text_set_message_cursor(0, 0)
     for color, value in ((4, 0), (7, 12345), (15, -77), (9, 2147483647), (11, -2147483647)):
@@ -733,11 +713,6 @@ def test_item_names_match_original(port, original):
     # shell) has the GDAT name "f m" in all languages: the original shows the same 2 font glyphs. A token of no champion
     # shows stale bytes in the original.
     lib, emu = port, original.emu
-    lib.item_name.restype = ctypes.c_char_p
-    lib.item_name.argtypes = [ctypes.c_uint16]
-    lib.thing_word.restype = ctypes.c_uint16
-    lib.thing_word.argtypes = [ctypes.c_uint16, ctypes.c_int]
-    lib.thing_set_word.argtypes = [ctypes.c_uint16, ctypes.c_int, ctypes.c_uint16]
 
     def with_index(kind, word, index):
         if kind == C.THING_SCROLL:  # a scroll has only index 0

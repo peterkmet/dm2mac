@@ -333,8 +333,8 @@ static int cmd_place_on_sensor(void)
     uint16_t item = sensor_data(sensor);
     if (g_ai.arg2 == PLAN_ARG_FRONT_GROUP) {
         int f = ai_facing();
-        uint16_t g = creature_get_group_at(
-            (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
+        uint16_t g =
+            creature_get_group_at(dungeon_step((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, f));
         if (g == THING_NONE)
             return AI_RESULT_FAIL;
         return has_possession(g, item, dir_opposite(f)) ? AI_RESULT_DONE : AI_RESULT_FAIL;
@@ -386,8 +386,7 @@ int ai_cmd_front_group_carries(void)
     if (cell != CELL_ANY)
         cell = dir_turn(cell, ai_facing() + TURN_BACK);
     int f = ai_facing();
-    uint16_t g = creature_get_group_at(
-        (Location){g_ai.event.data[EVENT_X] + g_dir_dx[f], g_ai.event.data[EVENT_Y] + g_dir_dy[f]});
+    uint16_t g = creature_get_group_at(dungeon_step((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]}, f));
     if (g == THING_NONE)
         return AI_RESULT_FAIL;
     return ai_find_matching_item(g_ai.arg1, thing_word(g, GROUP_POSSESSIONS), cell) != THING_ENDOFLIST ? AI_RESULT_DONE
@@ -595,7 +594,7 @@ static int cmd_turn_to_party(void)
     int16_t x = g_ai.event.data[EVENT_X];
     int16_t y = g_ai.event.data[EVENT_Y];
     int16_t dir = dungeon_direction_to(x, y, g_ai_party.x, g_ai_party.y);
-    if (square_type(dungeon_square_at((Location){(int16_t)(x + g_dir_dx[dir]), (int16_t)(y + g_dir_dy[dir])})))
+    if (square_type(dungeon_square_at(dungeon_step((Location){x, y}, dir))))
         return ai_turn_toward(dir).result;
     return AI_RESULT_FAIL;
 }

@@ -488,8 +488,7 @@ void move_compute_map_arrival(Position at)
         turn = end.target_side - end.side;
     }
     for (int d = 0; d < DIR_COUNT && !found; d++) {
-        if (!dungeon_linked_teleporter_dest(&end,
-                                            (Location){(int16_t)(at.x + g_dir_dx[d]), (int16_t)(at.y + g_dir_dy[d])}))
+        if (!dungeon_linked_teleporter_dest(&end, dungeon_step((Location){at.x, at.y}, d)))
             continue;
         found = true;
         turn = dir_opposite(end.target_side) - end.side;
@@ -891,7 +890,7 @@ static Location find_free_adjacent_square(uint16_t thing, Location at)
     int base = thing == THING_NONE ? g_game.party_dir : 0;
     for (int i = 0; i < DIR_COUNT; i++) {
         int dir = dir_turn(order[i], base);
-        Location next = {(int16_t)(at.x + g_dir_dx[dir]), (int16_t)(at.y + g_dir_dy[dir])};
+        Location next = dungeon_step(at, dir);
         uint8_t square = dungeon_square_at(next);
         if (dungeon_square_blocks_movement(square))
             continue;

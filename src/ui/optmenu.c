@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "optmenu.h"
+#include <ctype.h>
 #include <stdio.h>
 #include "advanced.h"
 #include "game.h"
@@ -12,8 +13,6 @@
 #define FILTER_ROW_SIZE 40
 #define LABEL_COLUMNS   10
 #define FILTER_COUNT    (SETTINGS_FILTER_SCALE3X - SETTINGS_FILTER_NONE + 1)
-
-static const char *const filter_names[FILTER_COUNT] = {"NONE", "SCALE2X", "SCALE3X"}; /* from SETTINGS_FILTER_NONE */
 
 bool (*g_optmenu_filter_hook)(int filter);
 
@@ -38,8 +37,10 @@ static char *find_folder(char *folder, size_t size)
 static void show_menu(void)
 {
     char filter_row[FILTER_ROW_SIZE];
-    snprintf(filter_row, sizeof filter_row, "%-*s%s", LABEL_COLUMNS, "FILTER",
-             filter_names[menu.filter - SETTINGS_FILTER_NONE]);
+    snprintf(filter_row, sizeof filter_row, "%-*s%s", LABEL_COLUMNS, "FILTER", settings_filter_name(menu.filter));
+    /* The font has no lower case. */
+    for (char *c = filter_row + LABEL_COLUMNS; *c; c++)
+        *c = (char)toupper((unsigned char)*c);
     const char *rows[OPTMENU_ROW_COUNT] = {[OPTMENU_ROW_FILTER] = filter_row, [OPTMENU_ROW_CONTINUE] = "CONTINUE"};
     rows_draw("OPTIONS", rows, OPTMENU_ROW_COUNT, menu.row);
 }
