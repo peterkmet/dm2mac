@@ -549,7 +549,7 @@ static bool blocked_party_view(Search *s, const AiCandidate *c, int16_t x, int16
             return true;
         s->visit = VISIT_BLOCKED;
     } else if (c->item == VIEW_PARTY_AT_PIT) {
-        uint8_t square = dungeon_square_at((Location){x + g_dir_dx[s->dir], y + g_dir_dy[s->dir]});
+        uint8_t square = dungeon_square_at(dungeon_step((Location){x, y}, s->dir));
         if (square_type(square) == SQUARE_PIT && square & SQUARE_PIT_OPEN && !(square & SQUARE_FLAG_0))
             return true;
         s->visit = VISIT_BLOCKED;

@@ -760,8 +760,7 @@ static void alert_creatures_ahead(MoveDest dest)
         dungeon_set_current_map(dest.map);
     Location at = {dest.x, dest.y};
     for (int i = 0; i < ALERT_AHEAD_SQUARES; i++) {
-        at.x = (int16_t)(at.x + g_dir_dx[dest.dir]);
-        at.y = (int16_t)(at.y + g_dir_dy[dest.dir]);
+        at = dungeon_step(at, dest.dir);
         uint16_t g = creature_get_group_at(at);
         if (g != THING_NONE)
             creature_alert(g, at, ALERT_STARTLED, ALERT_ALWAYS, 0);

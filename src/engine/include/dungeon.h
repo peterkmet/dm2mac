@@ -173,6 +173,12 @@ typedef struct {
     int16_t x, y;
 } Location;
 
+/* The square one step from at in dir. */
+static inline Location dungeon_step(Location at, int16_t dir)
+{
+    return (Location){(int16_t)(at.x + g_dir_dx[dir]), (int16_t)(at.y + g_dir_dy[dir])};
+}
+
 /* A square with its map. */
 typedef struct {
     int16_t map, x, y;

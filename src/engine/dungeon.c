@@ -1138,8 +1138,7 @@ int16_t dungeon_stairs_exit_direction(Location at)
 {
     bool along_y = !(dungeon_square_at(at) & SQUARE_STAIRS_ALONG_X);
     int probe = along_y ? DIR_EAST : DIR_NORTH;
-    int type = square_type(
-        dungeon_square_at((Location){(int16_t)(at.x + g_dir_dx[probe]), (int16_t)(at.y + g_dir_dy[probe])}));
+    int type = square_type(dungeon_square_at(dungeon_step(at, probe)));
     return type == SQUARE_WALL || type == SQUARE_STAIRS ? dir_opposite(probe) : probe;
 }
 
