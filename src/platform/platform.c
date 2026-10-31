@@ -37,7 +37,7 @@ static struct {
     SDL_Texture *tex;
     Uint64 next_tick;
     int mouse_x, mouse_y;
-    int filter; /* the filter (SETTINGS_FILTER_*), which is the upscale factor */
+    enum SettingsFilter filter; /* the upscale factor */
     uint8_t big[SCREEN_H * SETTINGS_FILTER_SCALE3X][SCREEN_W * SETTINGS_FILTER_SCALE3X];
     SDL_AudioStream *audio;
     int16_t audio_frames[AUDIO_QUEUE_FRAMES * AUDIO_CHANNELS]; /* the mixed frames that top up the audio queue */
@@ -100,9 +100,9 @@ static bool SDLCALL on_expose(void *userdata, SDL_Event *ev)
     return true;
 }
 
-bool plat_init(int scale, int filter_factor)
+bool plat_init(int scale, enum SettingsFilter filter)
 {
-    platform.filter = filter_factor;
+    platform.filter = filter;
     SDL_SetHint(SDL_HINT_FORCE_RAISEWINDOW, "1");
     if (!SDL_Init(SDL_INIT_VIDEO) ||
         !SDL_CreateWindowAndRenderer("DM2Mac", SCREEN_W * scale, SCREEN_H * scale, SDL_WINDOW_RESIZABLE, &platform.win,
@@ -126,10 +126,10 @@ bool plat_init(int scale, int filter_factor)
     return true;
 }
 
-bool plat_set_filter(int filter_factor)
+bool plat_set_filter(enum SettingsFilter filter)
 {
     SDL_Texture *tex = SDL_CreateTexture(platform.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                         SCREEN_W * filter_factor, SCREEN_H * filter_factor);
+                                         SCREEN_W * filter, SCREEN_H * filter);
     if (!tex) {
         os_log("SDL: %s", SDL_GetError());
         return false;
@@ -137,7 +137,7 @@ bool plat_set_filter(int filter_factor)
     SDL_SetTextureScaleMode(tex, SDL_SCALEMODE_PIXELART);
     SDL_DestroyTexture(platform.tex);
     platform.tex = tex;
-    platform.filter = filter_factor;
+    platform.filter = filter;
     plat_present();
     return true;
 }
@@ -172,7 +172,8 @@ void plat_present(void)
     if (!SDL_LockTexture(platform.tex, NULL, (void **)&px, &pitch))
         return;
     int stride = pitch / ARGB_BYTES;
-    for (int y = 0; y < SCREEN_H * platform.filter; y++)
+    int th = SCREEN_H * platform.filter;
+    for (int y = 0; y < th; y++)
         for (int x = 0; x < tw; x++)
             px[y * stride + x] = pal[src[y * tw + x]];
     SDL_UnlockTexture(platform.tex);
