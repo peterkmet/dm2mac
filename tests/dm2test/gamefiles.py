@@ -17,7 +17,7 @@ NAMES = [
 
 
 def require(path: Path) -> Path:
-    """The path of a game file; skips the test when it is missing."""
+    """The path of a file that the test needs (a game file or reference file); skips the test when it is missing."""
     if not path.exists():
         pytest.skip(f"{path.relative_to(ROOT)} missing")
     return path

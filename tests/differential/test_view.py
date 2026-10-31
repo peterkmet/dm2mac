@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.gdat import image_info
 from dm2test.structs import Bitmap, CurrentMap, Game, GdatKey, Location, Party, Position, ScreenSize, ViewSquare
@@ -45,8 +46,7 @@ SQUARE_COUNT, SQUARE_SIZE = C.VIEW_SQUARE_COUNT, C.VIEW_SQUARE_RECORD_SIZE
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GRAPHICS)
     g = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == 0
     yield g
@@ -55,10 +55,8 @@ def gdat(lib):
 
 @pytest.fixture(scope="module")
 def start():
-    if not START.exists():
-        pytest.skip("tests/saves/start.DAT missing")
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(START)
+    require(ROOT / "game" / "SKULL.EXE")
     return START.read_bytes()
 
 
@@ -282,8 +280,7 @@ class GridPoint(ctypes.Structure):
 def image_emu():
     from dm2tools.emu import Emu
     from dm2tools.le import load_image
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(ROOT / "game" / "SKULL.EXE")
     return Emu(load_image(ROOT / "game" / "SKULL.EXE"))
 
 

@@ -38,5 +38,7 @@ void json_str(Json *j, const char *text);
 void json_key(Json *j, const char *key);
 /* Appends "key":value of an integer. */
 void json_key_int(Json *j, const char *key, int64_t value);
+/* Appends "key":[a,b] of two integers. */
+void json_key_pair(Json *j, const char *key, int64_t a, int64_t b);
 
 #endif /* DM2_CONTROL_JSON_H */

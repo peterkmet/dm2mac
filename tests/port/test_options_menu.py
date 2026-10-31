@@ -84,8 +84,8 @@ def test_failed_write_keeps_the_filter(lib, menu):
     assert state(lib) == (FILTER, SCALE2X) and not (data / "SETTINGS.TXT").exists()
 
 
-@pytest.mark.parametrize("given, file, expected", [(0, b"filter=scale3x\n", SCALE3X), (SCALE2X, b"filter=scale3x\n", SCALE2X),
-                                                   (0, None, NONE)])
+@pytest.mark.parametrize("given, file, expected", [(C.SETTINGS_FILTER_UNSET, b"filter=scale3x\n", SCALE3X), (SCALE2X, b"filter=scale3x\n", SCALE2X),
+                                                   (C.SETTINGS_FILTER_UNSET, None, NONE)])
 def test_start_takes_the_file_unless_a_filter_is_given(lib, menu, given, file, expected):
     _, data = menu
     if file:
@@ -97,7 +97,7 @@ def test_start_takes_the_file_unless_a_filter_is_given(lib, menu, given, file, e
     assert lib.optmenu_get_filter() == expected
     assert shown == ([expected] if expected != NONE and not given else [])
     set_mode(lib, VANILLA)
-    lib.optmenu_start(0)
+    lib.optmenu_start(C.SETTINGS_FILTER_UNSET)
     assert lib.optmenu_get_filter() == NONE, "the vanilla mode reads no file"
 
 

@@ -928,6 +928,8 @@ Location dungeon_move_relative(Location from, int16_t dir, int forward, int righ
 int16_t dungeon_direction_to(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
 /* The square byte of at, with the edge walls around the map. */
 uint8_t dungeon_square_at(Location at);
+/* The first thing on the square at, THING_ENDOFLIST when the square has no things or lies away from the map. */
+uint16_t dungeon_first_thing_at(Location at);
 /* True when at is the party square. */
 bool dungeon_on_party_square(Location at);
 /* True when a square stops the party: walls, closed doors, closed fake walls, unknown squares. */

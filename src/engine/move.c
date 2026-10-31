@@ -613,12 +613,6 @@ static uint16_t rotate_projectile(uint16_t teleporter, uint16_t thing)
     return thing;
 }
 
-/* The first thing of (x, y) of the current map. */
-static uint16_t first_thing(int16_t x, int16_t y)
-{
-    return dungeon_square_first_thing(g_current_map.map, x, y);
-}
-
 /* Moves the party to at on the current map; the party square is read again. */
 static void set_party_square(Location at)
 {
@@ -632,7 +626,7 @@ static bool transit_teleporter(Transit *t, uint8_t square)
 {
     if (!(square & SQUARE_TELEPORTER_ON))
         return false;
-    uint16_t tele = first_thing(t->x, t->y);
+    uint16_t tele = dungeon_first_thing_at((Location){t->x, t->y});
     if (thing_type(tele) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
         return false;
     int tele_scope = teleporter_scope(tele);
@@ -712,7 +706,8 @@ static void transit_party_lands(Transit *t)
 static void transit_pit_marker(Transit *t)
 {
     int marker = 0;
-    for (uint16_t th = first_thing(t->x, t->y); th != THING_ENDOFLIST; th = dungeon_next_thing(th)) {
+    for (uint16_t th = dungeon_first_thing_at((Location){t->x, t->y}); th != THING_ENDOFLIST;
+         th = dungeon_next_thing(th)) {
         /* as in the original, t->type keeps the type of the last thing read; the stairs check reads it */
         t->type = thing_type(th);
         if (t->type > THING_SENSOR)
@@ -959,8 +954,8 @@ static void update_carried_missiles(uint16_t holder, Position at, bool waits)
 /* Schedules a new try of a group move that a full square stopped. */
 static void schedule_group_retry(uint16_t group, Position at, bool audible)
 {
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + GROUP_RETRY_DELAY, at.map)};
-    e.type = audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP;
+    TimelineEvent e = timeline_event_at(g_game.game_time + GROUP_RETRY_DELAY, at.map,
+                                        audible ? EVENT_MOVE_GROUP_2 : EVENT_MOVE_GROUP, 0);
     e.data[EVENT_X] = (uint8_t)at.x;
     e.data[EVENT_Y] = (uint8_t)at.y;
     put_le16(e.data + EVENT_GROUP_WORD, group);
@@ -1270,7 +1265,7 @@ bool move_set_pit_teleporter_state(Location at, int mode)
     if (square_type(*square) == SQUARE_PIT) {
         on_flag = SQUARE_PIT_OPEN;
     } else if (square_type(*square) == SQUARE_TELEPORTER) {
-        if (teleporter_is_fixed(dungeon_square_first_thing(g_current_map.map, at.x, at.y)))
+        if (teleporter_is_fixed(dungeon_first_thing_at(at)))
             return false;
         on_flag = SQUARE_TELEPORTER_ON;
     } else {
@@ -1328,7 +1323,7 @@ bool move_party_can_push_group(uint16_t group)
 
 bool move_party_warp_to_marker(void)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, g_game.party_x, g_game.party_y);
+    for (uint16_t t = dungeon_first_thing_at((Location){g_game.party_x, g_game.party_y});
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;

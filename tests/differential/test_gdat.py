@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.gdat import ERR_DATA, ERR_FORMAT, ERR_IO, ERR_NOT_IMAGE, ERR_SPACE, GDAT, OK, image_info
 from dm2test.markers import ROOT
@@ -21,8 +22,7 @@ FORMAT_4BPP, FORMAT_8BPP, FORMAT_RAW = 0x00, 0x1F, 0x20
 
 @pytest.fixture(scope="module")
 def emu():
-    if not GDAT.exists():
-        pytest.skip("game/ missing")
+    require(GDAT)
     emu = Emu(load_image(ROOT / "game" / "SKULL.EXE"), max_insns=100_000_000)
     emu.uc.mem_map(SRC, 3 * 0x100000)
     return emu

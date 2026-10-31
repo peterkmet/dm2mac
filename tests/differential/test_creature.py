@@ -3,8 +3,8 @@ magic, and minions run in the C port and in the original code from start.DAT; th
 The view tests give the original zeroed active groups because they draw without active groups."""
 
 
-import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.creature import CreatureScenario, random_champions
 from dm2test.markers import ROOT
@@ -119,8 +119,7 @@ def test_merchant_at_the_counter(lib, gdat, tmp_path):
     # shop.DAT: the party stands still in front of the counter of the dwarf merchant (map 28). The merchant puts the
     # item of the shop display on the counter, then waits for an offer: the same actions, sounds, and counter in both.
     shop = ROOT / "tests" / "saves" / "shop.DAT"
-    if not shop.exists():
-        pytest.skip("tests/saves/shop.DAT missing")
+    require(shop)
     s = CreatureScenario(lib, gdat, shop.read_bytes(), tmp_path)
     s.place(28, 8, 6, 2)
     for n in range(300):

@@ -9,6 +9,7 @@ from unicorn.x86_const import (
     UC_X86_REG_ESP, UC_X86_REG_FS, UC_X86_REG_GDTR, UC_X86_REG_GS, UC_X86_REG_SS,
 )
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.audio import Music
 from dm2test.markers import ROOT
@@ -51,8 +52,7 @@ WRITE_HOOK = ctypes.CFUNCTYPE(None, ctypes.c_int, ctypes.c_int)
 
 @pytest.fixture(scope="module")
 def gd(lib):
-    if not (GAME / "DATA" / "GRAPHICS.DAT").exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GAME / "DATA" / "GRAPHICS.DAT")
     handle = ctypes.c_void_p()
     assert lib.gdat_load(str(GAME / "DATA" / "GRAPHICS.DAT").encode(), ctypes.byref(handle)) == C.GDAT_OK
     yield handle
@@ -379,8 +379,7 @@ EDGE_EVENTS = [
 
 
 def test_fm_driver_writes_like_the_original(lib, gd):
-    if not (GAME / "HMIMDRV.386").exists():
-        pytest.skip("game/HMIMDRV.386 missing")
+    require(GAME / "HMIMDRV.386")
     blob = (GAME / "HMIMDRV.386").read_bytes()[DRIVER_FILE_OFFSET:DRIVER_FILE_OFFSET + DRIVER_SIZE]
     melodic, drum = (GAME / "MELODIC.BNK").read_bytes(), (GAME / "DRUM.BNK").read_bytes()
     driver = Driver(blob, melodic, drum)

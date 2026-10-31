@@ -8,9 +8,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "settings.h"
 
-/* The platform sets it: shows the filter (SETTINGS_FILTER_*) in the window; false when it cannot. NULL: no window. */
-extern bool (*g_optmenu_filter_hook)(int filter);
+/* The platform sets it: shows the filter in the window; false when it cannot. NULL: no window. */
+extern bool (*g_optmenu_filter_hook)(enum SettingsFilter filter);
 
 /* The rows of the menu. */
 enum OptmenuRow {
@@ -20,13 +21,14 @@ enum OptmenuRow {
 };
 
 /* Setup */
-/* Starts the menu state at the beginning of the program, after the game mode is chosen. filter is the SETTINGS_FILTER_*
-   value that --filter or DM2_FILTER gave, or 0 for none given: the advanced mode then takes the filter of SETTINGS.TXT. */
-void optmenu_start(int filter);
+/* Starts the menu state at the beginning of the program, after the game mode is chosen. filter is the value
+   that --filter or DM2_FILTER gave, or SETTINGS_FILTER_UNSET for none given: the advanced mode then takes the
+   filter of SETTINGS.TXT. */
+void optmenu_start(enum SettingsFilter filter);
 
 /* Queries */
-/* The filter in use (SETTINGS_FILTER_*); exported for the tests. */
-int optmenu_get_filter(void);
+/* The filter in use; exported for the tests. */
+enum SettingsFilter optmenu_get_filter(void);
 /* The selected row (OPTMENU_ROW_*); exported for the tests. */
 enum OptmenuRow optmenu_get_row(void);
 

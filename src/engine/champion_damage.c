@@ -104,15 +104,6 @@ static uint32_t mul16(uint16_t a, uint16_t b)
     return (uint32_t)a * b;
 }
 
-/* An event of the party map at delay game steps from now. */
-static TimelineEvent party_event(uint32_t delay, int type, int priority)
-{
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + delay, g_game.party_map),
-                       .type = (uint8_t)type,
-                       .priority = (uint8_t)priority};
-    return e;
-}
-
 /* Damage, poison, and death */
 
 void champ_reset_step_state(void)
@@ -381,7 +372,8 @@ void champ_poison(int16_t champion_index, int amount)
     c->poison = (int16_t)(c->poison + left);
     c->poisoned++;
     /* fix: the original leaves the last 4 data bytes uninitialized */
-    TimelineEvent e = party_event(POISON_EVENT_DELAY, EVENT_POISON, champion_index);
+    TimelineEvent e = timeline_event_at(g_game.game_time + POISON_EVENT_DELAY, g_game.party_map, EVENT_POISON,
+                                        (uint8_t)champion_index);
     put_le16(e.data, left); /* the poison that is left */
     timeline_add_event(&e);
 }
@@ -532,7 +524,8 @@ void champ_apply_pending_damage(void)
         c->redraw |= REDRAW_BARS;
         if (c->damage_event == THING_NONE) {
             /* fix: the original leaves the data bytes uninitialized */
-            TimelineEvent e = party_event(DAMAGE_SHOW_TIME, EVENT_HIDE_DAMAGE, i);
+            TimelineEvent e =
+                timeline_event_at(g_game.game_time + DAMAGE_SHOW_TIME, g_game.party_map, EVENT_HIDE_DAMAGE, (uint8_t)i);
             c->damage_event = (uint16_t)timeline_add_event(&e);
         } else {
             timeline_set_event_time(c->damage_event, g_game.game_time + DAMAGE_SHOW_TIME, g_game.party_map);

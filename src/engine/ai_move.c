@@ -191,12 +191,6 @@ static int16_t step_dir(int16_t dir)
     return dir == -1 ? DIR_NORTH : dir;
 }
 
-/* The first thing of (x, y) of the current map; none away from the map. */
-static uint16_t first_thing(int16_t x, int16_t y)
-{
-    return ai_on_map(x, y) ? dungeon_square_first_thing(g_current_map.map, x, y) : THING_ENDOFLIST;
-}
-
 /* The first object (not a door, teleporter, text, or sensor) of the thing list from t. */
 static uint16_t skip_to_object(uint16_t t)
 {
@@ -208,7 +202,7 @@ static uint16_t skip_to_object(uint16_t t)
 /* The first object of (x, y) of the current map. */
 static uint16_t first_object(int16_t x, int16_t y)
 {
-    return skip_to_object(first_thing(x, y));
+    return skip_to_object(dungeon_first_thing_at((Location){x, y}));
 }
 
 uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map)
@@ -219,7 +213,8 @@ uint16_t ai_pack_location(int16_t x, int16_t y, int16_t map)
 /* A GDAT value of the door type on (x, y). */
 static int read_door_value(int16_t x, int16_t y, int key)
 {
-    return gdat_entry_index(gdat_current(), CAT_DOOR, dungeon_door_type(g_current_map.map, first_thing(x, y)),
+    return gdat_entry_index(gdat_current(), CAT_DOOR,
+                            dungeon_door_type(g_current_map.map, dungeon_first_thing_at((Location){x, y})),
                             GDAT_TYPE_VALUE, key);
 }
 
@@ -418,7 +413,7 @@ void ai_cache_square(Location at)
 uint16_t ai_cached_first_thing(void)
 {
     if (g_ai_square.first_thing == THING_NONE)
-        g_ai_square.first_thing = first_thing(g_ai_square.x, g_ai_square.y);
+        g_ai_square.first_thing = dungeon_first_thing_at((Location){g_ai_square.x, g_ai_square.y});
     return g_ai_square.first_thing;
 }
 
@@ -464,7 +459,7 @@ AiCommand ai_turn_toward(int16_t dir)
 /* True when the wall face of (x, y) toward side shows an ornament that is a shooting target of filter. */
 static bool wall_shows_shoot_target(int16_t x, int16_t y, int16_t side, int16_t filter)
 {
-    for (uint16_t t = first_thing(x, y); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST; t = dungeon_next_thing(t)) {
         int type = thing_type(t);
         if ((type != THING_SENSOR && type != THING_TEXT) || thing_cell(t) != side)
             continue;
@@ -1014,7 +1009,7 @@ static bool search_square_test(int command, int16_t x, int16_t y)
                 !dungeon_linked_teleporter_dest(&end, (Location){x, y + 1}) &&
                 !dungeon_linked_teleporter_dest(&end, (Location){x, y - 1}))
                 return true;
-            uint16_t link = first_thing(x, y);
+            uint16_t link = dungeon_first_thing_at((Location){x, y});
             if (thing_type(link) != THING_TELEPORTER) /* fix: a damaged dungeon; the original reads another record */
                 return true;
             if (end.map != teleporter_map(link) ||

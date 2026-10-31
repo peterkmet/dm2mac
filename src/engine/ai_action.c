@@ -262,8 +262,8 @@ bool ai_try_flee(uint32_t class_flags)
 /* A floor sensor of a type on (x, y), at cell (CELL_ANY: any); THING_NONE none. */
 static uint16_t find_floor_sensor(int16_t x, int16_t y, int16_t cell, int type)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, x, y);
-         t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
+    for (uint16_t t = dungeon_first_thing_at((Location){x, y}); t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR;
+         t = dungeon_next_thing(t)) {
         if ((thing_type(t) == THING_SENSOR && cell == CELL_ANY) || thing_cell(t) == cell) {
             if (sensor_type(t) == type)
                 return t;
@@ -671,7 +671,7 @@ static int cmd_consume(void)
 /* Plan command: the creature transforms at a transform marker on its square, else it vanishes. */
 static int cmd_check_transform(void)
 {
-    for (uint16_t t = dungeon_square_first_thing(g_current_map.map, g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]);
+    for (uint16_t t = dungeon_first_thing_at((Location){g_ai.event.data[EVENT_X], g_ai.event.data[EVENT_Y]});
          t != THING_ENDOFLIST && thing_type(t) <= THING_SENSOR; t = dungeon_next_thing(t)) {
         if (thing_type(t) != THING_TEXT)
             continue;

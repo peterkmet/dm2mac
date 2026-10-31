@@ -3,6 +3,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
@@ -80,15 +81,13 @@ class Original:
 
 @pytest.fixture(scope="module")
 def original():
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(ROOT / "game" / "SKULL.EXE")
     return Original()
 
 
 @pytest.fixture(scope="module")
 def dungeon(lib):
-    if not DUNGEON.exists():
-        pytest.skip("game/DATA/DUNGEON.DAT missing")
+    require(DUNGEON)
     assert lib.dungeon_load(str(DUNGEON).encode()) == 1
     return lib
 

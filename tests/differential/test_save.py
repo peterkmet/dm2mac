@@ -4,6 +4,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2test.modes import ADVANCED, VANILLA, set_mode
@@ -20,8 +21,7 @@ STREAM = HEADER_SIZE + 43443  # start of the bit stream in start.DAT, after the 
 
 @pytest.fixture(scope="module")
 def gdat(lib):
-    if not GRAPHICS.exists():
-        pytest.skip("game/DATA/GRAPHICS.DAT missing")
+    require(GRAPHICS)
     g = ctypes.c_void_p()
     assert lib.gdat_load(str(GRAPHICS).encode(), ctypes.byref(g)) == C.GDAT_OK
     yield g
@@ -30,8 +30,7 @@ def gdat(lib):
 
 @pytest.fixture(scope="module")
 def start():
-    if not START.exists():
-        pytest.skip("tests/saves/start.DAT missing")
+    require(START)
     return START.read_bytes()
 
 
@@ -45,8 +44,7 @@ def original_round_trip(lib, gdat, data):
 
 @pytest.fixture(scope="module")
 def original_run(lib, gdat, start):
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(ROOT / "game" / "SKULL.EXE")
     return original_round_trip(lib, gdat, start)
 
 
@@ -291,8 +289,7 @@ def link_things(lib, game):
 @pytest.fixture(scope="module")
 def linked(lib, gdat, start, tmp_path_factory):
     """The C writer output and the original writer output for the same state with linked things."""
-    if not (ROOT / "game" / "SKULL.EXE").exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(ROOT / "game" / "SKULL.EXE")
     emu = original_load(lib, gdat, start)
     path = tmp_path_factory.mktemp("linked") / "SKSAVE0.DAT"
     path.write_bytes(start)

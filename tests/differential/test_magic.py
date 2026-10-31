@@ -7,6 +7,7 @@ import struct
 
 import pytest
 
+from dm2test.gamefiles import require
 from dm2test import constants as C
 from dm2test.markers import ROOT
 from dm2tools.emu import SCRATCH, Emu
@@ -43,8 +44,7 @@ RUNE_FIRST = C.SPELL_RUNE_GLYPH_FIRST
 @pytest.fixture(scope="module")
 def emu():
     path = ROOT / "game" / "SKULL.EXE"
-    if not path.exists():
-        pytest.skip("game/SKULL.EXE missing")
+    require(path)
     return Emu(load_image(path))
 
 

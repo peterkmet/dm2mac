@@ -54,9 +54,61 @@ def test_known_prototypes_of_the_port():
     assert PROTOTYPES["dungeon_location_on_map"] == (structs.Position, (structs.Position, c_int))
     assert PROTOTYPES["state_json_string"] == (c_char_p, (c_int,))
     assert PROTOTYPES["input_key_down"] == (None, (c_uint16,))
-    assert UNTYPED["hmp_start"] == "unknown type HmpSend"
-    assert UNTYPED["fm_set_write_hook"] == "function pointer parameter"
-    assert UNTYPED["os_log"] == "variadic"
+
+
+EXPECTED_UNTYPED = {
+    "ai_find_matching_item_inside": "unknown type AiInsideItem",
+    "ai_find_target_in_lines": "unknown type AiLineTarget",
+    "ai_move_test": "unknown type AiMoveTest",
+    "ai_read_target": "unknown type AiTarget",
+    "ai_set_animation": "unknown type AnimStep",
+    "ai_trace_line": "function pointer parameter",
+    "ai_try_attack": "unknown type AiCommand",
+    "ai_try_door_action": "unknown type AiCommand",
+    "ai_try_move": "unknown type AiCommand",
+    "ai_try_take_item": "unknown type AiCommand",
+    "ai_try_use_wall_actuator": "unknown type AiCommand",
+    "ai_turn_toward": "unknown type AiCommand",
+    "aspect_cell_to_xy": "unknown type GridPoint",
+    "champ_use_action_charge": "unknown type ChampionAction",
+    "cheats_get_cursor": "unknown type CheatsCursor",
+    "creature_anim_next_random_step": "unknown type AnimStep",
+    "creature_anim_next_step": "unknown type AnimStep",
+    "creature_anim_start": "unknown type AnimStep",
+    "creature_find_group_near_point": "unknown type GroupNear",
+    "creature_summon_group": "unknown type SummonedGroup",
+    "dungeon_find_level_link": "unknown type LevelLink",
+    "explosion_move_events": "unknown type MoveDest",
+    "fm_set_write_hook": "function pointer parameter",
+    "hmp_start": "unknown type HmpSend",
+    "icon_build": "unknown type IconSize",
+    "input_cursor_image": "unknown type CursorImage",
+    "money_split_amount": "unknown type MoneySplit",
+    "move_follow_square_transitions": "unknown type Transition",
+    "move_party_bump_damage": "unknown type BumpedChampions",
+    "move_thing_dest": "unknown type MoveOutcome",
+    "offscreen_draw_shadow_text": "unknown type TextColors",
+    "offscreen_draw_text_at": "unknown type TextColors",
+    "offscreen_draw_text_in_zone": "unknown type TextColors",
+    "os_fatal": "variadic",
+    "os_log": "variadic",
+    "projectile_move_event": "unknown type MoveDest",
+    "settings_load": "unknown type Settings",
+    "settings_parse": "unknown type Settings",
+    "text_draw": "unknown type TextColors",
+    "text_draw_with_shadow": "unknown type TextColors",
+    "video_layout": "unknown type VideoLayout",
+    "video_map_mouse": "unknown type VideoPoint",
+    "view_flight_shift": "unknown type ViewPoint",
+    "view_hit_test_object": "unknown type ObjectClickResult",
+    "view_offset_toward_party": "unknown type GridPoint",
+    "view_relative_offset": "unknown type RelativeOffset",
+    "zone_compute_anchored_rect": "unknown type AnchoredZone",
+}
+
+
+def test_the_untyped_functions_are_the_expected_set():
+    assert UNTYPED == EXPECTED_UNTYPED
 
 
 def test_every_export_has_a_prototype_or_a_reason():

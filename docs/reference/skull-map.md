@@ -120,7 +120,7 @@ Functions with the most callers (the first 15 rows are the top of the list):
 | `0x1c6b7` | 46 | `rand_below` |
 | `0x1efa8` | 44 | `dun_get_thing_gdat_index` (thing to item database type and index) |
 | `0x1c687` | 42 | `math_max16` |
-| `0x1d391` | 42 | `dun_get_square_first_thing` |
+| `0x1d391` | 42 | `dungeon_first_thing_at` |
 | `0x1c724` | 40 | `dungeon_set_current_map` |
 | `0x3bbba` | 39 | `mem_alloc` |
 | `0x1c6f6` | 39 | `rand_2bits` |

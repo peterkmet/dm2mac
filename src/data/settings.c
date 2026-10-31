@@ -19,8 +19,8 @@ static void parse_line(char *line, Settings *settings)
     *value++ = '\0';
     if (strcmp(line, "filter"))
         return;
-    int filter = settings_filter_parse(value);
-    if (filter)
+    enum SettingsFilter filter = settings_filter_parse(value);
+    if (filter != SETTINGS_FILTER_UNSET)
         settings->filter = filter;
 }
 
@@ -33,12 +33,12 @@ const char *settings_filter_name(enum SettingsFilter filter)
     return filter_names[filter - SETTINGS_FILTER_NONE];
 }
 
-int settings_filter_parse(const char *name)
+enum SettingsFilter settings_filter_parse(const char *name)
 {
-    for (int filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++)
+    for (enum SettingsFilter filter = SETTINGS_FILTER_NONE; filter <= SETTINGS_FILTER_SCALE3X; filter++)
         if (!strcmp(name, filter_names[filter - SETTINGS_FILTER_NONE]))
             return filter;
-    return 0;
+    return SETTINGS_FILTER_UNSET;
 }
 
 Settings settings_parse(const char *file_text, size_t length)

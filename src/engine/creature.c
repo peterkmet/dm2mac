@@ -665,9 +665,10 @@ static void schedule_update(Location at)
     ActiveGroup *a = creature_active(group);
     if (a->event != EVENT_NO_SLOT)
         creature_cancel_update(group);
-    TimelineEvent e = {.time_map = timeline_time_map(g_game.game_time + 1, g_current_map.map)};
-    e.type = thing_word(group, GROUP_ITEM_CLASS) != THING_NONE ? EVENT_CREATURE_THINK : EVENT_CREATURE_ANIMATION;
-    e.priority = group_creature(group);
+    TimelineEvent e = timeline_event_at(g_game.game_time + 1, g_current_map.map,
+                                        thing_word(group, GROUP_ITEM_CLASS) != THING_NONE ? EVENT_CREATURE_THINK
+                                                                                          : EVENT_CREATURE_ANIMATION,
+                                        group_creature(group));
     e.data[EVENT_X] = (uint8_t)at.x;
     e.data[EVENT_Y] = (uint8_t)at.y;
     a->event = (int16_t)timeline_add_event(&e);
