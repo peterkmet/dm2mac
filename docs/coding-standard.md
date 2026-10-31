@@ -338,7 +338,7 @@ enforces: [tests]
    lower levels or from earlier modules of its own level. The `lib` fixture is defined once, in `dm2test.lib`. Every
    `dm2test` module with a `@pytest.fixture` is in `pytest_plugins` of `tests/conftest.py`.
 7. A ctypes mirror of a public C struct in `tests/dm2test/` is registered with `@mirror("header.h")` in `dm2test.structs`.
-   [`tests/port/test_struct_layout.py`]
+   The layout test `tests/port/test_struct_layout.py` checks it, not the `tests` check.
 8. `restype` and `argtypes` come from the headers through `load_lib` (`dm2test.lib`). A test module sets one only for another
    type, with the reason on the line. [review only]
 
