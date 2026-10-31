@@ -77,9 +77,9 @@ To run several files, add `-n auto`.
 | `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
-| `tests/standard/` | The coding standard (`test_standard.py`), the relative links in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
+| `tests/standard/` | The coding standard (`test_standard.py`), the links and anchors in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
 
-`tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library). `load_lib` (`tests/dm2test/lib.py`) sets `restype` and `argtypes` of every exported function from the prototypes of the headers; a test module sets one only where it needs another type, with the reason on the line.
+`tests/dm2test/` has the shared helpers, for example the project paths and the skip marker `needs_game`. Tests that need the original files are skipped if `game/SKULL.EXE` is missing. Each test module owns its state, so the tests run in any order and in parallel; how each module gets its library copy is in [architecture.md](architecture.md#the-test-library). `load_lib` (`tests/dm2test/lib.py`) sets `restype` and `argtypes` from the prototypes of the headers, and a ctypes struct mirror is registered with `@mirror`; the rules are 11.7 and 11.8 in [coding-standard.md](coding-standard.md#11-tests).
 
 ## Tools
 

@@ -337,6 +337,10 @@ enforces: [tests]
 6. `tests/dm2test/` imports only in the levels of the docstring of `tests/dm2test/__init__.py`: a module imports only from
    lower levels or from earlier modules of its own level. The `lib` fixture is defined once, in `dm2test.lib`. Every
    `dm2test` module with a `@pytest.fixture` is in `pytest_plugins` of `tests/conftest.py`.
+7. A ctypes mirror of a public C struct in `tests/dm2test/` is registered with `@mirror("header.h")` in `dm2test.structs`.
+   [`tests/port/test_struct_layout.py`]
+8. `restype` and `argtypes` come from the headers through `load_lib` (`dm2test.lib`). A test module sets one only for another
+   type, with the reason on the line. [review only]
 
 ## Format
 
@@ -390,6 +394,6 @@ their allowlist key:
 | `long-type` | `long` in code |
 | `event-comment` | an event number in a comment (`event 11`) |
 | `todo` | a TODO marker in code |
-| `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/` |
+| `tests` | a `from test_` or `conftest` import, a machine path, a clang call in `tests/`; a `dm2test` module outside the levels of its docstring, an import of a later module, a fixture module not in `pytest_plugins`, a second `lib` fixture (rule 11.6) |
 | `format` | a file that `clang-format --dry-run --Werror` reports |
 | `allowlist` | an allowlist line with a reason that this document does not name, a rule whose exception does not cover its check, or a line that accepts no violation of its check |
