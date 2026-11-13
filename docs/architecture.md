@@ -2,7 +2,7 @@
 
 The port reimplements Dungeon Master II (PC DOS, `SKULL.EXE`) in C11. The game rules follow the decompiled
 original; the DOS technical layer is not reproduced. The source in `src/` has five layers. The build makes the game
-`build/dm2` and a shared library `build/libdm2.dylib` for the tests.
+`build/dm2` and a shared library `build/libdm2.dylib` (macOS) or `build/libdm2.so` (Linux) for the tests.
 
 ## Layers
 
@@ -234,7 +234,7 @@ In the vanilla and advanced modes, the game runs in real time, and `pump_events`
 In the turn-based mode, the game time does not advance between two turns, because only `control_frame` runs
 `play_tick`.
 
-The control code's interface, all in `build/libdm2.dylib`:
+The control code's interface, all in `build/libdm2.dylib` (macOS) or `build/libdm2.so` (Linux):
 
 | Header | Functions |
 |---|---|
@@ -286,7 +286,7 @@ bundle started from the Finder has no terminal.
 
 ## The test library
 
-`build/libdm2.dylib` holds all sources except `platform/main.c` and `platform/platform.c` (the SDL sources) and
+`build/libdm2.dylib` (macOS) or `build/libdm2.so` (Linux) holds all sources except `platform/main.c` and `platform/platform.c` (the SDL sources) and
 `platform/transport_none.c`. It includes the control socket from `platform/transport.c`, but no window.
 
 - Each test module loads its own copy of the library (the module-scoped fixture `lib` of

@@ -20,8 +20,30 @@ endif
 # Extra flags for one build, for example a developer check: make lib CFLAGS_EXTRA=-DX
 CFLAGS += $(CFLAGS_EXTRA)
 
-# SDL3 from Homebrew. Recursively expanded: only the targets that compile or link SDL code run brew.
+# Host flags stay separate from BASE_CFLAGS, which the Windows cross-build also uses.
+HOST_OS ?= $(shell uname -s)
+PKG_CONFIG ?= pkg-config
+ifeq ($(HOST_OS),Linux)
+NATIVE_CPPFLAGS = -D_DEFAULT_SOURCE
+CFLAGS += -fPIC
+NATIVE_LIBS = -lm
+LIB_EXT = so
+LIB_LINK = -shared
+# Recursively expanded: library-only builds never query SDL or pkg-config.
+SDL_PC = $(if $(strip $(SDL_PREFIX)),PKG_CONFIG_PATH="$(SDL_PREFIX)/lib/pkgconfig:$(SDL_PREFIX)/lib64/pkgconfig:$(PKG_CONFIG_PATH)") $(PKG_CONFIG)
+SDL_CFLAGS = $(shell $(SDL_PC) --cflags 'sdl3 >= 3.4.0' 2>/dev/null)
+SDL_LIBS = $(shell $(SDL_PC) --libs 'sdl3 >= 3.4.0' 2>/dev/null)
+ifneq ($(strip $(SDL_PREFIX)),)
+SDL_LIBS += -Wl,-rpath,$(SDL_PREFIX)/lib -Wl,-rpath,$(SDL_PREFIX)/lib64
+endif
+else
+LIB_EXT = dylib
+LIB_LINK = -dynamiclib
+# SDL3 from Homebrew; queried only by targets that compile or link SDL code.
 SDL_PREFIX ?= $(shell brew --prefix sdl3)
+SDL_CFLAGS = -I$(SDL_PREFIX)/include
+SDL_LIBS = -L$(SDL_PREFIX)/lib -lSDL3
+endif
 
 B   = build
 OBJ = $(B)/obj
@@ -37,13 +59,13 @@ C_FILES      = $(wildcard src/*/*.[ch] src/*/include/*.h)
 
 objects = $(patsubst src/%.c,$(1)/%.o,$(2))
 
-all: $(B)/dm2 $(B)/libdm2.dylib
+all: $(B)/dm2 $(B)/libdm2.$(LIB_EXT)
 
-lib: $(B)/libdm2.dylib
+lib: $(B)/libdm2.$(LIB_EXT)
 
 # The stamp of the compile flags. When the flags change (SANITIZE, CFLAGS_EXTRA), the stamp deletes the objects,
 # so all recompile. Simply expanded: the SDL include path of two objects stays out.
-OBJ_FLAGS := $(strip $(CC) $(CPPFLAGS) $(CFLAGS))
+OBJ_FLAGS := $(strip $(CC) $(CPPFLAGS) $(NATIVE_CPPFLAGS) $(CFLAGS))
 stamp = $(strip $(shell cat $(1) 2>/dev/null))
 write_flags = @mkdir -p $(@D); rm -f $(@D)/*/*.o $(@D)/*/*/*.o; echo '$(1)' > $@
 
@@ -55,15 +77,31 @@ $(OBJ)/flags.txt:
 
 $(OBJ)/%.o: src/%.c Makefile $(OBJ)/flags.txt
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(call layer_inc,$<) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CPPFLAGS) $(NATIVE_CPPFLAGS) $(call layer_inc,$<) $(CFLAGS) -c -o $@ $<
 
-$(call objects,$(OBJ),$(SDL_SOURCES)): CPPFLAGS += -I$(SDL_PREFIX)/include
+$(call objects,$(OBJ),$(SDL_SOURCES)): CPPFLAGS += $(SDL_CFLAGS)
+# SDL headers and runtime paths can change without the general compiler flags changing.
+# Compare at recipe time so make lib never performs SDL discovery.
+$(OBJ)/sdl-flags.txt: FORCE | check-sdl
+	@mkdir -p $(@D)
+	@echo '$(strip $(SDL_CFLAGS) $(SDL_LIBS))' > $@.tmp
+	@cmp -s $@.tmp $@ && rm $@.tmp || mv $@.tmp $@
 
-$(B)/dm2: $(call objects,$(OBJ),$(GAME_SOURCES))
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -L$(SDL_PREFIX)/lib -lSDL3
+$(call objects,$(OBJ),$(SDL_SOURCES)): $(OBJ)/sdl-flags.txt | check-sdl
 
-$(B)/libdm2.dylib: $(call objects,$(OBJ),$(LIB_SOURCES))
-	$(CC) $(CFLAGS) $(LDFLAGS) -dynamiclib -o $@ $^
+$(B)/dm2: $(call objects,$(OBJ),$(GAME_SOURCES)) $(OBJ)/sdl-flags.txt | check-sdl
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(filter %.o,$^) $(SDL_LIBS) $(NATIVE_LIBS)
+
+$(B)/libdm2.$(LIB_EXT): $(call objects,$(OBJ),$(LIB_SOURCES))
+	$(CC) $(CFLAGS) $(LDFLAGS) $(LIB_LINK) -o $@ $^ $(NATIVE_LIBS)
+
+# Used by the test harness too: one dependency probe for native executable builds.
+check-sdl:
+ifeq ($(HOST_OS),Linux)
+	@$(SDL_PC) --exists 'sdl3 >= 3.4.0' || { echo "SDL3 >= 3.4.0 development files are required (pkg-config sdl3); see docs/development.md" >&2; exit 1; }
+else
+	@test -f "$(SDL_PREFIX)/include/SDL3/SDL.h" || { echo "SDL3 development files are required; see docs/development.md" >&2; exit 1; }
+endif
 
 # Windows: cross-build with MinGW-w64 (brew install mingw-w64) and the SDL3 MinGW package, copied into build/ from
 # the dm port. Windows has no control socket: transport_none.c replaces transport.c. -mwindows: no console window; the
@@ -114,7 +152,7 @@ clean:
 
 FORCE:
 
-.PHONY: all lib windows dist dist-win test check clean format FORCE
+.PHONY: all lib windows dist dist-win test check check-sdl clean format FORCE
 
 format:
 	uv run clang-format -i $(C_FILES)

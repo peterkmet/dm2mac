@@ -11,7 +11,7 @@ Install the game as the [README](../README.md#play) says, or [build it](developm
 
 The game uses the folder `game/` in the folder where you start it. If that folder has no `game` entry, the game uses
 the folder of the program instead: the folder that holds `DM2Mac.app` on macOS, the folder that holds `dm2.exe` on
-Windows. A double click on `DM2Mac.app` in the Finder thus uses `game/` in the `DM2Mac` folder
+Windows, or the folder that holds `dm2` on Linux. A double click on `DM2Mac.app` in the Finder thus uses `game/` in the `DM2Mac` folder
 ([Startup](formats/install.md#startup)). A `game` file or folder in the folder where you start the game keeps that
 folder.
 
@@ -25,12 +25,12 @@ You need these only when you start the game from Terminal or a shortcut:
 
 | Option | What it does |
 |---|---|
-| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([Turn-based mode](llm/turn-based.md), macOS only). |
+| `--mode vanilla`, `--mode advanced` | Starts in that mode and skips the mode screen. `--mode turnbased` lets a program play ([Turn-based mode](llm/turn-based.md), macOS and Linux). |
 | `--save PATH` | Loads a save and starts it immediately, in advanced mode unless `--mode` says otherwise. |
 | `--filter NAME` | The window's pixel-art filter: `none`, `scale2x`, or `scale3x`. The `DM2_FILTER` environment variable does the same. |
 | `--data DIR` | Uses the game files in `DIR` instead of `game/`, and skips the check and the install. Saves go to `DIR/DATA`. |
 | `--saves DIR` | Keeps the quick save and `SETTINGS.TXT` in `DIR` instead of `game/DATA`. The folder must exist. |
-| `--control PATH` | Opens a control socket for a program (macOS only). |
+| `--control PATH` | Opens a control socket for a program (macOS and Linux). |
 
 ```sh
 build/dm2 --mode vanilla
@@ -52,7 +52,7 @@ RESTART in the save menu keeps the mode.
 |---|---|
 | `vanilla` | The original game, nothing added. |
 | `advanced` | The default. The original game with the [advanced features](#advanced-mode). |
-| `turnbased` | A program plays the game turn by turn ([Turn-based mode](llm/turn-based.md)). macOS only. |
+| `turnbased` | A program plays the game turn by turn ([Turn-based mode](llm/turn-based.md)). macOS and Linux. |
 
 The game rules are the same in all modes, except for the cheats and the few changes under
 [Advanced mode](#advanced-mode).

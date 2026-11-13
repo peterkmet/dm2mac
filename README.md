@@ -1,7 +1,7 @@
-# DM2Mac: Dungeon Master II for macOS and Windows
+# DM2Mac: Dungeon Master II for macOS, Linux, and Windows
 
-DM2Mac is a native C11 and SDL3 port of **Dungeon Master II: The Legend of Skullkeep** (PC DOS, 1995) for macOS
-and Windows. It is a recompilation: Ghidra decompiled the original DOS program to C, the game was rewritten in C11
+DM2Mac is a native C11 and SDL3 port of **Dungeon Master II: The Legend of Skullkeep** (PC DOS, 1995) for macOS,
+Linux, and Windows. It is a recompilation: Ghidra decompiled the original DOS program to C, the game was rewritten in C11
 with SDL3 from that code, and the result runs natively without DOSBox.
 
 <p align="center">
@@ -36,6 +36,12 @@ On first startup the game checks your files and copies the 10 files it needs int
 a file is missing or wrong, a message names it. The game keeps all its files in `game/`: the game files, your saved
 games in `game/DATA`, the settings, and the messages in `dm2.log`. To remove the game, delete the `DM2Mac` folder.
 
+### Linux
+
+Build from source using the [Linux build instructions](docs/development.md#linux-build). SDL3 3.4.0 or newer is
+required. Copy your DOS game folder, ZIP archive, or CD image next to `build/dm2`, then run `build/dm2`.
+Linux builds write messages to the terminal.
+
 ## Modes
 
 On startup you choose how to play:
@@ -53,7 +59,7 @@ are in the [advanced mode section of the Player manual](docs/manual.md#advanced-
 
 ## Let an LLM play
 
-On macOS, a program such as an LLM can play the game turn by turn over a Unix socket. In the turn-based mode the game
+On macOS and Linux, a program such as an LLM can play the game turn by turn over a Unix socket. In the turn-based mode the game
 time stops between requests; each request is one turn, and the reply gives the state and the view as JSON. Build the
 game first (see [Development](docs/development.md)), then:
 

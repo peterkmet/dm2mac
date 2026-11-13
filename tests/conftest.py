@@ -24,8 +24,8 @@ def pytest_configure(config):
 
     # builds once in the main process, before the xdist workers start
     if not hasattr(config, "workerinput"):
-        sdl = subprocess.run(["brew", "--prefix", "sdl3"], capture_output=True, text=True)
-        have_sdl = sdl.returncode == 0 and (Path(sdl.stdout.strip()) / "include/SDL3/SDL.h").exists()
+        sdl = subprocess.run(["make", "check-sdl"], cwd=ROOT, capture_output=True, text=True)
+        have_sdl = sdl.returncode == 0
         result = subprocess.run(["make", "all" if have_sdl else "lib"], cwd=ROOT, capture_output=True, text=True)
         if result.returncode:
             raise pytest.UsageError("make failed:\n" + result.stderr[-4000:])

@@ -11,7 +11,8 @@ The port is built in three steps:
 
 ## Build
 
-The port uses C11, `clang`, SDL3, and `uv`. Install the tools first.
+The port uses C11, `clang`, SDL3 3.4.0 or newer, and `uv` (Python 3.14 or newer for tests).
+On macOS, install the tools first:
 
 ```sh
 brew install sdl3
@@ -20,7 +21,7 @@ uv sync
 
 | Command | Result |
 |---|---|
-| `make` | Builds the game `build/dm2` and the test library `build/libdm2.dylib`. The build has 0 warnings. |
+| `make` | Builds the game `build/dm2` and the test library (`build/libdm2.dylib` on macOS, `build/libdm2.so` on Linux). The build has 0 warnings. |
 | `make lib` | Builds only the library, which has no SDL code. |
 | `make SANITIZE=1` | Builds with the address and undefined-behavior sanitizers. |
 | `make lib CFLAGS_EXTRA=-DNAME` | Builds the library with extra compiler flags. Changing the flags recompiles all objects. |
@@ -40,6 +41,49 @@ build/dm2 --save game/DATA/SKSAVE0.DAT      # Load a save
 ```
 
 All options are in the [Player manual](manual.md).
+
+### Linux build
+
+Install Clang, Make, CMake, and pkg-config. On Linux Mint 22 / Ubuntu 24.04:
+
+```sh
+sudo apt install clang make cmake pkg-config libasound2-dev libpulse-dev \
+    libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
+    libxrandr-dev libxss-dev libxtst-dev libgl1-mesa-dev
+```
+
+If your distribution provides `libsdl3-dev` version 3.4.0 or newer, install it and run `make -j`.
+Mint 22 / Ubuntu 24.04 need a newer SDL3 built from source. For a local installation:
+
+```sh
+mkdir -p build/deps
+curl -fL https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz \
+    -o build/deps/SDL3.tar.gz
+printf '%s  %s\n' 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3 \
+    build/deps/SDL3.tar.gz | sha256sum -c -
+tar -xzf build/deps/SDL3.tar.gz -C build/deps
+cmake -S build/deps/SDL3-3.4.18 -B build/deps/sdl-build \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/deps/sdl" \
+    -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_WAYLAND=OFF
+cmake --build build/deps/sdl-build -j
+cmake --install build/deps/sdl-build
+export SDL_PREFIX="$PWD/build/deps/sdl"
+make -j
+```
+
+The Linux build uses pkg-config to check the SDL version and obtain its flags. `SDL_PREFIX` adds a custom
+installation's `lib/pkgconfig` and `lib64/pkgconfig` directories to the search path and records its library
+paths in the executable, so a local SDL installation also works at runtime. Keep `SDL_PREFIX` set when running
+tests. `make check-sdl` checks the dependency without compiling; `make lib` needs neither SDL nor pkg-config.
+The local dependencies are inside `build/`, so `make clean` removes them too.
+
+Put your DOS game beside `build/dm2`, then run it. Linux writes messages to the terminal. The Unix control socket
+and all three modes work on Linux as on macOS. The game's file size and CRC checks are the same on every platform;
+a different edition's movie files can fail validation even when its core game data matches.
+
+For tests, install `uv`, then run `uv sync` and `make check`. Python dependencies and tools are pinned by `uv.lock`;
+`uv` can download Python 3.14 if it is not installed. Tests needing the original game files are skipped when
+`game/SKULL.EXE` is absent. On Linux the test and item-reference tools load `build/libdm2.so`.
 
 ### Windows build
 
