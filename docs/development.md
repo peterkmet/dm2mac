@@ -11,7 +11,8 @@ The port is built in three steps:
 
 ## Build
 
-The port uses C11, `clang`, SDL3, and `uv`. Install the tools first.
+The port uses C11, `clang`, SDL3 3.4.0 or newer, and `uv`. The tests use Python 3.14 or newer; `uv` downloads it
+when it is not installed. On macOS, install the tools first:
 
 ```sh
 brew install sdl3
@@ -20,7 +21,7 @@ uv sync
 
 | Command | Result |
 |---|---|
-| `make` | Builds the game `build/dm2` and the test library `build/libdm2.dylib`. The build has 0 warnings. |
+| `make` | Builds the game `build/dm2` and the test library: `build/libdm2.dylib` on macOS, `build/libdm2.so` on Linux. The build has 0 warnings. |
 | `make lib` | Builds only the library, which has no SDL code. |
 | `make SANITIZE=1` | Builds with the address and undefined-behavior sanitizers. |
 | `make lib CFLAGS_EXTRA=-DNAME` | Builds the library with extra compiler flags. Changing the flags recompiles all objects. |
@@ -40,6 +41,50 @@ build/dm2 --save game/DATA/SKSAVE0.DAT      # Load a save
 ```
 
 All options are in the [Player manual](manual.md).
+
+### Linux build
+
+Install Clang, Make, CMake, pkg-config, and the development packages that SDL3 needs. On Linux Mint 22 or Ubuntu
+24.04:
+
+```sh
+sudo apt install clang make cmake pkg-config libasound2-dev libpulse-dev \
+    libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
+    libxrandr-dev libxss-dev libxtst-dev libgl1-mesa-dev
+```
+
+If the distribution has `libsdl3-dev` 3.4.0 or newer, install it and run `make -j`. Linux Mint 22 and Ubuntu
+24.04 need SDL3 built from the source, here into `build/deps/sdl`:
+
+```sh
+mkdir -p build/deps
+curl -fL https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz \
+    -o build/deps/SDL3.tar.gz
+printf '%s  %s\n' 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3 \
+    build/deps/SDL3.tar.gz | sha256sum -c -
+tar -xzf build/deps/SDL3.tar.gz -C build/deps
+cmake -S build/deps/SDL3-3.4.18 -B build/deps/sdl-build \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/deps/sdl" \
+    -DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_WAYLAND=OFF
+cmake --build build/deps/sdl-build -j
+cmake --install build/deps/sdl-build
+export SDL_PREFIX="$PWD/build/deps/sdl"
+make -j
+```
+
+The Linux build gets the SDL3 version and the SDL3 flags from pkg-config. `SDL_PREFIX` names an SDL3 installation
+outside the system folders. The build then searches `lib/pkgconfig` and `lib64/pkgconfig` of that folder and writes
+its library folders into `build/dm2`, so the game finds that SDL3 when it runs. Keep `SDL_PREFIX` set for
+`make check` and `make test`.
+
+- `make check-sdl` checks SDL3 and compiles nothing.
+- `make lib` needs neither SDL3 nor pkg-config.
+- `make clean` deletes `build/`, and with it the SDL3 in `build/deps`.
+
+Put your DOS game folder, ZIP archive, or CD image next to `build/dm2`, then run `build/dm2`. The messages go to the
+terminal. The control socket and all three modes work as on macOS.
+
+For the tests, install `uv`, then run `uv sync` and `make check`.
 
 ### Windows build
 
@@ -74,7 +119,7 @@ To run several files, add `-n auto`.
 
 | Folder or file | What it proves |
 |---|---|
-| `tests/differential/` | The same input through the port (`ctypes` on `build/libdm2.dylib`) and through the original in the emulator `dm2tools.emu` gives the same state. |
+| `tests/differential/` | The same input through the port (`ctypes` on the test library) and through the original in the emulator `dm2tools.emu` gives the same state. |
 | `tests/port/` | The port code by itself. |
 | `tests/tools/` | The Python tools in `tools/dm2tools/`. |
 | `tests/standard/` | The coding standard (`test_standard.py`), the links and anchors in the docs (`test_docs.py`), and the protocol vocabulary of [control-socket.md](llm/control-socket.md#protocol-vocabulary) (`test_vocabulary.py`). |
@@ -89,7 +134,7 @@ To run several files, add `-n auto`.
 | `make format` | `clang-format` over the C files ([coding-standard.md](coding-standard.md#format)). |
 | `tools/standard-allowlist` | Regenerates `tests/standard/allowlist.txt` from the violations that the standard check finds. |
 | `tools/rename-symbol OLD NEW` | Renames a public symbol in `src/`, `tests/`, the symbol table, and the docs. |
-| `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through `build/libdm2.dylib` (`make lib` first). An `.html` file name gives the HTML page instead. |
+| `uv run dm2-items docs/items.md` | Regenerates [items.md](items.md) from `game/DATA/GRAPHICS.DAT` through the test library (`make lib` first). An `.html` file name gives the HTML page instead. |
 | `dm2tools.emu` (Python, in `tools/dm2tools/emu.py`) | Run a `SKULL.EXE` function in an x86 emulator. `Emu.call(addr, *args)` runs one function. A hardware access stops the call with `EmuError`; `allow_io=True` permits port access. |
 | `tools/dosbox-nointro.sh` | Start the original game in DOSBox without the intro movies, for reference runs. It needs [DOSBox](https://www.dosbox.com) as `/Applications/dosbox.app`. It links every file in `game/` except the start movies and the splash (`INTRO`, `FTL`, `INTRPLAY.PCX`) into `build/dos-nointro` and uses `tools/dosbox-dm2.conf` (`SB16`, 20000 cycles, `ibmiop skull.exe`). |
 

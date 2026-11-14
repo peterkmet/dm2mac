@@ -1,6 +1,6 @@
 """The item reference: the GDAT values and actions of every item, as Markdown or as an HTML page.
 
-The values come from GRAPHICS.DAT through the port library (build/libdm2.dylib): gdat_entry_index for the value
+The values come from GRAPHICS.DAT through the port library (build/libdm2.dylib on macOS, build/libdm2.so on Linux): gdat_entry_index for the value
 keys (category, index, 0x0b, entry) and gdat_text for the texts (category, index, 5, entry).
 """
 
@@ -15,7 +15,7 @@ import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LIBRARY = ROOT / "build" / "libdm2.dylib"
+LIBRARY = ROOT / "build" / ("libdm2.dylib" if sys.platform == "darwin" else "libdm2.so")
 GRAPHICS = ROOT / "game" / "DATA" / "GRAPHICS.DAT"
 
 TYPE_IMAGE, TYPE_TEXT, TYPE_VALUE = 0x01, 0x05, 0x0b

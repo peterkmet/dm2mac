@@ -20,6 +20,8 @@ def java_installed():
     """The JDK that tools/ghidra/decompile.sh uses: JAVA_HOME, or openjdk@21 of Homebrew."""
     home = os.environ.get("JAVA_HOME")
     if not home:
+        if not shutil.which("brew"):
+            return False
         prefix = subprocess.run(["brew", "--prefix", "openjdk@21"], capture_output=True, text=True).stdout.strip()
         home = str(Path(prefix, "libexec/openjdk.jdk/Contents/Home"))
     return Path(home, "bin/java").exists()

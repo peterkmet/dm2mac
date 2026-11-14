@@ -1,4 +1,4 @@
-"""The test library: a private copy of build/libdm2.dylib per load, so each test module has its own C globals.
+"""The test library: a private copy of the native shared library per load, so each test module has its own C globals.
 
 load_lib sets the ctypes prototypes of every exported function from the headers; a test module sets one only for
 another type on purpose."""
@@ -7,6 +7,7 @@ import ctypes
 import os
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -15,7 +16,7 @@ import pytest
 from dm2test.markers import BUILD, ROOT
 from dm2test.structs import MIRRORS
 
-LIBRARY = BUILD / "libdm2.dylib"
+LIBRARY = BUILD / ("libdm2.dylib" if sys.platform == "darwin" else "libdm2.so")
 
 # the public headers of the library; the SDL side (platform.h) and the vendored code are not in it
 HEADERS = sorted(h for h in (ROOT / "src").rglob("*.h")

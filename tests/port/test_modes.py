@@ -373,6 +373,7 @@ def test_lost_game_stays_in_the_turnbased_mode(lib, advanced):
         loop.quit, state.exit_code = 0, 0
 
 
+@pytest.mark.skipif(not (ROOT / "build" / "dm2").exists(), reason="SDL executable not built")
 def test_bad_mode_stops_the_program():
     result = subprocess.run([str(ROOT / "build" / "dm2"), "--mode", "turbo"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 2 and "unknown mode turbo" in result.stderr

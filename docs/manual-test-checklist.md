@@ -15,7 +15,7 @@ Use this checklist for the manual test of the C port. Use DOSBox only for the it
 
 ## Build and start
 
-1. Build and start the port as in [Build](development.md#build). Expected result: no warnings; `build/dm2` and `build/libdm2.dylib`; for `make windows`, `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`. The port shows the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu.
+1. Build and start the port as in [Build](development.md#build). Expected result: no warnings; `build/dm2` and the test library; for `make windows`, `file build/dm2.exe` says `PE32+ executable (GUI) x86-64`. The port shows the mode screen, the splash picture, the movies `FTL` and `INTRO`, then the start menu.
 
 2. Start the DOS version in DOSBox:
 
@@ -270,4 +270,4 @@ Copy `SDL3.dll` next to `build/dm2.exe` and set up Wine ([Windows build](develop
 
 - [ ] W1. Remove `SDL3.dll` from `build/` and run `"$WINE" build/dm2.exe`. Expected: Windows reports the missing `SDL3.dll`. Copy it back.
 - [ ] W2. Run `"$WINE" build/dm2.exe`. Expected: the program starts a new game with `game/`: the splash picture, the movies, and the start menu, with image and sound.
-- [ ] W3. Run `"$WINE" build/dm2.exe --mode turnbased`. Expected: the program stops with exit code 1; `game/dm2.log` holds the line `the turn-based mode and --control need macOS`.
+- [ ] W3. Run `"$WINE" build/dm2.exe --mode turnbased`. Expected: the program stops with exit code 1; `game/dm2.log` holds the line `the turn-based mode and --control need macOS or Linux`.

@@ -740,7 +740,7 @@ static int select_runnable_mode(Options *options)
     if (!select_mode(options->mode))
         return EXIT_USAGE;
     if (!transport_is_available() && (g_game_mode == GAME_MODE_TURNBASED || options->control)) {
-        os_log("the turn-based mode and --control need macOS");
+        os_log("the turn-based mode and --control need macOS or Linux");
         return EXIT_FAILURE;
     }
     if (g_game_mode == GAME_MODE_TURNBASED && !options->control && !default_control_path(&options->control))

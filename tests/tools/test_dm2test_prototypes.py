@@ -6,8 +6,8 @@ import sys
 from ctypes import c_bool, c_byte, c_char_p, c_int, c_int16, c_size_t, c_uint, c_uint16, c_void_p
 
 from dm2test import structs
-from dm2test.lib import PROTOTYPES, UNTYPED, parse_prototypes
-from dm2test.markers import BUILD, ROOT
+from dm2test.lib import LIBRARY, PROTOTYPES, UNTYPED, parse_prototypes
+from dm2test.markers import ROOT
 
 HEADER = r"""
 typedef enum { A, B } Kind;
@@ -112,8 +112,11 @@ def test_the_untyped_functions_are_the_expected_set():
 
 
 def test_every_export_has_a_prototype_or_a_reason():
-    out = subprocess.run(["nm", "-gU", str(BUILD / "libdm2.dylib")], capture_output=True, text=True, check=True).stdout
-    exports = {line.split()[2].removeprefix("_") for line in out.splitlines() if len(line.split()) == 3 and line.split()[1] == "T"}
+    flags = ["-gU"] if sys.platform == "darwin" else ["-D", "--defined-only", "--extern-only"]
+    out = subprocess.run(["nm", *flags, str(LIBRARY)], capture_output=True, text=True, check=True).stdout
+    exports = {line.split()[2] for line in out.splitlines() if len(line.split()) == 3 and line.split()[1] == "T"}
+    if sys.platform == "darwin":
+        exports = {name.removeprefix("_") for name in exports}
     exports = {name for name in exports if not name.startswith(("OPL3_", "tinf_"))}
     missing = sorted(exports - PROTOTYPES.keys() - UNTYPED.keys())
     assert not missing, f"exports without a prototype or a reason: {missing}"

@@ -3,11 +3,11 @@
 @~/.claude/skills/c-decomp-port/SKILL.md
 @~/.claude/skills/python-uv/SKILL.md
 
-Native C11/SDL3 macOS and Windows port of Dungeon Master II (PC DOS `SKULL.EXE`), built from its own Ghidra decompilation.
+Native C11/SDL3 macOS, Linux and Windows port of Dungeon Master II (PC DOS `SKULL.EXE`), built from its own Ghidra decompilation.
 
 ## Commands
 Details: `docs/development.md`.
-- Build: `make` (0 warnings) builds `build/dm2`; `make lib` builds `build/libdm2.dylib`.
+- Build: `make` (0 warnings) builds `build/dm2`; `make lib` builds `build/libdm2.dylib` (`build/libdm2.so` on Linux).
 - Windows build: `make windows` builds `build/dm2.exe` with MinGW-w64 and the SDL3 MinGW package of `../dm` (in a worktree: `make windows DM_DIR=<path to the dm folder>`).
 - Run: `build/dm2` starts a new game; `build/dm2 --save game/DATA/SKSAVE0.DAT` loads a save.
 - Never stop or restart a running game of the user; after a build, tell the user and let them restart it.

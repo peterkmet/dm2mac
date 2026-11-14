@@ -272,7 +272,7 @@ Errors of the real-time commands:
 
 - The socket path must be shorter than about 100 bytes.
 - The game sends a reply with a blocking write. A client that sends requests but never reads the replies can stop the game. The socket is a local test tool.
-- The Windows build (`make windows`, `build/dm2.exe`) has no control socket: `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS` and exit code 1.
+- The Windows build (`make windows`, `build/dm2.exe`) has no control socket: `--mode turnbased` and `--control` stop with the message `the turn-based mode and --control need macOS or Linux` and exit code 1.
 
 ## Protocol vocabulary
 
