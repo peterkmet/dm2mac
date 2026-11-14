@@ -8,10 +8,6 @@
 - Manual tests: the sound direction next to creatures and doors, and the end of the game with the end sensor. The music and the thunder sound are not checked (dummy audio).
 - Manual check of the walk-through-walls cheat (`docs/manual-test-checklist.md`): walk into a closed door, look around, open and close it with its button, walk out; walk into a wall (view, automap position, attack of a creature from a neighbor square), try to drop an item, step out, switch the cheat off.
 
-## Bugs
-
-- Table half move: when the party pushes a table one half square, the items on the table stay where they were. Reported by a user, seen in the port. Check what the original does, then fix it.
-
 ## Checks against the original
 
 - Message area scroll: IBMIOP service `0x105` is not in `SKULL.EXE`. The port moves the rows up and keeps the bottom rows (`shift_message_area` in `src/ui/text.c`); check it against the original in DOSBox.
