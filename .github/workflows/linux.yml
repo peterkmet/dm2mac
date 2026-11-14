@@ -1,9 +1,31 @@
 name: Linux
 
+# Runs only for a change that can break the Linux build or the tests; a change of the docs alone does not run it.
 on:
   push:
     branches: [main]
+    paths:
+      - src/**
+      - tests/**
+      - tools/**
+      - Makefile
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/linux.yml
   pull_request:
+    paths:
+      - src/**
+      - tests/**
+      - tools/**
+      - Makefile
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/linux.yml
+
+# A newer push to the same branch cancels the run of the older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -23,7 +45,15 @@ jobs:
           sudo apt-get install -y clang make cmake pkg-config libasound2-dev libpulse-dev \
             libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
             libxrandr-dev libxss-dev libxtst-dev libgl1-mesa-dev
+      # The key changes with this file, so a new SDL3 version or new build options build SDL3 again.
+      - name: Restore SDL3
+        id: sdl
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: build/deps/sdl
+          key: sdl-${{ runner.os }}-${{ hashFiles('.github/workflows/linux.yml') }}
       - name: Build SDL3
+        if: steps.sdl.outputs.cache-hit != 'true'
         run: |
           mkdir -p build/deps
           curl -fL https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz \
